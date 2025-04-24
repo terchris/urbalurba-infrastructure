@@ -1,0 +1,6 @@
+all:
+  children:
+    kubernetes:
+      hosts:
+        rancher-desktop:
+          ansible_connection: local

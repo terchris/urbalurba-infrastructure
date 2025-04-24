@@ -1,0 +1,177 @@
+---
+# file: playbooks/020-setup-nginx.yml
+# Description: 
+#   Deploys Nginx on Kubernetes and configures it to use previously prepared storage.
+#   This playbook:
+#   1. First runs the 020-setup-web-files.yml playbook to prepare the storage and content
+#   2. Then deploys Nginx using the Bitnami Helm chart
+#   3. Configures Nginx to mount and serve the prepared content
+#   4. Sets up ingress for external access
+#
+# Usage:
+#   ansible-playbook playbooks/020-setup-nginx.yml -e kube_context=your-context
+#
+# Variables:
+#   kube_context: Kubernetes context to use
+
+# Import the web files setup playbook first
+- import_playbook: 020-setup-web-files.yml
+
+# Then run the Nginx setup
+- name: Set up Nginx on Kubernetes
+  hosts: localhost
+  gather_facts: false
+  vars:
+    manifests_folder: "/mnt/urbalurbadisk/manifests"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    nginx_content_filename: "urbalurba-test.html"
+    nginx_ingress_manifest: "{{ manifests_folder }}/020-nginx-root-ingress.yaml"
+    nginx_config_manifest: "{{ manifests_folder }}/020-nginx-config.yaml"
+
+  tasks:
+    - name: 1. Get current Kubernetes context
+      ansible.builtin.shell: |
+        kubectl config current-context
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: current_context
+      changed_when: false
+      
+    - name: 2. Set kube_context from current context if not explicitly provided
+      ansible.builtin.set_fact:
+        kube_context: "{{ kube_context | default(current_context.stdout) }}"
+
+    - name: 3. Print playbook description
+      ansible.builtin.debug:
+        msg: "Setting up Nginx on Kubernetes context: {{ kube_context }}"
+    
+    - name: 4. Verify PVC exists and is bound
+      ansible.builtin.shell: |
+        kubectl get pvc nginx-content-pvc -o jsonpath='{.status.phase}' --context {{ kube_context }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: pvc_status
+      failed_when: pvc_status.rc != 0 or pvc_status.stdout != "Bound"
+      changed_when: false
+      
+    - name: 5. Display PVC status
+      ansible.builtin.debug:
+        msg: "PVC Status: {{ pvc_status.stdout }}"
+
+    - name: 6. Deploy or upgrade Nginx using Helm
+      ansible.builtin.command: >
+        helm upgrade --install nginx bitnami/nginx 
+        -f {{ nginx_config_manifest }}
+        --kube-context {{ kube_context }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      changed_when: true
+
+    - name: 7. Wait for Nginx pod to be ready
+      ansible.builtin.command: >
+        kubectl wait --for=condition=ready pod 
+        -l app.kubernetes.io/name=nginx 
+        --timeout=180s
+        --context {{ kube_context }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: wait_result
+      until: wait_result.rc == 0
+      retries: 10
+      delay: 15
+
+    - name: 8. Get pod name
+      ansible.builtin.command: >
+        kubectl get pods -l app.kubernetes.io/name=nginx -o jsonpath='{.items[0].metadata.name}'
+        --context {{ kube_context }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: nginx_pod
+      changed_when: false
+
+    - name: 9. Verify files in nginx html directory
+      ansible.builtin.shell: |
+        kubectl exec {{ nginx_pod.stdout }} --context {{ kube_context }} -- \
+        ls -la /opt/bitnami/nginx/html/
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: pod_files
+      changed_when: false
+      
+    - name: 10. Display files in nginx pod
+      ansible.builtin.debug:
+        var: pod_files.stdout_lines
+
+    - name: 11. Apply Nginx root path ingress configuration
+      ansible.builtin.command: >
+        kubectl apply -f {{ nginx_ingress_manifest }}
+        --context {{ kube_context }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      changed_when: true
+
+    - name: 12. Get Nginx service ClusterIP and port
+      ansible.builtin.shell: |
+        CLUSTER_IP=$(kubectl get svc nginx --context {{ kube_context }} -o jsonpath='{.spec.clusterIP}')
+        HTTP_PORT=$(kubectl get svc nginx --context {{ kube_context }} -o jsonpath='{.spec.ports[?(@.name=="http")].port}')
+        echo "${CLUSTER_IP}:${HTTP_PORT}"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: nginx_endpoint
+      changed_when: false
+
+    - name: 13. Test connectivity to test file from within the cluster
+      ansible.builtin.shell: |
+        kubectl run curl-test --image=curlimages/curl --rm -i --restart=Never --context {{ kube_context }} -- \
+        curl -s http://nginx.default.svc.cluster.local:{{ nginx_endpoint.stdout.split(':')[1] }}/{{ nginx_content_filename }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: curl_test
+      ignore_errors: true
+      changed_when: false
+
+    - name: 14. Display test result
+      ansible.builtin.debug:
+        var: curl_test.stdout_lines
+
+    - name: 15. Test connectivity to index file
+      ansible.builtin.shell: |
+        kubectl run curl-test --image=curlimages/curl --rm -i --restart=Never --context {{ kube_context }} -- \
+        curl -s http://nginx.default.svc.cluster.local:{{ nginx_endpoint.stdout.split(':')[1] }}/
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: curl_index
+      ignore_errors: true
+      changed_when: false
+      
+    - name: 16. Display index page results
+      ansible.builtin.debug:
+        var: curl_index.stdout_lines
+
+    - name: 17. Verify ingress was created successfully
+      ansible.builtin.command: >
+        kubectl get ingress nginx-root-ingress
+        --context {{ kube_context }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: ingress_check
+      changed_when: false
+
+    - name: 18. Display ingress status
+      ansible.builtin.debug:
+        var: ingress_check.stdout_lines
+
+    - name: 19. Success message
+      ansible.builtin.debug:
+        msg: |
+          NGINX SETUP COMPLETE
+          
+          Pod name: {{ nginx_pod.stdout }}
+          Service endpoint: {{ nginx_endpoint.stdout }}
+          Ingress address: {{ ingress_check.stdout.split()[3] if ingress_check.rc == 0 and ingress_check.stdout_lines|length > 1 else 'Not available' }}
+          
+          Nginx is now running and serving the web content from the PVC.
+          You can access the test page at http://[your-ingress-host]/{{ nginx_content_filename }}
+          
+          To reload the website content without redeploying Nginx:
+          ansible-playbook playbooks/020-setup-web-files.yml -e kube_context={{ kube_context }}

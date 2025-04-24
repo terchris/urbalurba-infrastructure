@@ -1,0 +1,42 @@
+---
+# 050-redis-config.yaml
+# Installs Redis queue handling system
+# Usage: 
+# installing: helm install redis bitnami/redis -f 050-redis-config.yaml --set auth.password=<your-password>
+# uninstalling: helm uninstall redis
+
+
+
+auth:
+  enabled: true
+  # Password will be set by the playbook using --set auth.password=<your-password>
+
+master:
+  persistence:
+    enabled: true
+    size: 6Gi
+
+# Resources limits and requests
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+
+# Disable cluster mode for simplicity
+architecture: standalone
+
+replica:
+  replicaCount: 0
+
+# Additional configurations
+service:
+  type: ClusterIP
+
+
+# Enable metrics for monitoring (optional)
+metrics:
+  enabled: false # ERR: if set to true -Set to true if you want to enable Prometheus metrics

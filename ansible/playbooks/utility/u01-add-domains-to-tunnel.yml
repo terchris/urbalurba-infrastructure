@@ -1,0 +1,145 @@
+---
+# File: ansible/playbooks/utility/u01-add-domains-to-tunnel.yml
+# Description: Add new domains to an existing Cloudflare tunnel using the Cloudflare DNS module
+# Usage:
+# ansible-playbook playbooks/utility/u01-add-domains-to-tunnel.yml -e "tunnel_name=your-tunnel-name" -e "domain=your-domain.com" -e '{"new_subdomains": ["subdomain1", "subdomain2"]}'
+# Example:
+# ansible-playbook playbooks/utility/u01-add-domains-to-tunnel.yml -e "tunnel_name=nerdmeet-test" -e "domain=nordmeet.org" -e '{"new_subdomains": ["management-api-test", "portal-test"]}'
+
+- name: Add Domains to Cloudflare Tunnel
+  hosts: localhost
+  gather_facts: false
+  vars:
+    tunnel_name: "{{ tunnel_name }}"
+    domain: "{{ domain }}"
+    cloudflarefolder: "/mnt/urbalurbadisk/cloudflare/"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+
+  tasks:
+    - name: 1. Validate input parameters
+      fail:
+        msg: "tunnel_name, domain, and new_subdomains must be provided."
+      when: tunnel_name is not defined or domain is not defined or new_subdomains is not defined
+
+    - name: 2. Set new_subdomains variable as list
+      set_fact:
+        new_subdomains_list: "{{ new_subdomains | from_yaml if new_subdomains is string else new_subdomains }}"
+
+    - name: 3. Generate full hostnames
+      set_fact:
+        hostnames: "{{ new_subdomains_list | map('regex_replace', '^(.+)$', '\\1.' + domain) | list }}"
+
+    - name: 4. Display input parameters and hostnames
+      debug:
+        msg: 
+          - "Tunnel Name: {{ tunnel_name }}"
+          - "Domain: {{ domain }}"
+          - "New Subdomains: {{ new_subdomains_list | join(', ') }}"
+          - "Hostnames: {{ hostnames | join(', ') }}"
+
+    - name: 5. Retrieve Cloudflare API token from Kubernetes secret
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ merged_kubeconf_file }}"
+        api_version: v1
+        kind: Secret
+        name: urbalurba-secrets
+        namespace: default
+      register: secret_data
+
+    - name: 6. Check if Cloudflare API token is present in the secret
+      fail:
+        msg: "CLOUDFLARE_DNS_TOKEN not found in Kubernetes secret"
+      when: secret_data.resources[0].data.CLOUDFLARE_DNS_TOKEN is not defined
+
+    - name: 7. Decode the Cloudflare API token
+      set_fact:
+        cloudflare_api_token: "{{ secret_data.resources[0].data.CLOUDFLARE_DNS_TOKEN | b64decode }}"
+
+    - name: 8. Display the presence of the Cloudflare API token
+      debug:
+        msg: "Cloudflare API token has been retrieved successfully."
+
+    - name: 9. Validate the Cloudflare API token by making a request
+      uri:
+        url: "https://api.cloudflare.com/client/v4/user/tokens/verify"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ cloudflare_api_token }}"
+          Content-Type: "application/json"
+        status_code: 200
+      register: token_validation
+
+    - name: 10. Fail if the Cloudflare API token is not valid
+      fail:
+        msg: "The Cloudflare API token is not valid. Please check the token and try again."
+      when: token_validation.status != 200
+
+    - name: 12. Get list of available zones
+      uri:
+        url: "https://api.cloudflare.com/client/v4/zones"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ cloudflare_api_token }}"
+          Content-Type: "application/json"
+      register: zones_info
+
+    - name: 13. Display available zones
+      debug:
+        msg: "{{ zones_info.json.result }}"
+
+    - name: 14. Verify the specified domain exists in the available zones
+      set_fact:
+        domain_zone_id: "{{ (zones_info.json.result | selectattr('name', 'equalto', domain) | list | first).id }}"
+
+    - name: 15. Fail if the specified domain is not found
+      fail:
+        msg: "The specified domain {{ domain }} is not found in your Cloudflare account."
+      when: domain_zone_id is not defined
+
+    - name: 16. Add new subdomains to DNS
+      community.general.cloudflare_dns:
+        zone: "{{ domain }}"
+        record: "{{ item }}"
+        type: CNAME
+        value: "{{ tunnel_name }}.cfargotunnel.com"
+        api_token: "{{ cloudflare_api_token }}"
+        state: present
+        proxied: true  # Set proxied attribute to true if you want to route traffic through Cloudflare
+      loop: "{{ hostnames }}"
+      register: dns_add_result
+
+    - name: 17. Display DNS addition results
+      debug:
+        msg: "{{ item }}"
+      loop: "{{ dns_add_result.results }}"
+
+    - name: 18. Display success message
+      debug:
+        msg: "New subdomains {{ new_subdomains_list | join(', ') }} have been added to the tunnel {{ tunnel_name }}"
+
+    - name: 19. Get Zone ID for the domain
+      uri:
+        url: "https://api.cloudflare.com/client/v4/zones?name={{ domain }}"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ cloudflare_api_token }}"
+          Content-Type: "application/json"
+      register: zone_info
+
+    - name: 20. Set Zone ID fact
+      set_fact:
+        zone_id: "{{ zone_info.json.result[0].id }}"
+
+    - name: 21. List all DNS records
+      uri:
+        url: "https://api.cloudflare.com/client/v4/zones/{{ zone_id }}/dns_records"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ cloudflare_api_token }}"
+          Content-Type: "application/json"
+      register: dns_records
+
+    - name: 22. Display all DNS records
+      debug:
+        msg: "{{ dns_records.json.result }}"
+

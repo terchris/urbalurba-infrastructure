@@ -1,0 +1,411 @@
+---
+# file: ansible/playbooks/200-setup-open-webui.yml
+# Description:
+# Set up Open WebUI with all its dependencies on Kubernetes
+# - storage: persistent storage for all systems
+# - tika: Apache Tika server for document extraction and processing
+# - qdrant: Qdrant as a vector database for Open WebUI, replacing the default ChromaDB
+# - ollama: install a minimal LLM (qwen2:0.5b) in the cluster. The model is so small so it is mainly there to prove that it works.
+# - litellm: proxy for LLMs makes it possible to use open-webui with any LLM. External or internal.
+# - openwebui: the web frontend for interacting with the LLMs
+#
+# Usage:
+# ansible-playbook playbooks/200-setup-open-webui.yml -e kube_context="rancher-desktop"
+
+- name: Set up Open WebUI with subsystems on Kubernetes
+  hosts: localhost
+  gather_facts: false
+  vars:
+    manifests_folder: "/mnt/urbalurbadisk/manifests"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    ai_namespace: "ai"
+    installation_timeout: 900  # 15 minutes timeout for installations
+    pod_readiness_timeout: 600  # 10 minutes timeout for pod readiness
+    # Helm chart references
+    tika_chart: "tika/tika"
+    qdrant_chart: "qdrant/qdrant"
+    ollama_chart: "ollama-helm/ollama"
+    litellm_chart: "oci://ghcr.io/berriai/litellm-helm"
+    openwebui_chart: "open-webui/open-webui"
+    # Config files
+    storage_config_file: "{{ manifests_folder }}/200-ai-persistent-storage.yaml"
+    tika_config_file: "{{ manifests_folder }}/201-tika-config.yaml"
+    qdrant_config_file: "{{ manifests_folder }}/203-qdrant-config.yaml"
+    ollama_config_file: "{{ manifests_folder }}/205-ollama-config.yaml"
+    litellm_config_file: "{{ manifests_folder }}/207-litellm-config.yaml"
+    openwebui_config_file: "{{ manifests_folder }}/209-openwebui-config.yaml"
+
+  tasks:
+    - name: 1. Get current Kubernetes context if kube_context not provided
+      ansible.builtin.shell: |
+        kubectl config current-context
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: current_context
+      changed_when: false
+      when: kube_context is not defined
+      
+    - name: 2. Set kube_context from current context if not provided
+      ansible.builtin.set_fact:
+        kube_context: "{{ current_context.stdout }}"
+      when: kube_context is not defined
+
+    - name: 3. Print playbook description
+      ansible.builtin.debug:
+        msg: "Setting up Open WebUI and dependencies on Kubernetes context: {{ kube_context }}"
+    
+    - name: 4a. Create ai namespace if it doesn't exist
+      ansible.builtin.shell: kubectl create namespace {{ ai_namespace }} --dry-run=client -o yaml | kubectl apply -f -
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: namespace_result
+      changed_when: namespace_result.rc == 0
+      failed_when: namespace_result.rc != 0
+
+    - name: 4b. Check if urbalurba-secrets exists in ai namespace
+      ansible.builtin.command: kubectl get secret urbalurba-secrets -n {{ ai_namespace }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: secret_check
+      ignore_errors: true
+      changed_when: false
+    
+    - name: 4c. Fail if urbalurba-secrets does not exist
+      ansible.builtin.fail:
+        msg: "The urbalurba-secrets secret does not exist in namespace {{ ai_namespace }}. It must be created before running this playbook."
+      when: secret_check.rc != 0
+    
+    - name: 5. Check if all required secret keys exist
+      ansible.builtin.shell: |
+        SECRET_DATA=$(kubectl get secret urbalurba-secrets -n {{ ai_namespace }} -o json | jq -r '.data | keys[]')
+        MISSING_KEYS=""
+        for KEY in "OPENWEBUI_QDRANT_API_KEY" "LITELLM_PROXY_MASTER_KEY" "OPENAI_API_KEY" "ANTHROPIC_API_KEY" "AZURE_API_KEY" "AZURE_API_BASE"; do
+          if ! echo "$SECRET_DATA" | grep -q "$KEY"; then
+            MISSING_KEYS="${MISSING_KEYS}${KEY} "
+          fi
+        done
+        if [ -n "$MISSING_KEYS" ]; then
+          echo "Missing recommended secret keys: $MISSING_KEYS"
+          # Warning only, not failing
+        fi
+        echo "Secret check completed"
+        exit 0
+      args:
+        executable: /bin/bash
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: secret_keys_check
+      changed_when: false
+  
+    - name: 6. Display warning about missing secret keys
+      ansible.builtin.debug:
+        msg: |
+          WARNING: Some recommended API keys may be missing from urbalurba-secrets.
+          {{ secret_keys_check.stdout }}
+          
+          While the stack will install, some LLM providers may not work correctly.
+          You can update the keys at any time using:
+          kubectl edit secret urbalurba-secrets -n {{ ai_namespace }}
+      when: "'Missing recommended secret keys' in secret_keys_check.stdout"
+
+    - name: 7. Apply persistent storage resources
+      ansible.builtin.command: kubectl apply -f {{ storage_config_file }} -n {{ ai_namespace }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: storage_result
+      changed_when: storage_result.rc == 0
+      failed_when: storage_result.rc != 0
+      
+    - name: 8. Display storage creation result
+      ansible.builtin.debug:
+        msg: "Persistent storage setup result: {{ storage_result.stdout_lines | default(['No output']) }}"
+
+    - name: 9a. Check existing Helm repositories
+      ansible.builtin.command: helm repo list
+      register: helm_repo_list
+      changed_when: false
+
+    - name: 9b. Add Helm repositories if needed
+      kubernetes.core.helm_repository:
+        name: "{{ item.name }}"
+        repo_url: "{{ item.url }}"
+      loop:
+        - { name: 'tika', url: 'https://apache.jfrog.io/artifactory/tika' }
+        - { name: 'qdrant', url: 'https://qdrant.github.io/qdrant-helm' }
+        - { name: 'ollama-helm', url: 'https://otwld.github.io/ollama-helm/' }
+        - { name: 'open-webui', url: 'https://helm.openwebui.com/' }
+      when: item.name not in helm_repo_list.stdout
+      register: helm_repo_result
+
+    - name: 9c. Update Helm repositories
+      ansible.builtin.command: helm repo update
+      changed_when: false
+    
+    # Install Tika
+    - name: 10a. Deploy Apache Tika server
+      ansible.builtin.command: >
+        helm upgrade --install tika {{ tika_chart }} 
+        -f {{ tika_config_file }} 
+        --namespace {{ ai_namespace }}
+        --timeout {{ installation_timeout }}s
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: tika_result
+      changed_when: true
+    
+    - name: 10b. Display Tika deployment result
+      ansible.builtin.debug:
+        msg: "Tika deployment initiated. Waiting for readiness..."
+    
+    - name: 10c. Wait for Tika pods to be ready
+      ansible.builtin.shell: |
+        kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=tika -n {{ ai_namespace }} --timeout={{ pod_readiness_timeout }}s
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: tika_wait_result
+      changed_when: false
+      ignore_errors: true
+    
+    - name: 10d. Display Tika readiness status
+      ansible.builtin.debug:
+        msg: "Tika readiness status: {{ 'Ready' if tika_wait_result.rc == 0 else 'Not ready yet, continuing anyway' }}"
+    
+    # Install Qdrant
+    - name: 11a. Deploy Qdrant vector database
+      ansible.builtin.command: >
+        helm upgrade --install qdrant {{ qdrant_chart }}
+        -f {{ qdrant_config_file }}
+        --namespace {{ ai_namespace }}
+        --timeout {{ installation_timeout }}s
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: qdrant_result
+      changed_when: true
+    
+    - name: 11b. Display Qdrant deployment result
+      ansible.builtin.debug:
+        msg: "Qdrant deployment initiated. Waiting for readiness..."
+    
+    - name: 11c. Wait for Qdrant pods to be ready
+      ansible.builtin.shell: |
+        kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=qdrant -n {{ ai_namespace }} --timeout={{ pod_readiness_timeout }}s
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: qdrant_wait_result
+      changed_when: false
+      ignore_errors: true
+    
+    - name: 11d. Display Qdrant readiness status
+      ansible.builtin.debug:
+        msg: "Qdrant readiness status: {{ 'Ready' if qdrant_wait_result.rc == 0 else 'Not ready yet, continuing anyway' }}"
+    
+    # Install Ollama without waiting for it to be ready
+    - name: 12a. Deploy Ollama for local LLM support
+      ansible.builtin.command: >
+        helm upgrade --install ollama {{ ollama_chart }}
+        -f {{ ollama_config_file }}
+        --namespace {{ ai_namespace }}
+        --timeout {{ installation_timeout }}s
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: ollama_result
+      changed_when: true
+    
+    - name: 12b. Display Ollama deployment result
+      ansible.builtin.debug:
+        msg: "Ollama deployment initiated. Note: Ollama may take 10-15 minutes to become ready as it downloads the qwen2:0.5b model. Continuing with other components."
+    
+    # Install LiteLLM
+    - name: 13a. Deploy LiteLLM proxy
+      ansible.builtin.command: >
+        helm upgrade --install litellm {{ litellm_chart }}
+        -f {{ litellm_config_file }}
+        --namespace {{ ai_namespace }}
+        --timeout {{ installation_timeout }}s
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: litellm_result
+      changed_when: true
+    
+    - name: 13b. Display LiteLLM deployment result
+      ansible.builtin.debug:
+        msg: "LiteLLM deployment initiated. Waiting for readiness..."
+    
+    - name: 13c. Wait for LiteLLM pods to be ready
+      ansible.builtin.shell: |
+        # Try multiple label selectors as the exact labels may vary
+        kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=litellm -n {{ ai_namespace }} --timeout={{ pod_readiness_timeout }}s || \
+        kubectl wait --for=condition=ready pod -l app=litellm -n {{ ai_namespace }} --timeout={{ pod_readiness_timeout }}s || \
+        kubectl wait --for=condition=ready pod -l app.kubernetes.io/instance=litellm -n {{ ai_namespace }} --timeout={{ pod_readiness_timeout }}s
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: litellm_wait_result
+      changed_when: false
+      ignore_errors: true
+    
+    - name: 13d. Display LiteLLM readiness status
+      ansible.builtin.debug:
+        msg: "LiteLLM readiness status: {{ 'Ready' if litellm_wait_result.rc == 0 else 'Not ready yet, continuing anyway' }}"
+    
+    # Install Open WebUI
+    - name: 14a. Deploy Open WebUI frontend
+      ansible.builtin.command: >
+        helm upgrade --install open-webui {{ openwebui_chart }}
+        -f {{ openwebui_config_file }}
+        --namespace {{ ai_namespace }}
+        --timeout {{ installation_timeout }}s
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: openwebui_result
+      changed_when: true
+    
+    - name: 14b. Display Open WebUI deployment result
+      ansible.builtin.debug:
+        msg: "Open WebUI deployment initiated. Waiting for readiness (this may take several minutes)..."
+    
+    - name: 14c. Wait for Open WebUI pods to be ready
+      ansible.builtin.shell: |
+        # Wait with a longer timeout for Open WebUI
+        kubectl wait --for=condition=ready pod -l app=open-webui -n {{ ai_namespace }} --timeout={{ pod_readiness_timeout }}s
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: openwebui_wait_result
+      changed_when: false
+      ignore_errors: true
+    
+    - name: 14d. Display Open WebUI readiness status
+      ansible.builtin.debug:
+        msg: "Open WebUI readiness status: {{ 'Ready' if openwebui_wait_result.rc == 0 else 'Not ready yet, continuing anyway' }}"
+    
+    # Give the deployment a bit more time to stabilize
+    - name: 14e. Give the deployment a bit more time to stabilize
+      ansible.builtin.pause:
+        seconds: 30
+      when: litellm_wait_result.rc != 0 or openwebui_wait_result.rc != 0
+    
+    # Verify deployments and services
+    - name: 15a. Get all AI stack pods
+      ansible.builtin.shell: |
+        kubectl get pods -n {{ ai_namespace }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: ai_pods
+      changed_when: false
+    
+    - name: 15b. Display AI stack pods
+      ansible.builtin.debug:
+        var: ai_pods.stdout_lines
+    
+    - name: 16a. Get all AI stack services
+      ansible.builtin.shell: |
+        kubectl get svc -n {{ ai_namespace }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: ai_services
+      changed_when: false
+    
+    - name: 16b. Display AI stack services
+      ansible.builtin.debug:
+        var: ai_services.stdout_lines
+    
+    # Get Open WebUI service name and port for access
+    - name: 17a. Get Open WebUI service details
+      ansible.builtin.shell: |
+        kubectl get svc -n {{ ai_namespace }} | grep open-webui | grep -v 'No resources'
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: openwebui_service
+      changed_when: false
+      ignore_errors: true
+    
+    - name: 17b. Extract Open WebUI service name and port
+      ansible.builtin.set_fact:
+        openwebui_service_name: "{{ openwebui_service.stdout.split()[0] | default('open-webui') }}"
+        openwebui_service_port: "{{ openwebui_service.stdout.split()[4].split(':')[0] | default('8080') }}"
+      when: openwebui_service.stdout is defined and openwebui_service.stdout != ""
+    
+    # Determine if the installation was successful
+    - name: 18a. Count running pods
+      ansible.builtin.shell: |
+        kubectl get pods -n {{ ai_namespace }} | grep -v NAME | grep -c Running || echo "0"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: running_pods_count
+      changed_when: false
+      ignore_errors: true
+    
+    - name: 18b. Determine installation success
+      ansible.builtin.set_fact:
+        # Relaxed criteria - don't count on Ollama being ready
+        services_setup_successful: "{{ (running_pods_count.stdout | int >= 4) }}"
+    
+    # FIX: Check for pods still initializing - modified to avoid shell arithmetic issues
+    - name: 18c. Check for pods still initializing
+      ansible.builtin.shell: |
+        CREATING_PODS=$(kubectl get pods -n {{ ai_namespace }} | grep -c "ContainerCreating" || echo "0")
+        INIT_PODS=$(kubectl get pods -n {{ ai_namespace }} | grep -c "Init:" || echo "0")
+        PENDING_PODS=$(kubectl get pods -n {{ ai_namespace }} | grep -c "Pending" || echo "0")
+        TOTAL_INITIALIZING=$((${CREATING_PODS} + ${INIT_PODS} + ${PENDING_PODS}))
+        echo "${TOTAL_INITIALIZING}"
+      args:
+        executable: /bin/bash
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: initializing_pods_count
+      changed_when: false
+      ignore_errors: true
+    
+    # FIX: Modified to avoid using ternary operator since it was causing issues
+    - name: 18d. Set initialization message
+      ansible.builtin.set_fact:
+        initialization_message: "Some pods are still initializing. This is normal for the first deployment."
+      when: initializing_pods_count.stdout | int > 0
+    
+    - name: 18d-alt. Set initialization message when no pods initializing
+      ansible.builtin.set_fact:
+        initialization_message: "All pods have completed initialization."
+      when: initializing_pods_count.stdout | int == 0
+    
+    - name: 19. Display final installation status
+      ansible.builtin.debug:
+        msg: |
+          Open WebUI AI Stack Installation Status:
+          {{ 'SUCCESS - All key components are running' if services_setup_successful else 'PARTIAL SUCCESS - Some components may not be running yet' }}
+          
+          Components installed:
+          - Persistent Storage
+          - Apache Tika (document extraction)
+          - Qdrant (vector database)
+          - Ollama (local LLM support)
+          - LiteLLM (LLM proxy)
+          - Open WebUI (frontend)
+          
+          Running pods: {{ running_pods_count.stdout }} / {{ ai_pods.stdout_lines | length - 1 }}
+          {{ initialization_message }}
+          
+          NOTE: Ollama may take 10-15 minutes to become ready as it downloads the qwen2:0.5b model.
+          This will not affect your ability to use other LLM models through LiteLLM.
+          
+          To access Open WebUI, you can port-forward the service:
+          kubectl port-forward svc/{{ openwebui_service_name | default('open-webui') }} {{ openwebui_service_port | default('8080') }}:{{ openwebui_service_port | default('8080') }} -n {{ ai_namespace }}
+          
+          Then access it at: http://localhost:{{ openwebui_service_port | default('8080') }}
+          
+          To test LiteLLM API access:
+          1. Get your master key: 
+             LITELLM_PROXY_MASTER_KEY=$(kubectl get secret urbalurba-secrets -n {{ ai_namespace }} -o jsonpath="{.data.LITELLM_PROXY_MASTER_KEY}" | base64 --decode)
+          
+          2. Port forward the LiteLLM service:
+             kubectl port-forward svc/litellm 4000:4000 -n {{ ai_namespace }}
+          
+          3. List available models:
+             curl -X GET http://localhost:4000/v1/models -H "Authorization: Bearer $LITELLM_PROXY_MASTER_KEY"
+          
+          Troubleshooting:
+          - Check pod status: kubectl get pods -n {{ ai_namespace }}
+          - View logs: kubectl logs -f <pod-name> -n {{ ai_namespace }}
+          - Check Ollama status: kubectl get pods -n {{ ai_namespace }} | grep ollama
+          - View Ollama logs: kubectl logs -f $(kubectl get pods -n {{ ai_namespace }} -l app.kubernetes.io/name=ollama -o name) -n {{ ai_namespace }}
+          - Restart a deployment: kubectl rollout restart deployment/<deployment-name> -n {{ ai_namespace }}
+          
+          {{ 'INSTALLATION SUCCESSFUL' if services_setup_successful else 'INSTALLATION STATUS: Some components may still be starting' }}

@@ -1,0 +1,82 @@
+# 200-ai-persistent-storage.yaml
+#
+# Description:
+# Creates persistent storage resources for AI stack components in the 'ai' namespace.
+# These PVCs are independent of the application lifecycle and will persist data
+# between helm chart installations and removals.
+#
+# Usage:
+# kubectl apply -f 200-ai-persistent-storage.yaml -n ai --create-namespace
+#
+# Components:
+# - Open WebUI: Chat history, user settings (2Gi)
+# - Ollama: LLM model storage (15Gi)
+# - Qdrant: Vector database storage (12Gi) and snapshots (5Gi)
+#
+# Notes:
+# - All PVCs include Kubernetes finalizers for deletion protection
+# - Storage sizes are recommended based on anticipated usage
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: openwebui-data
+  namespace: ai
+  annotations:
+    description: "Persistent storage for Open WebUI chat history and user settings"
+  finalizers:
+    - kubernetes.io/pvc-protection
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ollama-models
+  namespace: ai
+  annotations:
+    description: "Persistent storage for Ollama LLM models"
+  finalizers:
+    - kubernetes.io/pvc-protection
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 15Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: qdrant-data
+  namespace: ai
+  annotations:
+    description: "Persistent storage for Qdrant vector database"
+  finalizers:
+    - kubernetes.io/pvc-protection
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 12Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: qdrant-snapshots
+  namespace: ai
+  annotations:
+    description: "Persistent storage for Qdrant snapshots and backups"
+  finalizers:
+    - kubernetes.io/pvc-protection
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi

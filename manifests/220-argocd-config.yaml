@@ -1,0 +1,131 @@
+# 220-argocd-config.yaml
+# 
+# Description:
+# Configuration for ArgoCD Helm chart deployment
+# This sets up a streamlined ArgoCD instance with minimal resources for local development
+# 
+# Usage:
+# installing: helm install argocd argo/argo-cd -f 220-argocd-config.yaml -n argocd
+# upgrading:  helm upgrade argocd argo/argo-cd -f 220-argocd-config.yaml -n argocd
+# uninstalling: helm uninstall argocd -n argocd
+
+# Global settings
+global:
+  image:
+    # Use stable tag to ensure consistent updates
+    tag: "v2.14.10"  # Match the version from your installation notes
+
+# Config overrides
+configs:
+  # General configurations through ConfigMap
+  cm:
+    # Administrative settings
+    admin.enabled: "true"  # Allow admin operations
+    # Timeouts and performance
+    timeout.reconciliation: "180s"  # Default timeout for operations
+    # For local development, we'll primarily use port-forwarding, so URL is less critical
+    url: "http://argocd.localhost"  # Use the local development URL
+  
+  # Parameters settings
+  params:
+    # Insecure mode - use for HTTP/non-TLS setup
+    server.insecure: "true"  # Enable insecure mode (for HTTP access)
+    
+  # Secret settings - disable automatic creation since we're using pre-created secret
+  secret:
+    createSecret: false  # Don't create the argocd-secret automatically as it's pre-created
+  
+  # RBAC configuration - simplified for development
+  rbac:
+    # Default role for new users - readonly is sufficient for most dev use cases
+    policy.default: "role:readonly"
+
+# Server configuration - ESSENTIAL COMPONENT
+# The server provides the API and UI for ArgoCD
+server:
+  # Expose the server through an Ingress
+  ingress:
+    # For local development, we'll use the *.localhost approach
+    enabled: true
+    ingressClassName: "traefik"  # Use Traefik as the ingress controller
+    annotations:
+      traefik.ingress.kubernetes.io/router.entrypoints: "web"  # Use HTTP for local dev
+    # Local development hostname      
+    hostname: argocd.localhost #undocumented required field
+    hosts:
+      - host: argocd.localhost
+        paths:
+          - path: /
+            pathType: Prefix    
+    # Empty TLS array instead of null to prevent default value usage
+    tls: []
+  
+  # Resource settings - optimized for resource-constrained environments
+  resources:
+    limits:
+      cpu: 100m
+      memory: 128Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
+  
+  # Service configuration
+  service:
+    type: ClusterIP  # Use ClusterIP as we're using Ingress
+
+# Redis configuration - IMPORTANT COMPONENT
+# Redis is used for caching and maintaining application state
+# It uses minimal resources, so it's worth keeping even for minimal deployments
+redis:
+  resources:
+    limits:
+      cpu: 100m
+      memory: 64Mi
+    requests:
+      cpu: 50m
+      memory: 32Mi
+
+# Repo server configuration - ESSENTIAL COMPONENT
+# This component is needed to interact with Git repositories
+repoServer:
+  resources:
+    limits:
+      cpu: 100m
+      memory: 128Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
+
+# Application controller configuration - ESSENTIAL COMPONENT
+# This is the core controller that manages your applications
+controller:
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+# Dex server (SSO connector) - OPTIONAL COMPONENT
+# Can be disabled if you're not using SSO/OIDC authentication
+# Only using local admin account for authentication
+dex:
+  enabled: false  # Disabled as we don't need SSO for local development
+
+# Notifications controller - OPTIONAL COMPONENT
+# Can be disabled if you don't need automated notifications for deployment events
+notifications:
+  enabled: false  # Disabled as we don't need notifications for local development
+
+# ApplicationSet controller - USEFUL COMPONENT
+# Provides templating functionality for applications
+# Kept enabled as it's useful for managing multiple similar applications
+applicationSet:
+  resources:
+    limits:
+      cpu: 100m
+      memory: 128Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi

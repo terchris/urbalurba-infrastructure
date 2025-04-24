@@ -1,0 +1,121 @@
+---
+# File: 01-configure_provision-host.yml
+# Description: This playbook configures the provision-host with necessary tools and settings
+#              for managing Kubernetes clusters and running other playbooks.
+
+# Purpose:
+# - Install required system packages and Python libraries
+# - Set up Ansible environment variables
+# - Install Ansible roles and collections
+
+# Prerequisites:
+# - Ubuntu-based system (tested on Ubuntu 20.04 LTS)
+# - Sudo access on the provision-host
+
+# Usage:
+# ansible-playbook 01-configure_provision-host.yml
+
+# Note: This playbook is intended to be run on the provision-host itself.
+
+- name: Configure provision-host
+  hosts: localhost
+  connection: local
+  gather_facts: true
+
+  vars:
+    ansible_roles_path: '/mnt/urbalurbadisk/ansible/roles'
+    ansible_collections_path: '/mnt/urbalurbadisk/ansible/collections'
+    ansible_inventory: '/mnt/urbalurbadisk/ansible/inventory.yml'
+    ansible_config: '/mnt/urbalurbadisk/ansible/ansible.cfg'
+    ansible_private_key_file: '/mnt/urbalurbadisk/ansible/secrets/id_rsa_ansible.secret-key'
+    ansible_library: '/usr/share/ansible'
+    ansible_host_key_checking: false
+    ansible_remote_user: 'ansible'
+    ansible_remote_port: '22'
+    venv_path: '/mnt/urbalurbadisk/ansible/venv'
+
+  environment:
+    ANSIBLE_ROLES_PATH: '{{ ansible_roles_path }}'
+    ANSIBLE_COLLECTIONS_PATH: '{{ ansible_collections_path }}'
+    ANSIBLE_INVENTORY: '{{ ansible_inventory }}'
+    ANSIBLE_CONFIG: '{{ ansible_config }}'
+    ANSIBLE_PRIVATE_KEY_FILE: '{{ ansible_private_key_file }}'
+    ANSIBLE_LIBRARY: '{{ ansible_library }}'
+    ANSIBLE_HOST_KEY_CHECKING: '{{ ansible_host_key_checking }}'
+    ANSIBLE_REMOTE_USER: '{{ ansible_remote_user }}'
+    ANSIBLE_REMOTE_PORT: '{{ ansible_remote_port }}'
+
+  tasks:
+    - name: 1. Update package cache
+      become: true
+      ansible.builtin.apt:
+        update_cache: true
+      tags: [system, packages]
+
+    - name: 2. Install required system packages
+      become: true
+      ansible.builtin.apt:
+        name:
+          - python3-pip
+          - virtualenv
+          - docker.io
+          - python3-venv
+          - python3-psycopg2
+          - libpq-dev
+          - postgresql-client
+          - mc
+          - acl
+        state: present
+      tags: [system, packages]
+
+    - name: 3. Create Python virtual environment
+      become: true
+      ansible.builtin.command: python3 -m venv {{ venv_path }}
+      args:
+        creates: "{{ venv_path }}/bin/activate"
+      tags: [python, venv]
+
+    - name: 4. Install required Python packages in virtual environment
+      become: true
+      ansible.builtin.pip:
+        name:
+          - docker
+          - openshift
+          - kubernetes
+          - psycopg2-binary
+        virtualenv: "{{ venv_path }}"
+      tags: [python, packages]
+
+    - name: 5. Update ~/.bashrc with Ansible environment variables
+      ansible.builtin.lineinfile:
+        path: /home/ansible/.bashrc
+        mode: '0644'
+      loop:
+        - { key: 'ANSIBLE_ROLES_PATH', value: '{{ ansible_roles_path }}' }
+        - { key: 'ANSIBLE_COLLECTIONS_PATH', value: '{{ ansible_collections_path }}' }
+        - { key: 'ANSIBLE_INVENTORY', value: '{{ ansible_inventory }}' }
+        - { key: 'ANSIBLE_CONFIG', value: '{{ ansible_config }}' }
+        - { key: 'ANSIBLE_PRIVATE_KEY_FILE', value: '{{ ansible_private_key_file }}' }
+        - { key: 'ANSIBLE_LIBRARY', value: '{{ ansible_library }}' }
+        - { key: 'ANSIBLE_HOST_KEY_CHECKING', value: '{{ ansible_host_key_checking | lower }}' }
+        - { key: 'ANSIBLE_REMOTE_USER', value: '{{ ansible_remote_user }}' }
+        - { key: 'ANSIBLE_REMOTE_PORT', value: '{{ ansible_remote_port }}' }
+      tags: [config, bashrc]
+
+    - name: 6. Install required Ansible roles and collections
+      ansible.builtin.command: "{{ item }}"
+      loop:
+        - ansible-galaxy install geerlingguy.docker
+        - ansible-galaxy install geerlingguy.pip
+        - ansible-galaxy collection install community.docker
+        - ansible-galaxy collection install kubernetes.core
+      changed_when: false
+      failed_when: false
+      tags: [ansible, galaxy]
+
+    - name: 7. Display completion message
+      ansible.builtin.debug:
+        msg:
+          - "Provision host configuration completed successfully."
+          - "Please log out and log back in for environment changes to take effect."
+      tags: [always]

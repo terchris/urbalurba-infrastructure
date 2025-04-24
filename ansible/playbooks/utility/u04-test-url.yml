@@ -1,0 +1,71 @@
+---
+# File: ansible/playbooks/utility/u04-test-url.yml
+# Description: checks if a web page is present at a given URL, with script-friendly error handling
+# Usage:
+# ansible-playbook playbooks/utility/u04-test-url.yml -e url_to_check=http://example.com
+
+- name: Check if a web page is present
+  hosts: localhost
+  gather_facts: false
+  vars:
+    url_to_check: ""  # Default value, should be overridden by extra vars
+    max_retries: 3
+    retry_delay: 5  # seconds
+
+  tasks:
+    - name: Validate that the URL is provided
+      ansible.builtin.fail:
+        msg: "The URL must be provided as an extra variable, e.g., --extra-vars 'url_to_check=http://example.com'"
+      when: url_to_check == ""
+
+    - name: Validate that the URL format is correct for HTTP or HTTPS
+      ansible.builtin.assert:
+        that:
+          - url_to_check is match('^https?://[^\s/$.?#].[^\s]*$')
+        fail_msg: "Invalid URL format. Please provide a valid HTTP or HTTPS URL."
+
+    - name: Send a request to the URL with retries
+      ansible.builtin.uri:
+        url: "{{ url_to_check }}"
+        method: GET
+        return_content: false
+      register: result
+      retries: "{{ max_retries }}"
+      delay: "{{ retry_delay }}"
+      until: result is not failed and result.status == 200
+      ignore_errors: true
+
+    - name: Set facts based on the result
+      ansible.builtin.set_fact:
+        success: "{{ result is not failed and result.status == 200 }}"
+        attempts: "{{ result.attempts | default(1) }}"
+
+    - name: Display success message
+      ansible.builtin.debug:
+        msg: "The web page is present at {{ url_to_check }} with status code {{ result.status }}"
+      when: success
+
+    - name: Display error message
+      ansible.builtin.debug:
+        msg: >
+          The web page is not present at {{ url_to_check }} or the URL could not be reached.
+          {% if result.status is defined %}
+          Status code: {{ result.status }}
+          {% else %}
+          No response received.
+          {% endif %}
+      when: not success
+
+    - name: Summarize the results
+      ansible.builtin.debug:
+        msg: >
+          URL check summary:
+          URL: {{ url_to_check }}
+          Attempts made: {{ attempts }}
+          Final status: {% if result.status is defined %}{{ result.status }}{% else %}No response{% endif %}
+          Success: {{ success }}
+
+    - name: Fail the play if the URL check was unsuccessful
+      ansible.builtin.fail:
+        msg: "URL check failed for {{ url_to_check }}"
+      when: not success

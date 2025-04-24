@@ -1,0 +1,21 @@
+# File: 020-nginx-storage.yaml
+# Description: PVC for Nginx website storage
+# This file creates a PersistentVolumeClaim that will use the default StorageClass
+# of the cluster, making it compatible with various Kubernetes distributions
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nginx-content-pvc
+  namespace: default
+  labels:
+    app: nginx
+    component: web-content
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  # No storageClassName specified = use the default storage class of the cluster
+  # No volumeName specified = let the dynamic provisioner create a PV

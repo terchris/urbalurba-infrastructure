@@ -1,0 +1,184 @@
+# file: /mnt/urbalurbadisk/manifests/040-mongodb-config.yaml
+# description: MongoDB 8.0.5 configuration for ARM64-based Kubernetes clusters
+# usage: 
+#   - Apply with: kubectl apply -f 040-mongodb-config.yaml
+#   - Delete with: kubectl delete -f 040-mongodb-config.yaml
+#   - To delete PVC as well: kubectl delete pvc mongodb-data-mongodb-0 --cascade=foreground
+#   Note: Deleting PVC will delete all data. Make backups if needed.
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mongodb-config
+data:
+  mongod.conf: |
+    # mongod.conf
+    storage:
+      dbPath: /data/db
+    systemLog:
+      destination: file
+      path: /data/log/mongod.log
+      logAppend: true
+    net:
+      port: 27017
+      bindIp: 0.0.0.0
+    security:
+      authorization: enabled
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mongodb
+  labels:
+    app: mongodb
+spec:
+  serviceName: mongodb
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongodb
+  template:
+    metadata:
+      labels:
+        app: mongodb
+    spec:
+      containers:
+      - name: mongodb
+        image: mongo:8.0.5
+        ports:
+        - containerPort: 27017
+          name: mongodb
+        env:
+        - name: MONGO_INITDB_ROOT_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: urbalurba-secrets
+              key: MONGODB_ROOT_USER
+        - name: MONGO_INITDB_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: urbalurba-secrets
+              key: MONGODB_ROOT_PASSWORD
+        # Pass Gravitee database info to the init script
+        - name: GRAVITEE_MONGODB_DATABASE_NAME
+          valueFrom:
+            secretKeyRef:
+              name: urbalurba-secrets
+              key: GRAVITEE_MONGODB_DATABASE_NAME
+        - name: GRAVITEE_MONGODB_DATABASE_USER
+          valueFrom:
+            secretKeyRef:
+              name: urbalurba-secrets
+              key: GRAVITEE_MONGODB_DATABASE_USER
+        - name: GRAVITEE_MONGODB_DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: urbalurba-secrets
+              key: GRAVITEE_MONGODB_DATABASE_PASSWORD
+        volumeMounts:
+        - name: mongodb-data
+          mountPath: /data/db
+        - name: mongodb-logs
+          mountPath: /data/log
+        - name: mongodb-config
+          mountPath: /etc/mongod.conf
+          subPath: mongod.conf
+        - name: init-script
+          mountPath: /docker-entrypoint-initdb.d
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        readinessProbe:
+          exec:
+            command:
+            - mongosh
+            - --quiet
+            - --eval
+            - "db.adminCommand('ping')"
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+        livenessProbe:
+          exec:
+            command:
+            - mongosh
+            - --quiet
+            - --eval
+            - "db.adminCommand('ping')"
+          initialDelaySeconds: 60
+          periodSeconds: 20
+          timeoutSeconds: 15
+      volumes:
+      - name: mongodb-config
+        configMap:
+          name: mongodb-config
+      - name: init-script
+        configMap:
+          name: mongodb-init-script
+      - name: mongodb-logs
+        emptyDir: {}
+  volumeClaimTemplates:
+  - metadata:
+      name: mongodb-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 8Gi
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mongodb-init-script
+data:
+  create-users.js: |
+    // Create the Gravitee user in the admin database (required by Gravitee APIM)
+    db = db.getSiblingDB('admin');
+    
+    const dbName = process.env.GRAVITEE_MONGODB_DATABASE_NAME || 'graviteedb';
+    const username = process.env.GRAVITEE_MONGODB_DATABASE_USER || 'gravitee_user';
+    const password = process.env.GRAVITEE_MONGODB_DATABASE_PASSWORD || 'gravitee';
+    
+    db.createUser({
+      user: username,
+      pwd: password,
+      roles: [
+        { role: 'readWrite', db: dbName },
+        { role: 'dbAdmin', db: dbName },
+        { role: 'readWrite', db: 'admin' }
+      ]
+    });
+    
+    // Switch to graviteedb
+    db = db.getSiblingDB(dbName);
+    
+    // Create a test collection to verify the database works
+    db.createCollection('test');
+    db.test.insertOne({ 
+      message: 'MongoDB initialization successful', 
+      timestamp: new Date(),
+      database: dbName,
+      user: username 
+    });
+    
+    print('MongoDB user and database initialization completed');
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb
+  labels:
+    app: mongodb
+spec:
+  ports:
+  - port: 27017
+    targetPort: 27017
+    protocol: TCP
+    name: mongodb
+  selector:
+    app: mongodb
+  type: ClusterIP

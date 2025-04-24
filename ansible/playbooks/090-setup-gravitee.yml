@@ -1,0 +1,432 @@
+---
+# file: /mnt/urbalurbadisk/ansible/playbooks/090-setup-gravitee.yml
+# Set up Gravitee APIM on kubernetes cluster using Helm in the default namespace
+# Usage:
+# ansible-playbook playbooks/090-setup-gravitee.yml -e kube_context="rancher-desktop"
+
+- name: Set up Gravitee APIM on Kubernetes
+  hosts: localhost
+  gather_facts: false
+  vars:
+    manifests_folder: "/mnt/urbalurbadisk/manifests"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    elasticsearch_password_secret: "urbalurba-secrets"
+    elasticsearch_password_key: "ELASTICSEARCH_PASSWORD"
+    gravitee_config_file: "{{ manifests_folder }}/090-gravitee-config.yaml"
+    gravitee_ingress_file: "{{ manifests_folder }}/090-gravitee-ingress.yaml" # New ingress file
+    gravitee_pod_readiness_timeout: 300
+    gravitee_release_name: "gravitee-apim"
+    gravitee_namespace: "default"  # Set to default namespace
+
+  tasks:
+    - name: 1. Get current Kubernetes context if kube_context not provided
+      ansible.builtin.shell: |
+        kubectl config current-context
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: current_context
+      changed_when: false
+      when: kube_context is not defined
+      
+    - name: 2. Set kube_context from current context if not provided
+      ansible.builtin.set_fact:
+        kube_context: "{{ current_context.stdout }}"
+      when: kube_context is not defined
+
+    - name: 3. Print playbook description
+      ansible.builtin.debug:
+        msg: "Setting up Gravitee APIM on Kubernetes context: {{ kube_context }}"
+    
+    - name: 4a. Check if urbalurba-secrets exists
+      ansible.builtin.command: kubectl get secret urbalurba-secrets -n {{ gravitee_namespace }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: secret_check
+      ignore_errors: true
+      changed_when: false
+    
+    - name: 4b. Fail if urbalurba-secrets does not exist
+      ansible.builtin.fail:
+        msg: "The urbalurba-secrets secret does not exist. It must be created before running this playbook."
+      when: secret_check.rc != 0
+    
+    - name: 5. Check if all required MongoDB, Elasticsearch, and Gravitee secret keys exist
+      ansible.builtin.shell: |
+        SECRET_DATA=$(kubectl get secret urbalurba-secrets -n {{ gravitee_namespace }} -o json | jq -r '.data | keys[]')
+        MISSING_KEYS=""
+        for KEY in "GRAVITEE_MONGODB_DATABASE_USER" "GRAVITEE_MONGODB_DATABASE_PASSWORD" "GRAVITEE_MONGODB_DATABASE_NAME" "ELASTICSEARCH_PASSWORD"; do
+          if ! echo "$SECRET_DATA" | grep -q "$KEY"; then
+            MISSING_KEYS="${MISSING_KEYS}${KEY} "
+          fi
+        done
+        if [ -n "$MISSING_KEYS" ]; then
+          echo "Missing required secret keys: $MISSING_KEYS"
+          exit 1
+        fi
+        echo "All required secret keys found"
+        exit 0
+      args:
+        executable: /bin/bash
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: secret_keys_check
+      changed_when: false
+      failed_when: secret_keys_check.rc != 0
+  
+    - name: 6. Fail with clear error message if MongoDB secrets are not properly set
+      ansible.builtin.fail:
+        msg: |
+          ERROR: MongoDB secret keys are not properly set in urbalurba-secrets.
+          Please ensure the following keys are set before running this playbook:
+          - ELASTICSEARCH_PASSWORD
+          - GRAVITEE_MONGODB_DATABASE_USER
+          - GRAVITEE_MONGODB_DATABASE_PASSWORD
+          - GRAVITEE_MONGODB_DATABASE_NAME
+      when: secret_keys_check.rc != 0
+
+    - name: 7a. Get MongoDB user from Kubernetes secrets
+      ansible.builtin.shell: |
+        set -o pipefail
+        kubectl get secret --namespace {{ gravitee_namespace }} {{ elasticsearch_password_secret }} \
+        -o jsonpath="{.data.GRAVITEE_MONGODB_DATABASE_USER}" \
+        --kubeconfig {{ merged_kubeconf_file }} | base64 -d
+      args:
+        executable: /bin/bash
+      register: mongodb_user
+      changed_when: false
+
+    - name: 7b. Get MongoDB password from Kubernetes secrets
+      ansible.builtin.shell: |
+        set -o pipefail
+        kubectl get secret --namespace {{ gravitee_namespace }} {{ elasticsearch_password_secret }} \
+        -o jsonpath="{.data.GRAVITEE_MONGODB_DATABASE_PASSWORD}" \
+        --kubeconfig {{ merged_kubeconf_file }} | base64 -d
+      args:
+        executable: /bin/bash
+      register: mongodb_password
+      changed_when: false
+
+    - name: 7c. Set MongoDB user facts
+      ansible.builtin.set_fact:
+        mongodb_user_fact: "{{ mongodb_user.stdout }}"
+        mongodb_password_fact: "{{ mongodb_password.stdout }}"
+
+    - name: 7d. Debug MongoDB credentials (password masked)
+      ansible.builtin.debug:
+        msg: 
+          - "MongoDB user: {{ mongodb_user_fact }}"
+          - "MongoDB password: {{ mongodb_password_fact | regex_replace('.', '*') }}"
+
+    - name: 8. Verify MongoDB connectivity
+      ansible.builtin.shell: |
+        kubectl exec -n {{ gravitee_namespace }} $(kubectl get pods -n {{ gravitee_namespace }} -l app=mongodb -o jsonpath='{.items[0].metadata.name}') -- \
+        mongosh --quiet --eval "db.adminCommand('ping')" --username "{{ mongodb_user_fact }}" --password "{{ mongodb_password_fact }}" --authenticationDatabase admin 
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: mongodb_ping
+      changed_when: false
+      ignore_errors: true
+      
+    - name: 9. Display MongoDB connectivity status
+      ansible.builtin.debug:
+        msg: "MongoDB connectivity: {{ 'SUCCESS' if mongodb_ping.rc == 0 else 'FAILED - ' + mongodb_ping.stderr }}"
+        
+    - name: 10. Fail if MongoDB connectivity test failed
+      ansible.builtin.fail:
+        msg: "Failed to connect to MongoDB. Please check MongoDB status and credentials."
+      when: mongodb_ping.rc != 0
+        
+    - name: 11. Get Elasticsearch password from Kubernetes secrets
+      ansible.builtin.shell: |
+        set -o pipefail
+        kubectl get secret --namespace {{ gravitee_namespace }} {{ elasticsearch_password_secret }} \
+        -o jsonpath="{.data.{{ elasticsearch_password_key }}}" \
+        --kubeconfig {{ merged_kubeconf_file }} | base64 -d
+      args:
+        executable: /bin/bash
+      register: elasticsearch_password
+      changed_when: false
+
+    - name: 12. Set Elasticsearch password fact
+      ansible.builtin.set_fact:
+        elasticsearch_password_fact: "{{ elasticsearch_password.stdout }}"
+
+    - name: 13. Debug Elasticsearch password (masked)
+      ansible.builtin.debug:
+        msg: "Elasticsearch password: {{ elasticsearch_password_fact | regex_replace('.', '*') }}"
+        
+    - name: 14a. Verify Elasticsearch connectivity
+      ansible.builtin.shell: |
+        kubectl exec -n {{ gravitee_namespace }} $(kubectl get pods -n {{ gravitee_namespace }} -l app.kubernetes.io/name=elasticsearch -o jsonpath='{.items[0].metadata.name}') -- \
+        curl -s -u "elastic:{{ elasticsearch_password_fact }}" -X GET "http://localhost:9200/_cluster/health?pretty"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: elasticsearch_health
+      changed_when: false
+      ignore_errors: true
+      
+    - name: 14b. Display Elasticsearch health status
+      ansible.builtin.debug:
+        var: elasticsearch_health.stdout_lines
+        
+    - name: 14c. Fail if Elasticsearch connectivity test failed
+      ansible.builtin.fail:
+        msg: "Failed to connect to Elasticsearch. Please check Elasticsearch status and credentials."
+      when: elasticsearch_health.rc != 0 or elasticsearch_health.stdout | length == 0
+
+    - name: 15. Check if Helm repo exists
+      ansible.builtin.command: helm repo list
+      register: helm_repo_list
+      changed_when: false
+
+    - name: 16. Add Gravitee Helm repo if not already added
+      ansible.builtin.command: helm repo add graviteeio https://helm.gravitee.io
+      when: "'graviteeio' not in helm_repo_list.stdout"
+      changed_when: true
+
+    - name: 17. Update Helm repositories
+      ansible.builtin.command: helm repo update
+      changed_when: false
+      
+    # We'll just proceed with the installation attempt directly
+    - name: 18. Prepare for Gravitee installation
+      ansible.builtin.debug:
+        msg: "Proceeding with Gravitee APIM installation or update..."
+
+    # Deploy Gravitee APIM (or upgrade if it exists)
+    - name: 19. Deploy Gravitee APIM using Helm with enhanced connectivity settings
+      ansible.builtin.command: >
+        helm upgrade --install {{ gravitee_release_name }} graviteeio/apim
+        -f {{ gravitee_config_file }}
+        --namespace {{ gravitee_namespace }}
+        --timeout 10m
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: helm_result
+      changed_when: true
+    
+    # Apply the custom Gravitee ingress configuration
+    - name: 19a. Apply custom Gravitee ingress configuration
+      ansible.builtin.command: >
+        kubectl apply -f {{ gravitee_ingress_file }}
+        --namespace {{ gravitee_namespace }}
+        --kubeconfig {{ merged_kubeconf_file }}
+      register: ingress_apply_result
+      changed_when: true
+
+    - name: 19b. Display ingress apply result
+      ansible.builtin.debug:
+        var: ingress_apply_result.stdout_lines
+        
+    # Get all the deployments/statefulsets created by the Helm chart
+    - name: 20a. Get Gravitee deployments
+      ansible.builtin.shell: |
+        kubectl get deployment -n {{ gravitee_namespace }} | grep {{ gravitee_release_name }} | awk '{print $1}'
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: gravitee_deployments
+      changed_when: false
+      ignore_errors: true
+      
+    - name: 20b. Set proper wait timeout
+      ansible.builtin.set_fact:
+        wait_timeout: 600  # 10 minutes
+        
+    # Wait for the deployments to be ready
+    - name: 20c. Wait for Gravitee deployments to be ready
+      ansible.builtin.shell: |
+        kubectl rollout status deployment/{{ item }} -n {{ gravitee_namespace }} --timeout={{ wait_timeout }}s
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: deployment_status
+      with_items: "{{ gravitee_deployments.stdout_lines }}"
+      when: gravitee_deployments.stdout_lines is defined and gravitee_deployments.stdout_lines | length > 0
+      ignore_errors: true
+      changed_when: false
+      
+    - name: 20d. Display deployment rollout status
+      ansible.builtin.debug:
+        msg: "{{ item.cmd }} - {{ 'Success' if item.rc == 0 else 'Failed with error: ' + item.stderr }}"
+      with_items: "{{ deployment_status.results | default([]) }}"
+      when: deployment_status is defined and deployment_status.results is defined
+        
+    - name: 21a. Get all Gravitee pods
+      ansible.builtin.shell: |
+        kubectl get pods -n {{ gravitee_namespace }} | grep gravitee
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: gravitee_pods
+      changed_when: false
+      ignore_errors: true
+      
+    - name: 21b. Display Gravitee pods
+      ansible.builtin.debug:
+        var: gravitee_pods.stdout_lines
+      when: gravitee_pods.stdout is defined and gravitee_pods.stdout != ""
+      
+    # Count running pods
+    - name: 21c. Count running Gravitee pods
+      ansible.builtin.shell: |
+        kubectl get pods -n {{ gravitee_namespace }} | grep gravitee | grep Running | wc -l
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: running_pods_count
+      changed_when: false
+      ignore_errors: true
+      
+    # Get any Gravitee API pod name
+    - name: 22a. Get Gravitee API pod name
+      ansible.builtin.shell: |
+        kubectl get pods -n {{ gravitee_namespace }} | grep -E 'gravitee.*api' | awk '{print $1}' | head -1
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: api_pod_name
+      changed_when: false
+      ignore_errors: true
+      
+    # Get any Gravitee Gateway pod name
+    - name: 22b. Get Gravitee Gateway pod name
+      ansible.builtin.shell: |
+        kubectl get pods -n {{ gravitee_namespace }} | grep -E 'gravitee.*gateway' | awk '{print $1}' | head -1
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: gateway_pod_name
+      changed_when: false
+      ignore_errors: true
+    
+    # Check Gateway health if pod exists
+    - name: 23a. Check Gateway health
+      ansible.builtin.command: >
+        kubectl exec -n {{ gravitee_namespace }} {{ gateway_pod_name.stdout }}
+        --kubeconfig {{ merged_kubeconf_file }}
+        -- curl -s http://localhost:8082/_node/health
+      register: gateway_health
+      changed_when: false
+      ignore_errors: true
+      when: gateway_pod_name.stdout is defined and gateway_pod_name.stdout != ""
+
+    # Display Gateway health status
+    - name: 23b. Display Gateway health status
+      ansible.builtin.debug:
+        var: gateway_health.stdout_lines
+      when: gateway_health is defined and gateway_health.stdout is defined
+
+    # Check Management API health if pod exists
+    - name: 23c. Check Management API health
+      ansible.builtin.command: >
+        kubectl exec -n {{ gravitee_namespace }} {{ api_pod_name.stdout }}
+        --kubeconfig {{ merged_kubeconf_file }}
+        -- curl -s http://localhost:8083/management/health
+      register: api_health
+      changed_when: false
+      ignore_errors: true
+      when: api_pod_name.stdout is defined and api_pod_name.stdout != ""
+
+    # Display Management API health status
+    - name: 23d. Display Management API health status
+      ansible.builtin.debug:
+        var: api_health.stdout_lines
+      when: api_health is defined and api_health.stdout is defined
+      
+    # Get Gravitee services
+    - name: 24. Get all services that might be related to Gravitee
+      ansible.builtin.shell: |
+        kubectl get svc -n {{ gravitee_namespace }} --kubeconfig {{ merged_kubeconf_file }} | grep gravitee-apim
+      register: gravitee_services
+      changed_when: false
+      ignore_errors: true
+
+    # Display Gravitee service details
+    - name: 25. Display Gravitee service details
+      ansible.builtin.debug:
+        var: gravitee_services.stdout_lines
+      when: gravitee_services.stdout is defined and gravitee_services.stdout != ""
+      
+    # Get Gravitee ingress resources
+    - name: 26. Get all ingress resources that might be related to Gravitee
+      ansible.builtin.shell: |
+        kubectl get ingress -n {{ gravitee_namespace }} --kubeconfig {{ merged_kubeconf_file }} | grep gravitee-apim
+      register: gravitee_ingresses
+      changed_when: false
+      ignore_errors: true
+      
+    # Display Gravitee ingress details
+    - name: 27. Display Gravitee ingress details
+      ansible.builtin.debug:
+        var: gravitee_ingresses.stdout_lines
+      when: gravitee_ingresses.stdout is defined and gravitee_ingresses.stdout != ""
+      
+    # Determine if the installation was successful - IMPROVED LOGIC
+    - name: 28. Determine installation success
+      ansible.builtin.set_fact:
+        services_setup_successful: "{{ (gravitee_pods.stdout_lines|default([])|length >= 3) }}"
+        ingress_setup_successful: "{{ (gravitee_ingresses.stdout_lines|default([])|length >= 3) }}"
+      
+    - name: 29. Display installation success status
+      ansible.builtin.debug:
+        msg: 
+          - "Gravitee APIM services installation status: {{ 'Successful' if services_setup_successful else 'FAILED' }}"
+          - "Gravitee APIM ingress setup status: {{ 'Successful' if ingress_setup_successful else 'FAILED' }}"
+        
+    # Display warning if installation was not successful
+    - name: 30. Display warning if installation failed
+      ansible.builtin.debug:
+        msg: |
+          WARNING: The Gravitee APIM installation appears to have FAILED!
+          
+          Troubleshooting steps:
+          1. Check Helm release status: helm status {{ gravitee_release_name }} -n {{ gravitee_namespace }}
+          2. Check for any error pods: kubectl get pods -n {{ gravitee_namespace }}
+          3. Check pod logs: kubectl logs <pod-name> -n {{ gravitee_namespace }}
+          4. Check Helm chart values: helm get values {{ gravitee_release_name }} -n {{ gravitee_namespace }}
+          5. Check ingress resources: kubectl get ingress -n {{ gravitee_namespace }}
+          6. Try uninstalling and reinstalling: helm uninstall {{ gravitee_release_name }} -n {{ gravitee_namespace }}
+          
+          Possible issues:
+          - Network issues between services
+          - Resource constraints (insufficient CPU or memory)
+          - Configuration errors in the values file
+          - Connectivity issues with MongoDB or Elasticsearch
+          - Ingress configuration errors
+      when: not services_setup_successful or not ingress_setup_successful
+        
+    # Find available service names for port forwarding
+    - name: 31. Find available service names for port forwarding
+      ansible.builtin.shell: |
+        kubectl get svc -n {{ gravitee_namespace }} | grep -E '{{ gravitee_release_name }}' | awk '{print $1}' | tr '\n' ',' | sed 's/,$//'
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: available_services
+      changed_when: false
+      ignore_errors: true
+      
+    - name: 32. Display available services for port forwarding
+      ansible.builtin.debug:
+        msg: "Available services for port forwarding: {{ available_services.stdout|default('None found') }}"
+        
+    # Display final status with appropriate port-forwarding commands
+    - name: 33. Display final status
+      ansible.builtin.debug:
+        msg:
+          - "Gravitee APIM setup {{ 'completed successfully' if services_setup_successful and ingress_setup_successful else 'FAILED' }} in the {{ gravitee_namespace }} namespace."
+          - "Default admin credentials: admin / adminadmin"
+          - "Running pods found: {{ running_pods_count.stdout|default('0') }}"
+          - ""
+          - "Available services: {{ available_services.stdout|default('None found') }}"
+          - ""
+          - "To access Gravitee components, use the following URI paths:"
+          - "  - Management UI: /apim/console/"
+          - "  - Portal UI: /apim/portal-ui/"
+          - "  - Gateway API: /apim/gateway"
+          - "  - Management API: /apim/management"
+          - "  - Portal API: /apim/portal"
+          - ""
+          - "These are accessible via your Tailscale funnel hostname: rancher-traefik.dog-pence.ts.net"
+          - ""
+          - "For local testing, you can also use port forwarding:"
+          - "  kubectl port-forward svc/gravitee-apim-ui 8084:8084 -n {{ gravitee_namespace }} # Management UI"
+          - "  kubectl port-forward svc/gravitee-apim-portal 8085:8085 -n {{ gravitee_namespace }} # Portal UI"
+          - "  kubectl port-forward svc/gravitee-apim-gateway 8082:8082 -n {{ gravitee_namespace }} # Gateway API"
+          - "  kubectl port-forward svc/gravitee-apim-api 8083:8083 -n {{ gravitee_namespace }} # Management API"
+          - ""
+          - "{{ 'INSTALLATION SUCCESSFUL' if services_setup_successful and ingress_setup_successful else 'INSTALLATION STATUS: See details above for actual status' }}"

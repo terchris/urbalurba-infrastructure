@@ -1,0 +1,194 @@
+---
+# file: playbooks/060-setup-elasticsearch.yml
+# Set up Elasticsearch on microk8s cluster using the secrets defined
+# Usage:
+# ansible-playbook playbooks/060-setup-elasticsearch.yml -e target_host="multipass-microk8s" -e elasticsearch_namespace="elasticsearch"
+
+- name: Set up Elasticsearch on MicroK8s
+  hosts: localhost
+  gather_facts: false
+  vars:
+    manifests_folder: "/mnt/urbalurbadisk/manifests"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    elasticsearch_password_secret: "urbalurba-secrets"
+    elasticsearch_password_key: "ELASTICSEARCH_PASSWORD"
+    elasticsearch_config_file: "{{ manifests_folder }}/060-elasticsearch-config.yaml"
+    elasticsearch_pod_label: "app.kubernetes.io/name=elasticsearch"
+    elasticsearch_pod_readiness_timeout: 300
+    elasticsearch_service_name: "elasticsearch"
+
+  tasks:
+    - name: 1. Check if required variables are provided
+      ansible.builtin.fail:
+        msg: "The variable 'target_host' is mandatory. Use -e target_host=your_host_name to specify it."
+      when: target_host is not defined
+
+    - name: 2. Set Elasticsearch namespace
+      ansible.builtin.set_fact:
+        elasticsearch_namespace: "{{ elasticsearch_namespace | default('default') }}"
+
+    - name: 3. Print playbook description
+      ansible.builtin.debug:
+        msg: >
+          Setting up Elasticsearch on MicroK8s on Ubuntu host: {{ target_host }}
+          with manifests from: {{ manifests_folder }}.
+          Using namespace: {{ elasticsearch_namespace }}
+
+    - name: 4. Get Elasticsearch password from Kubernetes secrets
+      ansible.builtin.shell: |
+        set -o pipefail
+        kubectl get secret --namespace default {{ elasticsearch_password_secret }} \
+        -o jsonpath="{.data.{{ elasticsearch_password_key }}}" \
+        --kubeconfig {{ merged_kubeconf_file }} | base64 -d
+      args:
+        executable: /bin/bash
+      register: elasticsearch_password
+      changed_when: false
+
+    - name: 5. Set Elasticsearch password fact
+      ansible.builtin.set_fact:
+        elasticsearch_password_fact: "{{ elasticsearch_password.stdout }}"
+
+    - name: 6. Debug Elasticsearch password (masked)
+      ansible.builtin.debug:
+        msg: "Elasticsearch password: {{ elasticsearch_password_fact | regex_replace('.', '*') }}"
+
+    - name: 7. Deploy Elasticsearch using Helm
+      ansible.builtin.command: >
+        helm install elasticsearch bitnami/elasticsearch
+        -f {{ elasticsearch_config_file }}
+        --set security.elasticPassword={{ elasticsearch_password_fact | quote }}
+        --namespace {{ elasticsearch_namespace }}
+        --create-namespace
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      changed_when: true
+
+    - name: 8. Wait for Elasticsearch pod to be ready
+      ansible.builtin.command:
+        cmd: >
+          kubectl wait --for=condition=ready pod
+          -l {{ elasticsearch_pod_label }}
+          --timeout={{ elasticsearch_pod_readiness_timeout }}s
+          --namespace {{ elasticsearch_namespace }}
+          --kubeconfig {{ merged_kubeconf_file }}
+      register: wait_result
+      until: wait_result.rc == 0
+      retries: 10
+      delay: 30
+      changed_when: false
+
+    - name: 9. Verify Elasticsearch service is running
+      ansible.builtin.command:
+        cmd: >
+          kubectl get svc {{ elasticsearch_service_name }}
+          --namespace {{ elasticsearch_namespace }}
+          --kubeconfig {{ merged_kubeconf_file }}
+      register: elasticsearch_svc
+      changed_when: false
+
+    - name: 10. Display Elasticsearch service details
+      ansible.builtin.debug:
+        var: elasticsearch_svc.stdout_lines
+
+    - name: 11. Get Elasticsearch pod name
+      ansible.builtin.command:
+        cmd: >
+          kubectl get pods -n {{ elasticsearch_namespace }}
+          -l {{ elasticsearch_pod_label }}
+          -o jsonpath='{.items[0].metadata.name}'
+          --kubeconfig {{ merged_kubeconf_file }}
+      register: elasticsearch_pod_name
+      changed_when: false
+
+    - name: 12. Check Elasticsearch cluster health
+      ansible.builtin.command:
+        cmd: >
+          kubectl exec -n {{ elasticsearch_namespace }} {{ elasticsearch_pod_name.stdout }}
+          --kubeconfig {{ merged_kubeconf_file }}
+          -- curl -u "elastic:{{ elasticsearch_password_fact }}" -s -X GET
+          "http://localhost:9200/_cluster/health?pretty"
+      register: elasticsearch_health
+      changed_when: false
+
+    - name: 13. Display Elasticsearch health
+      ansible.builtin.debug:
+        var: elasticsearch_health.stdout_lines
+
+    - name: 14. Check if Elasticsearch is working
+      ansible.builtin.fail:
+        msg: "Elasticsearch cluster health check failed. Response: {{ elasticsearch_health.stdout }}"
+      when: "'green' not in elasticsearch_health.stdout and 'yellow' not in elasticsearch_health.stdout"
+
+    - name: 15. Confirm Elasticsearch is working
+      ansible.builtin.debug:
+        msg: "Elasticsearch is working correctly"
+      when: "'green' in elasticsearch_health.stdout or 'yellow' in elasticsearch_health.stdout"
+
+    - name: 16. Create test index
+      ansible.builtin.command:
+        cmd: >
+          kubectl exec -n {{ elasticsearch_namespace }} {{ elasticsearch_pod_name.stdout }}
+          --kubeconfig {{ merged_kubeconf_file }}
+          -- curl -u "elastic:{{ elasticsearch_password_fact }}" -s -X PUT
+          "http://localhost:9200/test"
+      register: create_index
+      changed_when: true
+
+    - name: 17. Index a document in Elasticsearch
+      ansible.builtin.command:
+        cmd: >
+          kubectl exec -n {{ elasticsearch_namespace }} {{ elasticsearch_pod_name.stdout }}
+          --kubeconfig {{ merged_kubeconf_file }}
+          -- curl -u "elastic:{{ elasticsearch_password_fact }}" -s -X POST
+          "http://localhost:9200/test/_doc" -H 'Content-Type: application/json'
+          -d '{"title": "Test Document", "content": "This is a test document for Elasticsearch."}'
+      register: index_document
+      changed_when: true
+
+    - name: 18. Wait for indexing to complete
+      ansible.builtin.pause:
+        seconds: 5
+
+    - name: 19. Search for the document in Elasticsearch
+      ansible.builtin.command:
+        cmd: >
+          kubectl exec -n {{ elasticsearch_namespace }} {{ elasticsearch_pod_name.stdout }}
+          --kubeconfig {{ merged_kubeconf_file }}
+          -- curl -u "elastic:{{ elasticsearch_password_fact }}" -s -X GET
+          "http://localhost:9200/test/_search?q=content:test"
+      register: search_document
+      changed_when: false
+
+    - name: 20. Display search result
+      ansible.builtin.debug:
+        var: search_document.stdout_lines
+
+    - name: 21. Check if document indexing and search is working
+      ansible.builtin.fail:
+        msg: "Elasticsearch document indexing and search test failed. Search response: {{ search_document.stdout }}"
+      when: "'Test Document' not in search_document.stdout"
+
+    - name: 22. Confirm Elasticsearch indexing and search is working
+      ansible.builtin.debug:
+        msg: "Elasticsearch indexing and search is working correctly"
+      when: "'Test Document' in search_document.stdout"
+
+    - name: 23. Clean up test index
+      ansible.builtin.command:
+        cmd: >
+          kubectl exec -n {{ elasticsearch_namespace }} {{ elasticsearch_pod_name.stdout }}
+          --kubeconfig {{ merged_kubeconf_file }}
+          -- curl -u "elastic:{{ elasticsearch_password_fact }}" -s -X DELETE
+          "http://localhost:9200/test"
+      register: delete_index
+      changed_when: true
+
+    - name: 24. Display final status
+      ansible.builtin.debug:
+        msg:
+          - "Elasticsearch setup completed successfully."
+          - "Elasticsearch is deployed in the '{{ elasticsearch_namespace }}' namespace."
+          - "The Elasticsearch service is named '{{ elasticsearch_service_name }}'."
+          - "Use 'kubectl get pods -n {{ elasticsearch_namespace }}' to view the Elasticsearch pods."
+          - "Use 'kubectl get svc -n {{ elasticsearch_namespace }}' to view the Elasticsearch service details."

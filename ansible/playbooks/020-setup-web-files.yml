@@ -1,0 +1,255 @@
+---
+# file: playbooks/020-setup-web-files.yml
+# Description: 
+#   Creates persistent storage for Nginx and populates it with website content.
+#   This playbook:
+#   1. Creates a PVC using the specified storage manifest file
+#   2. Creates a test HTML file (defined by nginx_content_filename)
+#   3. Copies the entire website directory (defined by website_source) to storage
+#
+# Idempotent: 
+#   This playbook can be run multiple times. Each run will refresh the content
+#   by first clearing the existing files and then copying the latest files from
+#   the source location.
+#
+# Usage:
+#   ansible-playbook playbooks/020-setup-web-files.yml -e kube_context=your-context
+#
+# Variables:
+#   website_source: Source folder containing website files to copy to storage
+#   nginx_content_filename: Name of the test HTML file to create
+#   nginx_storage_manifest: Path to the Kubernetes manifest for creating storage
+
+- name: Set up web storage and files for Nginx
+  hosts: localhost
+  gather_facts: false
+  vars:
+    manifests_folder: "/mnt/urbalurbadisk/manifests"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    website_source: "/mnt/urbalurbadisk/testdata/website"
+    nginx_content_title: "Welcome to Nginx"
+    nginx_content_message: "Your Nginx server is running successfully!"
+    nginx_content_filename: "urbalurba-test.html"
+    nginx_storage_manifest: "{{ manifests_folder }}/020-nginx-storage.yaml"
+
+  tasks:
+    - name: 1. Get current Kubernetes context
+      ansible.builtin.shell: |
+        kubectl config current-context
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: current_context
+      changed_when: false
+      
+    - name: 2. Set kube_context from current context if not explicitly provided
+      ansible.builtin.set_fact:
+        kube_context: "{{ kube_context | default(current_context.stdout) }}"
+
+    - name: 3. Print playbook description
+      ansible.builtin.debug:
+        msg: "Setting up web storage and files on Kubernetes context: {{ kube_context }}"
+        
+    # Note: We're skipping direct host path creation since it may not be on the Ansible host
+    # The PV will handle storage location creation as needed
+      
+    - name: 5. Apply Nginx storage definition (PV and PVC)
+      ansible.builtin.command: >
+        kubectl apply -f {{ nginx_storage_manifest }}
+        --context {{ kube_context }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      changed_when: true
+
+    - name: 6. Check PVC status
+      ansible.builtin.shell: |
+        kubectl get pvc nginx-content-pvc -o jsonpath='{.status.phase}' --context {{ kube_context }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: pvc_status
+      changed_when: false
+      
+    - name: 6a. Display PVC initial status
+      ansible.builtin.debug:
+        msg: "PVC Initial Status: {{ pvc_status.stdout }}"
+        
+    - name: 6b. Continue if PVC is not bound (likely using WaitForFirstConsumer)
+      ansible.builtin.set_fact:
+        continue_with_pending: "{{ pvc_status.stdout == 'Pending' }}"
+
+    - name: 7. Display final PVC status
+      ansible.builtin.debug:
+        msg: "PVC Final Status: {{ pvc_status_after_pod.stdout | default(pvc_status.stdout) }}"
+
+    - name: 8. Create temporary pod to access storage
+      ansible.builtin.command: >
+        kubectl run web-files-pod --image=busybox 
+        --restart=Never
+        --overrides='{"spec": {"volumes": [{"name": "web-content", "persistentVolumeClaim": {"claimName": "nginx-content-pvc"}}], "containers": [{"name": "web-files-pod", "image": "busybox", "command": ["sleep", "3600"], "volumeMounts": [{"name": "web-content", "mountPath": "/content"}]}]}}'
+        --context {{ kube_context }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: pod_creation
+      failed_when: pod_creation.rc != 0 and "AlreadyExists" not in pod_creation.stderr
+      changed_when: pod_creation.rc == 0
+      
+    - name: 8a. Check PVC status again after pod creation (should bind if WaitForFirstConsumer)
+      ansible.builtin.shell: |
+        kubectl get pvc nginx-content-pvc -o jsonpath='{.status.phase}' --context {{ kube_context }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: pvc_status_after_pod
+      retries: 10
+      delay: 3
+      until: pvc_status_after_pod.stdout == "Bound" 
+      when: continue_with_pending | default(false)
+      changed_when: false
+
+    - name: 9. Wait for temporary pod to be ready
+      ansible.builtin.command: >
+        kubectl wait --for=condition=ready pod/web-files-pod
+        --timeout=180s
+        --context {{ kube_context }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: wait_result
+      until: wait_result.rc == 0
+      retries: 10
+      delay: 5
+
+    - name: 10. Create test HTML file with content
+      ansible.builtin.copy:
+        dest: "/tmp/{{ nginx_content_filename }}"
+        content: |
+          <html>
+          <head>
+            <title>{{ nginx_content_title }}</title>
+          </head>
+          <body>
+            <h1>{{ nginx_content_title }}</h1>
+            <p>{{ nginx_content_message }}</p>
+          </body>
+          </html>
+      changed_when: true
+
+    - name: 11. Check if website source folder exists
+      ansible.builtin.stat:
+        path: "{{ website_source }}"
+      register: website_folder
+
+    - name: 12. Create temporary directory for website content
+      ansible.builtin.file:
+        path: "/tmp/nginx-website"
+        state: directory
+        mode: '0755'
+      changed_when: true
+
+    - name: 13. Copy website contents to temporary directory
+      ansible.builtin.copy:
+        src: "{{ website_source }}/"
+        dest: "/tmp/nginx-website/"
+      when: website_folder.stat.exists and website_folder.stat.isdir
+      changed_when: true
+
+    - name: 14. Copy test file to temporary directory
+      ansible.builtin.copy:
+        src: "/tmp/{{ nginx_content_filename }}"
+        dest: "/tmp/nginx-website/{{ nginx_content_filename }}"
+      changed_when: true
+
+    - name: 15. Create content directory in pod (if it doesn't exist) and prepare for clean copy
+      ansible.builtin.shell: |
+        kubectl exec web-files-pod --context {{ kube_context }} -- \
+        sh -c "mkdir -p /content && find /content -mindepth 1 -delete"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      changed_when: true
+      ignore_errors: true
+
+    - name: 16. Copy website content to the pod
+      ansible.builtin.shell: |
+        find /tmp/nginx-website -type f | while read file; do
+          rel_path=$(basename "$file")
+          echo "Copying $file to pod as $rel_path"
+          kubectl cp "$file" web-files-pod:/content/"$rel_path" --context {{ kube_context }}
+        done
+      register: copy_result
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      changed_when: true
+      ignore_errors: true
+      
+    - name: 17. Alternative method to copy files if first method fails
+      ansible.builtin.shell: |
+        find /tmp/nginx-website -type f | while read file; do
+          filename=$(basename "$file")
+          echo "Copying $filename to pod using cat method..."
+          cat "$file" | kubectl exec -i web-files-pod --context {{ kube_context }} -- \
+            sh -c "cat > /content/$filename"
+        done
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      changed_when: true
+      when: copy_result.rc != 0
+      
+    - name: 18. Verify files in pod
+      ansible.builtin.shell: |
+        kubectl exec web-files-pod --context {{ kube_context }} -- \
+        ls -la /content/
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: pod_files
+      changed_when: false
+      
+    - name: 19. Display files in pod
+      ansible.builtin.debug:
+        var: pod_files.stdout_lines
+
+    - name: 20. Delete the temporary file copy pod
+      ansible.builtin.command: >
+        kubectl delete pod web-files-pod --context {{ kube_context }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      changed_when: true
+      ignore_errors: true
+
+    - name: 21. Success message
+      ansible.builtin.debug:
+        msg: |
+          WEB FILES SETUP COMPLETE
+          
+          The website content from {{ website_source }} has been copied to the persistent volume.
+          A test file named "{{ nginx_content_filename }}" has been created in the storage.
+          
+          PVC Status: {{ pvc_status_after_pod.stdout | default(pvc_status.stdout) }}
+          
+          The files are stored in the persistent volume claim "nginx-content-pvc"
+          
+          This playbook can be run again at any time to refresh the content from the source location.
+          
+
+    - name: 22. Show commands for manual operations
+      ansible.builtin.debug:
+        msg: |
+          USEFUL COMMANDS FOR MANUAL OPERATIONS:
+          
+          # To list files in the PVC:
+          kubectl run -i --rm --tty debug-pod --image=busybox --restart=Never --context {{ kube_context }} -- ls -la /mnt/data
+          
+          # To create a pod named storage-debug that mounts the PVC for manual operations:
+          kubectl run storage-debug --image=busybox --restart=Never --overrides='{"spec": {"volumes": [{"name": "web-content", "persistentVolumeClaim": {"claimName": "nginx-content-pvc"}}], "containers": [{"name": "storage-debug", "image": "busybox", "command": ["sleep", "3600"], "volumeMounts": [{"name": "web-content", "mountPath": "/mnt/data"}]}]}}' --context {{ kube_context }}
+          
+          # To copy a local folder to the PVC:
+          # First, create a pod as shown above, then:
+          kubectl cp /path/to/local/folder storage-debug:/mnt/data/ --context {{ kube_context }}
+          
+          # To copy from the PVC to a local folder:
+          kubectl cp storage-debug:/mnt/data/ /path/to/local/folder --context {{ kube_context }}
+          
+          # To execute a shell in the pod for interactive operations:
+          kubectl exec -it storage-debug --context {{ kube_context }} -- sh
+          
+          # When finished, delete the debug pod:
+          kubectl delete pod storage-debug --context {{ kube_context }}
+          
+          # To view PVC details:
+          kubectl describe pvc nginx-content-pvc --context {{ kube_context }}

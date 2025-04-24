@@ -1,0 +1,103 @@
+# 201-tika-config.yaml 
+# Description:
+# Deploys a standalone Apache Tika server for document extraction and processing
+# Configured with conservative resource settings for resource-constrained environments
+# Deploys to the "ai" namespace for organizational purposes
+# 
+# Requirements:
+# None - the namespace will be created automatically with --create-namespace
+#
+# Usage:
+# installing: helm install tika tika/tika -f 201-tika-config.yaml --namespace ai --create-namespace
+# upgrading:  helm upgrade tika tika/tika -f 201-tika-config.yaml --namespace ai
+# uninstalling: helm uninstall tika --namespace ai
+#
+# Some debugging commands:
+# view logs: kubectl logs -f $(kubectl get pods -n ai | grep tika | awk '{print $1}') -n ai
+# check service status: kubectl get svc -n ai | grep tika
+# test connection: kubectl run curl --image=curlimages/curl --rm -it -n ai -- curl http://tika-release:9998/tika
+# port-forward for local testing: kubectl port-forward svc/tika-release 9998:9998 -n ai
+# check endpoints: curl http://localhost:9998/
+
+# Namespace to deploy Tika to
+namespace: ai
+
+# Number of replicas to deploy
+replicaCount: 1
+
+# Container image configuration
+image:
+  repository: apache/tika
+  pullPolicy: IfNotPresent
+  tag: "3.0.0.0"  # Using the standard version without the -full suffix
+
+# Resource limits for the container
+# Reduced from guide for resource-constrained environments
+resources:
+  limits:
+    cpu: "500m"  # Reduced CPU limit
+    memory: 1Gi   # Reduced memory limit
+  requests:
+    cpu: "250m"  # Lower CPU request
+    memory: 512Mi  # Lower memory request
+
+# Security context for the pod
+podSecurityContext:
+  fsGroup: 35002
+
+# Security context for the container
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 35002
+  runAsGroup: 35002
+
+# Service configuration
+service:
+  type: ClusterIP  # Only accessible within the cluster
+  port: 9998
+
+# Liveness probe configuration - determines when to restart container
+livenessProbe:
+  initialDelaySeconds: 90  # Extended wait time before first probe
+  timeoutSeconds: 15       # Timeout for probes
+  failureThreshold: 5      # Number of failures before restarting
+  periodSeconds: 30        # How often to probe
+
+# Readiness probe configuration - determines when pod is ready for traffic
+readinessProbe:
+  initialDelaySeconds: 45  # Wait before first readiness check
+  timeoutSeconds: 10       # Timeout for probes
+  failureThreshold: 5      # Number of failures before marking unready
+  periodSeconds: 20        # How often to probe
+
+# Custom Tika XML configuration
+tikaConfig: |
+  <?xml version="1.0" encoding="UTF-8"?>
+  <properties>
+    <parsers>
+      <parser class="org.apache.tika.parser.DefaultParser"/>
+    </parsers>
+    <params>
+      <param name="enableUnsecureFeatures" type="bool">false</param>
+      <param name="enableFileUrl" type="bool">false</param>
+    </params>
+  </properties>
+
+# Environment variables for the container
+env:
+  # JVM options to optimize performance and memory usage
+  - name: JAVA_OPTS
+    value: "-Xms256m -Xmx768m -Dtika.server.forking=false -Dtika.log.level=INFO -Djava.awt.headless=true -XX:+UseContainerSupport -XX:MaxRAMPercentage=50.0"
+  # Enable Tika server mode (not CLI)
+  - name: TIKA_SERVER_ONLY
+    value: "true"
+
+# Network policy configuration
+networkPolicy:
+  enabled: false  # Disabled to save resources in dev environment
+  # Note: In production, consider enabling this and setting appropriate ingress rules

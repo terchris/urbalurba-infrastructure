@@ -1,0 +1,76 @@
+---
+# file playbooks/02-update-ansible-inventory.yml
+# Adds/updates the host and its IP or hostname to the ansible inventory
+# Usage: 
+# With IP: ansible-playbook playbooks/02-update-ansible-inventory.yml -e target_host="multipass-microk8s" -e target_host_ip="192.168.68.65"
+# With hostname: ansible-playbook playbooks/02-update-ansible-inventory.yml -e target_host="azure-host" -e target_host_name="vm-prd-ikt-01-euw"
+
+- name: Update Ansible inventory with target host and IP/hostname
+  hosts: localhost
+  gather_facts: false
+  vars:
+    inventory_file: "/mnt/urbalurbadisk/ansible/inventory.yml"
+    target_host: ""
+    target_host_ip: ""
+    target_host_name: ""
+
+  tasks:
+    - name: Check if required parameters are provided
+      fail:
+        msg: "target_host and either target_host_ip or target_host_name must be provided"
+      when: >
+        target_host == "" or
+        (target_host_ip == "" and target_host_name == "") or
+        (target_host_ip != "" and target_host_name != "")
+
+    - name: Set ansible_host value
+      set_fact:
+        ansible_host_value: "{{ target_host_ip if target_host_ip != '' else target_host_name }}"
+
+    - name: Check if host is reachable
+      wait_for:
+        host: "{{ ansible_host_value }}"
+        port: 22
+        timeout: 10
+      register: reachability_check
+      ignore_errors: yes
+
+    - name: Fail if host is not reachable
+      fail:
+        msg: "The host {{ ansible_host_value }} is not reachable. Please check the IP/hostname and ensure the host is online."
+      when: reachability_check.failed
+
+    - name: Read the inventory file
+      slurp:
+        src: "{{ inventory_file }}"
+      register: inventory_file_content
+
+    - name: Decode inventory file content
+      set_fact:
+        inventory: "{{ inventory_file_content.content | b64decode | from_yaml }}"
+
+    - name: Update or add host in inventory
+      set_fact:
+        updated_inventory: >-
+          {{
+            inventory | combine({
+              'all': {
+                'hosts': {
+                  target_host: {
+                    'ansible_host': ansible_host_value
+                  }
+                }
+              }
+            }, recursive=True)
+          }}
+
+    - name: Write updated inventory to file
+      copy:
+        content: "{{ updated_inventory | to_nice_yaml }}"
+        dest: "{{ inventory_file }}"
+        mode: '0644'
+      become: yes
+
+    - name: Display success message
+      debug:
+        msg: "Inventory updated successfully for {{ target_host }} with {{ 'IP' if target_host_ip else 'hostname' }}: {{ ansible_host_value }}"

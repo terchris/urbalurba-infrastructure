@@ -1,0 +1,81 @@
+# 641-adm-pgadmin.yaml
+# Installs pgAdmin for administering the postgres database - uses secrets
+# IMPORTANT: Apply 640-pgadmin-configmap.yaml BEFORE running this Helm chart
+# Usage: helm install pgadmin runix/pgadmin4 -f 641-adm-pgadmin.yaml
+
+# CHECK the Pod: kubectl get pods -l app.kubernetes.io/name=pgadmin4 -o wide
+# CHECK Port Forwarding to localhost on port 8998: kubectl port-forward \$(kubectl get pod -l app.kubernetes.io/name=pgadmin4 -o jsonpath="{.items[0].metadata.name}") 8998:80
+# CHECK Accessing pgAdmin via localhost: curl http://localhost:8998
+# DEBUG Display Logs: kubectl logs -f \$(kubectl get pods -l app.kubernetes.io/name=pgadmin4 -o jsonpath="{.items[0].metadata.name}")
+
+# REMOVE: helm uninstall pgadmin
+
+# Main chart configuration
+existingSecret: pgadmin4-password  # the existingSecret is set in 000-secrets.yaml
+
+env:
+  email: terje@businessmodel.io
+  enhanced_cookie_protection: "False"
+
+envVarsExtra:
+  - name: SCRIPT_NAME
+    value: "/urbadm/pgadmin"
+
+persistentVolume:
+  enabled: true
+  size: 1Gi
+
+ingress:
+  enabled: true
+  ingressClassName: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /\$2
+  hosts:
+    - host: ""  # This empty string will match any host
+      paths:
+        - path: /urbadm/pgadmin(/|\$)(.*)
+          pathType: Prefix
+
+service:
+  type: ClusterIP
+
+extraConfigmapMounts:
+  - name: pgadmin-settings
+    configMap: pgadmin-settings
+    mountPath: /pgadmin4/config_local.py
+    subPath: config_local.py
+
+resources:
+  requests:
+    memory: "128Mi"
+    cpu: "100m"
+  limits:
+    memory: "256Mi"
+    cpu: "200m"
+
+# Custom probes to match the SCRIPT_NAME path
+livenessProbe:
+  httpGet:
+    path: /urbadm/pgadmin/misc/ping
+    port: http
+  initialDelaySeconds: 30
+  timeoutSeconds: 15
+  periodSeconds: 60
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /urbadm/pgadmin/misc/ping
+    port: http
+  initialDelaySeconds: 30
+  timeoutSeconds: 15
+  periodSeconds: 60
+  failureThreshold: 3
+
+securityContext:
+  runAsUser: 5050
+  runAsGroup: 5050
+  fsGroup: 5050
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false

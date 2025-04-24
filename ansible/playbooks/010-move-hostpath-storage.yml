@@ -1,0 +1,155 @@
+---
+# file: playbooks/010-move-hostpath-storage.yml
+# This playbook moves the hostpath-storage in MicroK8s to a custom storage root by copying the data and creating a symbolic link.
+# It works for both Multipass and Azure environments.
+# Usage: ansible-playbook playbooks/010-move-hostpath-storage.yml -e target_host="multipass-microk8s"
+
+- name: Move hostpath-storage on MicroK8s to custom location
+  hosts: localhost
+  gather_facts: false
+  vars:
+    target_host: "{{ target_host | default('') }}"
+    old_storage_path: "/var/snap/microk8s/common/default-storage"
+    new_storage_path: "/mnt/urbalurbadisk/kubernetesstorage"
+    backup_storage_path: "{{ old_storage_path }}.bak"
+
+  tasks:
+    - name: 1. Check if target_host is provided
+      ansible.builtin.fail:
+        msg: >-
+          The variable 'target_host' is mandatory.
+          Use -e target_host=your_host_name to specify it.
+      when: not target_host
+
+    - name: 2. Determine environment (Azure or Multipass)
+      ansible.builtin.stat:
+        path: /etc/waagent.conf
+      register: azure_check
+      delegate_to: "{{ target_host }}"
+
+    - name: 3. Set environment fact
+      set_fact:
+        is_azure: "{{ azure_check.stat.exists }}"
+
+    - name: 4. Print playbook description
+      ansible.builtin.debug:
+        msg: >-
+          Moving hostpath-storage on MicroK8s on host: {{ target_host }} ({{ 'Azure' if is_azure else 'Multipass' }} environment)
+          from {{ old_storage_path }} to {{ new_storage_path }}.
+          Backup will be stored at {{ backup_storage_path }}.
+
+    - name: 5. Check if old storage path exists
+      ansible.builtin.stat:
+        path: "{{ old_storage_path }}"
+      register: old_storage_stat
+      delegate_to: "{{ target_host }}"
+      become: true
+
+    - name: 6. Stop MicroK8s
+      ansible.builtin.command: microk8s stop
+      delegate_to: "{{ target_host }}"
+      become: true
+
+    - name: 7. Wait for MicroK8s to stop
+      ansible.builtin.shell: |
+        for i in {1..30}; do
+          if ! microk8s status | grep -q "is running"; then
+            echo "stopped"
+            exit 0
+          fi
+          sleep 1
+        done
+        echo "not stopped"
+        exit 1
+      register: stop_result
+      until: stop_result.stdout == "stopped"
+      retries: 3
+      delay: 5
+      delegate_to: "{{ target_host }}"
+      become: true
+
+    - name: 8. Fail if MicroK8s did not stop
+      ansible.builtin.fail:
+        msg: "MicroK8s did not stop within the allocated time. Please check the MicroK8s status manually."
+      when: stop_result.stdout != "stopped"
+
+    - name: 9. Create new storage directory
+      ansible.builtin.file:
+        path: "{{ new_storage_path }}"
+        state: directory
+        mode: '0755'
+        owner: "{{ 'root' if is_azure else 'ubuntu' }}"
+        group: "{{ 'root' if is_azure else 'ubuntu' }}"
+      delegate_to: "{{ target_host }}"
+      become: true
+
+    - name: 10. Copy existing data to the new location (if any)
+      ansible.builtin.shell: |
+        if [ -d "{{ old_storage_path }}" ]; then
+          if [ "$(ls -A {{ old_storage_path }})" ]; then
+            cp -R {{ old_storage_path }}/* {{ new_storage_path }}/
+            echo "Data copied"
+          else
+            echo "Old storage directory is empty. Nothing to copy."
+          fi
+        else
+          echo "Old storage directory doesn't exist. Nothing to copy."
+        fi
+      delegate_to: "{{ target_host }}"
+      become: true
+      register: copy_result
+      changed_when: copy_result.stdout == "Data copied"
+
+    - name: 11. Rename old storage directory to backup (if it exists)
+      ansible.builtin.command: mv {{ old_storage_path }} {{ backup_storage_path }}
+      delegate_to: "{{ target_host }}"
+      become: true
+      when: old_storage_stat.stat.exists
+      register: rename_result
+      failed_when: 
+        - rename_result.rc != 0
+        - "'No such file or directory' not in rename_result.stderr"
+
+    - name: 12. Create symbolic link
+      ansible.builtin.file:
+        src: "{{ new_storage_path }}"
+        dest: "{{ old_storage_path }}"
+        state: link
+        owner: "{{ 'root' if is_azure else 'ubuntu' }}"
+        group: "{{ 'root' if is_azure else 'ubuntu' }}"
+      delegate_to: "{{ target_host }}"
+      become: true
+
+    - name: 13. Start MicroK8s
+      ansible.builtin.command: microk8s start
+      delegate_to: "{{ target_host }}"
+      become: true
+
+    - name: 14. Wait for MicroK8s to be ready
+      ansible.builtin.command: microk8s status --wait-ready
+      delegate_to: "{{ target_host }}"
+      become: true
+      register: microk8s_ready
+      until: microk8s_ready.rc == 0
+      retries: 30
+      delay: 10
+
+    - name: 15. Verify symbolic link
+      ansible.builtin.stat:
+        path: "{{ old_storage_path }}"
+      register: symlink_stat
+      delegate_to: "{{ target_host }}"
+      become: true
+
+    - name: 16. Display symbolic link information
+      ansible.builtin.debug:
+        msg: >-
+          Symbolic link created: {{ symlink_stat.stat.islnk }}
+          Link target: {{ symlink_stat.stat.lnk_target }}
+
+    - name: 17. Final message
+      ansible.builtin.debug:
+        msg: >-
+          Hostpath-storage has been successfully moved to {{ new_storage_path }} in {{ 'Azure' if is_azure else 'Multipass' }} environment.
+          A symbolic link has been created at {{ old_storage_path }} pointing to the new location.
+          Please verify that everything is working correctly. The old data is backed up at {{ backup_storage_path }}.

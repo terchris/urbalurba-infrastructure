@@ -1,0 +1,99 @@
+---
+# File: ansible/playbooks/utility/u02-verify-postgres.yml
+# Description: Test connection to PostgreSQL server and verify functionality.
+# Usage:
+# ansible-playbook playbooks/utility/u02-verify-postgres.yml
+
+- name: Verify PostgreSQL Database
+  hosts: localhost
+  gather_facts: false
+  vars:
+    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    test_db_name: "test_verify_db"
+    test_table_name: "test_table"
+
+  tasks:
+    - name: 1. Verify PostgreSQL secret values
+      kubernetes.core.k8s_info:
+        kind: Secret
+        name: urbalurba-secrets
+        namespace: default
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: secret_info
+
+    - name: 2. Fail if PostgreSQL secrets are not set correctly
+      ansible.builtin.fail:
+        msg: "PostgreSQL secrets are not set correctly in urbalurba-secrets"
+      when: >
+        secret_info.resources | length == 0 or
+        secret_info.resources[0].data.PGPASSWORD is not defined or
+        secret_info.resources[0].data.PGHOST is not defined
+
+    - name: 3. Set PostgreSQL password and host
+      ansible.builtin.set_fact:
+        postgres_password: "{{ secret_info.resources[0].data.PGPASSWORD | b64decode }}"
+        postgres_host: "{{ secret_info.resources[0].data.PGHOST | b64decode }}"
+
+    - name: 4. Get PostgreSQL pod name
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ merged_kubeconf_file }}"
+        kind: Pod
+        namespace: default
+        label_selectors:
+          - app.kubernetes.io/name=postgresql
+      register: postgres_pods
+      retries: 30
+      delay: 10
+      until: postgres_pods.resources | length > 0
+
+    - name: 5. Fail if no PostgreSQL pod found
+      ansible.builtin.fail:
+        msg: "No PostgreSQL pod found after multiple attempts"
+      when: postgres_pods.resources | length == 0
+
+    - name: 6. Set PostgreSQL pod name
+      ansible.builtin.set_fact:
+        postgres_pod_name: "{{ postgres_pods.resources[0].metadata.name }}"
+
+    - name: 7. Wait for PostgreSQL to be ready
+      command: kubectl exec -n default {{ postgres_pod_name }} -- bash -c "PGPASSWORD='{{ postgres_password }}' psql -h '{{ postgres_host }}' -U postgres -c \"SELECT 1;\""
+      register: postgres_ready
+      until: postgres_ready.rc == 0
+      retries: 30
+      delay: 10
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+
+    - name: 8. Create test database
+      command: kubectl exec -n default {{ postgres_pod_name }} -- bash -c "PGPASSWORD='{{ postgres_password }}' createdb -h '{{ postgres_host }}' -U postgres {{ test_db_name }}"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+
+    - name: 9. Create test table and insert data
+      command: kubectl exec -n default {{ postgres_pod_name }} -- bash -c "PGPASSWORD='{{ postgres_password }}' psql -h '{{ postgres_host }}' -U postgres -d {{ test_db_name }} -c \"CREATE TABLE {{ test_table_name }} (id SERIAL PRIMARY KEY, data TEXT); INSERT INTO {{ test_table_name }} (data) VALUES ('test_value');\""
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+
+    - name: 10. Retrieve data from test table
+      command: kubectl exec -n default {{ postgres_pod_name }} -- bash -c "PGPASSWORD='{{ postgres_password }}' psql -h '{{ postgres_host }}' -U postgres -d {{ test_db_name }} -c \"SELECT * FROM {{ test_table_name }};\""
+      register: retrieve_result
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+
+    - name: 11. Display retrieved data
+      ansible.builtin.debug:
+        var: retrieve_result.stdout_lines
+
+    - name: 12. Verify retrieved data
+      ansible.builtin.fail:
+        msg: "Failed to retrieve expected test data"
+      when: "'test_value' not in retrieve_result.stdout"
+
+    - name: 13. Drop test database
+      command: kubectl exec -n default {{ postgres_pod_name }} -- bash -c "PGPASSWORD='{{ postgres_password }}' dropdb -h '{{ postgres_host }}' -U postgres {{ test_db_name }}"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+
+    - name: 14. Confirm PostgreSQL is working correctly
+      ansible.builtin.debug:
+        msg: "PostgreSQL is working correctly. Test database created, data inserted and retrieved successfully, and test database dropped."

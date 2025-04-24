@@ -1,0 +1,199 @@
+---
+# file: playbooks/argocd-remove-app.yml (simplified version)
+# Remove an application from ArgoCD and the cluster
+# This playbook will:
+#   - Remove the ArgoCD Application
+#   - Remove the GitHub credentials secret
+#   - Remove the application namespace and all its resources
+#   - Verify that all resources have been properly removed
+#
+# Required Variables:
+#   repo_name: Name of the GitHub repository/namespace to remove
+#
+# Usage:
+# ansible-playbook playbooks/argocd-remove-app.yml -e "repo_name=your_repo"
+
+- name: Remove application from ArgoCD and cluster
+  hosts: localhost
+  gather_facts: false
+  vars:
+    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    argocd_namespace: "argocd"
+    github_secret_name: "github-{{ repo_name }}"
+    retry_delay: 8
+    max_retries: 15
+    wait_timeout: 120
+
+  tasks:
+    - name: 1. Check if repo_name is provided
+      ansible.builtin.fail:
+        msg: "The variable 'repo_name' is mandatory. Use -e repo_name=your_repo to specify it."
+      when: repo_name is not defined
+
+    - name: 2. Print playbook description
+      ansible.builtin.debug:
+        msg: >
+          Removing application from ArgoCD and cluster:
+          - Repository: {{ repo_name }}
+          - Namespace: {{ repo_name }}
+          - ArgoCD Namespace: {{ argocd_namespace }}
+          - GitHub Secret: {{ github_secret_name }}
+          - Wait timeout: {{ wait_timeout }} seconds
+
+    - name: 3. Check if namespace exists
+      kubernetes.core.k8s_info:
+        kind: Namespace
+        name: "{{ repo_name }}"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: namespace_info
+      changed_when: false
+
+    - name: 4. Get current ArgoCD Application status
+      kubernetes.core.k8s_info:
+        kind: Application
+        name: "{{ repo_name }}"
+        namespace: "{{ argocd_namespace }}"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+        api_version: argoproj.io/v1alpha1
+      register: argocd_app
+      changed_when: false
+      ignore_errors: true
+
+    - name: 5. Display current status
+      ansible.builtin.debug:
+        msg: 
+          - "Current Status:"
+          - "Namespace {{ repo_name }} exists: {{ namespace_info.resources | length > 0 }}"
+          - "ArgoCD Application {{ repo_name }} exists: {{ argocd_app.resources | length > 0 }}"
+          - "Beginning cleanup process..."
+
+    - name: 6. Remove ArgoCD Application
+      kubernetes.core.k8s:
+        name: "{{ repo_name }}"
+        namespace: "{{ argocd_namespace }}"
+        api_version: argoproj.io/v1alpha1
+        kind: Application
+        state: absent
+        kubeconfig: "{{ merged_kubeconf_file }}"
+        wait: true
+        wait_timeout: "{{ wait_timeout }}"
+      when: argocd_app.resources | length > 0
+      register: app_remove_result
+
+    - name: 7. Wait for ArgoCD Application to be removed
+      kubernetes.core.k8s_info:
+        kind: Application
+        name: "{{ repo_name }}"
+        namespace: "{{ argocd_namespace }}"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+        api_version: argoproj.io/v1alpha1
+      register: argocd_app_check
+      until: argocd_app_check.resources | length == 0
+      retries: "{{ max_retries }}"
+      delay: "{{ retry_delay }}"
+      changed_when: false
+      when: argocd_app.resources | length > 0
+
+    - name: 8. Display ArgoCD Application removal status
+      ansible.builtin.debug:
+        msg: 
+          - "✅ ArgoCD Application '{{ repo_name }}' removed successfully"
+          - "Resource finalizers processed: {{ app_remove_result.result.metadata.finalizers | default([]) }}"
+      when: argocd_app.resources | length > 0 and argocd_app_check.resources | length == 0
+
+    - name: 9. Remove GitHub credentials secret
+      kubernetes.core.k8s:
+        name: "{{ github_secret_name }}"
+        namespace: "{{ argocd_namespace }}"
+        api_version: v1
+        kind: Secret
+        state: absent
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: secret_remove_result
+
+    - name: 10. Wait for GitHub secret to be removed
+      kubernetes.core.k8s_info:
+        kind: Secret
+        name: "{{ github_secret_name }}"
+        namespace: "{{ argocd_namespace }}"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: secret_check
+      until: secret_check.resources | length == 0
+      retries: "{{ max_retries }}"
+      delay: "{{ retry_delay }}"
+      changed_when: false
+
+    - name: 11. Display GitHub secret removal status
+      ansible.builtin.debug:
+        msg: "✅ GitHub secret '{{ github_secret_name }}' removed successfully"
+      when: secret_check.resources | length == 0
+
+    - name: 12. Check namespace resources before removal (for reporting)
+      block:
+        - name: Get all resource types in namespace
+          kubernetes.core.k8s_info:
+            kind: Pod
+            namespace: "{{ repo_name }}"
+            kubeconfig: "{{ merged_kubeconf_file }}"
+          register: namespace_resources
+          changed_when: false
+          when: namespace_info.resources | length > 0
+
+        - name: Display namespace resources
+          ansible.builtin.debug:
+            msg: "Found {{ namespace_resources.resources | length }} pods in namespace {{ repo_name }} before removal"
+          when: namespace_info.resources | length > 0
+      when: namespace_info.resources | length > 0
+
+    - name: 13. Remove namespace and all its resources
+      kubernetes.core.k8s:
+        name: "{{ repo_name }}"
+        api_version: v1
+        kind: Namespace
+        state: absent
+        kubeconfig: "{{ merged_kubeconf_file }}"
+        wait: true
+        wait_timeout: "{{ wait_timeout }}"
+      when: namespace_info.resources | length > 0
+      register: namespace_remove_result
+
+    - name: 14. Wait for namespace to be removed
+      kubernetes.core.k8s_info:
+        kind: Namespace
+        name: "{{ repo_name }}"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: namespace_check
+      until: namespace_check.resources | length == 0
+      retries: "{{ max_retries }}"
+      delay: "{{ retry_delay }}"
+      changed_when: false
+      when: namespace_info.resources | length > 0
+
+    - name: 15. Display namespace removal status
+      ansible.builtin.debug:
+        msg: "✅ Namespace {{ repo_name }} and all its resources removed successfully"
+      when: namespace_info.resources | length > 0 and namespace_check.resources | length == 0
+
+    - name: 16. Final verification of removal
+      kubernetes.core.k8s_info:
+        api_version: argoproj.io/v1alpha1
+        kind: Application
+        name: "{{ repo_name }}"
+        namespace: "{{ argocd_namespace }}"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: final_app_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: 17. Final status display
+      ansible.builtin.debug:
+        msg:
+          - "=================================================="
+          - "🎉 APPLICATION REMOVAL SUCCESSFUL! 🎉"
+          - "=================================================="
+          - "✅ ArgoCD Application '{{ repo_name }}' removed from argocd namespace"
+          - "✅ GitHub credentials secret '{{ github_secret_name }}' removed from argocd namespace"
+          - "✅ Namespace '{{ repo_name }}' and all its resources removed"
+          - ""
+          - "All application resources have been successfully removed from the cluster."
+          - ""

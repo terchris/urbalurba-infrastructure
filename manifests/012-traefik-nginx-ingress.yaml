@@ -1,0 +1,31 @@
+# 012-traefik-nginx-ingress.yaml
+# Creates a Traefik Ingress resource that routes traffic from the Tailscale ingress to the Nginx service
+# Usage: This file is intended to be used after setting up Tailscale funnel with 011-tailscale-traefik-ingress.yaml
+# 
+# This ingress accepts traffic from any hostname and routes it to the Nginx service in the default namespace
+# It supports both HTTP and HTTPS protocols, with Tailscale handling the external TLS termination
+#
+# Apply with: kubectl apply -f 012-traefik-nginx-ingress.yaml
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nginx-ingress
+  namespace: default
+  annotations:
+    # Ensure TLS is handled properly
+    traefik.ingress.kubernetes.io/ssl-redirect: "false"  # Allow both HTTP and HTTPS
+    # Add path prefix if needed
+    # traefik.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: traefik  # Use this instead of the deprecated annotation
+  rules:
+  - http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: nginx
+            port:
+              number: 80

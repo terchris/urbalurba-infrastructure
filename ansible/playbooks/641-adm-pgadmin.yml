@@ -1,0 +1,134 @@
+---
+# File: playbooks/641-adm-pgadmin.yml
+# Description: Set up pgAdmin for administering the PostgreSQL database
+#
+# This playbook performs the following tasks:
+# 1. Applies the pgAdmin ConfigMap (640-pgadmin-configmap.yaml)
+# 2. Deploys pgAdmin using Helm with values from 641-adm-pgadmin.yaml
+# 3. Waits for pgAdmin pod to be ready
+# 4. Sets up ingress for pgAdmin
+#
+# Prerequisites:
+# - Kubernetes cluster is set up and accessible
+# - Helm is installed on the provision-host
+# - PostgreSQL is installed and configured
+# - pgAdmin ConfigMap file exists at /mnt/urbalurbadisk/manifests/640-pgadmin-configmap.yaml
+# - pgAdmin values file exists at /mnt/urbalurbadisk/manifests/641-adm-pgadmin.yaml
+#
+# Usage: ansible-playbook playbooks/641-adm-pgadmin.yml -e target_host="multipass-microk8s"
+
+- name: Set up pgAdmin
+  hosts: localhost
+  gather_facts: false
+  vars:
+    manifests_folder: "/mnt/urbalurbadisk/manifests"
+    kubernetesstorage_folder_postgres: "/mnt/urbalurbadisk/kubernetesstorage/postgres"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    pgadmin_configmap_file: "640-pgadmin-configmap.yaml"
+    pgadmin_values_file: "641-adm-pgadmin.yaml"
+    pgadmin_ingress_config_file: "740-adm-pgadmin-ingress.yaml"
+
+  tasks:
+    - name: 1. Check if target_host is provided
+      ansible.builtin.fail:
+        msg: "The variable 'target_host' is mandatory. Use -e target_host=your_host_name to specify it."
+      when: target_host is not defined
+
+    - name: 2. Print playbook description
+      ansible.builtin.debug:
+        msg: "Setting up pgAdmin on MicroK8s on Ubuntu host: {{ target_host }} with manifests from: {{ manifests_folder }}. Use -e target_host=your_host_name to change settings."
+
+    - name: 3. Add target host to the inventory with necessary variables
+      ansible.builtin.add_host:
+        name: "{{ target_host }}"
+        ansible_ssh_common_args: "-o StrictHostKeyChecking=no"
+        manifests_folder: "{{ manifests_folder }}"
+        kubernetesstorage_folder_postgres: "{{ kubernetesstorage_folder_postgres }}"
+        merged_kubeconf_file: "{{ merged_kubeconf_file }}"
+
+- hosts: "{{ target_host }}"
+  become: true
+  gather_facts: true
+
+  tasks:
+    - name: 4. Verify storage folder on target_host exists
+      ansible.builtin.stat:
+        path: "{{ kubernetesstorage_folder_postgres }}"
+      register: storage_folder
+
+    - name: 5. Create storage folder if it does not exist
+      ansible.builtin.file:
+        path: "{{ kubernetesstorage_folder_postgres }}"
+        state: directory
+      when: not storage_folder.stat.exists
+
+- hosts: localhost
+  gather_facts: false
+  vars:
+    manifests_folder: "/mnt/urbalurbadisk/manifests"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    pgadmin_configmap_file: "640-pgadmin-configmap.yaml"
+    pgadmin_values_file: "641-adm-pgadmin.yaml"
+    pgadmin_ingress_config_file: "740-adm-pgadmin-ingress.yaml"
+
+  tasks:
+    - name: 6. Check if pgAdmin is already installed
+      ansible.builtin.command: >
+        helm list -n default -f pgadmin
+      register: helm_list
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      changed_when: false
+
+    - name: 7. Deploy pgAdmin using Helm if not already installed
+      kubernetes.core.helm:
+        name: pgadmin
+        chart_ref: runix/pgadmin4
+        release_namespace: default
+        values_files: "{{ manifests_folder }}/{{ pgadmin_values_file }}"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+        wait: true
+      when: "'pgadmin' not in helm_list.stdout"
+
+    - name: 8. Wait for pgAdmin pod to be ready (takes time)
+      ansible.builtin.command: >
+        kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=pgadmin4 
+        --namespace default --timeout=120s
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: wait_result
+      retries: 20
+      delay: 10
+      until: wait_result.rc == 0
+
+    - name: 9. Verify pgAdmin service is running (take time)
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ merged_kubeconf_file }}"
+        kind: Service
+        namespace: default
+        name: pgadmin-pgadmin4
+      register: pgadmin_svc
+      until: pgadmin_svc.resources | length > 0
+      retries: 10
+      delay: 10
+
+    - name: 10. Set up ingress for pgAdmin
+      kubernetes.core.k8s:
+        kubeconfig: "{{ merged_kubeconf_file }}"
+        state: present
+        src: "{{ manifests_folder }}/{{ pgadmin_ingress_config_file }}"
+
+    - name: 11. Verify the ingress for pgAdmin (takes time)
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ merged_kubeconf_file }}"
+        kind: Ingress
+        namespace: default
+        name: ingress-pgadmin
+      register: ingress_result
+      until: ingress_result.resources | length > 0
+      retries: 10
+      delay: 10
+
+    - name: 12. Display Ingress details
+      ansible.builtin.debug:
+        var: ingress_result.resources[0].spec

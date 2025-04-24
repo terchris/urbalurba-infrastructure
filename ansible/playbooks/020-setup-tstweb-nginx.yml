@@ -1,0 +1,171 @@
+---
+# file: playbooks/020-setup-tstweb-nginx.yml
+# Description: Set up tstweb Nginx on MicroK8s using dynamic storage provisioning.
+# Usage: ansible-playbook playbooks/020-setup-tstweb-nginx.yml -e target_host="azure-microk8s"
+
+- name: Set up tstweb Nginx on MicroK8s
+  hosts: localhost
+  gather_facts: no
+  vars:
+    manifests_folder: "/mnt/urbalurbadisk/manifests"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    source_tst_nginx: "/mnt/urbalurbadisk/tst/nginx"
+    storage_manifest: "020-tstweb-storage-nginx.yaml"
+    ingress_manifest: "021-tstweb-ingress-nginx.yaml"
+    ingress_namespace: "ingress"
+    ingress_service_name: "ingress"
+    nginx_context_path: "/tst/nginx"
+    nginx_index_file: "index.html"
+  
+  tasks:
+    - name: "01 Check if target_host is provided"
+      ansible.builtin.fail:
+        msg: "The variable 'target_host' is mandatory. Use -e target_host=your_host_name to specify it."
+      when: target_host is not defined
+
+    - name: "02 Print playbook description"
+      ansible.builtin.debug:
+        msg: "Setting up tstweb Nginx on MicroK8s on Ubuntu host: {{ target_host }}"
+
+    - name: "03 Apply Kubernetes resources for tst/nginx"
+      kubernetes.core.k8s:
+        src: "{{ manifests_folder }}/{{ storage_manifest }}"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+        state: present
+
+    - name: "04 Wait for Nginx pod to be ready"
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: default
+        label_selectors:
+          - "app=tst-nginx"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: nginx_pods
+      until: nginx_pods.resources | length > 0 and (nginx_pods.resources | map(attribute='status.phase') | list | unique == ['Running'])
+      retries: 10
+      delay: 10
+
+    - name: "05 Set Nginx pod name"
+      ansible.builtin.set_fact:
+        nginx_pod_name: "{{ nginx_pods.resources[0].metadata.name }}"
+      when: nginx_pods.resources | length > 0
+
+    - name: "06 Copy index.html to Nginx pod"
+      ansible.builtin.shell:
+        cmd: "kubectl --kubeconfig={{ merged_kubeconf_file }} cp {{ source_tst_nginx }}/index.html {{ nginx_pod_name }}:/tmp/index.html"
+      when: nginx_pod_name is defined
+
+    - name: "07 Move index.html to correct location in Nginx pod"
+      ansible.builtin.shell:
+        cmd: "kubectl --kubeconfig={{ merged_kubeconf_file }} exec {{ nginx_pod_name }} -- mv /tmp/index.html /usr/share/nginx/html/"
+      when: nginx_pod_name is defined
+
+    - name: "08 Verify files in Nginx pod"
+      ansible.builtin.shell:
+        cmd: "kubectl --kubeconfig={{ merged_kubeconf_file }} exec {{ nginx_pod_name }} -- ls -la /usr/share/nginx/html"
+      register: nginx_files
+      when: nginx_pod_name is defined
+
+    - name: "09 Display files in Nginx pod"
+      ansible.builtin.debug:
+        msg: 
+          - "Files in Nginx pod:"
+          - "{{ nginx_files.stdout_lines }}"
+      when: nginx_files is defined
+
+    - name: "10 Verify content of index.html in Nginx pod"
+      ansible.builtin.shell:
+        cmd: "kubectl --kubeconfig={{ merged_kubeconf_file }} exec {{ nginx_pod_name }} -- cat /usr/share/nginx/html/index.html"
+      register: nginx_index_content
+      when: nginx_pod_name is defined
+
+    - name: "11 Display content of index.html"
+      ansible.builtin.debug:
+        msg: 
+          - "Content of index.html:"
+          - "{{ nginx_index_content.stdout_lines }}"
+      when: nginx_index_content is defined
+
+    - name: "12 Enable ingress in MicroK8s on target_host"
+      ansible.builtin.command: microk8s enable ingress
+      register: ingress_result
+      changed_when: "'Addon ingress is already enabled' not in ingress_result.stdout"
+      delegate_to: "{{ target_host }}"
+      become: yes
+
+    - name: "13 Apply Ingress configuration for tst/nginx"
+      kubernetes.core.k8s:
+        src: "{{ manifests_folder }}/{{ ingress_manifest }}"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+        state: present
+
+    - name: "14 Wait for Ingress Controller pods to be ready"
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: "{{ ingress_namespace }}"
+        label_selectors:
+          - "name=nginx-ingress-microk8s"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: ingress_pods
+      until: ingress_pods.resources | length > 0 and (ingress_pods.resources | map(attribute='status.phase') | list | unique == ['Running'])
+      retries: 10
+      delay: 10
+
+    - name: "15 Get Ingress Controller service details"
+      kubernetes.core.k8s_info:
+        kind: Service
+        namespace: "{{ ingress_namespace }}"
+        name: "{{ ingress_service_name }}"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: ingress_service
+      until: ingress_service.resources | length > 0 and ingress_service.resources[0].status is defined
+      retries: 10
+      delay: 10
+
+    - name: "16 Extract Ingress Controller ClusterIP"
+      ansible.builtin.set_fact:
+        ingress_cluster_ip: "{{ ingress_service.resources[0].spec.clusterIP }}"
+      when: ingress_service.resources | length > 0 and ingress_service.resources[0].spec.clusterIP is defined
+
+    - name: "17 Display Ingress ClusterIP"
+      ansible.builtin.debug:
+        msg: "Ingress Controller ClusterIP: {{ ingress_cluster_ip | default('Not found') }}"
+
+    - name: "18 Test Nginx URL using ClusterIP"
+      ansible.builtin.uri:
+        url: "http://{{ ingress_cluster_ip }}{{ nginx_context_path }}/{{ nginx_index_file }}"
+        method: GET
+        status_code: 200
+      register: nginx_test
+      until: nginx_test.status is defined and nginx_test.status == 200
+      retries: 6
+      delay: 10
+      when: ingress_cluster_ip is defined
+      delegate_to: "{{ target_host }}"
+      ignore_errors: yes
+
+    - name: "19 Display Nginx test result"
+      ansible.builtin.debug:
+        msg: >
+          Nginx test result: 
+          {% if nginx_test.status is defined and nginx_test.status == 200 %}
+          Success
+          {% else %}
+          Failed
+          {% endif %}
+          Status: {{ nginx_test.status | default('N/A') }}
+          {% if nginx_test.msg is defined %}
+          Error: {{ nginx_test.msg }}
+          {% endif %}
+
+    - name: "20 Fail the playbook if Nginx test failed"
+      ansible.builtin.fail:
+        msg: "Nginx test failed. Please check the Nginx configuration and try again."
+      when: nginx_test.status is undefined or nginx_test.status != 200
+
+    - name: "21 Display success message"
+      ansible.builtin.debug:
+        msg: >
+          Web server set up successfully and tested from {{ target_host }}.
+          Locally accessible URL: http://{{ ingress_cluster_ip }}{{ nginx_context_path }}/{{ nginx_index_file }}
+      when: nginx_test.status is defined and nginx_test.status == 200

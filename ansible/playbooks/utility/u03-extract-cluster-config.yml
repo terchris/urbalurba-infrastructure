@@ -1,0 +1,196 @@
+---
+# file: playbooks/utility/u03-extract-cluster-config.yml
+# Extract comprehensive Kubernetes cluster configuration and save it to a specified folder
+# e.g., ansible-playbook playbooks/utility/u03-extract-cluster-config.yml -e target_host="your_host_name"
+
+- hosts: localhost
+  gather_facts: false
+  vars:
+    config_extract_folder: "/mnt/urbalurbadisk/kubeconfig/extract"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    timestamp: "{{ lookup('pipe', 'date') }}"
+
+  tasks:
+    - name: "Task 1: Check if target_host is provided"
+      ansible.builtin.fail:
+        msg: "The variable 'target_host' is mandatory. Use -e target_host=your_host_name to specify it."
+      when: target_host is not defined
+
+    - name: "Task 2: Set kubectl context for target host"
+      ansible.builtin.command: >
+        kubectl config use-context {{ target_host }} --kubeconfig {{ merged_kubeconf_file }}
+      register: set_context_result
+
+    - name: "Task 3: Check if context was set successfully"
+      ansible.builtin.fail:
+        msg: "Failed to set kubectl context for {{ target_host }}"
+      when: set_context_result.rc != 0
+
+    - name: "Task 4: Print playbook description"
+      ansible.builtin.debug:
+        msg: "Extracting comprehensive Kubernetes cluster configuration for host: {{ target_host }} into folder: {{ config_extract_folder }}/{{ target_host }}."
+
+    - name: "Task 5: Ensure target directory exists"
+      ansible.builtin.file:
+        path: "{{ config_extract_folder }}/{{ target_host }}"
+        state: directory
+
+    - name: "Task 6: Delete existing contents in the target directory"
+      ansible.builtin.file:
+        path: "{{ config_extract_folder }}/{{ target_host }}"
+        state: absent
+
+    - name: "Task 7: Recreate target directory"
+      ansible.builtin.file:
+        path: "{{ config_extract_folder }}/{{ target_host }}"
+        state: directory
+
+    - name: "Task 8: Gather and save cluster information"
+      ansible.builtin.command: "kubectl get {{ item.resource }} {{ item.args | default('') }}"
+      loop:
+        - { resource: "nodes", args: "-o wide" }
+        - { resource: "namespaces" }
+        - { resource: "deployments", args: "--all-namespaces -o wide" }
+        - { resource: "statefulsets", args: "--all-namespaces -o wide" }
+        - { resource: "services", args: "--all-namespaces -o wide" }
+        - { resource: "ingress", args: "--all-namespaces -o wide" }
+        - { resource: "pods", args: "--all-namespaces -o wide" }
+        - { resource: "configmaps", args: "--all-namespaces" }
+        - { resource: "secrets", args: "--all-namespaces" }
+        - { resource: "storageclass" }
+        - { resource: "pvc", args: "--all-namespaces" }
+        - { resource: "crd" }
+        - { resource: "networkpolicies", args: "--all-namespaces" }
+        - { resource: "serviceaccounts", args: "--all-namespaces" }
+        - { resource: "clusterroles" }
+        - { resource: "clusterrolebindings" }
+        - { resource: "resourcequotas", args: "--all-namespaces" }
+        - { resource: "limitranges", args: "--all-namespaces" }
+        - { resource: "hpa", args: "--all-namespaces" }
+        - { resource: "pv" }
+      register: resource_output
+      
+    - name: "Task 9: Save resource information to files"
+      ansible.builtin.copy:
+        content: |
+          --------------------- {{ item.item.resource }} ---------------------
+          Filename: {{ config_extract_folder }}/{{ target_host }}/{{ item.item.resource }}.txt
+          Command: kubectl get {{ item.item.resource }} {{ item.item.args | default('') }}
+          Collected on: {{ timestamp }}
+
+          {{ item.stdout }}
+        dest: "{{ config_extract_folder }}/{{ target_host }}/{{ item.item.resource }}.txt"
+      loop: "{{ resource_output.results }}"
+
+    - name: "Task 10: Gather all container images"
+      ansible.builtin.command: >
+        kubectl get pods --all-namespaces -o jsonpath="{.items[*].spec.containers[*].image}"
+      register: all_images
+
+    - name: "Task 11: Filter and save specific image versions"
+      ansible.builtin.copy:
+        content: |
+          --------------------- {{ item.name }}_version ---------------------
+          Filename: {{ config_extract_folder }}/{{ target_host }}/{{ item.name }}_version.txt
+          Command: kubectl get pods --all-namespaces -o jsonpath="{.items[*].spec.containers[*].image}"
+          Collected on: {{ timestamp }}
+
+          {{ all_images.stdout | regex_findall(item.regex) | join(' ') }}
+        dest: "{{ config_extract_folder }}/{{ target_host }}/{{ item.name }}_version.txt"
+      loop:
+        - { name: "postgresql", regex: 'postgresql:[^ ]*' }
+        - { name: "redis", regex: 'redis:[^ ]*' }
+        - { name: "elasticsearch", regex: 'elasticsearch:[^ ]*' }
+
+    - name: "Task 12: Gather and save service details"
+      ansible.builtin.command: >
+        kubectl get svc --all-namespaces -l app.kubernetes.io/name={{ item }} -o wide
+      loop:
+        - postgresql
+        - redis
+        - elasticsearch
+      register: service_output
+
+    - name: "Task 13: Save service details to files"
+      ansible.builtin.copy:
+        content: |
+          --------------------- {{ item.item }}_service ---------------------
+          Filename: {{ config_extract_folder }}/{{ target_host }}/{{ item.item }}_service.txt
+          Command: kubectl get svc --all-namespaces -l app.kubernetes.io/name={{ item.item }} -o wide
+          Collected on: {{ timestamp }}
+
+          {{ item.stdout }}
+        dest: "{{ config_extract_folder }}/{{ target_host }}/{{ item.item }}_service.txt"
+      loop: "{{ service_output.results }}"
+
+    - name: "Task 14: Gather kubectl version"
+      ansible.builtin.command: kubectl version
+      register: kubectl_version
+
+    - name: "Task 15: Save kubectl version to file"
+      ansible.builtin.copy:
+        content: |
+          --------------------- kubectl_version ---------------------
+          Filename: {{ config_extract_folder }}/{{ target_host }}/kubectl_version.txt
+          Command: kubectl version
+          Collected on: {{ timestamp }}
+
+          {{ kubectl_version.stdout }}
+        dest: "{{ config_extract_folder }}/{{ target_host }}/kubectl_version.txt"
+
+    - name: "Task 16: Gather Node resource usage"
+      ansible.builtin.command: kubectl top nodes
+      register: node_resource_usage
+
+    - name: "Task 17: Save Node resource usage to file"
+      ansible.builtin.copy:
+        content: |
+          --------------------- node_resource_usage ---------------------
+          Filename: {{ config_extract_folder }}/{{ target_host }}/node_resource_usage.txt
+          Command: kubectl top nodes
+          Collected on: {{ timestamp }}
+
+          {{ node_resource_usage.stdout }}
+        dest: "{{ config_extract_folder }}/{{ target_host }}/node_resource_usage.txt"
+
+    - name: "Task 18: Gather Namespace resource quotas and usage"
+      ansible.builtin.command: kubectl get resourcequotas --all-namespaces -o yaml
+      register: namespace_resource_quotas
+
+    - name: "Task 19: Save Namespace resource quotas and usage to file"
+      ansible.builtin.copy:
+        content: |
+          --------------------- namespace_resource_quotas ---------------------
+          Filename: {{ config_extract_folder }}/{{ target_host }}/namespace_resource_quotas.txt
+          Command: kubectl get resourcequotas --all-namespaces -o yaml
+          Collected on: {{ timestamp }}
+
+          {{ namespace_resource_quotas.stdout }}
+        dest: "{{ config_extract_folder }}/{{ target_host }}/namespace_resource_quotas.txt"
+
+    - name: "Task 20: Gather Helm releases"
+      ansible.builtin.command: helm list --all-namespaces
+      register: helm_releases
+
+    - name: "Task 21: Save Helm releases to file"
+      ansible.builtin.copy:
+        content: |
+          --------------------- helm_releases ---------------------
+          Filename: {{ config_extract_folder }}/{{ target_host }}/helm_releases.txt
+          Command: helm list --all-namespaces
+          Collected on: {{ timestamp }}
+
+          {{ helm_releases.stdout }}
+        dest: "{{ config_extract_folder }}/{{ target_host }}/helm_releases.txt"
+
+    - name: "Task 22: Merge all TXT files into one"
+      ansible.builtin.shell: |
+        cat {{ config_extract_folder }}/{{ target_host }}/*.txt > {{ config_extract_folder }}/{{ target_host }}/vital-cluster-config.txt
+      args:
+        executable: /bin/bash
+
+    - name: "Task 23: Compress the merged file"
+      ansible.builtin.archive:
+        path: "{{ config_extract_folder }}/{{ target_host }}/vital-cluster-config.txt"
+        dest: "{{ config_extract_folder }}/{{ target_host }}/vital-cluster-config.tar.gz"
+        format: gz

@@ -1,0 +1,98 @@
+# 205-ollama-config.yaml
+# Description:
+# Deploys Ollama as a standalone service using the official Ollama Helm chart
+# Configured to use the qwen2:0.5b model (500M parameters)
+# Includes persistent storage for models
+# Uses the 'ai' namespace for all resources
+#
+# Usage:
+# Add the Ollama Helm repository:
+# helm repo add ollama-helm https://otwld.github.io/ollama-helm/
+# helm repo update
+#
+# Usage:
+# installing: helm install ollama ollama-helm/ollama -f 205-ollama-config.yaml -n ai --create-namespace
+# upgrading:  helm upgrade ollama ollama-helm/ollama -f 205-ollama-config.yaml -n ai
+# uninstalling: helm uninstall ollama --namespace ai
+#
+# Debug commands:
+# kubectl logs -f deployment/ollama -n ai | grep -v 'GET      "/"'
+# kubectl exec -it deployment/ollama -n ai -- ollama list
+# kubectl exec -it deployment/ollama -n ai -- ollama pull qwen2:0.5b
+# kubectl exec -it deployment/ollama -n ai -- ollama rm model-name
+# kubectl exec -it deployment/ollama -n ai -- ollama show qwen2:0.5b
+
+# Override the name to "ollama"
+fullnameOverride: "ollama"
+
+# Specify the namespace
+# Note: This won't create the namespace automatically
+# Use the 'ai' namespace for all Ollama-related resources
+namespaceOverride: "ai"
+
+# Number of replicas - keeping at 1 for model consistency
+replicaCount: 1
+
+# Container resource limits matching your current configuration
+resources:
+  requests:
+    memory: 2Gi
+    cpu: 500m
+  limits:
+    memory: 3Gi
+    cpu: 1000m
+
+# Persistent storage for model files
+persistentVolume:
+  enabled: true
+  existingClaim: "ollama-models"
+  accessModes:
+    - ReadWriteOnce
+  size: 15Gi  # Size still defined but won't be used when existingClaim is set
+  
+# Ollama specific configuration
+ollama:
+  # Configure model pulling and loading at startup
+  models:
+    pull:
+      - qwen2:0.5b
+    run:
+      - qwen2:0.5b
+  
+  # GPU acceleration (disabled by default)
+  gpu:
+    enabled: false
+    # Uncomment below if you have NVIDIA GPUs and want to use them
+    # type: 'nvidia'
+    # number: 1
+
+# Service configuration to expose Ollama
+service:
+  type: ClusterIP
+  port: 11434
+  
+# Adjust the probes for better stability
+livenessProbe:
+  enabled: true
+  initialDelaySeconds: 60
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 6
+
+readinessProbe:
+  enabled: true
+  initialDelaySeconds: 30
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 6
+
+# Optional environment variables
+extraEnv:
+  - name: OLLAMA_HOST
+    value: "0.0.0.0"
+  # Add any other Ollama-specific environment variables here
+
+# Deployment update strategy
+# Using Recreate since model loading doesn't support multiple concurrent instances well
+updateStrategy:
+  type: "Recreate"

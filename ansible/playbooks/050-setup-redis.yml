@@ -1,0 +1,136 @@
+---
+# file: playbooks/050-setup-redis.yml
+# Set up redis on microk8s cluster using the secrets defined
+# e.g., ansible-playbook playbooks/050-setup-redis.yml -e target_host="multipass-microk8s"
+# TODO: target_host is not used - so it will use the last contect in kubeconf-all
+
+- hosts: localhost
+  gather_facts: false
+  vars:
+    manifests_folder: "/mnt/urbalurbadisk/manifests"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+
+  tasks:
+    - name: Check if target_host is provided
+      ansible.builtin.fail:
+        msg: "The variable 'target_host' is mandatory. Use -e target_host=your_host_name to specify it."
+      when: target_host is not defined
+
+    - name: Print playbook description
+      ansible.builtin.debug:
+        msg: "Setting up redis on MicroK8s on Ubuntu host: {{ target_host }} with manifests from: {{ manifests_folder }}. Use -e target_host=your_host_name to change settings."
+
+    - name: Get Redis password from Kubernetes secrets
+      ansible.builtin.shell: >
+        kubectl get secret --namespace default urbalurba-secrets -o jsonpath="{.data.REDIS_PASSWORD}" --kubeconfig {{ merged_kubeconf_file }} | base64 -d
+      register: redis_password
+
+    - name: Set Redis password fact
+      ansible.builtin.set_fact:
+        redis_password_fact: "{{ redis_password.stdout }}"
+
+    - name: Debug Redis password (masked)
+      ansible.builtin.debug:
+        msg: "Redis password: {{ redis_password_fact | regex_replace('.', '*') }}"
+
+    - name: Deploy redis using Helm
+      ansible.builtin.command: >
+        helm install redis bitnami/redis 
+        -f {{ manifests_folder }}/050-redis-config.yaml 
+        --set global.redis.password={{ redis_password_fact | quote }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+
+    - name: Wait for redis pod to be ready
+      ansible.builtin.command: >
+        kubectl wait --for=condition=ready pod 
+        -l app.kubernetes.io/name=redis 
+        --timeout=180s 
+        --kubeconfig {{ merged_kubeconf_file }}
+      register: wait_result
+      until: wait_result.rc == 0
+      retries: 10
+      delay: 30
+
+    - name: Verify Redis service is running
+      ansible.builtin.command: kubectl get svc --namespace default --kubeconfig {{ merged_kubeconf_file }}
+      register: redis_svc
+
+    - name: Display Redis service details
+      ansible.builtin.debug:
+        var: redis_svc.stdout_lines
+
+    - name: Get Redis pod name
+      ansible.builtin.command: >
+        kubectl get pods -n default -l app.kubernetes.io/name=redis -o jsonpath='{.items[0].metadata.name}' 
+        --kubeconfig {{ merged_kubeconf_file }}
+      register: redis_pod_name
+
+    - name: Display Redis pod name
+      ansible.builtin.debug:
+        var: redis_pod_name.stdout
+
+    - name: Authenticate to Redis
+      ansible.builtin.command: >
+        kubectl exec -n default {{ redis_pod_name.stdout }} 
+        --kubeconfig {{ merged_kubeconf_file }} 
+        -- redis-cli --raw -a {{ redis_password_fact | quote }} AUTH {{ redis_password_fact | quote }}
+      register: redis_auth
+      no_log: true
+
+    - name: Display Redis auth result
+      ansible.builtin.debug:
+        msg: "Redis authentication {{ 'successful' if redis_auth.stdout == 'OK' else 'failed' }}"
+
+    - name: Ping Redis
+      ansible.builtin.command: >
+        kubectl exec -n default {{ redis_pod_name.stdout }} 
+        --kubeconfig {{ merged_kubeconf_file }} 
+        -- redis-cli --raw -a {{ redis_password_fact | quote }} PING
+      register: redis_ping
+
+    - name: Display Redis ping result
+      ansible.builtin.debug:
+        var: redis_ping.stdout
+
+    - name: Check if Redis is working
+      ansible.builtin.fail:
+        msg: "Redis connection test failed. PING response: {{ redis_ping.stdout }}"
+      when: "'PONG' not in redis_ping.stdout"
+
+    - name: Confirm Redis is working
+      ansible.builtin.debug:
+        msg: "Redis is working correctly"
+      when: "'PONG' in redis_ping.stdout"
+
+    - name: Set a key in Redis
+      ansible.builtin.command: >
+        kubectl exec -n default {{ redis_pod_name.stdout }} 
+        --kubeconfig {{ merged_kubeconf_file }} 
+        -- redis-cli --raw -a {{ redis_password_fact | quote }} SET hello world
+      register: set_redis_key
+
+    - name: Display set key result
+      ansible.builtin.debug:
+        var: set_redis_key.stdout
+
+    - name: Get the key from Redis
+      ansible.builtin.command: >
+        kubectl exec -n default {{ redis_pod_name.stdout }} 
+        --kubeconfig {{ merged_kubeconf_file }} 
+        -- redis-cli --raw -a {{ redis_password_fact | quote }} GET hello
+      register: get_redis_key
+
+    - name: Display get key result
+      ansible.builtin.debug:
+        var: get_redis_key.stdout
+
+    - name: Check if key set and get is working
+      ansible.builtin.fail:
+        msg: "Redis set and get key test failed. Expected 'world', got '{{ get_redis_key.stdout }}'"
+      when: "'world' not in get_redis_key.stdout"
+
+    - name: Confirm Redis set and get key is working
+      ansible.builtin.debug:
+        msg: "Redis set and get key is working correctly"
+      when: "'world' in get_redis_key.stdout"

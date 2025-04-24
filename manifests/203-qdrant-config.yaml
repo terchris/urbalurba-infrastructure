@@ -1,0 +1,113 @@
+# 203-qdrant-config.yaml
+# Description:
+# Installs Qdrant as a vector database for Open WebUI, replacing the default ChromaDB
+# Includes persistent storage for Qdrant data
+# 
+# Requirements:
+# Helm repo: qdrant/qdrant-helm should be added to your helm repos
+#
+# Usage:
+# installing: helm install qdrant qdrant/qdrant -f 203-qdrant-config.yaml -n ai --create-namespace
+# upgrading:  helm upgrade qdrant qdrant/qdrant -f 203-qdrant-config.yaml -n ai
+# uninstalling: helm uninstall qdrant -n ai
+#
+# Some debugging commands:
+# check pod status: kubectl get pods -n ai | grep qdrant
+# view logs: kubectl logs -f statefulset/qdrant -n ai
+# port-forward for direct API access: kubectl port-forward svc/qdrant 6333:6333 -n ai
+# test API: curl http://localhost:6333/collections
+
+# Set to single node for simplicity, increase for production
+replicaCount: 1
+
+image:
+  repository: docker.io/qdrant/qdrant
+  pullPolicy: IfNotPresent
+  # Empty tag uses the chart's appVersion
+
+# Pod configuration
+podAnnotations:
+  app.kubernetes.io/part-of: "open-webui-stack"
+
+# Required resources
+resources:
+  requests:
+    memory: 512Mi
+    cpu: 200m
+  limits:
+    memory: 1Gi
+    cpu: 500m
+
+# Persistent storage for vector data
+persistence:
+  accessModes: ["ReadWriteOnce"]
+  existingClaim: "qdrant-data"
+  size: 12Gi
+
+# Enable snapshot persistence for backup and recovery
+snapshotPersistence:
+  enabled: true
+  accessModes: ["ReadWriteOnce"]
+  existingClaim: "qdrant-snapshots"
+  size: 5Gi
+
+# Service configuration to make Qdrant available to Open WebUI
+service:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 6333
+      targetPort: 6333
+      protocol: TCP
+      checksEnabled: true
+    - name: grpc
+      port: 6334
+      targetPort: 6334
+      protocol: TCP
+      checksEnabled: false
+
+# Qdrant configuration
+config:
+  storage:
+    optimizers:
+      # Enable vector index optimizations
+      deleted_threshold: 0.2
+      vacuum_min_vector_number: 1000
+      default_segment_number: 2
+    performance:
+      # For small setups, adjust these values
+      max_search_threads: 1
+      max_optimization_threads: 1
+  service:
+    # Enable telemetry for health monitoring
+    telemetry_disabled: false
+  # API key for securing Qdrant endpoints
+  auth:
+    enabled: true
+    # The API key will be set through env variable
+
+# Use environment variables for API keys instead of direct configuration
+# This allows us to use Kubernetes secrets
+env:
+  - name: QDRANT_API_KEY
+    valueFrom:
+      secretKeyRef:
+        name: urbalurba-secrets
+        key: OPENWEBUI_QDRANT_API_KEY
+
+# Configure metrics endpoint for monitoring
+metrics:
+  serviceMonitor:
+    enabled: false  # Set to true if using Prometheus
+
+# Add security context for running as non-root
+containerSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 2000
+  allowPrivilegeEscalation: false
+  privileged: false
+  readOnlyRootFilesystem: true
+
+podSecurityContext:
+  fsGroup: 3000

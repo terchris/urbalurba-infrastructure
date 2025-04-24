@@ -1,0 +1,234 @@
+---
+# file: playbooks/04-merge-kubeconf.yml
+# Purpose:
+# This playbook merges multiple Kubernetes configuration files (kubeconfig) into a single file
+# named 'kubeconf-all'. It also sets appropriate permissions and updates system-wide environment
+# variables to use the merged config file.
+#
+# Functionality:
+# 1. Identifies and copies all '*-kubeconf' files from a specified directory to a temporary location
+# 2. Modifies each kubeconfig file to ensure unique naming conventions
+# 3. Merges all modified kubeconfig files into a single file
+# 4. Sets the current context to the most recently modified kubeconfig
+# 5. Updates system-wide environment variables to use the merged kubeconfig file
+# 6. Verifies the merged configuration by listing contexts and pods
+#
+# Usage:
+# ansible-playbook 04-merge-kubeconf.yml
+# no parameters - 03-copy-microk8s-config.yml must be run first
+#
+# Note: This playbook is designed to run on provision-host
+#
+# Variables:
+# - kubernetes_files_path: Directory containing the kubeconfig files (default: "/mnt/urbalurbadisk/kubeconfig/")
+# - merged_kubeconf_file: Path and name of the merged kubeconfig file (default: "{kubernetes_files_path}kubeconf-all")
+#
+
+
+- name: Merge Kubeconfig Files and Set Permissions
+  hosts: localhost
+  gather_facts: true
+  become: false
+  vars:
+    kubernetes_files_path: "/mnt/urbalurbadisk/kubeconfig/"
+    temp_dir: "{{ kubernetes_files_path }}tmp"
+    merged_kubeconf_file: "{{ kubernetes_files_path }}kubeconf-all"
+    kubeconfig_owner: "ansible"
+    kubeconfig_group: "ansible"
+    update_patterns:
+      - { regexp: 'name: microk8s-cluster\b', replace: "name: BASENAME-cluster" }
+      - { regexp: 'cluster: microk8s-cluster\b', replace: "cluster: BASENAME-cluster" }
+      - { regexp: 'user: admin\b', replace: "user: admin-BASENAME" }
+      - { regexp: 'name: microk8s\b', replace: "name: BASENAME" }
+      - { regexp: '- name: admin\b', replace: "- name: admin-BASENAME" }
+
+  handlers:
+    - name: Inform user to reload system-wide environment
+      ansible.builtin.debug:
+        msg: >
+          KUBECONFIG environment variable has been added system-wide.
+          Please reload your shell or log out and log back in for the changes to take effect.
+
+  tasks:
+    - name: 1. Playbook running as user
+      ansible.builtin.debug:
+        msg: "Playbook running as user: {{ ansible_env.USER }}, Ansible connecting as: {{ ansible_user_id }}"
+
+    - name: 2. Check if kubectl is available
+      ansible.builtin.command: which kubectl
+      register: kubectl_check
+      changed_when: false
+      failed_when: kubectl_check.rc != 0
+
+    - name: 3. Check if kubernetes_files_path exists
+      ansible.builtin.stat:
+        path: "{{ kubernetes_files_path }}"
+      register: kubernetes_files_path_check
+
+    - name: 4. Fail if kubernetes_files_path does not exist
+      ansible.builtin.fail:
+        msg: "The path {{ kubernetes_files_path }} does not exist."
+      when: not kubernetes_files_path_check.stat.exists
+
+    - name: 5. Find all kubeconfig files
+      ansible.builtin.find:
+        paths: "{{ kubernetes_files_path }}"
+        patterns: "*-kubeconf"
+      register: kubeconfig_files
+
+    - name: 6. Ensure temporary directory is clean and exists
+      ansible.builtin.file:
+        path: "{{ temp_dir }}"
+        state: "{{ item }}"
+        mode: '0700'
+      loop:
+        - absent
+        - directory
+
+    - name: 7. Copy kubeconfig files to temporary directory
+      ansible.builtin.copy:
+        src: "{{ item.path }}"
+        dest: "{{ temp_dir }}/"
+        mode: '0600'
+      loop: "{{ kubeconfig_files.files }}"
+
+    - name: 8. Find all kubeconfig files in temp directory
+      ansible.builtin.find:
+        paths: "{{ temp_dir }}"
+        patterns: "*-kubeconf"
+      register: temp_kubeconfig_files
+
+    - name: 9. Get file stats for sorting
+      ansible.builtin.stat:
+        path: "{{ item.path }}"
+      loop: "{{ temp_kubeconfig_files.files }}"
+      register: file_stats
+
+    - name: 10. Sort kubeconfig files by modification time
+      ansible.builtin.set_fact:
+        sorted_kubeconfig_files: "{{ file_stats.results | sort(attribute='stat.mtime', reverse=true) }}"
+
+    - name: 11. Get the most recent kubeconfig file
+      ansible.builtin.set_fact:
+        most_recent_kubeconfig: "{{ sorted_kubeconfig_files | first }}"
+
+    - name: 12. Display the most recent kubeconfig file
+      ansible.builtin.debug:
+        var: most_recent_kubeconfig.stat.path
+
+    - name: 13. Apply update patterns to kubeconfig files
+      ansible.builtin.replace:
+        path: "{{ item[0].stat.path }}"
+        regexp: "{{ item[1].regexp }}"
+        replace: "{{ item[1].replace | regex_replace('BASENAME', item[0].stat.path | basename | regex_replace('-kubeconf$', '')) }}"
+      loop: "{{ sorted_kubeconfig_files | product(update_patterns) | list }}"
+      loop_control:
+        label: "Updating {{ item[0].stat.path | basename }} with pattern {{ item[1].regexp }}"
+
+    - name: 14. Merge all modified kubeconfig files
+      ansible.builtin.shell: |
+        set -o pipefail
+        if [ -n "$(find {{ temp_dir }} -type f -print -quit)" ]; then
+          KUBECONFIG=$(find {{ temp_dir }} -type f | tr '\n' ':') \
+            kubectl config view --flatten > {{ temp_dir }}/merged_config
+          mv {{ temp_dir }}/merged_config {{ merged_kubeconf_file }}
+          echo "Merged file created at {{ merged_kubeconf_file }}"
+        else
+          echo "No config files found in {{ temp_dir }}"
+          exit 1
+        fi
+      args:
+        executable: /bin/bash
+      register: merge_result
+      changed_when: "'Merged file created' in merge_result.stdout"
+      failed_when: merge_result.rc != 0
+
+    - name: 15. Clean up temporary directory
+      ansible.builtin.file:
+        path: "{{ temp_dir }}"
+        state: absent
+
+    - name: 16. Display file permissions
+      ansible.builtin.stat:
+        path: "{{ merged_kubeconf_file }}"
+      register: file_stats
+      when: merge_result is success
+
+    - name: 17. Show file permissions
+      ansible.builtin.debug:
+        msg: >
+          File {{ merged_kubeconf_file }} permissions:
+          mode: {{ file_stats.stat.mode }},
+          owner: {{ file_stats.stat.pw_name }},
+          group: {{ file_stats.stat.gr_name }}
+      when: merge_result is success
+
+    - name: 18. Get the base name of the most recent kubeconfig file
+      ansible.builtin.set_fact:
+        most_recent_basename: "{{ most_recent_kubeconfig.stat.path | basename | regex_replace('-kubeconf$', '') }}"
+
+    - name: 19. Set the current context based on the most recent kubeconfig file
+      ansible.builtin.command:
+        cmd: kubectl config use-context {{ most_recent_basename }} --kubeconfig {{ merged_kubeconf_file }}
+      register: set_context_result
+      changed_when: set_context_result.rc == 0
+
+    - name: 20. Verify the current context in the merged file
+      ansible.builtin.command:
+        cmd: kubectl config current-context --kubeconfig {{ merged_kubeconf_file }}
+      register: current_context_output
+      changed_when: false
+
+    - name: 21. Display the current context to verify
+      ansible.builtin.debug:
+        var: current_context_output.stdout
+
+    - name: 22. Fail if the context is not set correctly
+      ansible.builtin.fail:
+        msg: "Failed to set the context to {{ most_recent_basename }}. Current context is {{ current_context_output.stdout }}."
+      when: current_context_output.stdout != most_recent_basename
+
+    - name: 23. Add KUBECONFIG environment variable to system-wide profile
+      ansible.builtin.lineinfile:
+        path: "/etc/profile.d/kubeconfig.sh"
+        line: 'export KUBECONFIG="{{ merged_kubeconf_file }}"'
+        create: true
+        mode: '0644'
+      become: true
+      when: merge_result is success
+      notify: Inform user to reload system-wide environment
+
+    - name: 24. Add KUBECONFIG to /etc/environment
+      ansible.builtin.lineinfile:
+        path: "/etc/environment"
+        line: 'KUBECONFIG="{{ merged_kubeconf_file }}"'
+        regexp: '^KUBECONFIG='
+        create: true
+        mode: '0644'
+      become: true
+      when: merge_result is success
+      notify: Inform user to reload system-wide environment
+
+    - name: 25. List and display all contexts in the merged kubeconfig
+      ansible.builtin.command:
+        cmd: kubectl config get-contexts --kubeconfig {{ merged_kubeconf_file }}
+      register: contexts_output
+      changed_when: false
+      when: merge_result is success
+
+    - name: 26. Display all contexts
+      ansible.builtin.debug:
+        var: contexts_output.stdout_lines
+      when: merge_result is success and contexts_output.stdout_lines | length > 0
+
+    - name: 27. List all pods in the current context
+      ansible.builtin.command:
+        cmd: kubectl get pods --all-namespaces --kubeconfig {{ merged_kubeconf_file }}
+      register: pods_output
+      changed_when: false
+      when: merge_result is success and current_context_output.stdout != ""
+
+    - name: 28. Display the list of pods
+      ansible.builtin.debug:
+        var: pods_output.stdout_lines
+      when: merge_result is success and pods_output.stdout_lines is defined and pods_output.stdout_lines | length > 0

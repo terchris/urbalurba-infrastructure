@@ -1,0 +1,17 @@
+# inventory.yml file
+# All hosts that do not have a valid DNS name must be registered in this file
+
+all:
+  hosts:
+    multipass-microk8s:
+      ansible_host: 192.168.64.x
+    provision-host:
+      ansible_host: 192.168.64.y
+    lena:
+      ansible_host: 192.168.68.z
+    azure-host:
+      ansible_host: x.x.x.x
+    macaroni:
+      ansible_host: z.z.z.z
+    dag:
+      ansible_host: y.y.y.y

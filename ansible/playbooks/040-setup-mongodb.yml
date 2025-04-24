@@ -1,0 +1,235 @@
+---
+# file: ansible/playbooks/040-setup-mongodb.yml
+# Set up MongoDB on kubernetes cluster using direct manifests
+# e.g., ansible-playbook playbooks/040-setup-mongodb.yml -e target_host="rancher-desktop"
+
+- hosts: localhost
+  gather_facts: false
+  vars:
+    manifests_folder: "/mnt/urbalurbadisk/manifests"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    mongodb_config_path: "{{ manifests_folder }}/040-mongodb-config.yaml"
+    mongodb_namespace: "default"  # Using default namespace for simplicity
+
+  tasks:
+    - name: 1. Get current Kubernetes context if kube_context not provided
+      ansible.builtin.shell: |
+        kubectl config current-context
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: current_context
+      changed_when: false
+      when: kube_context is not defined
+      
+    - name: 2. Set kube_context from current context if not provided
+      ansible.builtin.set_fact:
+        kube_context: "{{ current_context.stdout }}"
+      when: kube_context is not defined
+
+    - name: 3. Print playbook description
+      ansible.builtin.debug:
+        msg: "Setting up ARM-compatible MongoDB 8.0.5 on Kubernetes context: {{ kube_context }}"
+        
+    - name: 4. Check if urbalurba-secrets exists
+      ansible.builtin.command: kubectl get secret urbalurba-secrets -n {{ mongodb_namespace }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: secret_check
+      ignore_errors: true
+      changed_when: false
+      
+    - name: 5. Fail if urbalurba-secrets does not exist
+      ansible.builtin.fail:
+        msg: "The urbalurba-secrets secret does not exist. It must be created before running this playbook."
+      when: secret_check.rc != 0
+        
+    - name: 6. Check if all required MongoDB secret keys exist
+      ansible.builtin.shell: |
+        SECRET_DATA=$(kubectl get secret urbalurba-secrets -n {{ mongodb_namespace }} -o json | jq -r '.data | keys[]')
+        MISSING_KEYS=""
+
+        # Check for each required key
+        for KEY in "MONGODB_ROOT_USER" "MONGODB_ROOT_PASSWORD" "GRAVITEE_MONGODB_DATABASE_USER" "GRAVITEE_MONGODB_DATABASE_PASSWORD" "GRAVITEE_MONGODB_DATABASE_NAME"; do
+          if ! echo "$SECRET_DATA" | grep -q "$KEY"; then
+            MISSING_KEYS="${MISSING_KEYS}${KEY} "
+          fi
+        done
+
+        # If any keys are missing, exit with error
+        if [ -n "$MISSING_KEYS" ]; then
+          echo "Missing required secret keys: $MISSING_KEYS"
+          exit 1
+        fi
+        
+        echo "All required MongoDB and Elasticsearch secret keys found"
+        exit 0
+      args:
+        executable: /bin/bash
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: mongodb_keys_check
+      changed_when: false
+      failed_when: mongodb_keys_check.rc != 0
+      
+    - name: 7. Fail with clear error message if MongoDB secrets are not properly set
+      ansible.builtin.fail:
+        msg: |
+          ERROR: MongoDB secret keys are not properly set in urbalurba-secrets.
+          Please ensure the following keys are set before running this playbook:
+          - MONGODB_ROOT_USER
+          - MONGODB_ROOT_PASSWORD
+          - GRAVITEE_MONGODB_DATABASE_USER
+          - GRAVITEE_MONGODB_DATABASE_PASSWORD
+          - GRAVITEE_MONGODB_DATABASE_NAME
+      when: mongodb_keys_check.rc != 0
+
+    - name: 8. Apply MongoDB manifests
+      ansible.builtin.command: kubectl apply -f {{ mongodb_config_path }} --validate=true
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: apply_result
+
+    - name: 8. Display apply result
+      ansible.builtin.debug:
+        var: apply_result.stdout_lines
+
+    - name: 9. Wait for MongoDB StatefulSet rollout
+      ansible.builtin.command: >
+        kubectl rollout status statefulset/mongodb --timeout=300s
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: rollout_result
+
+    - name: 10. Wait for MongoDB pod to be ready
+      ansible.builtin.command: >
+        kubectl wait --for=condition=ready pod 
+        -l app=mongodb
+        --timeout=300s
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: wait_result
+      until: wait_result.rc == 0
+      retries: 10
+      delay: 30
+
+    - name: 11. Get MongoDB pod name
+      ansible.builtin.command: >
+        kubectl get pods -l app=mongodb -o jsonpath='{.items[0].metadata.name}'
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: mongodb_pod_name
+
+    - name: 12. Display MongoDB pod name
+      ansible.builtin.debug:
+        var: mongodb_pod_name.stdout
+
+    - name: 13. Get MongoDB service ClusterIP
+      ansible.builtin.command: >
+        kubectl get svc mongodb -o jsonpath='{.spec.clusterIP}'
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: mongodb_ip
+
+    - name: 14. Display MongoDB ClusterIP
+      ansible.builtin.debug:
+        var: mongodb_ip.stdout
+
+    - name: 15. Get root username and password from secrets
+      ansible.builtin.shell: |
+        ROOT_USER=$(kubectl get secret urbalurba-secrets -n {{ mongodb_namespace }} -o jsonpath='{.data.MONGODB_ROOT_USER}' | base64 -d)
+        ROOT_PASSWORD=$(kubectl get secret urbalurba-secrets -n {{ mongodb_namespace }} -o jsonpath='{.data.MONGODB_ROOT_PASSWORD}' | base64 -d)
+        echo "${ROOT_USER}:${ROOT_PASSWORD}"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: root_credentials
+      changed_when: false
+      no_log: true
+
+    - name: 16. Check MongoDB is running with admin authentication
+      ansible.builtin.shell: |
+        ROOT_USER=$(echo "{{ root_credentials.stdout }}" | cut -d':' -f1)
+        ROOT_PASSWORD=$(echo "{{ root_credentials.stdout }}" | cut -d':' -f2)
+        kubectl exec {{ mongodb_pod_name.stdout }} -- mongosh --quiet --eval "db.adminCommand('ping')" --username "$ROOT_USER" --password "$ROOT_PASSWORD" --authenticationDatabase admin
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: mongodb_ping
+      ignore_errors: true
+      no_log: true
+
+    - name: 17. Display MongoDB ping result
+      ansible.builtin.debug:
+        var: mongodb_ping.stdout_lines
+
+    - name: 18. Get Gravitee user credentials from secrets
+      ansible.builtin.shell: |
+        GRAV_USER=$(kubectl get secret urbalurba-secrets -n {{ mongodb_namespace }} -o jsonpath='{.data.GRAVITEE_MONGODB_DATABASE_USER}' | base64 -d)
+        GRAV_PASSWORD=$(kubectl get secret urbalurba-secrets -n {{ mongodb_namespace }} -o jsonpath='{.data.GRAVITEE_MONGODB_DATABASE_PASSWORD}' | base64 -d)
+        GRAV_DB=$(kubectl get secret urbalurba-secrets -n {{ mongodb_namespace }} -o jsonpath='{.data.GRAVITEE_MONGODB_DATABASE_NAME}' | base64 -d)
+        echo "${GRAV_USER}:${GRAV_PASSWORD}:${GRAV_DB}"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: gravitee_credentials
+      changed_when: false
+      no_log: true
+
+    - name: 19. Test gravitee user authentication
+      ansible.builtin.shell: |
+        GRAV_USER=$(echo "{{ gravitee_credentials.stdout }}" | cut -d':' -f1)
+        GRAV_PASSWORD=$(echo "{{ gravitee_credentials.stdout }}" | cut -d':' -f2)
+        kubectl exec {{ mongodb_pod_name.stdout }} -- mongosh --quiet --eval "db.runCommand({connectionStatus:1})" --username "$GRAV_USER" --password "$GRAV_PASSWORD" --authenticationDatabase admin
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: mongodb_user_test
+      ignore_errors: true
+      no_log: true
+
+    - name: 20. Display gravitee user test result
+      ansible.builtin.debug:
+        var: mongodb_user_test.stdout_lines
+
+    - name: 21. Display connection information
+      ansible.builtin.shell: |
+        GRAV_USER=$(echo "{{ gravitee_credentials.stdout }}" | cut -d':' -f1)
+        GRAV_PASSWORD=$(echo "{{ gravitee_credentials.stdout }}" | cut -d':' -f2) 
+        GRAV_DB=$(echo "{{ gravitee_credentials.stdout }}" | cut -d':' -f3)
+        echo "MongoDB 8.0.5 has been successfully deployed:"
+        echo "- Pod name: {{ mongodb_pod_name.stdout }}"
+        echo "- MongoDB service: mongodb.{{ mongodb_namespace }}.svc.cluster.local"
+        echo "- Connection string for applications: mongodb://${GRAV_USER}:${GRAV_PASSWORD}@mongodb.{{ mongodb_namespace }}.svc.cluster.local:27017/${GRAV_DB}?authSource=admin"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: connection_info
+      no_log: true
+
+    - name: 22. Show connection information (masked passwords)
+      ansible.builtin.shell: |
+        GRAV_USER=$(echo "{{ gravitee_credentials.stdout }}" | cut -d':' -f1)
+        GRAV_DB=$(echo "{{ gravitee_credentials.stdout }}" | cut -d':' -f3)
+        echo "MongoDB 8.0.5 has been successfully deployed:"
+        echo "- Pod name: {{ mongodb_pod_name.stdout }}"
+        echo "- MongoDB service: mongodb.{{ mongodb_namespace }}.svc.cluster.local"
+        echo "- Connection string for applications: mongodb://${GRAV_USER}:******@mongodb.{{ mongodb_namespace }}.svc.cluster.local:27017/${GRAV_DB}?authSource=admin"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: connection_info_masked
+      changed_when: false
+
+    - name: 23. Display connection information
+      ansible.builtin.debug:
+        msg: "{{ connection_info_masked.stdout_lines }}"
+
+    - name: 24. Verify if the test collection was created
+      ansible.builtin.shell: |
+        GRAV_USER=$(echo "{{ gravitee_credentials.stdout }}" | cut -d':' -f1)
+        GRAV_PASSWORD=$(echo "{{ gravitee_credentials.stdout }}" | cut -d':' -f2)
+        GRAV_DB=$(echo "{{ gravitee_credentials.stdout }}" | cut -d':' -f3)
+        kubectl exec {{ mongodb_pod_name.stdout }} -- mongosh --quiet --eval "db.getSiblingDB('${GRAV_DB}').test.find({}).toArray()" --username "$GRAV_USER" --password "$GRAV_PASSWORD" --authenticationDatabase admin
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: test_collection
+      ignore_errors: true
+      no_log: true
+
+    - name: 25. Display test collection data
+      ansible.builtin.debug:
+        var: test_collection.stdout_lines

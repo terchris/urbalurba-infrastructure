@@ -1,0 +1,23 @@
+# File: 000-storage-class-alias.yaml
+# Description: Creates a storage class alias to ensure storage compatibility across different Kubernetes distributions
+#
+# Purpose:
+# - Creates a storage class named 'microk8s-hostpath' that points to the local storage provisioner
+# - Enables manifests that expect microk8s storage class to work on other Kubernetes distributions
+# - Must be applied before any other manifests that use storage
+#
+# Usage:
+# kubectl apply -f manifests/000-storage-class-alias.yaml
+# Verify: kubectl get storageclasses microk8s-hostpath
+#
+# Note: This manifest should be the first one applied after setting up a new Kubernetes cluster
+
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: microk8s-hostpath
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "false"
+provisioner: rancher.io/local-path  # This is Rancher Desktop's provisioner
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer 

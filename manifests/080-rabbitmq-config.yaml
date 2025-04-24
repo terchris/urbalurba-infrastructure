@@ -1,0 +1,74 @@
+---
+# 080-rabbitmq-config.yaml
+# Installs RabbitMQ message broker using Bitnami Helm chart
+# Usage: 
+# installing: helm install rabbitmq bitnami/rabbitmq -f 080-rabbitmq-config.yaml
+# uninstalling: helm uninstall rabbitmq
+
+## RabbitMQ service type - using ClusterIP for consistency with other services
+service:
+  type: ClusterIP
+
+## Single replica for simple deployment
+replicaCount: 1
+
+## Lower resource requirements to ensure it can run in constrained environments
+resources:
+  requests:
+    memory: "128Mi"
+    cpu: "100m"
+  limits:
+    memory: "256Mi"
+    cpu: "200m"
+
+## Authentication - simplify to prevent issues
+auth:
+  username: user
+  password: "bitnami"
+  # Generate a random Erlang cookie instead of using a fixed one
+  # This helps prevent cookie mismatch issues
+  generateErlangCookie: true
+  
+## Disable plugins that are not essential for basic operation
+## The management plugin will still be enabled by default
+plugins: "rabbitmq_management"
+
+## Persistence configuration
+persistence:
+  enabled: true
+  ## If defined, storageClassName: <storageClass>
+  ## If set to "-", storageClassName: "", which disables dynamic provisioning
+  ## If undefined (the default) or set to null, no storageClassName is specified
+  ##
+  # storageClassName: ""
+  ## PVC Size
+  size: 8Gi
+  ## Access mode
+  accessMode: ReadWriteOnce
+
+## Metrics configuration - disabled for minimal setup
+metrics:
+  enabled: false
+  
+## Reduce memory high watermark to prevent memory issues
+extraConfiguration: |
+  vm_memory_high_watermark.relative = 0.4
+  
+## Reduce Java heap size
+livenessProbe:
+  enabled: true
+  initialDelaySeconds: 120
+  timeoutSeconds: 20
+  periodSeconds: 30
+  failureThreshold: 6
+  successThreshold: 1
+
+readinessProbe:
+  enabled: true
+  initialDelaySeconds: 10
+  timeoutSeconds: 20
+  periodSeconds: 30
+  failureThreshold: 3
+  successThreshold: 1
+  
+# Using default image settings from the chart

@@ -1,0 +1,78 @@
+#jinja2: trim_blocks: True, lstrip_blocks: True
+# 751-cloudflare-tunnel-base.yaml.j2
+#
+# This template generates a Kubernetes manifest for setting up a Cloudflare tunnel.
+# It creates the following resources:
+#   1. A Deployment running the cloudflared tunnel
+#   2. A ConfigMap with the tunnel configuration
+#
+# Variables used:
+#   - full_tunnel_name: The full name of the Cloudflare tunnel
+#   - tunnel_id: The ID of the Cloudflare tunnel
+#   - domain: The main domain for the tunnel
+#   - subdomains: List of subdomains to create ingress rules for
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ full_tunnel_name }}
+  namespace: default
+  labels:
+    app: cloudflared
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cloudflared
+  template:
+    metadata:
+      labels:
+        app: cloudflared
+    spec:
+      containers:
+      - name: cloudflared
+        image: cloudflare/cloudflared:latest
+        args:
+        - tunnel
+        - --config
+        - /etc/cloudflared/config/config.yaml
+        - run
+        volumeMounts:
+        - name: config
+          mountPath: /etc/cloudflared/config
+          readOnly: true
+        - name: creds
+          mountPath: /etc/cloudflared/creds
+          readOnly: true
+      volumes:
+      - name: config
+        configMap:
+          name: {{ full_tunnel_name }}-config
+      - name: creds
+        secret:
+          secretName: {{ full_tunnel_name }}-credentials
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ full_tunnel_name }}-config
+  namespace: default
+data:
+  config.yaml: |
+    tunnel: {{ tunnel_id }}
+    credentials-file: /etc/cloudflared/creds/credentials.json
+    ingress:
+    {% for subdomain in subdomains %}
+      - hostname: {{ subdomain }}.{{ domain }}
+        service: http://ingress.ingress.svc.cluster.local
+    {% endfor %}
+      - service: http_status:404
+
+# Notes:
+# - This template assumes that the Secret containing the Cloudflare credentials
+#   has already been created separately.
+# - The ingress rules in the ConfigMap assume there's an existing Service named 'ingress'
+#   in the 'ingress' namespace that routes to your test nginx service.
+# - Adjust the service URL (http://ingress.ingress.svc.cluster.local) if your 
+#   service has a different name or is in a different namespace.

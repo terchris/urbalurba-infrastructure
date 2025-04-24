@@ -1,0 +1,51 @@
+# file playbooks/030-logging-monitoring.yml
+# Set up logging and monitoring (Prometheus, Grafana, Loki) on MicroK8s
+# e.g., ansible-playbook playbooks/030-logging-monitoring.yml -e target_host="multipass-microk8s"
+
+- hosts: localhost
+  gather_facts: no
+  vars:
+    manifests_folder: "/mnt/urbalurbadisk/manifests"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+
+  tasks:
+    - name: Check if target_host is provided
+      ansible.builtin.fail:
+        msg: "The variable 'target_host' is mandatory. Use -e target_host=your_host_name to specify it."
+      when: target_host is not defined
+
+    - name: Print playbook description
+      ansible.builtin.debug:
+        msg: "Setting up logging and monitoring on MicroK8s on Ubuntu host: {{ target_host }} with manifests from: {{ manifests_folder }}. Use -e target_host=your_host_name to change settings."
+
+    - name: Add target host to the inventory with necessary variables
+      ansible.builtin.add_host:
+        name: "{{ target_host }}"
+        ansible_ssh_common_args: "-o StrictHostKeyChecking=no"
+        manifests_folder: "{{ manifests_folder }}"
+        merged_kubeconf_file: "{{ merged_kubeconf_file }}"
+
+- hosts: "{{ target_host }}"
+  become: yes
+  gather_facts: yes
+
+  tasks:
+    - name: Enable observability add-on in MicroK8s
+      ansible.builtin.command:
+        cmd: microk8s enable observability
+      register: observability_result
+      changed_when: "'Addon observability is already enabled' not in observability_result.stderr"
+      retries: 3
+      delay: 5
+      until: observability_result is succeeded
+
+- hosts: localhost
+  gather_facts: no
+  vars:
+    manifests_folder: "/mnt/urbalurbadisk/manifests"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+
+  tasks:
+    - name: TODO setup ingress for Grafana
+      ansible.builtin.debug:
+        msg: "TODO: setup ingress for Grafana"

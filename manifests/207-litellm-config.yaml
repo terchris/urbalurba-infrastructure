@@ -1,0 +1,195 @@
+# 207-litellm-config.yaml
+# 
+# Description:
+# LiteLLM proxy configuration with multiple model sources:
+# 1. In-cluster Ollama qwen2:0.5b model (always available)
+# 2. Local Mac Ollama deepseek-r1 model (always available)
+# 3. External Mac Ollama gemma3:4b model (requires network access to 192.168.68.61)
+# 4. Cloud provider models (available when valid API keys are provided)
+# 
+# Usage:
+# installing: helm upgrade --install litellm -f 207-litellm-config.yaml oci://ghcr.io/berriai/litellm-helm --namespace ai --create-namespace
+# upgrading:  helm upgrade litellm -f 207-litellm-config.yaml oci://ghcr.io/berriai/litellm-helm --namespace ai
+# uninstalling: helm uninstall litellm --namespace ai
+#
+# Prerequisites:
+# 1. Ensure Ollama is running on your Macs (check with: curl http://localhost:11434/api/tags on each Mac)
+# 2. The 'urbalurba-secrets' secret must exist with required keys
+# 3. Network connectivity to 192.168.68.61:11434 for the external Mac model
+#
+# API Keys:
+# - Valid API keys must be set in the 'urbalurba-secrets' secret for cloud models to work
+# - Models with invalid/dummy keys will appear in the model list but will fail when called
+# - Update keys in the secret without changing this config file to activate cloud models:
+#   kubectl edit secret urbalurba-secrets -n ai
+#
+# Testing:
+# 1. Get your master key from the secret:
+#    LITELLM_PROXY_MASTER_KEY=$(kubectl get secret urbalurba-secrets -n ai -o jsonpath="{.data.LITELLM_PROXY_MASTER_KEY}" | base64 --decode)
+#
+# 2. Forward the LiteLLM port to your local machine:
+#    kubectl port-forward svc/litellm 4000:4000 -n ai
+#
+# 3. List available models:
+#    curl -X GET http://localhost:4000/v1/models -H "Authorization: Bearer $LITELLM_PROXY_MASTER_KEY"
+#
+# 4. Test completion with the in-cluster Qwen model:
+#    curl -X POST http://localhost:4000/v1/chat/completions \
+#      -H "Content-Type: application/json" \
+#      -H "Authorization: Bearer $LITELLM_PROXY_MASTER_KEY" \
+#      -d '{"model": "qwen2", "messages": [{"role": "user", "content": "Tell me a short joke"}]}'
+#
+# 5. Test completion with the Mac DeepSeek model:
+#    curl -X POST http://localhost:4000/v1/chat/completions \
+#      -H "Content-Type: application/json" \
+#      -H "Authorization: Bearer $LITELLM_PROXY_MASTER_KEY" \
+#      -d '{"model": "deepseek-r1", "messages": [{"role": "user", "content": "What capabilities do you have as an AI model?"}]}'
+#
+# 6. Test completion with external Mac with gemma3:4b:
+#    curl -X POST http://localhost:4000/v1/chat/completions \
+#      -H "Content-Type: application/json" \
+#      -H "Authorization: Bearer $LITELLM_PROXY_MASTER_KEY" \
+#      -d '{"model": "external-ollama-gemma3", "messages": [{"role": "user", "content": "Explain quantum computing in simple terms"}]}'
+
+
+# Container image configuration
+image:
+  repository: ghcr.io/berriai/litellm-database
+  pullPolicy: Always
+  tag: "main-latest"
+
+# Reference to Kubernetes secrets with env vars
+environmentSecrets:
+  - urbalurba-secrets
+
+# Master key for authentication
+masterkeySecretName: urbalurba-secrets
+masterkeySecretKey: LITELLM_PROXY_MASTER_KEY
+
+# Configure the proxy with fallbacks and error handling
+proxy_config:
+  # Configure general settings for reliable operation
+  general_settings:
+    # If cloud models fail, still allow local models to work
+    allow_model_caching_in_memory: True
+    # Return useful error messages
+    detailed_error_messaging: True
+  
+  # Configure router settings for better reliability
+  router_settings:
+    routing_strategy: "simple-shuffle"
+    # Define fallbacks from cloud models to local models
+    fallbacks: [
+      {"gpt-4o": ["deepseek-r1", "external-ollama-gemma3", "qwen2"]},
+      {"claude-3-opus": ["deepseek-r1", "external-ollama-gemma3", "qwen2"]},
+      {"gpt-3.5-turbo": ["external-ollama-gemma3", "qwen2"]}
+    ]
+  
+  # LiteLLM settings
+  litellm_settings:
+    # Set a reasonable timeout
+    request_timeout: 120
+    # Enable fallbacks for content policy errors
+    content_policy_fallbacks: [
+      {"gpt-4o": ["deepseek-r1", "external-ollama-gemma3", "qwen2"]},
+      {"claude-3-opus": ["deepseek-r1", "external-ollama-gemma3", "qwen2"]}
+    ]
+    # Retry on connection issues (helps with intermittent network problems)
+    num_retries: 3
+  
+  # Model list configuration
+  model_list:
+    # In-cluster Ollama model (always available)
+    - model_name: qwen2
+      litellm_params:
+        model: ollama/qwen2:0.5b
+        api_base: "http://ollama:11434"
+        temperature: 0.7
+        max_tokens: 1000
+        stop: ["<|im_start|>", "<|im_end|>"]
+      model_info:
+        description: "Qwen2 0.5B model running on in-cluster Ollama"
+        status: "active"
+        input_cost_per_token: 0
+        output_cost_per_token: 0
+        max_input_tokens: 32768
+        mode: "chat"
+    
+    # First Mac Ollama model (always available)
+    - model_name: deepseek-r1
+      litellm_params:
+        model: ollama/deepseek-r1
+        api_base: "http://host.docker.internal:11434"
+        temperature: 0.7
+        max_tokens: 2000
+        stop: ["<|im_start|>", "<|im_end|>"]
+      model_info:
+        description: "DeepSeek R1 model running on local Mac Ollama"
+        status: "active"
+        input_cost_per_token: 0
+        output_cost_per_token: 0
+        max_input_tokens: 4096
+        mode: "chat"
+    
+    # External Mac Ollama gemma3:4b model
+    - model_name: external-ollama-gemma3
+      litellm_params:
+        model: ollama/gemma3:4b
+        api_base: "http://192.168.68.61:11434"
+        temperature: 0.7
+        max_tokens: 2000
+        stop: ["<|im_start|>", "<|im_end|>"]
+      model_info:
+        description: "Gemma 3 4B model running on external Mac Ollama"
+        status: "active"
+        input_cost_per_token: 0
+        output_cost_per_token: 0
+        max_input_tokens: 8192
+        max_output_tokens: 2000
+        mode: "chat"
+        architecture: "gemma3"
+        parameters: "4B"
+    
+    # OpenAI GPT-4o (requires valid API key)
+    - model_name: gpt-4o
+      litellm_params:
+        model: openai/gpt-4o
+        api_key: "os.environ/OPENAI_API_KEY"
+        max_tokens: 4000
+      model_info:
+        description: "GPT-4o from OpenAI (requires valid API key in secret)"
+        status: "requires_api_key"
+        input_cost_per_token: 0.00005
+        output_cost_per_token: 0.00015
+        max_input_tokens: 128000
+        mode: "chat"
+    
+    # Azure OpenAI model (requires valid API key)
+    - model_name: azure-gpt-4
+      litellm_params:
+        model: azure/gpt-4
+        api_base: "os.environ/AZURE_API_BASE"
+        api_key: "os.environ/AZURE_API_KEY"
+        api_version: "2023-07-01-preview"
+        max_tokens: 4000
+      model_info:
+        description: "GPT-4 deployed on Azure OpenAI (requires valid Azure credentials in secret)"
+        status: "requires_api_key"
+        input_cost_per_token: 0.00003
+        output_cost_per_token: 0.00006
+        max_input_tokens: 8192
+        mode: "chat"
+    
+    # Anthropic Claude model (requires valid API key)
+    - model_name: claude-3-opus
+      litellm_params:
+        model: anthropic/claude-3-opus-20240229
+        api_key: "os.environ/ANTHROPIC_API_KEY"
+        max_tokens: 4000
+      model_info:
+        description: "Claude 3 Opus from Anthropic (requires valid API key in secret)"
+        status: "requires_api_key"
+        input_cost_per_token: 0.00003
+        output_cost_per_token: 0.00015
+        max_input_tokens: 200000
+        mode: "chat"

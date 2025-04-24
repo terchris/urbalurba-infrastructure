@@ -1,0 +1,50 @@
+# File: 020-nginx-root-ingress.yaml
+# Description: Sets up Ingress for Nginx using Traefik as the ingress controller
+#
+# CATCHALL/FALLBACK CONFIGURATION:
+# - This creates a fallback rule for all paths not defined elsewhere in Traefik
+# - All requests that don't match other Ingress rules will be sent to Nginx
+# - More specific path-based routes (like /apim) will take precedence
+# - Nginx serves as the default backend for any undefined paths
+#
+# IMPORTANT NOTES:
+# - This configuration uses Traefik as the ingress controller (not nginx ingress)
+# - It configures a default route (/) for any host
+# - This works with Tailscale funnel → Traefik → Nginx routing pattern
+#
+# Traffic Flow:
+# Tailscale funnel → Traefik ingress controller → Nginx service → Nginx pods → PVC content
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nginx-root-ingress
+  namespace: default
+  annotations:
+    # Explicitly specify Traefik as the ingress controller
+    kubernetes.io/ingress.class: "traefik"
+    # Disable TLS redirect - remove if you want HTTPS redirection
+    traefik.ingress.kubernetes.io/ssl-redirect: "false"
+spec:
+  rules:
+  - host: "" # Empty to match any hostname
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: nginx
+            port:
+              name: http
+  # Add a fallback rule for any host
+  # This ensures that requests not matching other ingress rules go to Nginx
+  - http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: nginx
+            port:
+              name: http

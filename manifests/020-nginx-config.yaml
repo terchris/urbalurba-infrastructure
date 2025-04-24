@@ -1,0 +1,56 @@
+# File: 020-nginx-config.yaml
+# Description: Configuration values for Bitnami Nginx Helm chart
+# 
+# DEPENDENCIES:
+# - This configuration REQUIRES that the PVC "nginx-content-pvc" exists before use
+# - Run the 020-setup-web-files.yml playbook first to create the required storage
+# - The web content must be copied to the PVC before Nginx can serve it properly
+#
+# Purpose:
+# - Configures Nginx to mount and serve content from the persistent volume claim
+# - Sets appropriate security context and resource limits
+# - Defines service type and replica count
+
+# Nginx service type - using ClusterIP for consistency with other services
+service:
+  type: ClusterIP
+
+# Number of replicas
+replicaCount: 1
+
+# Resources for the container
+resources:
+  requests:
+    memory: "128Mi"
+    cpu: "100m"
+  limits:
+    memory: "256Mi"
+    cpu: "200m"
+
+# Use staticSitePVC instead of persistence config to properly mount website content
+staticSitePVC: "nginx-content-pvc"
+
+# Security context to allow read access
+podSecurityContext:
+  enabled: true
+  fsGroup: 1001
+
+containerSecurityContext:
+  enabled: true
+  runAsUser: 1001
+  runAsNonRoot: true
+  readOnlyRootFilesystem: false
+
+# Custom readiness probe that checks for the test file
+readinessProbe:
+  enabled: true
+  path: /urbalurba-test.html
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 6
+  successThreshold: 1
+
+# Metrics configuration
+metrics:
+  enabled: false

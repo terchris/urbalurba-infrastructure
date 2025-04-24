@@ -1,0 +1,32 @@
+# 640-pgadmin-configmap.yaml
+# ConfigMap for pgAdmin configuration settings
+# This file MUST be applied BEFORE installing pgAdmin with Helm
+# Usage: kubectl apply -f 640-pgadmin-configmap.yaml
+
+# CHECK if ConfigMap exists: kubectl get configmap pgadmin-settings
+# CHECK ConfigMap contents: kubectl describe configmap pgadmin-settings
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pgadmin-settings
+data:
+  config_local.py: |
+    # pgAdmin configuration settings
+    # These settings override the default pgAdmin configuration
+    
+    # Disable server mode (use desktop mode for simpler authentication)
+    SERVER_MODE = False
+    
+    # Don't require a master password
+    MASTER_PASSWORD_REQUIRED = False
+    
+    # Set detailed logging for troubleshooting (10=DEBUG)
+    CONSOLE_LOG_LEVEL = 10
+    
+    # Set the application path for URL handling
+    APP_PATH = '/urbadm/pgadmin'
+    
+    # Set the script name for URL handling (must match the ingress path)
+    SCRIPT_NAME = '/urbadm/pgadmin'
+    

@@ -1,0 +1,25 @@
+# File: 002-storage-class-test-pod.yaml
+# Description: Test pod for verifying storage class functionality
+#
+# Usage: Used by verify-storage-class.sh to test storage class
+# Note: This is a temporary resource that will be created and deleted during testing
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: storage-test-pod
+spec:
+  containers:
+  - name: test
+    image: busybox
+    command: ["/bin/sh", "-c"]
+    args:
+    - echo "Storage test successful" > /data/test.txt;
+      sleep 3600
+    volumeMounts:
+    - name: test-volume
+      mountPath: /data
+  volumes:
+  - name: test-volume
+    persistentVolumeClaim:
+      claimName: storage-test-pvc 

@@ -1,0 +1,30 @@
+# File: 042-database-postgresql-config.yaml
+# Description: Configuration for PostgreSQL Helm chart
+# This file defines the values used when installing PostgreSQL via Helm
+
+global:
+  postgresql:
+    service:
+      ports:
+        postgresql: 5432
+
+primary:
+  persistence:
+    enabled: true
+    size: 8Gi  # Adjust size as needed
+
+service:
+  type: ClusterIP
+
+auth:
+  postgresPassword: ""  # This will be set by the Helm command
+
+resources:
+  requests:
+    memory: 256Mi
+    cpu: 250m
+  limits:
+    memory: 512Mi
+    cpu: 500m
+
+# Add any additional PostgreSQL configurations here

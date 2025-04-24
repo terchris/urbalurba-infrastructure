@@ -1,0 +1,45 @@
+---
+# file: playbooks/05-install-helm-repos.yml
+# Install Helm repositories for the ansible user
+# NOTE: These repositories must be kept in sync with provision-host-04-helmrepo.sh
+# If you add or remove repositories here, make sure to update the direct installation in that script as well.
+
+- name: Install Helm repositories
+  hosts: localhost
+  gather_facts: true
+  tasks:
+    - name: Add Helm repositories
+      kubernetes.core.helm_repository:
+        name: "{{ item.name }}"
+        repo_url: "{{ item.url }}"
+      loop:
+        - { name: 'bitnami', url: 'https://charts.bitnami.com/bitnami' }
+        - { name: 'runix', url: 'https://helm.runix.net' }
+        - { name: 'graviteeio', url: 'https://helm.gravitee.io' }
+      register: helm_repo_result
+
+    - name: 01. Print playbook description
+      ansible.builtin.debug:
+        msg: "Installing Helm repositories for the ansible user."
+
+    - name: 02. Verify Helm installation
+      ansible.builtin.command: helm version --short
+      register: helm_version_check
+      changed_when: false
+
+    - name: 03. Display Helm version
+      ansible.builtin.debug:
+        var: helm_version_check.stdout
+
+    - name: 04. Update Helm repositories
+      ansible.builtin.command: helm repo update
+      changed_when: false
+
+    - name: 05. List Helm repositories
+      ansible.builtin.command: helm repo list
+      register: helm_repo_list
+      changed_when: false
+
+    - name: 06. Display Helm repositories
+      ansible.builtin.debug:
+        var: helm_repo_list.stdout_lines

@@ -1,0 +1,32 @@
+# File: provision-host-rancher/docker-compose.yml
+# Description: Docker Compose file for provisioning the host environment
+
+services:
+  provision-host:
+    build: .
+    container_name: provision-host
+    volumes:
+      # mounting the host kubeconfig for initial kubeconfig setup
+      - ~/.kube:/tmp/host-kube:ro
+      # Persistent data volume - now contains urbalurbadisk
+      - provision-host-data:/mnt
+    environment:
+      - TZ=Europe/Oslo
+      - USER=ansible
+      # Updated KUBECONFIG to use the consolidated config file
+      - KUBECONFIG=/mnt/urbalurbadisk/kubeconfig/kubeconf-all
+    # Use host network to access Kubernetes and for Tailscale
+    network_mode: "host"
+    # Enable privileged mode for Tailscale and other operations
+    privileged: true
+    # Needed capabilities for Tailscale to operate
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    # Keep the container running
+    tty: true
+    stdin_open: true
+    restart: unless-stopped
+
+volumes:
+  provision-host-data:
