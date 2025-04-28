@@ -261,4 +261,63 @@ You have two options to create the secrets file:
 - Store backup copies of the secrets file securely
 - Generate random strings for encryption keys and salts
 - Use different passwords for different environments (test/prod)
-- Keep API keys and tokens secure and rotate them regularly 
+- Keep API keys and tokens secure and rotate them regularly
+
+## Current Setup
+
+The current setup is simple:
+1. Copy the template file: `cp kubernetes/kubernetes-secrets-template.yml kubernetes/kubernetes-secrets.yml`
+2. Edit the file with your values
+3. Each variable has a comment explaining its purpose
+
+## Future Improvements
+
+The current script is intentionally simple, but here are some potential future improvements:
+
+### 1. Interactive Configuration
+- Add an interactive mode that reads the template file and prompts for each value
+- Use the comments in the template as descriptions for each prompt
+- Show current/default values and allow keeping them by pressing Enter
+
+### 2. Validation
+- Add validation for each value (e.g., email format, password strength)
+- Check for required fields
+- Validate API tokens by making test calls
+- Verify database credentials by attempting to connect
+
+### 3. Security
+- Add password generation for secure random values
+- Implement encryption for sensitive values
+- Add support for external secret management systems (e.g., HashiCorp Vault)
+
+### 4. Integration
+- Add support for different environments (dev, staging, prod)
+- Integrate with CI/CD pipelines
+- Add support for different cloud providers
+- Add support for different Kubernetes distributions
+
+### 5. Documentation
+- Generate documentation from the template file
+- Add examples for each configuration
+- Add troubleshooting guides
+- Add best practices for each service
+
+### 6. Automation
+- Add support for automated testing
+- Add support for automated deployment
+- Add support for automated backup and restore
+- Add support for automated rotation of secrets
+
+### 7. User Experience
+- Add a GUI for configuration
+- Add support for different languages
+- Add support for different operating systems
+- Add support for different terminal types
+
+### 8. Maintenance
+- Add support for versioning
+- Add support for migration between versions
+- Add support for backup and restore
+- Add support for audit logging
+
+These improvements would make the script more powerful and user-friendly, but they would also make it more complex. The current simple approach is preferred for now, as it's easier to understand and maintain. 

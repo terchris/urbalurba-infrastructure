@@ -87,6 +87,12 @@ run_script_from_directory() {
 # Ensure the script is run from the root directory
 ensure_root_directory
 
+# Check if provision-host container already exists
+if docker ps -a --format '{{.Names}}' | grep -q '^provision-host$'; then
+    echo "Error: provision-host container already exists. Please remove it first."
+    exit 1
+fi
+
 # Create Kubernetes secrets
 run_script_from_directory "topsecret" "create-kubernetes-secrets.sh"
 

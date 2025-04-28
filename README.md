@@ -12,6 +12,22 @@ This is done by provisioning a full infrastructure that runs on a single machine
 
 The stack provides open source versions of the services that the cloud providers offer. It contains services like databases, message queues, monitoring, logging, etc. 
 
+## Installation
+
+### For Mac/Linux users:
+The installation script will handle all prerequisites and installation in one go. It will:
+1. Install Homebrew (if not present)
+2. Install kubectl
+3. Install Rancher Desktop
+4. Download and install the Urbalurba Infrastructure
+
+Run the following command to install:
+```bash
+curl -L https://raw.githubusercontent.com/norwegianredcross/urbalurba-infrastructure/main/update-urbalurba-infra.sh -o update-urbalurba-infra.sh && chmod +x update-urbalurba-infra.sh && ./update-urbalurba-infra.sh
+```
+
+### For Windows users:
+Windows installation will be added soon.
 
 Notes:
 
