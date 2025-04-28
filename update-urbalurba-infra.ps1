@@ -1,6 +1,6 @@
 # Define the URL and temporary file path
 $url = "https://github.com/norwegianredcross/urbalurba-infrastructure/releases/download/latest/urbalurba-infrastructure.zip"
-$tempZipPath = Join-Path $env:TEMP "urbalurba-infrastructure_temp.zip"
+$tempZipPath = Join-Path $env:TEMP "urbalurba-infrastructure.zip"
 $currentLocation = Get-Location
 
 try {
@@ -9,7 +9,7 @@ try {
     Invoke-WebRequest -Uri $url -OutFile $tempZipPath
 
     # Create a temporary extraction directory
-    $tempExtractPath = Join-Path $env:TEMP "urbalurba-infrastructure_extract"
+    $tempExtractPath = Join-Path $env:TEMP "urbalurba-infrastructure"
     if (Test-Path $tempExtractPath) {
         Remove-Item $tempExtractPath -Recurse -Force
     }

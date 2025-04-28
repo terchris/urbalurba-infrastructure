@@ -1,4 +1,4 @@
-name: 📦 Zip and Upload Artifacts
+name: 📦 Zip and Upload Infrastructure Artifacts
 
 on:
   push:
@@ -13,9 +13,9 @@ jobs:
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
 
-      - name: 📦 Archive dev_containers folders
+      - name: 📦 Archive infrastructure files
         run: |
-          zip -r dev_containers.zip .devcontainer .devcontainer.extend
+          zip -r urbalurba-infrastructure.zip . -x "terchris/*" ".github/*"
 
       - name: 🗑️ Delete existing release
         uses: dev-drprasad/delete-tag-and-release@v0.2.1
@@ -25,11 +25,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
 
-      - name: ⬆️ Upload dev_containers.zip as an artifact
+      - name: ⬆️ Upload infrastructure.zip as an artifact
         uses: actions/upload-artifact@v4
         with:
-          name: dev_containers
-          path: dev_containers.zip
+          name: urbalurba-infrastructure
+          path: urbalurba-infrastructure.zip
 
       - name: 🔖 Create Release
         id: create_release
@@ -38,7 +38,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
         with:
           tag_name: latest
-          name: DevContainers
+          name: Infrastructure
           draft: false
           prerelease: false
-          files: dev_containers.zip
+          files: urbalurba-infrastructure.zip
