@@ -50,6 +50,15 @@ ensure_root_directory() {
     fi
 }
 
+# Check if kubectl is installed
+if ! command -v kubectl &> /dev/null; then
+    echo "Error: kubectl is not installed. Please install kubectl first."
+    echo "You can install kubectl using:"
+    echo "  - Homebrew: brew install kubectl"
+    echo "  - Direct download: https://kubernetes.io/docs/tasks/tools/install-kubectl/"
+    exit 1
+fi
+
 # Check if Rancher Desktop is running
 if ! rdctl list-settings &> /dev/null; then
     echo "Error: Rancher Desktop is not running. Please start Rancher Desktop first."
@@ -59,6 +68,13 @@ fi
 # Check if kubectl is available and configured
 if ! kubectl get nodes &> /dev/null; then
     echo "Error: Cannot connect to Kubernetes. Please ensure Rancher Desktop is running and Kubernetes is ready."
+    exit 1
+fi
+
+# Check if kubernetes-secrets.yml exists
+if [ ! -f "topsecret/kubernetes/kubernetes-secrets.yml" ]; then
+    echo "Error: Kubernetes secrets file not found at topsecret/kubernetes/kubernetes-secrets.yml"
+    echo "Please run: cd topsecret && ./create-kubernetes-secrets.sh new"
     exit 1
 fi
 

@@ -1,5 +1,24 @@
 # Install Rancher Desktop on Mac
 
+## Prerequisites
+
+Before installing Rancher Desktop, you need to have:
+
+1. Rancher Desktop
+2. kubectl (Kubernetes command-line tool)
+
+### Install kubectl
+
+You can install kubectl using one of these methods:
+
+```bash
+# Using Homebrew
+brew install kubectl
+
+# Or download directly from Kubernetes website
+# Visit: https://kubernetes.io/docs/tasks/tools/install-kubectl/
+```
+
 ## Install Rancher Desktop
 
 Follow the instructions in the [official website](https://docs.rancherdesktop.io/getting-started/installation/#macos).

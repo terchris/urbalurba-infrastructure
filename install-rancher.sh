@@ -87,6 +87,9 @@ run_script_from_directory() {
 # Ensure the script is run from the root directory
 ensure_root_directory
 
+# Create Kubernetes secrets
+run_script_from_directory "topsecret" "create-kubernetes-secrets.sh"
+
 # Check and create secrets if they don't exist
 if [ ! -f "secrets/id_rsa_ansible.pub" ] || [ ! -f "secrets/id_rsa_ansible" ]; then
     echo "==========------------------> Step 0.1: Create secrets"
