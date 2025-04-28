@@ -21,7 +21,7 @@ jobs:
 
       - name: 📦 Archive infrastructure files
         run: |
-          zip -r urbalurba-infrastructure.zip . -x "terchris/*" ".github/*"
+          zip -r urbalurba-infrastructure.zip . -x "terchris/*" ".github/*" ".git/*"
 
       - name: 🗑️ Delete existing release (if any)
         uses: dev-drprasad/delete-tag-and-release@v0.2.1
