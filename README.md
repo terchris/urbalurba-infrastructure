@@ -22,7 +22,7 @@ The installation script will handle all prerequisites and installation in one go
 
 Run the following command to install:
 ```bash
-curl -L https://raw.githubusercontent.com/norwegianredcross/urbalurba-infrastructure/main/update-urbalurba-infra.sh -o update-urbalurba-infra.sh && chmod +x update-urbalurba-infra.sh && ./update-urbalurba-infra.sh
+curl -L https://raw.githubusercontent.com/terchris/urbalurba-infrastructure/main/update-urbalurba-infra.sh -o update-urbalurba-infra.sh && chmod +x update-urbalurba-infra.sh && ./update-urbalurba-infra.sh
 ```
 
 ### For Windows users:
