@@ -309,9 +309,10 @@ Each component is deployed with appropriate timeouts and readiness checks to ens
 
 ### Usage
 
-The stack can be deployed using:
+If AI is not installed, you can install it with the following command on your host computer:
+
 ```bash
-ansible-playbook playbooks/200-setup-open-webui.yml -e kube_context="your-k8s-context"
+docker exec -it provision-host bash -c "cd /provision-host && ./install-ai.sh"
 ```
 
 Note: The Ollama component may take 10-15 minutes to become fully ready as it downloads the initial model.
