@@ -77,22 +77,6 @@ check_prerequisites() {
     done
     echo "All required directories found"
 
-    # Check for kubernetes-secrets.yml
-    if [ ! -f "$workspace_root/topsecret/kubernetes/kubernetes-secrets.yml" ]; then
-        echo "Warning: kubernetes-secrets.yml not found in $workspace_root/topsecret/kubernetes/"
-        echo "You should copy and edit kubernetes-secrets-template.yml to add your own secrets."
-        read -p "Do you want to continue with default values? (y/n) " -n 1 -r
-        echo
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            echo "Please copy and edit kubernetes-secrets-template.yml before continuing."
-            echo "After editing the file, run './install-rancher.sh' again to continue the installation."
-            return 1
-        fi
-        echo "Using default values from kubernetes-secrets-template.yml"
-        cp "$workspace_root/topsecret/kubernetes/kubernetes-secrets-template.yml" "$workspace_root/topsecret/kubernetes/kubernetes-secrets.yml"
-        add_status "Creating kubernetes-secrets.yml" "OK (using template)"
-    fi
-
     add_status "Prerequisites" "OK"
 }
 
