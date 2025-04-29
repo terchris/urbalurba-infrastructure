@@ -72,8 +72,8 @@ if ! kubectl get nodes &> /dev/null; then
 fi
 
 # Check if kubernetes-secrets.yml exists
-if [ ! -f "topsecret/kubernetes/kubernetes-secrets.yml" ]; then
-    echo "Error: Kubernetes secrets file not found at topsecret/kubernetes/kubernetes-secrets.yml"
+if [ ! -f "../topsecret/kubernetes/kubernetes-secrets.yml" ]; then
+    echo "Error: Kubernetes secrets file not found at ../topsecret/kubernetes/kubernetes-secrets.yml"
     echo "Please run: cd topsecret && ./create-kubernetes-secrets.sh new"
     exit 1
 fi
