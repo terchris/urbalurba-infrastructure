@@ -1,6 +1,7 @@
 #!/bin/bash
 # install-multipass.sh - install all cluster and all software.
 # Must be started in the root folder of the project.
+# TODO: this is outdated - i rewrote to use rancher desktop locally. - it should be fixed or removed
 
 # this file is created the first time
 CLOUD_INIT_FILE="cloud-init/provision-cloud-init.yml"

@@ -17,9 +17,8 @@ The stack provides open source versions of the services that the cloud providers
 ### For Mac/Linux users:
 The installation script will handle all prerequisites and installation in one go. It will:
 1. Install Homebrew (if not present)
-2. Install kubectl
-3. Install Rancher Desktop
-4. Download and install the Urbalurba Infrastructure
+2. Install Rancher Desktop (which includes kubectl)
+3. Download and install the Urbalurba Infrastructure
 
 Run the following command to install:
 ```bash

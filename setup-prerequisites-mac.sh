@@ -13,9 +13,8 @@
 # Exit codes:
 #   0 - All prerequisites are installed
 #   1 - Homebrew is not installed
-#   2 - kubectl is not installed
-#   3 - Rancher Desktop is not installed
-#   4 - Script is not running on macOS
+#   2 - Rancher Desktop is not installed
+#   3 - Script is not running on macOS
 #
 # Author: @terchris
 # Version: 1.0.0
@@ -30,7 +29,7 @@ handle_error() {
 # Check if running on macOS
 if [[ "$OSTYPE" != "darwin"* ]]; then
     if [[ "$1" == "test" ]]; then
-        exit 4
+        exit 3
     else
         handle_error "This script is only for macOS"
     fi
@@ -56,25 +55,11 @@ check_homebrew() {
     fi
 }
 
-# Function to check if kubectl is installed
-check_kubectl() {
-    if ! command -v kubectl &> /dev/null; then
-        if [[ "$1" == "test" ]]; then
-            return 2
-        else
-            echo "Installing kubectl..."
-            brew install kubectl
-        fi
-    else
-        echo "kubectl is already installed"
-    fi
-}
-
 # Function to check if Rancher Desktop is installed
 check_rancher() {
     if ! brew list --cask rancher &> /dev/null; then
         if [[ "$1" == "test" ]]; then
-            return 3
+            return 2
         else
             echo "Installing Rancher Desktop..."
             brew install --cask rancher
@@ -94,16 +79,10 @@ if [[ "$1" == "test" ]]; then
         exit 1
     fi
     
-    # Check kubectl
-    if ! check_kubectl test; then
-        echo "kubectl is not installed"
-        exit 2
-    fi
-    
     # Check Rancher Desktop
     if ! check_rancher test; then
         echo "Rancher Desktop is not installed"
-        exit 3
+        exit 2
     fi
     
     echo "All prerequisites are installed"
@@ -117,9 +96,6 @@ else
     # Update Homebrew
     echo "Updating Homebrew..."
     brew update
-    
-    # Install kubectl if needed
-    check_kubectl
     
     # Install Rancher Desktop if needed
     check_rancher

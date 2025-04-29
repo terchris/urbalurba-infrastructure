@@ -88,8 +88,9 @@ run_script_from_directory() {
 ensure_root_directory
 
 # Check if provision-host container already exists
-if docker ps -a --format '{{.Names}}' | grep -q '^provision-host$'; then
-    echo "Error: provision-host container already exists. Please remove it first."
+if docker ps -a --format '{{.Names}}' | grep -q 'provision-host'; then
+    echo "Error: A provision-host container already exists. Please remove it first using:"
+    echo "  docker rm -f provision-host"
     exit 1
 fi
 
