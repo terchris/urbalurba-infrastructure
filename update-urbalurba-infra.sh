@@ -50,8 +50,15 @@ fi
 
 echo "Starting Urbalurba Infrastructure download..."
 
-# Define the URL
-INFRA_URL="https://github.com/norwegianredcross/urbalurba-infrastructure/releases/download/latest/urbalurba-infrastructure.zip"
+# Get the latest release tag
+LATEST_TAG=$(curl -s "https://api.github.com/repos/norwegianredcross/urbalurba-infrastructure/releases/latest" | grep -o '"tag_name": "v[0-9]*"' | cut -d'"' -f4)
+
+if [ -z "$LATEST_TAG" ]; then
+    handle_error "Failed to get latest release tag"
+fi
+
+# Define the URL using the latest tag
+INFRA_URL="https://github.com/norwegianredcross/urbalurba-infrastructure/releases/download/$LATEST_TAG/urbalurba-infrastructure.zip"
 
 # Create temporary directory
 TEMP_DIR=$(mktemp -d)
@@ -68,7 +75,7 @@ cleanup() {
 trap cleanup EXIT
 
 # Download the infrastructure zip file
-echo "Downloading Urbalurba Infrastructure..."
+echo "Downloading Urbalurba Infrastructure (version $LATEST_TAG)..."
 if ! curl -L "$INFRA_URL" -o "$TEMP_ZIP"; then
     handle_error "Failed to download the infrastructure zip file"
 fi
