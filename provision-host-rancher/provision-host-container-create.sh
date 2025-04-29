@@ -152,16 +152,16 @@ main() {
 
     # Transfer directories to the container
     echo "Copying required directories to container..."
-    create_and_copy "$workspace_root/ansible" "/mnt/urbalurbadisk/ansible" "ansible directory"
-    create_and_copy "$workspace_root/manifests" "/mnt/urbalurbadisk/manifests" "manifests directory"
-    create_and_copy "$workspace_root/hosts" "/mnt/urbalurbadisk/hosts" "hosts directory"
-    create_and_copy "$workspace_root/cloud-init" "/mnt/urbalurbadisk/cloud-init" "cloud-init directory"
-    create_and_copy "$workspace_root/networking" "/mnt/urbalurbadisk/networking" "networking directory"
-    create_and_copy "$workspace_root/provision-host" "/mnt/urbalurbadisk/provision-host" "provision-host directory"
-    create_and_copy "$workspace_root/secrets" "/mnt/urbalurbadisk/secrets" "secrets directory"
-    create_and_copy "$workspace_root/topsecret" "/mnt/urbalurbadisk/topsecret" "topsecret directory"
-    create_and_copy "$workspace_root/testdata" "/mnt/urbalurbadisk/testdata" "testdata directory"
-    create_and_copy "$workspace_root/scripts" "/mnt/urbalurbadisk/scripts" "scripts directory"
+    create_and_copy "../ansible" "/mnt/urbalurbadisk/ansible" "ansible directory"
+    create_and_copy "../manifests" "/mnt/urbalurbadisk/manifests" "manifests directory"
+    create_and_copy "../hosts" "/mnt/urbalurbadisk/hosts" "hosts directory"
+    create_and_copy "../cloud-init" "/mnt/urbalurbadisk/cloud-init" "cloud-init directory"
+    create_and_copy "../networking" "/mnt/urbalurbadisk/networking" "networking directory"
+    create_and_copy "../provision-host" "/mnt/urbalurbadisk/provision-host" "provision-host directory"
+    create_and_copy "../secrets" "/mnt/urbalurbadisk/secrets" "secrets directory"
+    create_and_copy "../topsecret" "/mnt/urbalurbadisk/topsecret" "topsecret directory"
+    create_and_copy "../testdata" "/mnt/urbalurbadisk/testdata" "testdata directory"
+    create_and_copy "../scripts" "/mnt/urbalurbadisk/scripts" "scripts directory"
 
     # Fix ownership
     docker exec -u root provision-host chown -R ansible:ansible /mnt/urbalurbadisk
