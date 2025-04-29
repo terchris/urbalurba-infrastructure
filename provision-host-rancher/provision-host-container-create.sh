@@ -56,10 +56,13 @@ check_prerequisites() {
 
     # Check if required directories exist
     echo "Checking required directories..."
-    for dir in "../ansible" "../secrets" "$HOME/.kube" "$HOME/.ssh"; do
+    local workspace_root
+    workspace_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+    for dir in "$workspace_root/ansible" "$workspace_root/secrets" "$HOME/.kube" "$HOME/.ssh"; do
         echo "Checking $dir..."
         if [ ! -d "$dir" ]; then
             add_error "Prerequisites" "Required directory $dir not found"
+            echo "Note: If you're missing .kube or .ssh directories, make sure Rancher Desktop is running and configured"
             return 1
         fi
     done
