@@ -161,16 +161,28 @@ echo "==========------------------> Step 3: Install local kubeconfig - SKIPPED (
 # Set up Tailscale for secure networking
 echo "==========------------------> Step 4: Setting up Tailscale for secure networking"
 echo "Starting and configuring Tailscale..."
-docker exec provision-host bash -c "cd /mnt/urbalurbadisk/networking && ./net1-setup-tailscale.sh"
-check_command_success "Setting up Tailscale"
 
-# Verify Tailscale connectivity
-echo "Verifying Tailscale connectivity..."
-docker exec provision-host bash -c "cd /mnt/urbalurbadisk/networking && ./net1-check-tailscale.sh"
-check_command_success "Verifying Tailscale connectivity"
-
-
-
+# Modified section for Tailscale setup to handle potential failures gracefully
+if docker exec provision-host bash -c "cd /mnt/urbalurbadisk/networking && ./net1-setup-tailscale.sh"; then
+    echo "Setting up Tailscale completed successfully"
+    
+    # Verify Tailscale connectivity only if setup was successful
+    echo "Verifying Tailscale connectivity..."
+    if docker exec provision-host bash -c "cd /mnt/urbalurbadisk/networking && ./net1-check-tailscale.sh"; then
+        echo "Tailscale connectivity verified successfully"
+    else
+        echo "Warning: Tailscale connectivity check failed, but continuing with installation"
+        echo "You may not have full Tailscale functionality. You can set it up later by:"
+        echo "1. Updating your Kubernetes secrets with valid Tailscale credentials"
+        echo "2. Running: docker exec provision-host bash -c \"cd /mnt/urbalurbadisk/networking && ./net1-setup-tailscale.sh\""
+    fi
+else
+    echo "Notice: Tailscale setup was skipped or encountered an issue, but continuing with installation"
+    echo "This is normal if you're using template/placeholder Tailscale values in your secrets"
+    echo "To enable Tailscale later:"
+    echo "1. Update your Kubernetes secrets with valid Tailscale credentials"
+    echo "2. Run: docker exec provision-host bash -c \"cd /mnt/urbalurbadisk/networking && ./net1-setup-tailscale.sh\""
+fi
 
 echo "----------------------> Start the installation of kubernetes systems <----------------------"
 
@@ -190,35 +202,21 @@ echo "."
 echo "Kubernetes in Rancher Desktop is all set up and these are the installed systems:"
 docker exec provision-host bash -c 'kubectl get pods --all-namespaces -o custom-columns="NAMESPACE:.metadata.namespace,NAME:.metadata.name,READY:.status.containerStatuses[*].ready,STATUS:.status.phase,CLUSTER-IP:.status.podIP,PORTS:.spec.containers[*].ports[*].containerPort"'
 echo "."
-echo "Tailscale networking is set up for secure access to your infrastructure."
-echo "Tailscale IP: $(docker exec provision-host bash -c 'tailscale ip -4')"
-echo "."
-echo "Connected Tailscale network devices:"
-docker exec provision-host bash -c 'tailscale status --json | jq -r "if .Peer != null then .Peer | to_entries[] | .value.HostName + \": \" + (.value.TailscaleIPs[0] // \"No IP\") + \" (\" + (if .value.Online then \"online\" else \"offline\" end) + \")\" else \"No peers connected\" end"'
-docker exec provision-host bash -c 'tailscale status --json | jq -r "if .Self != null then .Self | .HostName + \": \" + (.TailscaleIPs[0] // \"No IP\") + \" (self)\" else \"Self status not available\" end"'
+
+# Check if Tailscale is set up by checking if there's a Tailscale IP
+TAILSCALE_IP=$(docker exec provision-host bash -c 'tailscale ip -4 2>/dev/null || echo "Not configured"')
+if [ "$TAILSCALE_IP" != "Not configured" ]; then
+    echo "Tailscale networking is set up for secure access to your infrastructure."
+    echo "Tailscale IP: $TAILSCALE_IP"
+    echo "."
+    echo "Connected Tailscale network devices:"
+    docker exec provision-host bash -c 'tailscale status --json | jq -r "if .Peer != null then .Peer | to_entries[] | .value.HostName + \": \" + (.value.TailscaleIPs[0] // \"No IP\") + \" (\" + (if .value.Online then \"online\" else \"offline\" end) + \")\" else \"No peers connected\" end"'
+    docker exec provision-host bash -c 'tailscale status --json | jq -r "if .Self != null then .Self | .HostName + \": \" + (.TailscaleIPs[0] // \"No IP\") + \" (self)\" else \"Self status not available\" end"'
+else
+    echo "Tailscale networking is not configured. You can set it up later by:"
+    echo "1. Updating your Kubernetes secrets with valid Tailscale credentials"
+    echo "2. Running: docker exec provision-host bash -c \"cd /mnt/urbalurbadisk/networking && ./net1-setup-tailscale.sh\""
+fi
 echo "."
 echo "====================  E N D  O F  I N S T A L L A T I O N  ===================="
 exit 0
-
-
-
-echo "xxxxxxxxxxxxx xxxxxx xxxxxx Install all steps completed successfully."
-exit 1
-
-
-echo "----------------------> Continue the installation of the default apps <----------------------"
-
-
-echo "------------------> Store config and status files for: multipass-microk8s"
-run_script_from_directory "" "cluster-status.sh" "multipass-microk8s"
-
-echo "### Cloudflare setup (TODO: fix or move)"
-echo "------------------> Net 3: Set Cloudflare tunnel and DNS for multipass-microk8s"
-run_script_from_directory "networking" "net3-setup-cloudflare.sh" "CLOUDFLARE_TEST"
-
-echo "------------------> Net 4: Deploy the tunnel and expose domains on the internet for multipass-microk8s"
-run_script_from_directory "networking" "net4-deploy-cloudflare-tunnel.sh" "CLOUDFLARE_TEST" "multipass-microk8s"
-
-
-
-echo "All steps completed successfully."

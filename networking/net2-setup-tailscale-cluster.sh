@@ -16,25 +16,18 @@
 #
 # If no cluster-hostname is provided, the script will use TAILSCALE_CLUSTER_HOSTNAME
 # from the urbalurba-secrets Kubernetes secret.
-#
-# After running this script, you can use net2-expose-tailscale-service.sh to expose
-# individual services through Tailscale.
-#
-# Related scripts:
-# - net2-expose-tailscale-service.sh: Used to expose individual services after this base setup
-#
-# Exit codes:
-# 0 - Success
-# 1 - Script must be run with Bash
-# 2 - Kubeconfig file not found
-# 3 - Tailscale operator installation failed
-# 4 - Tailscale ingress configuration failed
 
+# Source the Tailscale library
+# Using realpath with dirname to handle the script being run from any location
+SCRIPT_DIR="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
+source "${SCRIPT_DIR}/tailscale-lib.sh"
+
+# Exit immediately if a command exits with a non-zero status
 set -e
 
 # Ensure the script is run with Bash
 if [ -z "$BASH_VERSION" ]; then
-    echo "This script must be run with Bash"
+    tailscale_log "This script must be run with Bash"
     exit 1
 fi
 
@@ -42,45 +35,14 @@ fi
 declare -A STATUS
 declare -A ERRORS
 
-# Function to log messages with timestamps
-log() {
-    local message="[$(date '+%Y-%m-%d %H:%M:%S')] $1"
-    echo "$message"
-}
-
-# Function to get secret from Kubernetes
-get_secret() {
-    local secret_name=$1
-    kubectl get secret --namespace default urbalurba-secrets -o jsonpath="{.data.$secret_name}" --kubeconfig "$KUBECONFIG_PATH" | base64 -d
-}
-
 # Variables
 ANSIBLE_DIR="/mnt/urbalurbadisk/ansible"
 PLAYBOOK_PATH_SETUP_TAILSCALE="$ANSIBLE_DIR/playbooks/net2-setup-tailscale-cluster.yml"
 ANSIBLE_EXTRA_VARS="-e hide_sensitive_info=true" # Add option to hide sensitive info
 
-# Get Tailscale secrets from Kubernetes
-log "Reading Tailscale secrets from Kubernetes..."
-TAILSCALE_CLIENTID=$(get_secret "TAILSCALE_CLIENTID")
-TAILSCALE_CLIENTSECRET=$(get_secret "TAILSCALE_CLIENTSECRET")
-TAILSCALE_TAILNET=$(get_secret "TAILSCALE_TAILNET")
-TAILSCALE_DOMAIN=$(get_secret "TAILSCALE_DOMAIN")
-TAILSCALE_CLUSTER_HOSTNAME_SECRET=$(get_secret "TAILSCALE_CLUSTER_HOSTNAME")
-
 # Command line parameters
-TAILSCALE_CLUSTER_HOSTNAME=${1:-"$TAILSCALE_CLUSTER_HOSTNAME_SECRET"}
 KUBECONFIG_PATH=${2:-"/mnt/urbalurbadisk/kubeconfig/kubeconf-all"}
-
-# Verify secrets were retrieved
-if [ -z "$TAILSCALE_CLIENTID" ] || [ -z "$TAILSCALE_CLIENTSECRET" ] || [ -z "$TAILSCALE_TAILNET" ] || [ -z "$TAILSCALE_DOMAIN" ]; then
-    log "ERROR: Failed to retrieve required Tailscale secrets from Kubernetes"
-    log "Please ensure the following secrets exist in the urbalurba-secrets secret:"
-    log "  - TAILSCALE_CLIENTID"
-    log "  - TAILSCALE_CLIENTSECRET"
-    log "  - TAILSCALE_TAILNET"
-    log "  - TAILSCALE_DOMAIN"
-    exit 1
-fi
+TAILSCALE_CLUSTER_HOSTNAME=${1:-""}
 
 # Function to add status
 add_status() {
@@ -103,11 +65,11 @@ check_command_success() {
     if [ $exit_code -ne 0 ]; then
         add_status "$step" "FAIL"
         add_error "$step" "Command failed with exit code $exit_code"
-        log "ERROR: $step failed with exit code $exit_code"
+        tailscale_log "ERROR: $step failed with exit code $exit_code"
         return 1
     else
         add_status "$step" "OK"
-        log "SUCCESS: $step completed"
+        tailscale_log "SUCCESS: $step completed"
         return 0
     fi
 }
@@ -119,7 +81,7 @@ run_playbook() {
     local extra_args=${3:-""}
     local result=0
     
-    log "Running playbook for $step..."
+    tailscale_log "Running playbook for $step..."
     
     cd $ANSIBLE_DIR && ansible-playbook $playbook \
         -e TAILSCALE_CLUSTER_HOSTNAME=$TAILSCALE_CLUSTER_HOSTNAME \
@@ -135,51 +97,11 @@ run_playbook() {
     return $result
 }
 
-# Main function
-main() {
-    log "Starting Tailscale funnel deployment with hostname $TAILSCALE_CLUSTER_HOSTNAME"
-    log "Using kubeconfig: $KUBECONFIG_PATH"
-    log "---------------------------------------------------"
-    
-    # Check if kubeconfig exists
-    if [ ! -f "$KUBECONFIG_PATH" ]; then
-        log "ERROR: Kubeconfig file not found at $KUBECONFIG_PATH"
-        add_status "Kubeconfig Check" "FAIL"
-        add_error "Kubeconfig Check" "File not found"
-        print_summary
-        return 1
-    fi
-    
-    add_status "Kubeconfig Check" "OK"
-    
-    # Run the Ansible playbook to deploy Tailscale
-    log "Deploying Tailscale ingress (this may take a few minutes)..."
-    if ! run_playbook "Deploy Tailscale ingress" "$PLAYBOOK_PATH_SETUP_TAILSCALE"; then
-        # Even if the playbook fails, check if the operator is running
-        log "Checking if Tailscale operator is running despite playbook failure..."
-        
-        # Check for Tailscale operator in tailnet
-        if tailscale status | grep -q "tailscale-operator"; then
-            log "Good news! Tailscale operator appears to be running in the tailnet."
-            log "The failure might be in a later step but the core functionality may still work."
-            add_status "Tailscale Operator" "RUNNING (despite playbook failure)"
-        else
-            log "Tailscale operator not found in tailnet."
-            add_status "Tailscale Operator" "NOT RUNNING"
-        fi
-        
-        print_summary
-        return 1
-    fi
-    
-    print_summary
-}
-
 # Print summary
 print_summary() {
-    log "---------- Deployment Summary ----------"
+    tailscale_log "---------- Deployment Summary ----------"
     for step in "${!STATUS[@]}"; do
-        log "$step: ${STATUS[$step]}"
+        tailscale_log "$step: ${STATUS[$step]}"
     done
 
     has_failure=false
@@ -191,21 +113,100 @@ print_summary() {
     done
 
     if [ "$has_failure" = false ]; then
-        log "All steps completed successfully."
-        if [ -n "$TAILNET" ]; then
-            log "Your service should be accessible at: https://$TAILSCALE_CLUSTER_HOSTNAME.$TAILNET.ts.net"
+        if [[ "${STATUS[Tailscale Setup]}" == "SKIPPED"* ]]; then
+            tailscale_log "Tailscale setup was skipped due to template configuration values."
+            tailscale_log "To set up Tailscale later, update your Kubernetes secrets with valid Tailscale keys"
+            tailscale_log "and run this script again."
         else
-            log "Your service should be accessible at the URL shown in the playbook output"
+            tailscale_log "All steps completed successfully."
+            if [ -n "$TAILSCALE_DOMAIN" ]; then
+                tailscale_log "Your service should be accessible at: https://$TAILSCALE_CLUSTER_HOSTNAME.$TAILSCALE_DOMAIN"
+            else
+                tailscale_log "Your service should be accessible at the URL shown in the playbook output"
+            fi
+            tailscale_log "Note: It may take up to 10 minutes for DNS to fully propagate and TLS certificates to be provisioned"
         fi
-        log "Note: It may take up to 10 minutes for DNS to fully propagate and TLS certificates to be provisioned"
     else
-        log "Errors occurred during deployment:"
+        tailscale_log "Errors occurred during deployment:"
         for step in "${!ERRORS[@]}"; do
             if [ -n "${ERRORS[$step]}" ]; then
-                log "  $step: ${ERRORS[$step]}"
+                tailscale_log "  $step: ${ERRORS[$step]}"
             fi
         done
     fi
+}
+
+# Main function
+main() {
+    tailscale_log "Starting Tailscale funnel deployment setup..."
+    
+    # Check if kubeconfig exists
+    if [ ! -f "$KUBECONFIG_PATH" ]; then
+        tailscale_log "ERROR: Kubeconfig file not found at $KUBECONFIG_PATH"
+        add_status "Kubeconfig Check" "FAIL"
+        add_error "Kubeconfig Check" "File not found"
+        print_summary
+        exit 2
+    fi
+    
+    add_status "Kubeconfig Check" "OK"
+    
+    # Get Tailscale secrets from Kubernetes using library function
+    if ! tailscale_get_secrets "$KUBECONFIG_PATH"; then
+        tailscale_log "ERROR: Failed to retrieve Tailscale secrets from Kubernetes"
+        add_status "Tailscale Secrets" "FAIL"
+        add_error "Tailscale Secrets" "Failed to retrieve secrets"
+        print_summary
+        exit 1
+    fi
+    
+    add_status "Tailscale Secrets" "OK"
+    
+    # Use command line parameter for TAILSCALE_CLUSTER_HOSTNAME if provided
+    if [ -z "$TAILSCALE_CLUSTER_HOSTNAME" ]; then
+        TAILSCALE_CLUSTER_HOSTNAME="$TAILSCALE_CLUSTER_HOSTNAME_SECRET"
+    fi
+    
+    # Check if Tailscale credentials are properly configured using library function
+    if ! tailscale_check_credentials "$TAILSCALE_SECRET" "$TAILSCALE_CLIENTID" "$TAILSCALE_CLIENTSECRET" "$TAILSCALE_TAILNET" "$TAILSCALE_DOMAIN"; then
+        tailscale_log "Skipping Tailscale cluster setup due to template configuration values."
+        add_status "Tailscale Setup" "SKIPPED (using template values)"
+        
+        print_summary
+        
+        # Exit with code 0 to not cause the main installation to fail
+        exit 0
+    fi
+    
+    add_status "Tailscale Credentials" "OK"
+    
+    tailscale_log "Using hostname: $TAILSCALE_CLUSTER_HOSTNAME"
+    tailscale_log "Using kubeconfig: $KUBECONFIG_PATH"
+    tailscale_log "---------------------------------------------------"
+    
+    # Run the Ansible playbook to deploy Tailscale
+    tailscale_log "Deploying Tailscale ingress (this may take a few minutes)..."
+    
+    if ! run_playbook "Deploy Tailscale ingress" "$PLAYBOOK_PATH_SETUP_TAILSCALE"; then
+        # Even if the playbook fails, check if the operator is running
+        tailscale_log "Checking if Tailscale operator is running despite playbook failure..."
+        
+        # Check for Tailscale operator in tailnet using tailscale status
+        if tailscale status 2>/dev/null | grep -q "tailscale-operator"; then
+            tailscale_log "Good news! Tailscale operator appears to be running in the tailnet."
+            tailscale_log "The failure might be in a later step but the core functionality may still work."
+            add_status "Tailscale Operator" "RUNNING (despite playbook failure)"
+        else
+            tailscale_log "Tailscale operator not found in tailnet."
+            add_status "Tailscale Operator" "NOT RUNNING"
+        fi
+        
+        print_summary
+        exit 3
+    fi
+    
+    print_summary
+    return 0
 }
 
 # Run the main function and exit with its return code

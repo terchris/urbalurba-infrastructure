@@ -1,5 +1,5 @@
 #!/bin/bash
-# filename: install-rancher-kubernetes.sh
+# filename: hosts/install-rancher-kubernetes.sh
 # description: Applies Kubernetes secrets to the Rancher Desktop Kubernetes cluster
 # Since Rancher Desktop already provides a Kubernetes cluster, we only need to apply secrets.
 
@@ -40,6 +40,38 @@ run_script_from_directory() {
     fi
     (cd "$directory" && ./$script "${args[@]}")
     check_command_success "$script in $directory"
+}
+
+# Function to run a script but allow it to fail without causing the entire script to exit
+run_script_optional() {
+    local directory=$1
+    shift
+    local script=$1
+    shift
+    local args=("$@")
+
+    echo "- Script: $0 -----------------> Running optional script $script ${args[*]} in directory: $directory"
+    if [ ! -d "$directory" ]; then
+        echo "Warning: Directory $directory does not exist. Skipping optional script."
+        STATUS+=("$script in $directory: Skipped (directory not found)")
+        return
+    fi
+    if [ ! -f "$directory/$script" ]; then
+        echo "Warning: Script $script does not exist in $directory. Skipping optional script."
+        STATUS+=("$script in $directory: Skipped (script not found)")
+        return
+    fi
+    
+    # Run the script and capture its exit code
+    (cd "$directory" && ./$script "${args[@]}")
+    local exit_code=$?
+    
+    if [ $exit_code -ne 0 ]; then
+        echo "Warning: Optional script $script exited with code $exit_code. Continuing anyway."
+        STATUS+=("$script in $directory: Skipped (exited with code $exit_code)")
+    else
+        STATUS+=("$script in $directory: OK")
+    fi
 }
 
 # Function to ensure the script is run from the root directory of the project
@@ -131,8 +163,3 @@ else
 fi
 
 exit $ERROR
-
-
-
-
-
