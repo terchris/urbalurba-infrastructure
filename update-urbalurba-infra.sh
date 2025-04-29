@@ -174,6 +174,25 @@ else
     esac
 fi
 
+# Ask user if they want to run the Rancher installation
+read -p "Do you want to run the Rancher installation now? (y/n) " -n 1 -r
+echo
+case $REPLY in
+    [Yy]* )
+        echo "Running Rancher installation..."
+        if [ -f "install-rancher.sh" ]; then
+            chmod +x install-rancher.sh
+            ./install-rancher.sh
+        else
+            echo "Warning: install-rancher.sh not found. The installation might be incomplete."
+        fi
+        ;;
+    * )
+        echo "You can run the Rancher installation later by executing:"
+        echo "./install-rancher.sh"
+        ;;
+esac
+
 echo "==================================================="
 echo "Urbalurba Infrastructure is ready!"
 echo "To learn more about available features and usage, see the README.md file."
