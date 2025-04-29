@@ -158,6 +158,7 @@ main() {
     create_and_copy "../cloud-init" "/mnt/urbalurbadisk/cloud-init" "cloud-init directory"
     create_and_copy "../networking" "/mnt/urbalurbadisk/networking" "networking directory"
     create_and_copy "../provision-host" "/mnt/urbalurbadisk/provision-host" "provision-host directory"
+    create_and_copy "../provision-host-rancher" "/mnt/urbalurbadisk/provision-host-rancher" "provision-host-rancher directory"
     create_and_copy "../secrets" "/mnt/urbalurbadisk/secrets" "secrets directory"
     create_and_copy "../topsecret" "/mnt/urbalurbadisk/topsecret" "topsecret directory"
     create_and_copy "../testdata" "/mnt/urbalurbadisk/testdata" "testdata directory"
