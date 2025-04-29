@@ -10,8 +10,8 @@
 
 # Get the directory where this script is located
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-TEMPLATE_FILE="topsecret/kubernetes/kubernetes-secrets-template.yml"
-SECRETS_FILE="topsecret/kubernetes/kubernetes-secrets.yml"
+TEMPLATE_FILE="kubernetes/kubernetes-secrets-template.yml"
+SECRETS_FILE="kubernetes/kubernetes-secrets.yml"
 FULL_TEMPLATE_PATH="$SCRIPT_DIR/$TEMPLATE_FILE"
 FULL_SECRETS_PATH="$SCRIPT_DIR/$SECRETS_FILE"
 
@@ -27,7 +27,7 @@ if [ ! -f "$FULL_SECRETS_PATH" ]; then
     echo ""
     echo "To create the secrets file:"
     echo "1. Copy the template:"
-    echo "   cp $TEMPLATE_FILE $SECRETS_FILE"
+    echo "   cp topsecret/$TEMPLATE_FILE topsecret/$SECRETS_FILE"
     echo ""
     echo "2. Edit the file with your values:"
     echo "   # The file contains all necessary variables with descriptions"

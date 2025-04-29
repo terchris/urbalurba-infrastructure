@@ -84,8 +84,41 @@ run_script_from_directory() {
     cd - > /dev/null
 }
 
+# Function to check if required files exist
+check_required_files() {
+    local missing_files=()
+    
+    # Check for required directories and files
+    if [ ! -d "topsecret" ]; then
+        missing_files+=("topsecret directory")
+    fi
+    if [ ! -d "secrets" ]; then
+        missing_files+=("secrets directory")
+    fi
+    if [ ! -d "provision-host-rancher" ]; then
+        missing_files+=("provision-host-rancher directory")
+    fi
+    if [ ! -d "hosts" ]; then
+        missing_files+=("hosts directory")
+    fi
+    if [ ! -d "networking" ]; then
+        missing_files+=("networking directory")
+    fi
+    
+    if [ ${#missing_files[@]} -ne 0 ]; then
+        echo "Error: The following required files/directories are missing:"
+        printf '%s\n' "${missing_files[@]}"
+        echo "Please make sure you have run the update script first:"
+        echo "curl -L https://raw.githubusercontent.com/terchris/urbalurba-infrastructure/main/update-urbalurba-infra.sh -o update-urbalurba-infra.sh && chmod +x update-urbalurba-infra.sh && ./update-urbalurba-infra.sh"
+        exit 1
+    fi
+}
+
 # Ensure the script is run from the root directory
 ensure_root_directory
+
+# Check for required files before proceeding
+check_required_files
 
 # Check if provision-host container already exists
 if docker ps -a --format '{{.Names}}' | grep -q 'provision-host'; then
