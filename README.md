@@ -38,3 +38,5 @@ Notes:
 - The cloud infrastructure team dont need to provide any permissions in the cloud during development and test.
 
 TODO: analyze  the doc folder and the markdown readme files there to create a overall readme for the infrastructure.
+
+...
