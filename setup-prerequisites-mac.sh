@@ -15,9 +15,10 @@
 #   1 - Homebrew is not installed
 #   2 - Rancher Desktop is not installed
 #   3 - Script is not running on macOS
+#   4 - Docker CLI is not found in PATH
 #
 # Author: @terchris
-# Version: 1.0.0
+# Version: 1.1.0
 # License: MIT
 
 # Function to handle errors
@@ -69,6 +70,33 @@ check_rancher() {
     fi
 }
 
+# Function to check if Docker CLI is available
+check_docker_cli() {
+    if ! command -v docker &> /dev/null; then
+        if [[ "$1" == "test" ]]; then
+            return 4
+        else
+            echo "Docker CLI not found in PATH. Adding Rancher Desktop paths..."
+            
+            # Add Rancher Desktop paths to PATH
+            if [[ ":$PATH:" != *":/Applications/Rancher Desktop.app/Contents/Resources/resources/darwin/bin:"* ]]; then
+                echo 'export PATH="/Applications/Rancher Desktop.app/Contents/Resources/resources/darwin/bin:$PATH"' >> ~/.zshrc
+                export PATH="/Applications/Rancher Desktop.app/Contents/Resources/resources/darwin/bin:$PATH"
+            fi
+            
+            # Verify Docker CLI is now available
+            if ! command -v docker &> /dev/null; then
+                echo "Warning: Docker CLI still not found after updating PATH"
+                echo "Please restart your terminal or run: source ~/.zshrc"
+            else
+                echo "Docker CLI is now available"
+            fi
+        fi
+    else
+        echo "Docker CLI is already available"
+    fi
+}
+
 # Main script logic
 if [[ "$1" == "test" ]]; then
     echo "Testing prerequisites..."
@@ -83,6 +111,12 @@ if [[ "$1" == "test" ]]; then
     if ! check_rancher test; then
         echo "Rancher Desktop is not installed"
         exit 2
+    fi
+    
+    # Check Docker CLI
+    if ! check_docker_cli test; then
+        echo "Docker CLI is not found in PATH"
+        exit 4
     fi
     
     echo "All prerequisites are installed"
@@ -100,6 +134,10 @@ else
     # Install Rancher Desktop if needed
     check_rancher
     
+    # Check and setup Docker CLI
+    check_docker_cli
+    
     echo "All prerequisites have been installed successfully!"
     echo "Please start Rancher Desktop from your Applications folder to complete the setup."
+    echo "If Docker CLI was not found, please restart your terminal or run: source ~/.zshrc"
 fi 

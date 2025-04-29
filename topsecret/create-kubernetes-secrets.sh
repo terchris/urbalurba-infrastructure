@@ -10,8 +10,8 @@
 
 # Get the directory where this script is located
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-TEMPLATE_FILE="kubernetes/kubernetes-secrets-template.yml"
-SECRETS_FILE="kubernetes/kubernetes-secrets.yml"
+TEMPLATE_FILE="topsecret/kubernetes/kubernetes-secrets-template.yml"
+SECRETS_FILE="topsecret/kubernetes/kubernetes-secrets.yml"
 FULL_TEMPLATE_PATH="$SCRIPT_DIR/$TEMPLATE_FILE"
 FULL_SECRETS_PATH="$SCRIPT_DIR/$SECRETS_FILE"
 
