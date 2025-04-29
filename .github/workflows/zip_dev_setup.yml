@@ -23,11 +23,6 @@ jobs:
         run: |
           zip -r urbalurba-infrastructure.zip . -x "terchris/*" ".github/*" ".git/*"
 
-      - name: 🗑️ Delete existing release and tag
-        run: |
-          git tag -d latest || true
-          git push origin :refs/tags/latest || true
-
       - name: ⬆️ Upload infrastructure.zip as an artifact
         uses: actions/upload-artifact@v4
         with:
@@ -38,7 +33,7 @@ jobs:
         id: create_release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: latest
+          tag_name: infrastructure-$(date +%Y%m%d-%H%M%S)
           name: Infrastructure
           draft: false
           prerelease: false
