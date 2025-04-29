@@ -77,6 +77,22 @@ check_prerequisites() {
     done
     echo "All required directories found"
 
+    # Check for kubernetes-secrets.yml
+    if [ ! -f "$workspace_root/topsecret/kubernetes/kubernetes-secrets.yml" ]; then
+        echo "Warning: kubernetes-secrets.yml not found in $workspace_root/topsecret/kubernetes/"
+        echo "You should copy and edit kubernetes-secrets-template.yml to add your own secrets."
+        read -p "Do you want to continue with default values? (y/n) " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            echo "Please copy and edit kubernetes-secrets-template.yml before continuing."
+            echo "After editing the file, run './install-rancher.sh' again to continue the installation."
+            return 1
+        fi
+        echo "Using default values from kubernetes-secrets-template.yml"
+        cp "$workspace_root/topsecret/kubernetes/kubernetes-secrets-template.yml" "$workspace_root/topsecret/kubernetes/kubernetes-secrets.yml"
+        add_status "Creating kubernetes-secrets.yml" "OK (using template)"
+    fi
+
     add_status "Prerequisites" "OK"
 }
 
@@ -151,17 +167,17 @@ main() {
     add_status "Container creation" "OK"
 
     # Transfer directories to the container
-    create_and_copy "../ansible" "/mnt/urbalurbadisk/ansible" "ansible directory"
-    create_and_copy "../manifests" "/mnt/urbalurbadisk/manifests" "manifests folder"
-    create_and_copy "../hosts" "/mnt/urbalurbadisk/hosts" "hosts folder"
-    create_and_copy "../cloud-init" "/mnt/urbalurbadisk/cloud-init" "cloud-init folder"
-    create_and_copy "../networking" "/mnt/urbalurbadisk/networking" "networking folder"
-    create_and_copy "../provision-host" "/mnt/urbalurbadisk/provision-host" "provision-host folder"
-    create_and_copy "../provision-host-rancher" "/mnt/urbalurbadisk/provision-host-rancher" "provision-host-rancher folder"
-    create_and_copy "../secrets" "/mnt/urbalurbadisk/secrets" "secrets folder"
-    create_and_copy "../topsecret" "/mnt/urbalurbadisk/topsecret" "topsecret folder"
-    create_and_copy "../testdata" "/mnt/urbalurbadisk/testdata" "testdata folder"
-    create_and_copy "../scripts" "/mnt/urbalurbadisk/scripts" "scripts folder"
+    echo "Copying required directories to container..."
+    create_and_copy "$workspace_root/ansible" "/mnt/urbalurbadisk/ansible" "ansible directory"
+    create_and_copy "$workspace_root/manifests" "/mnt/urbalurbadisk/manifests" "manifests directory"
+    create_and_copy "$workspace_root/hosts" "/mnt/urbalurbadisk/hosts" "hosts directory"
+    create_and_copy "$workspace_root/cloud-init" "/mnt/urbalurbadisk/cloud-init" "cloud-init directory"
+    create_and_copy "$workspace_root/networking" "/mnt/urbalurbadisk/networking" "networking directory"
+    create_and_copy "$workspace_root/provision-host" "/mnt/urbalurbadisk/provision-host" "provision-host directory"
+    create_and_copy "$workspace_root/secrets" "/mnt/urbalurbadisk/secrets" "secrets directory"
+    create_and_copy "$workspace_root/topsecret" "/mnt/urbalurbadisk/topsecret" "topsecret directory"
+    create_and_copy "$workspace_root/testdata" "/mnt/urbalurbadisk/testdata" "testdata directory"
+    create_and_copy "$workspace_root/scripts" "/mnt/urbalurbadisk/scripts" "scripts directory"
 
     # Fix ownership
     docker exec -u root provision-host chown -R ansible:ansible /mnt/urbalurbadisk
