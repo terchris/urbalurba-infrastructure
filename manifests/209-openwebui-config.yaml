@@ -19,125 +19,135 @@
 # - Tika should be set up in a separate pod in the AI namespace
 # - Qdrant should be running for vector database storage
 
-apiVersion: helm.cattle.io/v1
-kind: HelmChartConfig
-metadata:
-  name: open-webui
-  namespace: ai
-spec:
-  valuesContent: |-
-    # Disable the embedded Ollama since we're using LiteLLM proxy
-    ollama:
-      enabled: false
 
-    # Enable Pipelines for document processing
-    pipelines:
-      enabled: true
+# Disable the embedded Ollama since we're using LiteLLM proxy
+ollama:
+  enabled: false
 
-    # Disable websocket (would require Redis)
-    websocket:
-      enabled: false
+# Enable Pipelines for document processing
+pipelines:
+  enabled: true
 
-    # Disable Redis cluster
-    redis-cluster:
-      enabled: false
-    
-    # Disable the built-in Tika since we're using a standalone deployment
-    tika:
-      enabled: false
+# Disable websocket (would require Redis)
+websocket:
+  enabled: false
 
-    # Persistent storage for Open WebUI
-    persistence:
-      enabled: true
-      existingClaim: "openwebui-data"
-      accessModes:
-        - ReadWriteOnce
-      size: 2Gi  # Size still defined but won't be used when existingClaim is set
-    
-    # Specify the namespace explicitly
-    namespace: ai
+# Disable Redis cluster
+redis-cluster:
+  enabled: false
+  
+# Disable the built-in Tika since we're using a standalone deployment
+tika:
+  enabled: false
 
-    # Resources for Open WebUI
-    # Resource configuration based on observed usage patterns:
-    # - CPU: Set to 1 core (1000m) limit based on observed peak usage of ~500m
-    #   - Request set to 300m to ensure baseline performance
-    # - Memory: Set to 1.5GB (1536Mi) limit based on observed usage of ~950Mi
-    #   - Request set to 512Mi to ensure stable operation
-    # These values provide:
-    # - 2x headroom for CPU spikes
-    # - 1.5x headroom for memory growth
-    # - Sufficient resources for document processing and model interactions
-    resources:
-      requests:
-        memory: 512Mi
-        cpu: 300m
-      limits:
-        memory: 1536Mi
-        cpu: 1000m
+# Persistent storage for Open WebUI
+persistence:
+  enabled: true
+  existingClaim: "openwebui-data"
+  accessModes:
+    - ReadWriteOnce
+  size: 2Gi  # Size still defined but won't be used when existingClaim is set
+  
+# Specify the namespace explicitly
+namespace: ai
 
-    # Environment variables for connecting Open WebUI to LiteLLM and other services
-    extraEnvVars:
-      # ===== LiteLLM Connection Settings =====
-      # Connect to LiteLLM proxy using its service name in the AI namespace
-      # This is the correct env var that Open WebUI uses for the OpenAI-compatible endpoint
-      - name: OPENAI_API_BASE
-        value: "http://litellm:4000"
-      
-      # Use the same API key as configured in LiteLLM's master key
-      - name: OPENAI_API_KEY
-        valueFrom:
-          secretKeyRef:
-            name: urbalurba-secrets
-            key: LITELLM_PROXY_MASTER_KEY
-      
-      # ===== Authentication Settings =====
-      # Disable built-in auth (optional, set to true if you want authentication)
-      - name: WEBUI_AUTH
-        value: "false"
-      
-      # ===== Document Processing Settings =====
-      # Configure Open WebUI to use the standalone Tika server for document extraction
-      - name: CONTENT_EXTRACTION_ENGINE
-        value: "tika"
-      - name: TIKA_SERVER_URL
-        value: "http://tika:9998"
-      
-      # ===== Vector Database Settings =====
-      # Configure Open WebUI to use Qdrant for vector storage
-      - name: VECTOR_DB
-        value: "qdrant"
-      - name: QDRANT_URI
-        value: "http://qdrant:6333"
-      - name: QDRANT_API_KEY
-        valueFrom:
-          secretKeyRef:
-            name: urbalurba-secrets
-            key: OPENWEBUI_QDRANT_API_KEY
-      - name: QDRANT_COLLECTION_NAME
-        value: "openwebui_documents"
-      
-      # ===== Embedding Model Configuration =====
-      # Use a lightweight model for RAG embeddings
-      - name: RAG_EMBEDDING_MODEL
-        value: "all-MiniLM-L6-v2"
-      
-      # ===== Logging Configuration =====
-      - name: RAG_LOG_LEVEL
-        value: "INFO"
+# Resources for Open WebUI
+# Resource configuration based on observed usage patterns:
+# - CPU: Set to 1 core (1000m) limit based on observed peak usage of ~500m
+#   - Request set to 300m to ensure baseline performance
+# - Memory: Set to 1.5GB (1.5Gi) limit based on observed usage of ~950Mi
+#   - Request set to 768Mi to ensure stable operation
+# These values provide:
+# - 2x headroom for CPU spikes
+# - 1.5x headroom for memory growth
+# - Sufficient resources for document processing and model interactions
+resources:
+  requests:
+    memory: 768Mi
+    cpu: 300m
+  limits:
+    memory: 1.5Gi
+    cpu: 1000m
 
-    # Additional labels for network policies
-    podLabels:
-      tika-client: "true"
-      app: "open-webui"
-    
-    # Service configuration
-    service:
-      type: ClusterIP
-      port: 8080
+# Environment variables for connecting Open WebUI to LiteLLM and other services
+extraEnvVars:
+  # ===== LiteLLM Connection Settings =====
+  # Connect to LiteLLM proxy using its service name in the AI namespace
+  # This is the correct env var that Open WebUI uses for the OpenAI-compatible endpoint
+  - name: OPENAI_API_BASE
+    value: "http://litellm:4000"
+  
+  # Use the same API key as configured in LiteLLM's master key
+  - name: OPENAI_API_KEY
+    valueFrom:
+      secretKeyRef:
+        name: urbalurba-secrets
+        key: LITELLM_PROXY_MASTER_KEY
+  
+  # ===== Authentication Settings =====
+  # Disable built-in auth (optional, set to true if you want authentication)
+  - name: WEBUI_AUTH
+    value: "false"
+  
+  # ===== Document Processing Settings =====
+  # Configure Open WebUI to use the standalone Tika server for document extraction
+  - name: CONTENT_EXTRACTION_ENGINE
+    value: "tika"
+  - name: TIKA_SERVER_URL
+    value: "http://tika:9998"
+  
+  # ===== Vector Database Settings =====
+  # Configure Open WebUI to use Qdrant for vector storage
+  - name: VECTOR_DB
+    value: "qdrant"
+  - name: QDRANT_URI
+    value: "http://qdrant:6333"
+  - name: QDRANT_API_KEY
+    valueFrom:
+      secretKeyRef:
+        name: urbalurba-secrets
+        key: OPENWEBUI_QDRANT_API_KEY
+  - name: QDRANT_COLLECTION_NAME
+    value: "openwebui_documents"
+  
+  # ===== Embedding Model Configuration =====
+  # Current default model for RAG embeddings
+  - name: RAG_EMBEDDING_MODEL
+    value: "all-MiniLM-L6-v2"
+  
+  # Norwegian BERT model options (uncomment to use):
+  # - name: RAG_EMBEDDING_MODEL
+  #   value: "NorBERT"  # General purpose Norwegian BERT
+  #   # Alternative options:
+  #   # value: "NorBERT-3-Large"  # More powerful but larger model
+  #   # value: "Klinisk-NorBERT"  # For medical/clinical text
+  #   # value: "NB-BERT"  # For historical text support
+  #   # value: "Norwegian-BERT"  # Community version
+  #
+  # - name: RAG_LANGUAGE
+  #   value: "no"  # Norwegian language code
+  #
+  # - name: RAG_MODEL_PARAMS
+  #   value: '{"model_type": "norwegian-bert", "max_length": 512}'
+  
+  # ===== Logging Configuration =====
+  - name: RAG_LOG_LEVEL
+    value: "INFO"
 
-    # Ingress configuration
-    # Note: Disabled here because the Helm chart always sets host to chat.example.com
-    # This appears to be a bug in the chart. Instead, we'll create a separate ingress
-    # configuration in 210-openwebui-ingress.yaml
-    ingress:
-      enabled: false
+# Additional labels for network policies
+podLabels:
+  tika-client: "true"
+  app: "open-webui"
+  
+# Service configuration
+service:
+  type: ClusterIP
+  port: 8080
+
+# Ingress configuration
+# Note: Disabled here because the Helm chart always sets host to chat.example.com
+# This appears to be a bug in the chart. Instead, we'll create a separate ingress
+# configuration in 210-openwebui-ingress.yaml
+ingress:
+  enabled: false
+  # Configure your ingress settings here if you want to expose Open WebUI externally

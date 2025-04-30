@@ -317,3 +317,33 @@ docker exec -it provision-host bash -c "cd /provision-host && ./install-ai.sh"
 
 Note: The Ollama component may take 10-15 minutes to become fully ready as it downloads the initial model.
 
+> **Note**: The above command uses `-it` flags which will keep the container session open. You'll need to type `exit` to return to your host shell. If you prefer to run the command and automatically return to your host shell, you can use:
+> 
+> ```bash
+> docker exec provision-host bash -c "cd /provision-host && ./install-ai.sh"
+> ```
+> 
+> (without the `-it` flags)
+
+## Experiements and notes
+
+### RAG pipeline notes
+
+#### Norwegian BERT Models for RAG
+
+The following Norwegian BERT models are particularly well-suited for use in Retrieval-Augmented Generation (RAG) pipelines, providing strong Norwegian language understanding and generation capabilities:
+
+| Model Name | Developer/Source | Main Use Case | Notes |
+|------------|------------------|---------------|-------|
+| NorBERT | University of Oslo | General Norwegian NLP | Trained from scratch on Norwegian |
+| NorBERT 3 Large | Dataloop/NorwAI | Advanced NLP tasks in Norwegian | Large model, versatile |
+| Klinisk NorBERT | eHealthResearch | Clinical/medical Norwegian text | Fine-tuned for healthcare |
+| NB-BERT | National Library (NB) | General Norwegian & Scandinavian NLP | Trained on 200 years of text |
+| Norwegian BERT | Certainly AI | General Norwegian NLP | Open-source, community-driven |
+
+These models can be integrated into the RAG pipeline to enhance Norwegian language processing capabilities, particularly useful for:
+- Document understanding and retrieval in Norwegian
+- Question answering systems
+- Text summarization
+- Information extraction from Norwegian documents
+

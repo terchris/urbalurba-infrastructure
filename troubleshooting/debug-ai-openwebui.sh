@@ -1,18 +1,34 @@
 #!/bin/bash
-# debug-openwebui.sh - Script to collect debugging information for Open WebUI in a Kubernetes cluster
+# debug-ai-openwebui.sh - Script to collect debugging information for Open WebUI in a Kubernetes cluster
 # This script gathers detailed information about Open WebUI deployment, configuration, and connectivity
 
 # Set variables
-OUTPUT_FILE="debug-openwebui.txt"
+MAX_DEBUG_FILES=3
+TIMESTAMP=$(date +"%Y%m%d-%H%M%S")
+OUTPUT_DIR="$(dirname "$0")/output"
+OUTPUT_FILE="${OUTPUT_DIR}/debug-ai-openwebui-${TIMESTAMP}.txt"
 DEFAULT_NS="default"
 NAMESPACE=${1:-$DEFAULT_NS}
 OPENWEBUI_POD=$(kubectl get pods -n "$NAMESPACE" -l app.kubernetes.io/component=open-webui -o name 2>/dev/null | head -1)
 OPENWEBUI_SVC=$(kubectl get svc -n "$NAMESPACE" -l app.kubernetes.io/component=open-webui -o name 2>/dev/null | head -1)
 
-# Remove previous debug file if it exists
-if [ -f "$OUTPUT_FILE" ]; then
-  rm "$OUTPUT_FILE"
-fi
+# Create output directory if it doesn't exist
+mkdir -p "$OUTPUT_DIR"
+
+# Clean up old debug files, keeping only the MAX_DEBUG_FILES most recent ones
+cleanup_old_files() {
+  local files_to_keep=$1
+  local files_count
+  files_count=$(ls -1 "$OUTPUT_DIR"/debug-ai-openwebui-*.txt 2>/dev/null | wc -l)
+  
+  if [ "$files_count" -gt "$files_to_keep" ]; then
+    echo "Cleaning up old debug files, keeping the $files_to_keep most recent ones..." | tee -a "$OUTPUT_FILE"
+    ls -t "$OUTPUT_DIR"/debug-ai-openwebui-*.txt | tail -n +$((files_to_keep + 1)) | while read -r file; do
+      echo "Removing old file: $file" | tee -a "$OUTPUT_FILE"
+      rm -f "$file"
+    done
+  fi
+}
 
 echo "Collecting Open WebUI debugging information in namespace $NAMESPACE..."
 echo "Output will be saved to $OUTPUT_FILE"
@@ -73,7 +89,7 @@ run_command() {
   if [ -z "$OPENWEBUI_POD" ]; then
     echo "Error: No Open WebUI pods found in namespace $NAMESPACE" | tee -a "$OUTPUT_FILE"
     echo "Please check if Open WebUI is deployed in this namespace or try another namespace." | tee -a "$OUTPUT_FILE"
-    echo "You can specify a namespace as an argument: ./debug-openwebui.sh <namespace>" | tee -a "$OUTPUT_FILE"
+    echo "You can specify a namespace as an argument: ./debug-ai-openwebui.sh <namespace>" | tee -a "$OUTPUT_FILE"
     exit 1
   fi
   
@@ -584,5 +600,8 @@ run_command() {
   echo "For more information, refer to the Open WebUI documentation at https://github.com/open-webui/open-webui"
 
 } 2>&1
+
+# Clean up old files after the new one is created
+cleanup_old_files "$MAX_DEBUG_FILES"
 
 echo "Debug information has been collected and saved to $OUTPUT_FILE"

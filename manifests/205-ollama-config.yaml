@@ -1,6 +1,7 @@
 # 205-ollama-config.yaml
 # Description:
 # Deploys Ollama as a standalone service using the official Ollama Helm chart
+# Configured for Apple M2 CPU (ARM64) in Rancher Desktop
 # Configured to use the qwen2:0.5b model (500M parameters)
 # Includes persistent storage for models
 # Uses the 'ai' namespace for all resources
@@ -33,14 +34,14 @@ namespaceOverride: "ai"
 # Number of replicas - keeping at 1 for model consistency
 replicaCount: 1
 
-# Container resource limits matching your current configuration
+# Container resource limits optimized for M2 Mac
 resources:
   requests:
-    memory: 2Gi
-    cpu: 500m
-  limits:
     memory: 3Gi
-    cpu: 1000m
+    cpu: 1500m
+  limits:
+    memory: 4Gi
+    cpu: 2000m
 
 # Persistent storage for model files
 persistentVolume:
@@ -59,38 +60,46 @@ ollama:
     run:
       - qwen2:0.5b
   
-  # GPU acceleration (disabled by default)
+  # Model configuration optimized for M2 CPU
+  modelConfig:
+    context_length: 8192
+    num_threads: 8       # M2 has 8 cores
+    batch_size: 256      # Reduced for CPU processing
+  
+  # GPU acceleration disabled for M2
   gpu:
     enabled: false
-    # Uncomment below if you have NVIDIA GPUs and want to use them
-    # type: 'nvidia'
-    # number: 1
 
 # Service configuration to expose Ollama
 service:
   type: ClusterIP
   port: 11434
   
-# Adjust the probes for better stability
+# Adjust the probes for better stability on CPU
 livenessProbe:
   enabled: true
-  initialDelaySeconds: 60
-  periodSeconds: 10
-  timeoutSeconds: 5
+  initialDelaySeconds: 90
+  periodSeconds: 15
+  timeoutSeconds: 10
   failureThreshold: 6
 
 readinessProbe:
   enabled: true
-  initialDelaySeconds: 30
-  periodSeconds: 5
-  timeoutSeconds: 3
+  initialDelaySeconds: 45
+  periodSeconds: 10
+  timeoutSeconds: 5
   failureThreshold: 6
 
-# Optional environment variables
+# Optional environment variables optimized for M2 CPU
 extraEnv:
   - name: OLLAMA_HOST
     value: "0.0.0.0"
-  # Add any other Ollama-specific environment variables here
+  - name: OLLAMA_COMPUTE_BACKEND
+    value: "cpu"
+  - name: OLLAMA_CPU_THREADS
+    value: "8"
+  - name: OLLAMA_BATCH_SIZE
+    value: "256"
 
 # Deployment update strategy
 # Using Recreate since model loading doesn't support multiple concurrent instances well
