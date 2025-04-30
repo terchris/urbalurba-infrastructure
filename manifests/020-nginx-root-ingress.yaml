@@ -25,6 +25,8 @@ metadata:
     kubernetes.io/ingress.class: "traefik"
     # Disable TLS redirect - remove if you want HTTPS redirection
     traefik.ingress.kubernetes.io/ssl-redirect: "false"
+    # Only match if no other ingress rules match
+    traefik.ingress.kubernetes.io/router.priority: "1"
 spec:
   rules:
   - host: "" # Empty to match any hostname

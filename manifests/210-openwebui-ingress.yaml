@@ -1,0 +1,25 @@
+# 210-openwebui-ingress.yaml
+# Description: Ingress configuration for OpenWebUI using Traefik
+# This is a separate ingress configuration because the Helm chart's ingress
+# always sets the host to chat.example.com, which appears to be a bug.
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: open-webui
+  namespace: ai
+  annotations:
+    kubernetes.io/ingress.class: "traefik"
+    traefik.ingress.kubernetes.io/ssl-redirect: "false"
+spec:
+  rules:
+    - host: "openwebui.localhost"
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: open-webui
+                port:
+                  number: 8080 

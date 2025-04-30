@@ -3,10 +3,31 @@
 # This script runs commands to gather information about the cluster and its components
 
 # Set variables
-OUTPUT_FILE="debug-cluster.txt"
+MAX_DEBUG_FILES=3
 TIMESTAMP=$(date +"%Y%m%d-%H%M%S")
+OUTPUT_DIR="$(dirname "$0")/output"
+OUTPUT_FILE="${OUTPUT_DIR}/debug-cluster-${TIMESTAMP}.txt"
 DEFAULT_NS="default"
 NAMESPACE=${1:-$DEFAULT_NS}
+
+# Create output directory if it doesn't exist
+mkdir -p "$OUTPUT_DIR"
+
+# Clean up old debug files, keeping only the MAX_DEBUG_FILES most recent ones
+cleanup_old_files() {
+  local files_to_keep=$1
+  local files_count
+  files_count=$(ls -1 "$OUTPUT_DIR"/debug-cluster-*.txt 2>/dev/null | wc -l)
+  
+  if [ "$files_count" -gt "$files_to_keep" ]; then
+    echo "Cleaning up old debug files, keeping the $files_to_keep most recent ones..." | tee -a "$OUTPUT_FILE"
+    # Get list of files sorted by time (newest first), skip the first $files_to_keep files, and remove the rest
+    ls -t "$OUTPUT_DIR"/debug-cluster-*.txt | tail -n +$((files_to_keep + 1)) | while read -r file; do
+      echo "Removing old file: $file" | tee -a "$OUTPUT_FILE"
+      rm -f "$file"
+    done
+  fi
+}
 
 echo "Collecting Kubernetes cluster debugging information..."
 echo "This may take a few minutes, please be patient..."
@@ -14,7 +35,7 @@ echo "This may take a few minutes, please be patient..."
 # Function to print section headers
 print_section() {
   echo "=== $1 ===" | tee -a "$OUTPUT_FILE"
-  echo "" >> "$OUTPUT_FILE"
+  echo "" | tee -a "$OUTPUT_FILE"
 }
 
 # Function to run kubectl commands and append output to the debug file
@@ -23,29 +44,29 @@ run_kubectl() {
   local description=$2
   
   echo "Step: Collecting $description..." | tee -a "$OUTPUT_FILE"
-  echo "$ $cmd" >> "$OUTPUT_FILE"
-  echo "" >> "$OUTPUT_FILE"
+  echo "$ $cmd" | tee -a "$OUTPUT_FILE"
+  echo "" | tee -a "$OUTPUT_FILE"
   
   # Run the command and capture its output
   local output
   output=$(eval "$cmd" 2>&1)
   local status=$?
   
-  # Write the output to the file
-  echo "$output" >> "$OUTPUT_FILE"
-  echo "" >> "$OUTPUT_FILE"
+  # Write the output to the file and console
+  echo "$output" | tee -a "$OUTPUT_FILE"
+  echo "" | tee -a "$OUTPUT_FILE"
   
   # Log the status to the console
   if [ $status -eq 0 ]; then
     if [ -z "$output" ]; then
       echo "  Result: No data found" | tee -a "$OUTPUT_FILE"
     else
-      echo "  Result: Success" 
+      echo "  Result: Success" | tee -a "$OUTPUT_FILE"
     fi
   else
     echo "  Result: Command failed with status $status" | tee -a "$OUTPUT_FILE"
   fi
-  echo ""
+  echo "" | tee -a "$OUTPUT_FILE"
 }
 
 # Main output collection
@@ -54,7 +75,7 @@ run_kubectl() {
   echo "Date: $(date)" | tee -a "$OUTPUT_FILE"
   echo "Context: $(kubectl config current-context 2>/dev/null || echo "Unable to determine context")" | tee -a "$OUTPUT_FILE"
   echo "Namespace: $NAMESPACE" | tee -a "$OUTPUT_FILE"
-  echo "" >> "$OUTPUT_FILE"
+  echo "" | tee -a "$OUTPUT_FILE"
   
   # Cluster information
   print_section "Cluster Information"
@@ -193,20 +214,20 @@ run_kubectl() {
     echo "Found unhealthy pods, collecting logs..." | tee -a "$OUTPUT_FILE"
     echo "Unhealthy pods:" | tee -a "$OUTPUT_FILE"
     echo "$unhealthy_pods" | tee -a "$OUTPUT_FILE"
-    echo "" >> "$OUTPUT_FILE"
+    echo "" | tee -a "$OUTPUT_FILE"
     
     echo "$unhealthy_pods" | while read -r ns pod; do
       if [ -n "$ns" ] && [ -n "$pod" ]; then
         echo "Collecting logs for pod: $pod in namespace: $ns..." | tee -a "$OUTPUT_FILE"
-        echo "--- Logs for pod: $pod in namespace: $ns ---" >> "$OUTPUT_FILE"
-        kubectl logs --tail=100 -n "$ns" "$pod" --all-containers=true >> "$OUTPUT_FILE" 2>&1 || 
-          echo "Failed to get logs for $pod" >> "$OUTPUT_FILE"
-        echo "" >> "$OUTPUT_FILE"
+        echo "--- Logs for pod: $pod in namespace: $ns ---" | tee -a "$OUTPUT_FILE"
+        kubectl logs --tail=100 -n "$ns" "$pod" --all-containers=true | tee -a "$OUTPUT_FILE" 2>&1 || 
+          echo "Failed to get logs for $pod" | tee -a "$OUTPUT_FILE"
+        echo "" | tee -a "$OUTPUT_FILE"
       fi
     done
   else
     echo "No unhealthy pods found." | tee -a "$OUTPUT_FILE"
-    echo "" >> "$OUTPUT_FILE"
+    echo "" | tee -a "$OUTPUT_FILE"
   fi
 
   # Dynamically detect cluster components
@@ -222,11 +243,11 @@ run_kubectl() {
   # Combine and format the component information
   echo "Component images found in the cluster:" | tee -a "$OUTPUT_FILE"
   echo "$component_images" | tr ' ' '\n' | sort | uniq | tee -a "$OUTPUT_FILE"
-  echo "" >> "$OUTPUT_FILE"
+  echo "" | tee -a "$OUTPUT_FILE"
   
   echo "Component resources found in the cluster:" | tee -a "$OUTPUT_FILE"
   echo "$component_resources" | sort | tee -a "$OUTPUT_FILE"
-  echo "" >> "$OUTPUT_FILE"
+  echo "" | tee -a "$OUTPUT_FILE"
   
   # Pod distributions by namespace
   print_section "Pod Distribution by Namespace"
@@ -245,10 +266,13 @@ run_kubectl() {
   echo "5. Check logs of problematic pods for specific error messages" | tee -a "$OUTPUT_FILE"
   echo "6. Verify ingress configuration is correct" | tee -a "$OUTPUT_FILE"
   echo "7. For detailed component debugging, look for component-specific debug scripts" | tee -a "$OUTPUT_FILE"
-  echo "" >> "$OUTPUT_FILE"
+  echo "" | tee -a "$OUTPUT_FILE"
 
 } 2>&1
 
 print_section "Debug Complete"
 echo "Debug information collected and saved to $OUTPUT_FILE"
 echo "You can now examine this file to troubleshoot cluster issues."
+
+# Clean up old files after the new one is created
+cleanup_old_files "$MAX_DEBUG_FILES"

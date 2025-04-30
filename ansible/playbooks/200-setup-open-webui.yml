@@ -34,6 +34,7 @@
     ollama_config_file: "{{ manifests_folder }}/205-ollama-config.yaml"
     litellm_config_file: "{{ manifests_folder }}/207-litellm-config.yaml"
     openwebui_config_file: "{{ manifests_folder }}/209-openwebui-config.yaml"
+    openwebui_ingress_file: "{{ manifests_folder }}/210-openwebui-ingress.yaml"
 
   tasks:
     - name: 1. Get current Kubernetes context if kube_context not provided
@@ -277,8 +278,21 @@
       ansible.builtin.debug:
         msg: "Open WebUI readiness status: {{ 'Ready' if openwebui_wait_result.rc == 0 else 'Not ready yet, continuing anyway' }}"
     
+    # Apply Open WebUI ingress configuration
+    - name: 14e. Apply Open WebUI ingress configuration
+      ansible.builtin.command: >
+        kubectl apply -f {{ openwebui_ingress_file }} -n {{ ai_namespace }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: openwebui_ingress_result
+      changed_when: true
+    
+    - name: 14f. Display Open WebUI ingress configuration result
+      ansible.builtin.debug:
+        msg: "Open WebUI ingress configuration applied"
+    
     # Give the deployment a bit more time to stabilize
-    - name: 14e. Give the deployment a bit more time to stabilize
+    - name: 14g. Give the deployment a bit more time to stabilize
       ansible.builtin.pause:
         seconds: 30
       when: litellm_wait_result.rc != 0 or openwebui_wait_result.rc != 0
