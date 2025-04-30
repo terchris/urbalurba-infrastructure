@@ -2,13 +2,25 @@
 # debug-ai-ollama-host.sh - Script to test host Ollama instance from within Kubernetes
 # This script tests Ollama connectivity both from the host and from within the cluster
 
+# Display usage information
+usage() {
+    echo "Usage: $0 [llm_host]"
+    echo "  llm_host: The hostname or IP address of the LLM server (default: host.docker.internal)"
+    echo "  Example: $0 192.168.1.100"
+    echo "          $0 my-llm-server.local"
+    exit 1
+}
+
+# Get the LLM host from command line argument or use default
+LLM_HOST="${1:-host.docker.internal}"
+
 # Set variables
 MAX_DEBUG_FILES=3
 TIMESTAMP=$(date +"%Y%m%d-%H%M%S")
 OUTPUT_DIR="$(dirname "$0")/output"
 OUTPUT_FILE="${OUTPUT_DIR}/debug-ollama-host-${TIMESTAMP}.txt"
 NAMESPACE="ai"
-HOST_OLLAMA_URL="http://host.docker.internal:11434"
+HOST_OLLAMA_URL="http://${LLM_HOST}:11434"
 
 # Create output directory if it doesn't exist
 mkdir -p "$OUTPUT_DIR"
@@ -68,22 +80,23 @@ calculate_tps() {
   echo "Date: $(date)"
   echo "Context: $(kubectl config current-context)"
   echo "Namespace: $NAMESPACE"
+  echo "LLM Host: $LLM_HOST"
   echo "Host Ollama URL: $HOST_OLLAMA_URL"
   echo ""
   echo "This script performs two sets of tests:"
-  echo "1. Host-side tests: Testing Ollama directly on the host machine"
+  echo "1. Host-side tests: Testing Ollama directly on the specified LLM host"
   echo "2. Cluster-side tests: Testing Ollama from within the Kubernetes cluster"
   echo ""
 } | tee "$OUTPUT_FILE"
 
 # PART 1: Host-side Tests
-write_section "PART 1: Host-side Tests (Testing Ollama on localhost)"
+write_section "PART 1: Host-side Tests (Testing Ollama on $LLM_HOST)"
 
 write_section "1.1 Host Ollama Models"
-write_command_output "curl -s http://localhost:11434/api/tags | jq -r '\"Available Models on Host:\n\" + (.models[] | \"- \" + .name + \"\n  Size: \" + (.size|tostring|.[:-6]) + \"MB\n  Family: \" + .details.family + \"\n  Parameters: \" + .details.parameter_size + \"\n  Quantization: \" + .details.quantization_level)'" "Listing available models on host"
+write_command_output "curl -s $HOST_OLLAMA_URL/api/tags | jq -r '\"Available Models on Host:\n\" + (.models[] | \"- \" + .name + \"\n  Size: \" + (.size|tostring|.[:-6]) + \"MB\n  Family: \" + .details.family + \"\n  Parameters: \" + .details.parameter_size + \"\n  Quantization: \" + .details.quantization_level)'" "Listing available models on host"
 
 write_section "1.2 Host Model Inference"
-write_command_output "curl -s -X POST http://localhost:11434/api/generate -d '{\"model\":\"deepseek-r1\",\"prompt\":\"Hi, please respond with a short greeting to test if you are working properly.\",\"stream\":false}' > /tmp/host_response.json && echo \"Response Analysis:\" && cat /tmp/host_response.json | jq -r '.response' && DURATION=\$(cat /tmp/host_response.json | jq -r '.total_duration') && TOKENS=\$(cat /tmp/host_response.json | jq -r '.eval_count') && echo \"Duration: \$DURATION ns (\$(echo \"scale=3; \$DURATION/1000000000\" | bc) seconds)\" && echo \"Tokens: \$TOKENS\" && echo \"Tokens per second: \$(calculate_tps \$DURATION \$TOKENS)\"" "Testing model inference on host"
+write_command_output "curl -s -X POST $HOST_OLLAMA_URL/api/generate -d '{\"model\":\"deepseek-r1\",\"prompt\":\"Hi, please respond with a short greeting to test if you are working properly.\",\"stream\":false}' > /tmp/host_response.json && echo \"Response Analysis:\" && cat /tmp/host_response.json | jq -r '.response' && DURATION=\$(cat /tmp/host_response.json | jq -r '.total_duration') && TOKENS=\$(cat /tmp/host_response.json | jq -r '.eval_count') && echo \"Duration: \$DURATION ns (\$(echo \"scale=3; \$DURATION/1000000000\" | bc) seconds)\" && echo \"Tokens: \$TOKENS\" && echo \"Tokens per second: \$(calculate_tps \$DURATION \$TOKENS)\"" "Testing model inference on host"
 
 # PART 2: Cluster-side Tests
 write_section "PART 2: Cluster-side Tests (Testing Ollama from within Kubernetes)"
