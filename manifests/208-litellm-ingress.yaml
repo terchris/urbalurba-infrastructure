@@ -8,9 +8,9 @@ metadata:
   name: litellm
   namespace: ai
   annotations:
-    kubernetes.io/ingress.class: "traefik"
     traefik.ingress.kubernetes.io/ssl-redirect: "false"
 spec:
+  ingressClassName: traefik
   rules:
     - host: "litellm.localhost"
       http:
