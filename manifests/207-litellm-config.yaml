@@ -2,7 +2,7 @@
 # 
 # Description:
 # LiteLLM proxy configuration with multiple model sources:
-# 1. In-cluster Ollama qwen2:0.5b model (always available)
+# 1. In-cluster Ollama qwen3:0.6b-incluster model (always available)
 # 2. Local Mac Ollama deepseek-r1 model (always available)
 # 3. External Mac Ollama gemma3:4b model (requires network access to 192.168.68.61)
 # 4. Cloud provider models (available when valid API keys are provided)
@@ -37,7 +37,7 @@
 #    curl -X POST http://localhost:4000/v1/chat/completions \
 #      -H "Content-Type: application/json" \
 #      -H "Authorization: Bearer $LITELLM_PROXY_MASTER_KEY" \
-#      -d '{"model": "qwen2", "messages": [{"role": "user", "content": "Tell me a short joke"}]}'
+#      -d '{"model": "qwen3-0.6b-incluster", "messages": [{"role": "user", "content": "Tell me a short joke"}]}'
 #
 # 5. Test completion with the Mac DeepSeek model:
 #    curl -X POST http://localhost:4000/v1/chat/completions \
@@ -80,9 +80,9 @@ proxy_config:
     routing_strategy: "simple-shuffle"
     # Define fallbacks from cloud models to local models
     fallbacks: [
-      {"gpt-4o": ["deepseek-r1", "external-ollama-gemma3", "qwen2"]},
-      {"claude-3-opus": ["deepseek-r1", "external-ollama-gemma3", "qwen2"]},
-      {"gpt-3.5-turbo": ["external-ollama-gemma3", "qwen2"]}
+      {"gpt-4o": ["deepseek-r1", "external-ollama-gemma3", "qwen3-0.6b-incluster"]},
+      {"claude-3-opus": ["deepseek-r1", "external-ollama-gemma3", "qwen3-0.6b-incluster"]},
+      {"gpt-3.5-turbo": ["external-ollama-gemma3", "qwen3-0.6b-incluster"]}
     ]
   
   # LiteLLM settings
@@ -91,8 +91,8 @@ proxy_config:
     request_timeout: 120
     # Enable fallbacks for content policy errors
     content_policy_fallbacks: [
-      {"gpt-4o": ["deepseek-r1", "external-ollama-gemma3", "qwen2"]},
-      {"claude-3-opus": ["deepseek-r1", "external-ollama-gemma3", "qwen2"]}
+      {"gpt-4o": ["deepseek-r1", "external-ollama-gemma3", "qwen3-0.6b-incluster"]},
+      {"claude-3-opus": ["deepseek-r1", "external-ollama-gemma3", "qwen3-0.6b-incluster"]}
     ]
     # Retry on connection issues (helps with intermittent network problems)
     num_retries: 3
@@ -100,15 +100,15 @@ proxy_config:
   # Model list configuration
   model_list:
     # In-cluster Ollama model (always available)
-    - model_name: qwen2
+    - model_name: qwen3-0.6b-incluster
       litellm_params:
-        model: ollama/qwen2:0.5b
+        model: ollama/qwen3:0.6b
         api_base: "http://ollama:11434"
         temperature: 0.7
         max_tokens: 1000
         stop: ["<|im_start|>", "<|im_end|>"]
       model_info:
-        description: "Qwen2 0.5B model running on in-cluster Ollama"
+        description: "Qwen3 0.6B (small, in-cluster, for testing only)"
         status: "active"
         input_cost_per_token: 0
         output_cost_per_token: 0

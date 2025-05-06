@@ -216,7 +216,7 @@
     
     - name: 12b. Display Ollama deployment result
       ansible.builtin.debug:
-        msg: "Ollama deployment initiated. Note: Ollama may take 10-15 minutes to become ready as it downloads the qwen2:0.5b model. Continuing with other components."
+        msg: "Ollama deployment initiated. Note: Ollama may take 10-15 minutes to become ready as it downloads the model. Continuing with other components."
     
     # Install LiteLLM
     - name: 13a. Deploy LiteLLM proxy
@@ -397,43 +397,47 @@
     
     - name: 19. Display final installation status
       ansible.builtin.debug:
-        msg: |
-          Open WebUI AI Stack Installation Status:
-          {{ 'SUCCESS - All key components are running' if services_setup_successful else 'PARTIAL SUCCESS - Some components may not be running yet' }}
-          
-          Components installed:
-          - Persistent Storage
-          - Apache Tika (document extraction)
-          - Qdrant (vector database)
-          - Ollama (local LLM support)
-          - LiteLLM (LLM proxy)
-          - Open WebUI (frontend)
-          
-          Running pods: {{ running_pods_count.stdout }} / {{ ai_pods.stdout_lines | length - 1 }}
-          {{ initialization_message }}
-          
-          NOTE: Ollama may take 10-15 minutes to become ready as it downloads the qwen2:0.5b model.
-          This will not affect your ability to use other LLM models through LiteLLM.
-          
-          To access Open WebUI, you can port-forward the service:
-          kubectl port-forward svc/{{ openwebui_service_name | default('open-webui') }} {{ openwebui_service_port | default('8080') }}:{{ openwebui_service_port | default('8080') }} -n {{ ai_namespace }}
-          
-          Then access it at: http://localhost:{{ openwebui_service_port | default('8080') }}
-          
-          To test LiteLLM API access:
-          1. Get your master key: 
-             LITELLM_PROXY_MASTER_KEY=$(kubectl get secret urbalurba-secrets -n {{ ai_namespace }} -o jsonpath="{.data.LITELLM_PROXY_MASTER_KEY}" | base64 --decode)
-          
-          2. Access LiteLLM at: http://litellm.localhost
-          
-          3. List available models:
-             curl -X GET http://litellm.localhost/v1/models -H "Authorization: Bearer $LITELLM_PROXY_MASTER_KEY"
-          
-          Troubleshooting:
-          - Check pod status: kubectl get pods -n {{ ai_namespace }}
-          - View logs: kubectl logs -f <pod-name> -n {{ ai_namespace }}
-          - Check Ollama status: kubectl get pods -n {{ ai_namespace }} | grep ollama
-          - View Ollama logs: kubectl logs -f $(kubectl get pods -n {{ ai_namespace }} -l app.kubernetes.io/name=ollama -o name) -n {{ ai_namespace }}
-          - Restart a deployment: kubectl rollout restart deployment/<deployment-name> -n {{ ai_namespace }}
-          
-          {{ 'INSTALLATION SUCCESSFUL' if services_setup_successful else 'INSTALLATION STATUS: Some components may still be starting' }}
+        msg:
+          - "==============================================="
+          - "🚀 Open WebUI AI Stack Installation Status"
+          - "==============================================="
+          - ""
+          - "{{ '✅ SUCCESS - All key components are running' if services_setup_successful else '⚠️ PARTIAL SUCCESS - Some components may not be running yet' }}"
+          - ""
+          - "📦 Components installed:"
+          - "• Persistent Storage"
+          - "• Apache Tika (document extraction)"
+          - "• Qdrant (vector database)"
+          - "• Ollama (local LLM support)"
+          - "• LiteLLM (LLM proxy)"
+          - "• Open WebUI (frontend)"
+          - ""
+          - "🔄 Status:"
+          - "• Running pods: {{ running_pods_count.stdout }} / {{ ai_pods.stdout_lines | length - 1 }}"
+          - "• {{ initialization_message }}"
+          - ""
+          - "⏳ Note: Ollama may take 10-15 minutes to become ready as it downloads the Qwen3-0.6B model."
+          - "This will not affect your ability to use other LLM models through LiteLLM."
+          - ""
+          - "🌐 Access Instructions:"
+          - "1. Open WebUI:"
+          - "   • Port-forward: kubectl port-forward svc/{{ openwebui_service_name | default('open-webui') }} {{ openwebui_service_port | default('8080') }}:{{ openwebui_service_port | default('8080') }} -n {{ ai_namespace }}"
+          - "   • Access at: http://localhost:{{ openwebui_service_port | default('8080') }}"
+          - ""
+          - "2. LiteLLM API:"
+          - "   • Get master key:"
+          - "     LITELLM_PROXY_MASTER_KEY=$(kubectl get secret urbalurba-secrets -n {{ ai_namespace }} -o jsonpath=\"{.data.LITELLM_PROXY_MASTER_KEY}\" | base64 --decode)"
+          - "   • Access at: http://litellm.localhost"
+          - "   • List models:"
+          - "     curl -X GET http://litellm.localhost/v1/models -H \"Authorization: Bearer $LITELLM_PROXY_MASTER_KEY\""
+          - ""
+          - "🔧 Troubleshooting:"
+          - "• Check pod status: kubectl get pods -n {{ ai_namespace }}"
+          - "• View logs: kubectl logs -f <pod-name> -n {{ ai_namespace }}"
+          - "• Check Ollama status: kubectl get pods -n {{ ai_namespace }} | grep ollama"
+          - "• View Ollama logs: kubectl logs -f $(kubectl get pods -n {{ ai_namespace }} -l app.kubernetes.io/name=ollama -o name) -n {{ ai_namespace }}"
+          - "• Restart a deployment: kubectl rollout restart deployment/<deployment-name> -n {{ ai_namespace }}"
+          - ""
+          - "==============================================="
+          - "{{ '🎉 INSTALLATION SUCCESSFUL' if services_setup_successful else '⚠️ INSTALLATION STATUS: Some components may still be starting' }}"
+          - "==============================================="
