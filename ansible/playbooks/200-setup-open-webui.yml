@@ -27,6 +27,7 @@
     ollama_chart: "ollama-helm/ollama"
     litellm_chart: "oci://ghcr.io/berriai/litellm-helm"
     openwebui_chart: "open-webui/open-webui"
+    openwebui_repo_url: "https://helm.openwebui.com/"
     # Config files
     storage_config_file: "{{ manifests_folder }}/200-ai-persistent-storage.yaml"
     tika_config_file: "{{ manifests_folder }}/201-tika-config.yaml"
@@ -135,7 +136,7 @@
         - { name: 'tika', url: 'https://apache.jfrog.io/artifactory/tika' }
         - { name: 'qdrant', url: 'https://qdrant.github.io/qdrant-helm' }
         - { name: 'ollama-helm', url: 'https://otwld.github.io/ollama-helm/' }
-        - { name: 'open-webui', url: 'https://helm.openwebui.com/' }
+        - { name: 'open-webui', url: '{{ openwebui_repo_url }}' }
       when: item.name not in helm_repo_list.stdout
       register: helm_repo_result
 

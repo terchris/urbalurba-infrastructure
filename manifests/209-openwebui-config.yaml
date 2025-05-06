@@ -130,6 +130,25 @@ extraEnvVars:
   # - name: RAG_MODEL_PARAMS
   #   value: '{"model_type": "norwegian-bert", "max_length": 512}'
   
+  # ===== New Features from v0.6.6 =====
+  # Enhanced search capabilities
+  - name: ENABLE_PARALLEL_SEARCH
+    value: "true"
+  - name: ENABLE_MULTI_THREADED_SEARCH
+    value: "true"
+  
+  # Enhanced document processing
+  - name: ENABLE_AUDIO_TRANSCRIPTION
+    value: "true"
+  - name: ENABLE_MARKDOWN_IMPORT
+    value: "true"
+  
+  # Enhanced security features
+  - name: ENABLE_AUDIT_LOGS
+    value: "true"
+  - name: ENABLE_ROLE_CONFIRMATION
+    value: "true"
+  
   # ===== Logging Configuration =====
   - name: RAG_LOG_LEVEL
     value: "INFO"
@@ -145,9 +164,13 @@ service:
   port: 8080
 
 # Ingress configuration
-# Note: Disabled here because the Helm chart always sets host to chat.example.com
-# This appears to be a bug in the chart. Instead, we'll create a separate ingress
-# configuration in 210-openwebui-ingress.yaml
 ingress:
-  enabled: false
-  # Configure your ingress settings here if you want to expose Open WebUI externally
+  enabled: true
+  className: "traefik"
+  annotations:
+    traefik.ingress.kubernetes.io/ssl-redirect: "false"
+  hosts:
+    - host: "openwebui.localhost"
+      paths:
+        - path: /
+          pathType: Prefix

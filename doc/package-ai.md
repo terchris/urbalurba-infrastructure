@@ -1,6 +1,69 @@
 # AI Package
 
-The AI package is a comprehensive self-hosted AI platform that enables organizations to build and deploy AI applications with advanced document processing and knowledge management capabilities. Key features include:
+The AI package is a comprehensive self-hosted AI platform that enables organizations to build and deploy AI applications with advanced document processing and knowledge management capabilities. This implementation is based on the [Open WebUI](https://github.com/open-webui/open-webui) project, which provides a powerful foundation for building AI applications. We've enhanced and customized it to better suit enterprise needs and specific use cases.
+
+## Implementation Differences from Open WebUI
+
+While our implementation is based on Open WebUI, we've made several significant modifications to enhance its capabilities and better suit enterprise needs:
+
+### 1. Vector Database
+- **Original**: Uses ChromaDB as the default vector database
+- **Our Implementation**: Replaced with Qdrant for better scalability and performance
+  - Enhanced similarity search capabilities
+  - Better support for large-scale deployments
+  - Improved query performance
+  - More robust clustering support
+
+### 2. Document Processing
+- **Original**: Uses embedded Tika server
+- **Our Implementation**: Deployed standalone Tika server
+  - Better resource isolation
+  - Improved scalability
+  - Independent scaling of document processing
+  - Enhanced reliability
+
+### 3. LLM Integration
+- **Original**: Direct integration with Ollama and OpenAI-compatible APIs
+- **Our Implementation**: Uses LiteLLM as a central proxy
+  - Unified interface for all LLM providers
+  - Advanced fallback mechanisms
+  - Better cost tracking and monitoring
+  - Enhanced rate limiting and access control
+  - Support for multiple API providers through a single interface
+
+### 4. Storage Architecture
+- **Original**: Uses embedded storage solutions
+- **Our Implementation**: Kubernetes-native persistent storage
+  - Better data persistence
+  - Improved backup capabilities
+  - Enhanced scalability
+  - Better resource management
+
+### 5. Deployment Architecture
+- **Original**: Designed for simpler deployments
+- **Our Implementation**: Kubernetes-native deployment
+  - Better scalability
+  - Enhanced reliability
+  - Improved resource management
+  - Better integration with enterprise infrastructure
+
+### 6. Security Enhancements
+- **Original**: Basic security features
+- **Our Implementation**: Enhanced security features
+  - Centralized API key management
+  - Advanced access control
+  - Better secret management
+  - Enhanced audit capabilities
+
+### 7. Monitoring and Management
+- **Original**: Basic monitoring capabilities
+- **Our Implementation**: Enhanced monitoring and management
+  - Detailed cost tracking
+  - Usage analytics
+  - Better resource monitoring
+  - Enhanced troubleshooting capabilities
+
+Key features include:
 
 - **Knowledge Base Management**: 
   - Document ingestion and processing through a RAG (Retrieval-Augmented Generation) pipeline
