@@ -1,0 +1,24 @@
+# 208-litellm-ingress.yaml
+# Description: Ingress configuration for LiteLLM using Traefik
+# This is a separate ingress configuration to expose the LiteLLM proxy service
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: litellm
+  namespace: ai
+  annotations:
+    kubernetes.io/ingress.class: "traefik"
+    traefik.ingress.kubernetes.io/ssl-redirect: "false"
+spec:
+  rules:
+    - host: "litellm.localhost"
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: litellm
+                port:
+                  number: 4000 

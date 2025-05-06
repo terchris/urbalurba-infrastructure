@@ -33,6 +33,7 @@
     qdrant_config_file: "{{ manifests_folder }}/203-qdrant-config.yaml"
     ollama_config_file: "{{ manifests_folder }}/205-ollama-config.yaml"
     litellm_config_file: "{{ manifests_folder }}/207-litellm-config.yaml"
+    litellm_ingress_file: "{{ manifests_folder }}/208-litellm-ingress.yaml"
     openwebui_config_file: "{{ manifests_folder }}/209-openwebui-config.yaml"
     openwebui_ingress_file: "{{ manifests_folder }}/210-openwebui-ingress.yaml"
 
@@ -248,6 +249,19 @@
       ansible.builtin.debug:
         msg: "LiteLLM readiness status: {{ 'Ready' if litellm_wait_result.rc == 0 else 'Not ready yet, continuing anyway' }}"
     
+    # Apply LiteLLM ingress configuration
+    - name: 13e. Apply LiteLLM ingress configuration
+      ansible.builtin.command: >
+        kubectl apply -f {{ litellm_ingress_file }} -n {{ ai_namespace }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: litellm_ingress_result
+      changed_when: true
+    
+    - name: 13f. Display LiteLLM ingress configuration result
+      ansible.builtin.debug:
+        msg: "LiteLLM ingress configuration applied"
+    
     # Install Open WebUI
     - name: 14a. Deploy Open WebUI frontend
       ansible.builtin.command: >
@@ -409,11 +423,10 @@
           1. Get your master key: 
              LITELLM_PROXY_MASTER_KEY=$(kubectl get secret urbalurba-secrets -n {{ ai_namespace }} -o jsonpath="{.data.LITELLM_PROXY_MASTER_KEY}" | base64 --decode)
           
-          2. Port forward the LiteLLM service:
-             kubectl port-forward svc/litellm 4000:4000 -n {{ ai_namespace }}
+          2. Access LiteLLM at: http://litellm.localhost
           
           3. List available models:
-             curl -X GET http://localhost:4000/v1/models -H "Authorization: Bearer $LITELLM_PROXY_MASTER_KEY"
+             curl -X GET http://litellm.localhost/v1/models -H "Authorization: Bearer $LITELLM_PROXY_MASTER_KEY"
           
           Troubleshooting:
           - Check pod status: kubectl get pods -n {{ ai_namespace }}
