@@ -5,8 +5,12 @@
 # - storage : persistent storage for all systems
 # - tika : Apache Tika server for document extraction and processing
 # - qdrant : Qdrant as a vector database for Open WebUI, replacing the default ChromaDB
-# - ollama: install a minimal LLM (qwen2:0.5b) in the cluster. The model is so small so it is mainly ther to prove that it works. Remove it when you have a real model.
-# - litellm : proxy for LLMs makes it possible to use open-webui with any LLM. External or internal.
+# - ollama: install a minimal LLM (qwen3:0.6b) in the cluster. The model is so small so it is mainly there to prove that it works. Remove it when you have a real model.
+#
+# Architecture:
+# - OpenWebUI connects directly to both Ollama instances (in-cluster and on host)
+# - Users can download and manage models on the host Ollama through the UI
+# - The in-cluster Ollama provides a stable, minimal model for testing
 #
 # All the services are set up in the namespace named: ai and requires you to set secrets needed for the services to work.
 #
@@ -84,12 +88,7 @@ check_secret() {
         echo ""
         echo "Example:"
         echo "kubectl create secret generic $secret_name -n $namespace \\"
-        echo "  --from-literal=OPENWEBUI_QDRANT_API_KEY=your-qdrant-api-key \\"
-        echo "  --from-literal=LITELLM_PROXY_MASTER_KEY=your-litellm-master-key \\"
-        echo "  --from-literal=OPENAI_API_KEY=your-openai-api-key \\"
-        echo "  --from-literal=ANTHROPIC_API_KEY=your-anthropic-api-key \\"
-        echo "  --from-literal=AZURE_API_KEY=your-azure-api-key \\"
-        echo "  --from-literal=AZURE_API_BASE=your-azure-api-base"
+        echo "  --from-literal=OPENWEBUI_QDRANT_API_KEY=your-qdrant-api-key"
         return 1
     fi
     
@@ -153,9 +152,8 @@ print_summary() {
         echo "- Persistent storage for all services"
         echo "- Apache Tika (document extraction)"
         echo "- Qdrant (vector database)"
-        echo "- Ollama (local LLM)"
-        echo "- LiteLLM (LLM proxy)"
-        echo "- Open WebUI (frontend)"
+        echo "- Ollama (local LLM in cluster)"
+        echo "- Open WebUI (frontend with direct connections to Ollama instances)"
         echo ""
         
         # Verify deployment status
@@ -177,16 +175,22 @@ print_summary() {
             OLLAMA_STATUS=$(kubectl get pods -n ai | grep ollama | awk '{print $3}')
             if [ "$OLLAMA_STATUS" = "ContainerCreating" ]; then
                 echo "Note: Ollama is still initializing and may take 10-15 minutes to become ready."
-                echo "This will not affect your ability to use other LLM models through LiteLLM."
+                echo "In the meantime, you can still use models from your host Ollama through OpenWebUI."
             fi
         fi
         
         echo ""
-        echo "You can check the Open WebUI pods with: kubectl get pods -n ai"
-        echo "You can access Open WebUI by port-forwarding: kubectl port-forward svc/open-webui 8080:8080 -n ai"
-        echo "Then visit: http://localhost:8080"
+        echo "Architecture:"
+        echo "- OpenWebUI connects directly to the in-cluster Ollama model (qwen3:0.6b)"
+        echo "- OpenWebUI connects directly to your host Ollama on Mac"
+        echo "- You can download and manage models on your host through the OpenWebUI interface"
         echo ""
-        echo "To make the Open WebUI available from the outside world, can run the networking/net2-tailscale-host-setup.sh script."
+        echo "You can check the OpenWebUI pods with: kubectl get pods -n ai"
+        echo "You can access OpenWebUI by port-forwarding: kubectl port-forward svc/open-webui 8080:8080 -n ai"
+        echo "Then visit: http://localhost:8080"
+        echo "Or use the ingress at: http://openwebui.localhost"
+        echo ""
+        echo "To make the OpenWebUI available from the outside world, you can run the networking/net2-tailscale-host-setup.sh script."
     else
         echo "Errors occurred during installation:"
         for step in "${!ERRORS[@]}"; do

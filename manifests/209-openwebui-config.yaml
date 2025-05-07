@@ -1,12 +1,15 @@
 # 209-openwebui-config.yaml
 # 
 # Description:
-# Open WebUI configuration to integrate with LiteLLM proxy for accessing:
-# - Local Ollama models (in-cluster and from host machines)
-# - Azure OpenAI API models 
-# - OpenAI models
-# - Anthropic models
+# Open WebUI configuration with direct connections to Ollama instances:
+# 1. Host Ollama: Direct connection to Ollama running on the host machine (Mac with M2 CPU)
+#    - Allows downloading and managing models directly through the UI
+#    - No config changes needed to use new models downloaded to host
+# 2. In-Cluster Ollama: Direct connection to Ollama running in the Kubernetes cluster
+#    - Access to the qwen3:0.6b model deployed in the cluster
+#
 # This configuration maintains compatibility with existing Tika and Qdrant integrations
+# The helm doc is here https://github.com/open-webui/helm-charts/tree/main/charts/open-webui
 # 
 # Usage:
 # installing: helm install open-webui open-webui/open-webui -f 209-openwebui-config.yaml -n ai
@@ -14,15 +17,21 @@
 # uninstalling: helm uninstall open-webui -n ai
 #
 # Prerequisites:
-# - LiteLLM must be deployed in the AI namespace using 207-litellm-config.yaml
+# - Ollama must be running in the AI namespace configured with 205-ollama-config.yaml
 # - The 'urbalurba-secrets' secret must exist in the AI namespace with required API keys
 # - Tika should be set up in a separate pod in the AI namespace
 # - Qdrant should be running for vector database storage
+# - Ollama should be running on the host machine (Mac with M2 CPU)
 
 
-# Disable the embedded Ollama since we're using LiteLLM proxy
+# Disable the embedded Ollama since we're using external Ollama instances
 ollama:
   enabled: false
+
+# Sets up link to the ollama running in the cluster and the ollama running on the host (same as using the OLLAMA_BASE_URLS)
+ollamaUrls:
+  - "http://ollama:11434"
+  - "http://host.docker.internal:11434"  
 
 # Enable Pipelines for document processing
 pipelines:
@@ -52,42 +61,66 @@ persistence:
 namespace: ai
 
 # Resources for Open WebUI
-# Resource configuration based on observed usage patterns:
-# - CPU: Set to 1 core (1000m) limit based on observed peak usage of ~500m
-#   - Request set to 300m to ensure baseline performance
-# - Memory: Set to 1.5GB (1.5Gi) limit based on observed usage of ~950Mi
-#   - Request set to 768Mi to ensure stable operation
+# Resource configuration based on observed real-world usage patterns:
+# - CPU: Set to 1.5 cores (1500m) limit based on observed usage patterns
+#   - Request set to 500m to ensure proper baseline performance
+# - Memory: Set to 3Gi limit based on observed usage of 1530MB (~1.5Gi)
+#   - Request set to 1.5Gi to match actual observed base usage
 # These values provide:
-# - 2x headroom for CPU spikes
-# - 1.5x headroom for memory growth
-# - Sufficient resources for document processing and model interactions
+# - 3x headroom for CPU spikes from baseline usage
+# - 2x headroom for memory growth and stability
+# - Sufficient resources for document processing, RAG operations, and model interactions
+# - Protection against OOM (Out of Memory) termination
 resources:
   requests:
-    memory: 768Mi
-    cpu: 300m
-  limits:
     memory: 1.5Gi
-    cpu: 1000m
+    cpu: 500m
+  limits:
+    memory: 3Gi
+    cpu: 1500m
 
-# Environment variables for connecting Open WebUI to LiteLLM and other services
+# ===== Start: Host configuration for accessing Ollama on host =====
+# This allows the pods to resolve host.docker.internal to the host machine
+# Required for Rancher Desktop to properly connect to Ollama running on Mac host
+extraHostAliases:
+  - ip: "host-gateway"
+    hostnames:
+      - "host.docker.internal"
+# ===== End: Host configuration for accessing Ollama on host =====
+
+
+
+
+
+# Environment variables for connecting Open WebUI to Ollama instances and other services
 extraEnvVars:
-  # ===== LiteLLM Connection Settings =====
-  # Connect to LiteLLM proxy using its service name in the AI namespace
-  # This is the correct env var that Open WebUI uses for the OpenAI-compatible endpoint
-  - name: OPENAI_API_BASE
-    value: "http://litellm:4000"
-  
-  # Use the same API key as configured in LiteLLM's master key
-  - name: OPENAI_API_KEY
-    valueFrom:
-      secretKeyRef:
-        name: urbalurba-secrets
-        key: LITELLM_PROXY_MASTER_KEY
-  
-  # ===== Authentication Settings =====
-  # Disable built-in auth (optional, set to true if you want authentication)
+  # ===== Start: Ollama Connection Settings =====
+
+  # Set the model that is downloaded in the cluster to be the default model.
+  - name: DEFAULT_MODELS
+    value: "qwen3:0.6b"
+
+  # Enable model management features
+  - name: ENABLE_MODEL_EXPLORATION 
+    value: "true"
+  - name: ENABLE_DYNAMIC_MODEL_LOADING
+    value: "true"
+  - name: ENABLE_OLLAMA_INTEGRATION
+    value: "true"
+  - name: OLLAMA_DIRECT_CONNECTION
+    value: "true"
+  # ===== End: Ollama Connection Settings =====
+
+
+  # ===== Start: Authentication Settings =====
+  # login using email is the default login
   - name: WEBUI_AUTH
-    value: "false"
+    value: "true"
+  
+# subsequent users will be users
+  - name: DEFAULT_USER_ROLE
+    value: "user"
+  # ===== End: Authentication Settings =====
   
   # ===== Document Processing Settings =====
   # Configure Open WebUI to use the standalone Tika server for document extraction
@@ -130,7 +163,7 @@ extraEnvVars:
   # - name: RAG_MODEL_PARAMS
   #   value: '{"model_type": "norwegian-bert", "max_length": 512}'
   
-  # ===== New Features from v0.6.6 =====
+  # ===== Enhanced Features =====
   # Enhanced search capabilities
   - name: ENABLE_PARALLEL_SEARCH
     value: "true"
@@ -164,8 +197,11 @@ service:
   port: 8080
 
 # Ingress configuration
+# NOTE: Disabled here because there is a bug in the Helm chart.
+# The actual ingress is defined in 210-openwebui-ingress.yaml and applied separately.
 ingress:
-  enabled: true
+  enabled: false
+  # The following settings are not used but kept for reference
   className: "traefik"
   annotations:
     traefik.ingress.kubernetes.io/ssl-redirect: "false"

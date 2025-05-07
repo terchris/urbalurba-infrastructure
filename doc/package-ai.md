@@ -2,11 +2,50 @@
 
 The AI package is a comprehensive self-hosted AI platform that enables organizations to build and deploy AI applications with advanced document processing and knowledge management capabilities. This implementation is based on the [Open WebUI](https://github.com/open-webui/open-webui) project, which provides a powerful foundation for building AI applications. We've enhanced and customized it to better suit enterprise needs and specific use cases.
 
-## Implementation Differences from Open WebUI
+## Getting started
+
+On your host computer, run the following command to install the AI package:
+
+```bash
+./scripts/packages/ai.sh
+```
+
+The script will install the AI package and start the Open WebUI frontend. You can then access the Open WebUI frontend at [http://openwebui.localhost](http://openwebui.localhost).
+
+The install takes a while to complete as it downloads a model into the cluster. The model in the cluster is just there to verify that the setup works (it is slow and small and not that smart).
+
+While you are waiting for the install to complete you should install ollama on your host computer. When running on your host computer Ollama is able to use the GPU of your host computer.
+It will also be able to use more memory so that you can run a larger / smarter model.
+
+### Checking installation progress
+
+You are not supposed to know anything about kubernetes so we have a script that you can run on your host computer to check the progress of the installation.
+
+```bash
+./scripts/manage/k9s.sh 
+```
+
+This will show you a list of whats going on in the cluster. You just need to wait until you see  `Running` on all items on the list.
+
+
+### Installing ollama on your host computer
+
+Go to [ollama.com](https://ollama.com/) and download the ollama binary for your platform.
+
+There are documentation on how to install ollama on your platform on the [ollama documentation on github](https://github.com/ollama/ollama/tree/main/docs).
+
+TODO: add more doc here so people can pull a model and run it locally. There must be someone that has written a good guide for this.
+
+
+
+## Technical stuff
+
+
+### Implementation Differences from Open WebUI
 
 While our implementation is based on Open WebUI, we've made several significant modifications to enhance its capabilities and better suit enterprise needs:
 
-### 1. Vector Database
+#### 1. Vector Database
 - **Original**: Uses ChromaDB as the default vector database
 - **Our Implementation**: Replaced with Qdrant for better scalability and performance
   - Enhanced similarity search capabilities
@@ -14,7 +53,7 @@ While our implementation is based on Open WebUI, we've made several significant 
   - Improved query performance
   - More robust clustering support
 
-### 2. Document Processing
+#### 2. Document Processing
 - **Original**: Uses embedded Tika server
 - **Our Implementation**: Deployed standalone Tika server
   - Better resource isolation
@@ -22,7 +61,7 @@ While our implementation is based on Open WebUI, we've made several significant 
   - Independent scaling of document processing
   - Enhanced reliability
 
-### 3. LLM Integration
+#### 3. LLM Integration
 - **Original**: Direct integration with Ollama and OpenAI-compatible APIs
 - **Our Implementation**: Uses LiteLLM as a central proxy
   - Unified interface for all LLM providers
@@ -31,7 +70,7 @@ While our implementation is based on Open WebUI, we've made several significant 
   - Enhanced rate limiting and access control
   - Support for multiple API providers through a single interface
 
-### 4. Storage Architecture
+#### 4. Storage Architecture
 - **Original**: Uses embedded storage solutions
 - **Our Implementation**: Kubernetes-native persistent storage
   - Better data persistence
@@ -39,7 +78,7 @@ While our implementation is based on Open WebUI, we've made several significant 
   - Enhanced scalability
   - Better resource management
 
-### 5. Deployment Architecture
+#### 5. Deployment Architecture
 - **Original**: Designed for simpler deployments
 - **Our Implementation**: Kubernetes-native deployment
   - Better scalability
@@ -47,7 +86,7 @@ While our implementation is based on Open WebUI, we've made several significant 
   - Improved resource management
   - Better integration with enterprise infrastructure
 
-### 6. Security Enhancements
+#### 6. Security Enhancements
 - **Original**: Basic security features
 - **Our Implementation**: Enhanced security features
   - Centralized API key management
@@ -55,7 +94,7 @@ While our implementation is based on Open WebUI, we've made several significant 
   - Better secret management
   - Enhanced audit capabilities
 
-### 7. Monitoring and Management
+#### 7. Monitoring and Management
 - **Original**: Basic monitoring capabilities
 - **Our Implementation**: Enhanced monitoring and management
   - Detailed cost tracking
@@ -127,6 +166,8 @@ Key features include:
 The platform is designed to operate entirely offline while maintaining enterprise-grade security and scalability features. It provides organizations with a secure, cost-effective way to leverage multiple LLM providers while maintaining control over usage and costs.
 
 ## System Architecture
+
+TODO: we removed litellm so we need to update the diagrams.
 
 ```mermaid
 graph TD
@@ -370,23 +411,6 @@ The setup requires:
 
 Each component is deployed with appropriate timeouts and readiness checks to ensure proper initialization.
 
-### Usage
-
-If AI is not installed, you can install it with the following command on your host computer:
-
-```bash
-docker exec -it provision-host bash -c "cd /provision-host && ./install-ai.sh"
-```
-
-Note: The Ollama component may take 10-15 minutes to become fully ready as it downloads the initial model.
-
-> **Note**: The above command uses `-it` flags which will keep the container session open. You'll need to type `exit` to return to your host shell. If you prefer to run the command and automatically return to your host shell, you can use:
-> 
-> ```bash
-> docker exec provision-host bash -c "cd /provision-host && ./install-ai.sh"
-> ```
-> 
-> (without the `-it` flags)
 
 ## Experiements and notes
 

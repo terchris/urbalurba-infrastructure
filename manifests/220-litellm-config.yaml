@@ -1,11 +1,14 @@
 # 207-litellm-config.yaml
-# 
+#  7may25: not in use anymore
 # Description:
 # LiteLLM proxy configuration with multiple model sources:
-# 1. In-cluster Ollama qwen3:0.6b-incluster model (always available)
-# 2. Local Mac Ollama deepseek-r1 model (always available)
-# 3. External Mac Ollama gemma3:4b model (requires network access to 192.168.68.61)
-# 4. Cloud provider models (available when valid API keys are provided)
+# 1. In-cluster Ollama qwen3:0.6b-incluster model (always available in the cluster)
+# 2. External Mac Ollama gemma3:4b model (requires network access to 192.168.68.61)
+# 3. Cloud provider models (available when valid API keys are provided)
+#
+# IMPORTANT: This configuration does NOT manage models running on the host machine.
+# Models running on the host's Ollama instance (like deepseek-r1) should be accessed 
+# directly by OpenWebUI through the OLLAMA_API_BASE_URL environment variable.
 # 
 # Usage:
 # installing: helm upgrade --install litellm -f 207-litellm-config.yaml oci://ghcr.io/berriai/litellm-helm --namespace ai --create-namespace
@@ -13,9 +16,8 @@
 # uninstalling: helm uninstall litellm --namespace ai
 #
 # Prerequisites:
-# 1. Ensure Ollama is running on your Macs (check with: curl http://localhost:11434/api/tags on each Mac)
-# 2. The 'urbalurba-secrets' secret must exist with required keys
-# 3. Network connectivity to 192.168.68.61:11434 for the external Mac model
+# 1. The 'urbalurba-secrets' secret must exist with required keys
+# 2. Network connectivity to 192.168.68.61:11434 for the external Mac model
 #
 # API Keys:
 # - Valid API keys must be set in the 'urbalurba-secrets' secret for cloud models to work
@@ -39,18 +41,11 @@
 #      -H "Authorization: Bearer $LITELLM_PROXY_MASTER_KEY" \
 #      -d '{"model": "qwen3-0.6b-incluster", "messages": [{"role": "user", "content": "Tell me a short joke"}]}'
 #
-# 5. Test completion with the Mac DeepSeek model:
-#    curl -X POST http://localhost:4000/v1/chat/completions \
-#      -H "Content-Type: application/json" \
-#      -H "Authorization: Bearer $LITELLM_PROXY_MASTER_KEY" \
-#      -d '{"model": "deepseek-r1", "messages": [{"role": "user", "content": "What capabilities do you have as an AI model?"}]}'
-#
-# 6. Test completion with external Mac with gemma3:4b:
+# 5. Test completion with external Mac with gemma3:4b:
 #    curl -X POST http://localhost:4000/v1/chat/completions \
 #      -H "Content-Type: application/json" \
 #      -H "Authorization: Bearer $LITELLM_PROXY_MASTER_KEY" \
 #      -d '{"model": "external-ollama-gemma3", "messages": [{"role": "user", "content": "Explain quantum computing in simple terms"}]}'
-
 
 # Container image configuration
 image:
@@ -80,8 +75,8 @@ proxy_config:
     routing_strategy: "simple-shuffle"
     # Define fallbacks from cloud models to local models
     fallbacks: [
-      {"gpt-4o": ["deepseek-r1", "external-ollama-gemma3", "qwen3-0.6b-incluster"]},
-      {"claude-3-opus": ["deepseek-r1", "external-ollama-gemma3", "qwen3-0.6b-incluster"]},
+      {"gpt-4o": ["external-ollama-gemma3", "qwen3-0.6b-incluster"]},
+      {"claude-3-opus": ["external-ollama-gemma3", "qwen3-0.6b-incluster"]},
       {"gpt-3.5-turbo": ["external-ollama-gemma3", "qwen3-0.6b-incluster"]}
     ]
   
@@ -91,8 +86,8 @@ proxy_config:
     request_timeout: 120
     # Enable fallbacks for content policy errors
     content_policy_fallbacks: [
-      {"gpt-4o": ["deepseek-r1", "external-ollama-gemma3", "qwen3-0.6b-incluster"]},
-      {"claude-3-opus": ["deepseek-r1", "external-ollama-gemma3", "qwen3-0.6b-incluster"]}
+      {"gpt-4o": ["external-ollama-gemma3", "qwen3-0.6b-incluster"]},
+      {"claude-3-opus": ["external-ollama-gemma3", "qwen3-0.6b-incluster"]}
     ]
     # Retry on connection issues (helps with intermittent network problems)
     num_retries: 3
@@ -113,22 +108,6 @@ proxy_config:
         input_cost_per_token: 0
         output_cost_per_token: 0
         max_input_tokens: 32768
-        mode: "chat"
-    
-    # First Mac Ollama model (always available)
-    - model_name: deepseek-r1
-      litellm_params:
-        model: ollama/deepseek-r1
-        api_base: "http://host.docker.internal:11434"
-        temperature: 0.7
-        max_tokens: 2000
-        stop: ["<|im_start|>", "<|im_end|>"]
-      model_info:
-        description: "DeepSeek R1 model running on local Mac Ollama"
-        status: "active"
-        input_cost_per_token: 0
-        output_cost_per_token: 0
-        max_input_tokens: 4096
         mode: "chat"
     
     # External Mac Ollama gemma3:4b model

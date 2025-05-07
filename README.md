@@ -10,7 +10,13 @@ It is a full infrastructure stack that has the services that the cloud infrastru
 
 This is done by provisioning a full infrastructure that runs on a single machine like the developers laptop. The same infrastructure can be deployed to the cloud providers (AWS, Azure, GCP) or on-premises. So if the application works on the developers laptop then the same application will work in the cloud or on-premises.
 
-The stack provides open source versions of the services that the cloud providers offer. It contains services like databases, message queues, monitoring, logging, etc. 
+The stack provides open source versions of the services that the cloud providers offer. It contains services like databases, message queues, monitoring, logging, etc.
+
+## What is included?
+
+- [AI package (OpenWebUI)](doc/package-ai.md) - Sets up ChatGPT like system that runs AI locally. Enables you to use AI on private documents with no need to worry about the privacy of the documents.
+
+TODO: analyze  the doc folder and the markdown readme files there to create a overall readme for the infrastructure.
 
 ## Installation
 
@@ -37,6 +43,5 @@ Notes:
 - The developer has full control over the dev and test environment. Not needing any permissions in the cloud during development and test.
 - The cloud infrastructure team dont need to provide any permissions in the cloud during development and test.
 
-TODO: analyze  the doc folder and the markdown readme files there to create a overall readme for the infrastructure.
 
-...
+

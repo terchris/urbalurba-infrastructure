@@ -1,4 +1,6 @@
 # 208-litellm-ingress.yaml
+#  7may25: not in use anymore
+
 # Description: Ingress configuration for LiteLLM using Traefik
 # This is a separate ingress configuration to expose the LiteLLM proxy service
 
