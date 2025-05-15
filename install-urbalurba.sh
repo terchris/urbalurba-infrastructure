@@ -153,16 +153,17 @@ check_macos_version() {
                 print_status "macOS $macos_version supported ✓"
             fi
             ;;
-        11|12|13|14)
+        11|12|13|14|15)
+            # Current officially supported versions
             print_status "macOS $macos_version fully supported ✓"
             ;;
-        15|16|17|18|19|20)
-            # Future-proofing for likely future versions
+        16|17|18|19|20)
+            # Future major versions - likely to be compatible but untested
             print_status "macOS $macos_version detected - should be compatible ✓"
-            print_warning "This is a newer macOS version. If you encounter issues, please report them."
+            print_warning "This is a newer macOS version than tested. If you encounter issues, please report them."
             ;;
         *)
-            # Handle unexpected major versions
+            # Handle unexpected major versions (beyond reasonable future)
             if [[ $major_version -gt 20 ]]; then
                 print_warning "macOS $macos_version is much newer than tested versions"
                 echo "This installer was not tested with macOS $major_version.x"
@@ -241,8 +242,115 @@ check_docker_desktop_conflict() {
     print_status "Docker Desktop conflict check passed ✓"
 }
 
-# Comprehensive system check
-check_prerequisites() {
+# Check admin privileges and Jamf Connect compatibility
+check_admin_privileges() {
+    print_status "Checking administrator privileges..."
+    
+    # Check if user is in admin group
+    local user=$(whoami)
+    local admin_groups=("admin" "wheel")
+    local is_admin=false
+    
+    for group in "${admin_groups[@]}"; do
+        if groups "$user" | grep -q "\\b$group\\b"; then
+            is_admin=true
+            break
+        fi
+    done
+    
+    # Check if we can use sudo
+    local can_sudo=false
+    if sudo -n true 2>/dev/null; then
+        can_sudo=true
+    fi
+    
+    # Test actual sudo capability without prompting
+    if [[ "$is_admin" == "true" ]] && [[ "$can_sudo" == "true" ]]; then
+        print_status "Administrator privileges confirmed ✓"
+        return 0
+    fi
+    
+    # If we get here, there's an admin issue
+    print_error "Administrator privileges are required but not available"
+    echo
+    echo "🔑 ADMIN PRIVILEGES REQUIRED"
+    echo "This installer needs administrator access to:"
+    echo "• Install Homebrew (requires /usr/local or /opt/homebrew write access)"
+    echo "• Install packages via Homebrew"
+    echo "• Configure system settings for Rancher Desktop"
+    echo
+    
+    # Check for Jamf Connect or other MDM systems
+    if [[ -d "/Applications/Jamf Connect.app" ]] || pgrep -f "JamfConnect" >/dev/null 2>&1; then
+        print_warning "Jamf Connect detected"
+        echo
+        echo "📱 JAMF CONNECT USERS:"
+        echo "1. Open 'Jamf Connect' from Applications"
+        echo "2. Click your profile/avatar"
+        echo "3. Select 'Make Admin' or 'Elevate Privileges'"
+        echo "4. Enter your password when prompted"
+        echo "5. Wait for admin privileges to be granted (usually 15-30 minutes)"
+        echo "6. Run this installer again"
+        echo
+        echo "Alternative: Contact your IT administrator to grant permanent admin access"
+    else
+        echo "SOLUTIONS:"
+        echo "1. Contact your system administrator to add you to the 'admin' group"
+        echo "2. If you have admin rights, try:"
+        echo "   - Restart your terminal/session"
+        echo "   - Log out and log back in"
+        echo "   - Check with: groups $(whoami)"
+        echo
+    fi
+    
+    # More detailed diagnosis
+    print_status "Current user: $user"
+    print_status "Groups: $(groups "$user")"
+    
+    # Check if this is a managed Mac
+    if [[ -d "/System/Library/CoreServices/ManagedClient.app" ]] || \
+       [[ -f "/var/db/.AppleSetupDone" && -d "/Library/Application Support/JAMF" ]]; then
+        print_warning "This appears to be a managed Mac (Corporate/MDM)"
+        echo "Your administrator may need to grant installation permissions"
+    fi
+    
+    echo
+    ask_permission "Do you want to continue anyway? (Installation will likely fail without admin access)"
+}
+
+# Enhanced admin check specifically for Homebrew
+check_homebrew_admin_requirements() {
+    print_status "Verifying Homebrew installation requirements..."
+    
+    # Determine where Homebrew will be installed
+    local homebrew_path
+    if [[ $(uname -m) == 'arm64' ]]; then
+        homebrew_path="/opt/homebrew"
+    else
+        homebrew_path="/usr/local"
+    fi
+    
+    # Check if Homebrew directory exists and is writable
+    if [[ -d "$homebrew_path" ]]; then
+        if [[ ! -w "$homebrew_path" ]]; then
+            print_error "Cannot write to $homebrew_path"
+            echo "Homebrew installation requires write access to this directory"
+            return 1
+        fi
+    else
+        # Check if we can create the directory
+        if ! sudo -n mkdir -p "$homebrew_path" 2>/dev/null; then
+            print_error "Cannot create $homebrew_path directory"
+            echo "This requires administrator privileges"
+            return 1
+        fi
+        # Clean up test directory
+        sudo rm -rf "$homebrew_path" 2>/dev/null
+    fi
+    
+    print_status "Homebrew installation requirements met ✓"
+    return 0
+}
     print_step "Checking System Prerequisites"
     
     # Check if running on macOS
@@ -388,7 +496,7 @@ check_xcode_tools() {
     print_status "Homebrew will handle the installation automatically"
 }
 
-# Function to install Homebrew with retry logic
+# Function to install Homebrew with retry logic and admin checks
 install_homebrew() {
     print_step "Installing Homebrew"
     
@@ -407,36 +515,55 @@ install_homebrew() {
         return 0
     fi
     
+    # Check Homebrew-specific admin requirements
+    check_homebrew_admin_requirements || {
+        print_error "Homebrew installation requirements not met"
+        echo "Please ensure you have administrator privileges and try again"
+        return 1
+    }
+    
     echo "Homebrew is the package manager for macOS. It will install and manage all dependencies."
     echo "If Xcode Command Line Tools are missing, they'll be installed first."
     echo
     echo "This will execute: /bin/bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
+    echo
+    print_warning "NOTE: You will be prompted for your password for administrator access"
     echo
     
     # Ask permission unless in auto mode
     ask_permission "Install Homebrew?"
     
     # Retry logic for Homebrew installation
-    local max_retries=3
+    local max_retries=1  # Reduce retries since admin issues won't resolve automatically
     local retry_count=0
     
     while [[ $retry_count -lt $max_retries ]]; do
-        print_status "Installing Homebrew (attempt $((retry_count + 1))/$max_retries)..."
+        print_status "Installing Homebrew..."
         
-        # Force non-interactive mode and handle potential prompts
-        export CI=1
-        export HOMEBREW_INSTALL_FROM_API=1
+        # Remove CI flag to allow interactive password prompts
+        unset CI
+        unset HOMEBREW_INSTALL_FROM_API
         
+        # Run Homebrew installer with proper interactivity
         if /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"; then
             break
         else
+            local exit_code=$?
             retry_count=$((retry_count + 1))
-            if [[ $retry_count -lt $max_retries ]]; then
-                print_warning "Homebrew installation failed, retrying in 10 seconds..."
-                sleep 10
-            else
-                print_error "Homebrew installation failed after $max_retries attempts"
-                echo "Please check the error messages above and try again."
+            
+            # Check if the failure was due to admin privileges
+            if [[ $exit_code -eq 1 ]] && [[ $retry_count -ge $max_retries ]]; then
+                print_error "Homebrew installation failed - likely due to insufficient privileges"
+                echo
+                echo "TROUBLESHOOTING STEPS:"
+                echo "1. Ensure you have administrator access"
+                echo "2. If using Jamf Connect:"
+                echo "   - Open Jamf Connect app"
+                echo "   - Request admin privileges"
+                echo "   - Wait for approval (15-30 minutes)"
+                echo "   - Try running this script again"
+                echo "3. Contact your IT administrator for permanent admin access"
+                echo "4. Verify with: groups \$(whoami) | grep admin"
                 return 1
             fi
         fi
