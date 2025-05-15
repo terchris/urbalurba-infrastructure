@@ -23,7 +23,7 @@
 # - Adds robust prerequisite management
 #
 # Author: @terchris
-# Version: 2.2.0
+# Version: 2.2.1
 
 set -e  # Exit on any error
 
@@ -86,8 +86,117 @@ ask_permission() {
     fi
 }
 
-# Check macOS version compatibility
-check_macos_version
+# Check macOS version compatibility - FUTURE-PROOF VERSION
+check_macos_version() {
+    # Get macOS version info
+    local macos_version=$(sw_vers -productVersion)
+    local macos_name=$(sw_vers -productName)
+    local build_version=$(sw_vers -buildVersion)
+    
+    print_status "Checking macOS version: $macos_name $macos_version (Build: $build_version)"
+    
+    # Parse version components
+    local version_parts=($(echo $macos_version | tr '.' ' '))
+    local major_version=${version_parts[0]}
+    local minor_version=${version_parts[1]:-0}
+    local patch_version=${version_parts[2]:-0}
+    
+    # Define minimum requirements
+    local min_major=10
+    local min_minor=15
+    local min_patch=0
+    
+    # Helper function to compare versions
+    version_compare() {
+        local current_maj=$1 current_min=$2 current_pat=$3
+        local required_maj=$4 required_min=$5 required_pat=$6
+        
+        # Compare major version
+        if [[ $current_maj -gt $required_maj ]]; then
+            return 0  # Current is newer
+        elif [[ $current_maj -lt $required_maj ]]; then
+            return 1  # Current is older
+        fi
+        
+        # Major versions equal, compare minor
+        if [[ $current_min -gt $required_min ]]; then
+            return 0
+        elif [[ $current_min -lt $required_min ]]; then
+            return 1
+        fi
+        
+        # Major and minor equal, compare patch
+        if [[ $current_pat -ge $required_pat ]]; then
+            return 0
+        else
+            return 1
+        fi
+    }
+    
+    # Check minimum version requirement
+    if ! version_compare $major_version $minor_version $patch_version $min_major $min_minor $min_patch; then
+        print_error "macOS $macos_version is not supported"
+        echo "Rancher Desktop requires macOS 10.15 (Catalina) or later"
+        echo "Current version: $macos_version"
+        echo "Please update your macOS before running this installer"
+        exit 1
+    fi
+    
+    # Provide version-specific guidance
+    case $major_version in
+        10)
+            if [[ $minor_version -eq 15 ]]; then
+                print_warning "macOS $macos_version is the minimum supported version"
+                echo "Consider updating to a newer macOS version for better compatibility"
+                ask_permission "Continue with macOS $macos_version?"
+            else
+                print_status "macOS $macos_version supported ✓"
+            fi
+            ;;
+        11|12|13|14)
+            print_status "macOS $macos_version fully supported ✓"
+            ;;
+        15|16|17|18|19|20)
+            # Future-proofing for likely future versions
+            print_status "macOS $macos_version detected - should be compatible ✓"
+            print_warning "This is a newer macOS version. If you encounter issues, please report them."
+            ;;
+        *)
+            # Handle unexpected major versions
+            if [[ $major_version -gt 20 ]]; then
+                print_warning "macOS $macos_version is much newer than tested versions"
+                echo "This installer was not tested with macOS $major_version.x"
+                echo "Proceed with caution - some features may not work correctly"
+                ask_permission "Continue anyway? (Consider checking for updated installer)"
+            fi
+            ;;
+    esac
+    
+    # Additional checks for specific issues
+    check_known_version_issues $major_version $minor_version $patch_version
+    
+    print_status "macOS version check completed ✓"
+}
+
+# Check for known issues with specific macOS versions
+check_known_version_issues() {
+    local maj=$1 min=$2 pat=$3
+    
+    # Check for Apple Silicon specific issues (if detectable)
+    if [[ $(uname -m) == 'arm64' ]] && [[ $maj -eq 10 ]]; then
+        print_error "macOS 10.x is not available on Apple Silicon Macs"
+        echo "This appears to be an inconsistent system configuration"
+        exit 1
+    fi
+    
+    # Example: macOS 11.0 had issues with virtualization
+    if [[ $maj -eq 11 && $min -eq 0 ]]; then
+        print_warning "macOS 11.0 had known virtualization issues"
+        echo "Consider updating to macOS 11.1 or later for better Rancher Desktop compatibility"
+    fi
+    
+    # Note: Add more version-specific checks as needed
+}
 
 # Check for Docker Desktop conflicts
 check_docker_desktop_conflict() {
@@ -130,31 +239,6 @@ check_docker_desktop_conflict() {
     fi
     
     print_status "Docker Desktop conflict check passed ✓"
-}
-
-check_docker_desktop_conflict() {
-    local macos_version=$(sw_vers -productVersion)
-    local major_version=$(echo $macos_version | cut -d. -f1)
-    local minor_version=$(echo $macos_version | cut -d. -f2)
-    
-    print_status "Checking macOS version: $macos_version"
-    
-    # Check minimum version (10.15 for Rancher Desktop)
-    if [[ $major_version -lt 10 || ($major_version -eq 10 && $minor_version -lt 15) ]]; then
-        print_error "macOS $macos_version is not supported"
-        echo "Rancher Desktop requires macOS 10.15 (Catalina) or later"
-        echo "Please update your macOS before running this installer"
-        exit 1
-    fi
-    
-    # Warn about very old versions that might have issues
-    if [[ $major_version -eq 10 && $minor_version -eq 15 ]]; then
-        print_warning "macOS $macos_version is the minimum supported version"
-        echo "Consider updating to a newer macOS version for better compatibility"
-        ask_permission "Continue with macOS $macos_version?"
-    fi
-    
-    print_status "macOS version check passed ✓"
 }
 
 # Comprehensive system check
@@ -205,6 +289,9 @@ check_prerequisites() {
     fi
     rm -f test_write_permissions
     
+    # Check for Docker Desktop conflicts before proceeding
+    check_docker_desktop_conflict
+    
     print_status "All system prerequisites passed ✓"
 }
 
@@ -224,24 +311,24 @@ fi
 
 # Step 1: Check if Xcode Command Line Tools are installed
 # If not installed, Homebrew will prompt you to install them
-xcode-select -p
+xcode-select -p >/dev/null 2>&1 || echo "Xcode Command Line Tools not installed"
 
-# Step 1: Install Homebrew (package manager for macOS)
+# Step 2: Install Homebrew (package manager for macOS)
 # Note: If Xcode Command Line Tools aren't installed, this will trigger
 # their installation (large download 500MB-1GB+, takes 5-15 minutes)
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
-# Step 2: Add Homebrew to your current shell session
+# Step 3: Add Homebrew to your current shell session
 if [[ $(uname -m) == 'arm64' ]]; then
     eval "$(/opt/homebrew/bin/brew shellenv)"
 else
     eval "$(/usr/local/bin/brew shellenv)"
 fi
 
-# Step 3: Install all dependencies via Brewfile
+# Step 4: Install all dependencies via Brewfile
 curl -fsSL https://raw.githubusercontent.com/terchris/urbalurba-infrastructure/main/Brewfile | brew bundle --file=-
 
-# Step 4: Download and extract Urbalurba Infrastructure
+# Step 5: Download and extract Urbalurba Infrastructure
 # Get latest release info
 LATEST_RELEASE=$(curl -s "https://api.github.com/repos/terchris/urbalurba-infrastructure/releases/latest" | grep '"tag_name"' | cut -d'"' -f4)
 
@@ -250,7 +337,7 @@ curl -L "https://github.com/terchris/urbalurba-infrastructure/releases/download/
 unzip urbalurba-infrastructure.zip
 rm urbalurba-infrastructure.zip
 
-# Step 5: Configure Rancher Desktop (via GUI or rdctl)
+# Step 6: Configure Rancher Desktop (via GUI or rdctl)
 # GUI Method: Open Rancher Desktop and configure:
 # - Virtual Machine: VZ (Apple Virtualization)
 # - Enable Rosetta support
@@ -262,11 +349,11 @@ rm urbalurba-infrastructure.zip
 # CLI Method (if rdctl is available):
 rdctl start --container-engine.name=moby --virtual-machine.memory-in-gb=8 --virtual-machine.number-cpus=4 --application.auto-start=false
 
-# Step 6: Wait for Kubernetes to be ready
+# Step 7: Wait for Kubernetes to be ready
 kubectl cluster-info
 kubectl get nodes
 
-# Step 7: Run infrastructure setup scripts (if present)
+# Step 8: Run infrastructure setup scripts (if present)
 # Look for and run setup scripts in the extracted directory
 ls -la setup-*.sh install-*.sh
 
@@ -316,7 +403,7 @@ install_homebrew() {
             brew_path="/usr/local"
         fi
         export PATH="$brew_path/bin:$PATH"
-        eval "$($brew_path/bin/brew shellenv)"
+        eval "$($brew_path/bin/brew shellenv)" 2>/dev/null || true
         return 0
     fi
     
@@ -326,12 +413,19 @@ install_homebrew() {
     echo "This will execute: /bin/bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
     echo
     
+    # Ask permission unless in auto mode
+    ask_permission "Install Homebrew?"
+    
     # Retry logic for Homebrew installation
     local max_retries=3
     local retry_count=0
     
     while [[ $retry_count -lt $max_retries ]]; do
         print_status "Installing Homebrew (attempt $((retry_count + 1))/$max_retries)..."
+        
+        # Force non-interactive mode and handle potential prompts
+        export CI=1
+        export HOMEBREW_INSTALL_FROM_API=1
         
         if /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"; then
             break
@@ -358,7 +452,7 @@ install_homebrew() {
     
     # Add to PATH and export environment
     export PATH="$brew_path/bin:$PATH"
-    eval "$($brew_path/bin/brew shellenv)"
+    eval "$($brew_path/bin/brew shellenv)" 2>/dev/null || true
     
     # Verify Homebrew is working
     if ! command_exists brew; then
@@ -396,6 +490,8 @@ install_dependencies() {
     echo
     echo "Command: curl -fsSL $BREWFILE_URL | brew bundle --file=-"
     echo
+    
+    ask_permission "Install dependencies via Brewfile?"
     
     # Update Homebrew first
     print_status "Updating Homebrew..."
@@ -455,6 +551,8 @@ download_infrastructure() {
     print_step "Downloading Urbalurba Infrastructure"
     
     echo "Downloading the latest release from GitHub..."
+    
+    ask_permission "Download Urbalurba Infrastructure package?"
     
     # Get latest release with better error handling
     print_status "Fetching latest release information..."
@@ -564,6 +662,8 @@ setup_rancher() {
     echo "• To start/stop: Applications > Rancher Desktop"
     echo
     
+    ask_permission "Configure and start Rancher Desktop?"
+    
     # Enhanced rdctl detection
     if ! command_exists rdctl; then
         if find_rancher_rdctl; then
@@ -573,6 +673,7 @@ setup_rancher() {
             
             # GUI fallback
             if [[ -d "/Applications/Rancher Desktop.app" ]]; then
+                print_status "Opening Rancher Desktop for manual configuration..."
                 open -a "Rancher Desktop"
                 echo
                 print_warning "Please configure Rancher Desktop manually with these settings:"
