@@ -198,6 +198,12 @@ check_homebrew() {
         
         if ! grep -q "brew shellenv" "$shell_config" 2>/dev/null; then
             echo 'eval "$('$brew_path'/bin/brew shellenv)"' >> "$shell_config"
+            print_info "Added Homebrew to shell configuration"
+        fi
+        
+        # Also follow Homebrew's recommendation for .zprofile
+        if [[ "$SHELL" == *"zsh"* ]] && [[ ! -f "$HOME/.zprofile" || ! "$(grep -q 'brew shellenv' "$HOME/.zprofile" 2>/dev/null)" ]]; then
+            echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> "$HOME/.zprofile"
         fi
         
         # Verify installation
@@ -253,14 +259,9 @@ check_rancher() {
     fi
 }
 
-# Setup Docker CLI
+# Setup Docker CLI and start Rancher Desktop
 setup_docker_cli() {
     print_info "Setting up Docker CLI access..."
-    
-    if command_exists docker; then
-        print_info "Docker CLI already available ✓"
-        return 0
-    fi
     
     # Add Rancher Desktop paths to shell config
     print_info "Adding Rancher Desktop to PATH..."
@@ -283,9 +284,73 @@ setup_docker_cli() {
         print_info "Added Rancher Desktop to PATH in $shell_config"
     fi
     
+    # Start Rancher Desktop if not already running
+    start_rancher_desktop
+    
     print_info "Docker CLI setup complete ✓"
-    print_warn "Note: Docker CLI will be available after starting Rancher Desktop"
     return 0
+}
+
+# Start Rancher Desktop and wait for it to be ready
+start_rancher_desktop() {
+    print_info "Checking Rancher Desktop status..."
+    
+    # Check if Rancher Desktop is already running
+    if pgrep -f "Rancher Desktop" >/dev/null 2>&1; then
+        print_info "Rancher Desktop is already running ✓"
+        return 0
+    fi
+    
+    print_info "Starting Rancher Desktop..."
+    
+    # Start Rancher Desktop
+    open -a "Rancher Desktop"
+    
+    # Wait for Rancher Desktop to start
+    print_info "Waiting for Rancher Desktop to initialize..."
+    
+    local attempts=0
+    local max_attempts=60  # 5 minutes total (5 second intervals)
+    
+    while [[ $attempts -lt $max_attempts ]]; do
+        # Check if the process is running
+        if pgrep -f "Rancher Desktop" >/dev/null 2>&1; then
+            print_info "Rancher Desktop process started ✓"
+            break
+        fi
+        
+        printf "."
+        sleep 5
+        attempts=$((attempts + 1))
+    done
+    
+    if [[ $attempts -ge $max_attempts ]]; then
+        print_warn "Rancher Desktop took longer than expected to start"
+        print_info "Please verify it's running before using Docker commands"
+        return 1
+    fi
+    
+    # Additional wait for Docker daemon to be ready
+    print_info "Waiting for Docker daemon to be ready..."
+    attempts=0
+    max_attempts=24  # 2 minutes total (5 second intervals)
+    
+    while [[ $attempts -lt $max_attempts ]]; do
+        # Try to check Docker status
+        if docker version >/dev/null 2>&1; then
+            print_info "Docker daemon is ready ✓"
+            return 0
+        fi
+        
+        printf "."
+        sleep 5
+        attempts=$((attempts + 1))
+    done
+    
+    print_warn "Docker daemon is not yet ready"
+    print_info "Rancher Desktop may still be initializing in the background"
+    print_info "Wait a few more minutes and check that Rancher Desktop shows 'Running' status"
+    return 1
 }
 
 # Main function
@@ -320,10 +385,18 @@ main() {
     echo
     print_info "All prerequisites installed successfully! ✓"
     echo
-    echo "Next steps:"
-    echo "1. Start Rancher Desktop from Applications folder"
-    echo "2. Wait for Kubernetes to show 'Running' status"
-    echo "3. Restart your terminal or run: source ~/.zshrc"
+    if pgrep -f "Rancher Desktop" >/dev/null 2>&1; then
+        print_info "Rancher Desktop is running ✓"
+        echo "Next steps:"
+        echo "1. Wait for Kubernetes to show 'Running' status in Rancher Desktop"
+        echo "2. Restart your terminal or run: source ~/.zshrc (for PATH updates)"
+        echo "3. Your Docker and Kubernetes environment is ready!"
+    else
+        echo "Next steps:"
+        echo "1. Start Rancher Desktop from Applications folder"
+        echo "2. Wait for Kubernetes to show 'Running' status"
+        echo "3. Restart your terminal or run: source ~/.zshrc"
+    fi
     echo
     echo "Your system is now ready for Urbalurba Infrastructure!"
     exit 0
