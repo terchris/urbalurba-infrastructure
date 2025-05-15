@@ -53,29 +53,13 @@ check_admin_privileges() {
     
     # Check if user is in admin group
     local user=$(whoami)
-    local admin_groups=("admin" "wheel")
-    local is_admin=false
-    
-    for group in "${admin_groups[@]}"; do
-        if groups "$user" | grep -q "\\b$group\\b"; then
-            is_admin=true
-            break
-        fi
-    done
-    
-    # Test actual sudo capability
-    local can_sudo=false
-    if sudo -n true 2>/dev/null; then
-        can_sudo=true
-    fi
-    
-    # If we have both admin group membership and can sudo, we're good
-    if [[ "$is_admin" == "true" && "$can_sudo" == "true" ]]; then
+    if groups "$user" | grep -q "\\badmin\\b"; then
         print_info "Administrator privileges confirmed ✓"
+        print_info "Note: You may be prompted for your password during installation"
         return 0
     fi
     
-    # If we get here, there's an admin issue
+    # If not in admin group, we have a problem
     print_error "Administrator privileges are required"
     echo
     echo "🔑 ADMIN PRIVILEGES REQUIRED"
@@ -102,7 +86,7 @@ check_admin_privileges() {
         echo "2. If you have admin rights, try:"
         echo "   - Restart your terminal/session"
         echo "   - Log out and log back in"
-        echo "   - Run: sudo -v (to refresh sudo session)"
+        echo "   - Check with: groups \$(whoami) | grep admin"
         echo
     fi
     
