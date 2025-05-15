@@ -47,6 +47,71 @@ ask_permission() {
     [[ $REPLY =~ ^[Yy]$ ]]
 }
 
+# Check admin privileges early
+check_admin_privileges() {
+    print_info "Checking administrator privileges..."
+    
+    # Check if user is in admin group
+    local user=$(whoami)
+    local admin_groups=("admin" "wheel")
+    local is_admin=false
+    
+    for group in "${admin_groups[@]}"; do
+        if groups "$user" | grep -q "\\b$group\\b"; then
+            is_admin=true
+            break
+        fi
+    done
+    
+    # Test actual sudo capability
+    local can_sudo=false
+    if sudo -n true 2>/dev/null; then
+        can_sudo=true
+    fi
+    
+    # If we have both admin group membership and can sudo, we're good
+    if [[ "$is_admin" == "true" && "$can_sudo" == "true" ]]; then
+        print_info "Administrator privileges confirmed ✓"
+        return 0
+    fi
+    
+    # If we get here, there's an admin issue
+    print_error "Administrator privileges are required"
+    echo
+    echo "🔑 ADMIN PRIVILEGES REQUIRED"
+    echo "This installer needs administrator access to:"
+    echo "• Install Homebrew (requires system-level package installation)"
+    echo "• Install Rancher Desktop via Homebrew"
+    echo "• Configure system PATH settings"
+    echo
+    
+    # Check for Jamf Connect or other MDM systems
+    if [[ -d "/Applications/Jamf Connect.app" ]] || pgrep -f "JamfConnect" >/dev/null 2>&1; then
+        print_warn "Jamf Connect detected"
+        echo "📱 JAMF CONNECT USERS:"
+        echo "1. Open 'Jamf Connect' from Applications"
+        echo "2. Click your profile/avatar"
+        echo "3. Select 'Make Admin' or 'Elevate Privileges'"
+        echo "4. Enter your password when prompted"
+        echo "5. Wait for admin privileges to be granted (usually 15-30 minutes)"
+        echo "6. Run this installer again"
+        echo
+    else
+        echo "SOLUTIONS:"
+        echo "1. Contact your system administrator to add you to the 'admin' group"
+        echo "2. If you have admin rights, try:"
+        echo "   - Restart your terminal/session"
+        echo "   - Log out and log back in"
+        echo "   - Run: sudo -v (to refresh sudo session)"
+        echo
+    fi
+    
+    print_info "Current user: $user"
+    print_info "Groups: $(groups "$user")"
+    
+    exit 1
+}
+
 # System checks
 check_system_requirements() {
     print_info "Checking system requirements..."
@@ -249,6 +314,9 @@ main() {
     if [[ "$AUTO_MODE" == "true" ]]; then
         print_info "Running in automatic mode"
     fi
+    
+    # Check admin privileges FIRST (before anything else)
+    check_admin_privileges
     
     # Check system requirements (exits on failure)
     check_system_requirements
