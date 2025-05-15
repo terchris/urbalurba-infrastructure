@@ -239,6 +239,14 @@ run_infrastructure_setup() {
         case $REPLY in
             [Yy]* )
                 print_info "Running Rancher installation..."
+                
+                # Verify Docker is available (it should be since we started Rancher Desktop)
+                if ! command -v docker >/dev/null 2>&1; then
+                    print_warn "Docker CLI not found in current PATH"
+                    print_info "Adding Rancher Desktop to PATH for this session..."
+                    export PATH="/Applications/Rancher Desktop.app/Contents/Resources/resources/darwin/bin:$PATH"
+                fi
+                
                 chmod +x install-rancher.sh
                 ./install-rancher.sh
                 ;;
