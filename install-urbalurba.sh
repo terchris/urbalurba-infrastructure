@@ -517,13 +517,36 @@ install_dependencies() {
     
     # Install via brew bundle with error handling
     print_status "Installing packages via Brewfile..."
-    if echo "$brewfile_content" | brew bundle --file=-; then
+    
+    # Handle the fact that bundle tap is now built into Homebrew
+    # and cask tap is automatic - no need to explicitly tap them
+    if echo "$brewfile_content" | HOMEBREW_NO_INSTALL_CLEANUP=1 brew bundle --file=-; then
         print_status "Dependencies installed successfully ✓"
     else
-        print_error "Failed to install some dependencies via Brewfile"
-        echo "Some packages may have failed to install. Check the output above."
-        echo "You can run 'brew doctor' to diagnose potential issues."
-        return 1
+        print_warning "Some packages failed to install via Brewfile"
+        print_status "Attempting individual package installation as fallback..."
+        
+        # Try installing critical packages individually
+        local critical_packages=("rancher" "k9s")
+        local failed_packages=()
+        
+        for package in "${critical_packages[@]}"; do
+            print_status "Installing $package individually..."
+            if brew install "$package" 2>/dev/null; then
+                print_status "$package installed ✓"
+            else
+                failed_packages+=("$package")
+                print_warning "Failed to install $package"
+            fi
+        done
+        
+        if [[ ${#failed_packages[@]} -gt 0 ]]; then
+            print_error "Failed to install: ${failed_packages[*]}"
+            echo "You may need to install these manually or check 'brew doctor'"
+            return 1
+        else
+            print_status "All critical packages installed successfully ✓"
+        fi
     fi
     
     # Verify critical tools were installed
@@ -607,9 +630,9 @@ download_infrastructure() {
     # Move to final location
     mv "$temp_zip" "urbalurba-infrastructure.zip"
     
-    # Extract with error checking
+    # Extract with error checking (overwrite without prompting)
     print_status "Extracting infrastructure..."
-    if ! unzip -q urbalurba-infrastructure.zip; then
+    if ! unzip -o -q urbalurba-infrastructure.zip; then
         print_error "Failed to extract zip file"
         echo "The downloaded file might be corrupted. Please try again."
         return 1
@@ -917,7 +940,7 @@ cleanup_on_error() {
 # Set up error handling
 trap cleanup_on_error ERR
 
-# Interactive installation - updated to match original flow
+# Interactive installation - fixed flow to avoid duplicates
 interactive_install() {
     # Reset step counter for interactive mode
     CURRENT_STEP=0
@@ -951,28 +974,14 @@ interactive_install() {
         ask_permission "Continue with the enhanced installation?"
     fi
     
-    # Run infrastructure setup in the same order as original script
+    # Run infrastructure setup in the proper order
     check_prerequisites
     check_xcode_tools
     install_homebrew
-    
-    # Download infrastructure early (like original script)
-    download_infrastructure
-    
-    # Now we have the original scripts, so we can use them
-    # But we'll also set up our enhanced Rancher configuration
-    print_step "Setting Up Prerequisites and Rancher"
-    echo "We'll now run both our enhanced setup and the infrastructure's own scripts"
-    echo
-    
-    # Install dependencies via Brewfile
-    install_dependencies
-    
-    # Set up Rancher with our enhanced configuration
-    setup_rancher
-    
-    # Run the infrastructure's own setup scripts
-    setup_infrastructure
+    install_dependencies  # Install dependencies before downloading to have tools ready
+    download_infrastructure  # Download infrastructure package
+    setup_rancher  # Set up Rancher with our enhanced configuration
+    setup_infrastructure  # Run the infrastructure's own setup scripts
     
     # Final success message
     print_step "Installation Complete!"
@@ -980,6 +989,7 @@ interactive_install() {
     echo
     echo "Installation Summary:"
     echo "✓ Prerequisites installed and verified"
+    echo "✓ Dependencies installed via Homebrew"
     echo "✓ Infrastructure package downloaded and extracted"
     echo "✓ Rancher Desktop configured optimally"
     echo "✓ Infrastructure scripts executed"
