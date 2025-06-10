@@ -14,8 +14,10 @@
 #
 # All the services are set up in the namespace named: ai and requires you to set secrets needed for the services to work.
 #
-# Usage: ./02-setup-open-webui.sh [target-host]
-# Example: ./02-setup-open-webui.sh rancher-desktop
+# Usage: ./02-setup-open-webui.sh [target-host] [deploy_ollama_incluster]
+# Example: ./02-setup-open-webui.sh rancher-desktop false
+#   target-host: Kubernetes context/host (default: rancher-desktop)
+#   deploy_ollama_incluster: true (default) or false (to skip in-cluster Ollama)
 
 # Ensure the script is run with Bash
 if [ -z "$BASH_VERSION" ]; then
@@ -33,6 +35,7 @@ PLAYBOOK_PATH_SETUP_OPEN_WEBUI="$ANSIBLE_DIR/playbooks/200-setup-open-webui.yml"
 
 # Check if TARGET_HOST is provided as an argument, otherwise set default
 TARGET_HOST=${1:-"rancher-desktop"}
+DEPLOY_OLLAMA_INCLUSTER=${2:-true}
 
 # Function to add status
 add_status() {
@@ -69,7 +72,7 @@ run_playbook() {
     local extra_args=${3:-""}
     
     echo "Running playbook for $step..."
-    cd $ANSIBLE_DIR && ansible-playbook $playbook -e kube_context=$TARGET_HOST $extra_args
+    cd $ANSIBLE_DIR && ansible-playbook $playbook -e kube_context=$TARGET_HOST -e deploy_ollama_incluster=$DEPLOY_OLLAMA_INCLUSTER $extra_args
     local result=$?
     check_command_success "$step" $result
     return $result

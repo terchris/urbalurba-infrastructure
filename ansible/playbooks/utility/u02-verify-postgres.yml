@@ -1,6 +1,10 @@
 ---
 # File: ansible/playbooks/utility/u02-verify-postgres.yml
-# Description: Test connection to PostgreSQL server and verify functionality.
+# Description: Test connection to PostgreSQL server and verify advanced functionality.
+# This playbook:
+# - Verifies connection and basic CRUD
+# - Lists installed extensions in the test database
+# - Tests NoSQL (hstore), vector (pgvector), geospatial (postgis), and tree (ltree) extensions
 # Usage:
 # ansible-playbook playbooks/utility/u02-verify-postgres.yml
 
@@ -89,11 +93,85 @@
         msg: "Failed to retrieve expected test data"
       when: "'test_value' not in retrieve_result.stdout"
 
-    - name: 13. Drop test database
+    - name: 13. List installed extensions in test database
+      command: kubectl exec -n default {{ postgres_pod_name }} -- bash -c "PGPASSWORD='{{ postgres_password }}' psql -h '{{ postgres_host }}' -U postgres -d {{ test_db_name }} -c \"SELECT extname FROM pg_extension;\""
+      register: extension_list
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+
+    - name: 14. Display installed extensions
+      ansible.builtin.debug:
+        var: extension_list.stdout_lines
+
+    # hstore test
+    - name: 15. Enable hstore extension in test database
+      command: kubectl exec -n default {{ postgres_pod_name }} -- bash -c "PGPASSWORD='{{ postgres_password }}' psql -h '{{ postgres_host }}' -U postgres -d {{ test_db_name }} -c \"CREATE EXTENSION IF NOT EXISTS hstore;\""
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+
+    - name: 16. Test hstore functionality
+      command: kubectl exec -n default {{ postgres_pod_name }} -- bash -c "PGPASSWORD='{{ postgres_password }}' psql -h '{{ postgres_host }}' -U postgres -d {{ test_db_name }} -c \"CREATE TABLE hstore_test (id serial PRIMARY KEY, data hstore); INSERT INTO hstore_test (data) VALUES ('a=>1, b=>2'); SELECT * FROM hstore_test;\""
+      register: hstore_result
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+
+    - name: 17. Display hstore test result
+      ansible.builtin.debug:
+        var: hstore_result.stdout_lines
+
+    # pgvector test
+    - name: 18. Enable pgvector extension in test database
+      command: kubectl exec -n default {{ postgres_pod_name }} -- bash -c "PGPASSWORD='{{ postgres_password }}' psql -h '{{ postgres_host }}' -U postgres -d {{ test_db_name }} -c \"CREATE EXTENSION IF NOT EXISTS vector;\""
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+
+    - name: 19. Test pgvector functionality
+      command: kubectl exec -n default {{ postgres_pod_name }} -- bash -c \"PGPASSWORD='{{ postgres_password }}' psql -h '{{ postgres_host }}' -U postgres -d {{ test_db_name }} -c \\\"CREATE TABLE vector_test (id serial PRIMARY KEY, embedding vector(3)); INSERT INTO vector_test (embedding) VALUES ('[1,2,3]'); SELECT * FROM vector_test;\\\"\"
+      register: vector_result
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+
+    - name: 20. Display pgvector test result
+      ansible.builtin.debug:
+        var: vector_result.stdout_lines
+
+    # postgis test
+    - name: 21. Enable postgis extension in test database
+      command: kubectl exec -n default {{ postgres_pod_name }} -- bash -c "PGPASSWORD='{{ postgres_password }}' psql -h '{{ postgres_host }}' -U postgres -d {{ test_db_name }} -c \"CREATE EXTENSION IF NOT EXISTS postgis;\""
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+
+    - name: 22. Test postgis functionality
+      command: kubectl exec -n default {{ postgres_pod_name }} -- bash -c \"PGPASSWORD='{{ postgres_password }}' psql -h '{{ postgres_host }}' -U postgres -d {{ test_db_name }} -c \\\"CREATE TABLE gis_test (id serial PRIMARY KEY, geom geometry(Point, 4326)); INSERT INTO gis_test (geom) VALUES (ST_SetSRID(ST_MakePoint(10, 20), 4326)); SELECT id, ST_AsText(geom) FROM gis_test;\\\"\"
+      register: postgis_result
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+
+    - name: 23. Display postgis test result
+      ansible.builtin.debug:
+        var: postgis_result.stdout_lines
+
+    # ltree test
+    - name: 24. Enable ltree extension in test database
+      command: kubectl exec -n default {{ postgres_pod_name }} -- bash -c "PGPASSWORD='{{ postgres_password }}' psql -h '{{ postgres_host }}' -U postgres -d {{ test_db_name }} -c \"CREATE EXTENSION IF NOT EXISTS ltree;\""
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+
+    - name: 25. Test ltree functionality
+      command: kubectl exec -n default {{ postgres_pod_name }} -- bash -c \"PGPASSWORD='{{ postgres_password }}' psql -h '{{ postgres_host }}' -U postgres -d {{ test_db_name }} -c \\\"CREATE TABLE ltree_test (id serial PRIMARY KEY, path ltree); INSERT INTO ltree_test (path) VALUES ('Top.Science.Astronomy'); SELECT * FROM ltree_test;\\\"\"
+      register: ltree_result
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+
+    - name: 26. Display ltree test result
+      ansible.builtin.debug:
+        var: ltree_result.stdout_lines
+
+    - name: 27. Drop test database
       command: kubectl exec -n default {{ postgres_pod_name }} -- bash -c "PGPASSWORD='{{ postgres_password }}' dropdb -h '{{ postgres_host }}' -U postgres {{ test_db_name }}"
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
 
-    - name: 14. Confirm PostgreSQL is working correctly
+    - name: 28. Confirm PostgreSQL is working correctly
       ansible.builtin.debug:
-        msg: "PostgreSQL is working correctly. Test database created, data inserted and retrieved successfully, and test database dropped."
+        msg: "PostgreSQL is working correctly. Test database created, data inserted and retrieved successfully, extensions tested, and test database dropped."

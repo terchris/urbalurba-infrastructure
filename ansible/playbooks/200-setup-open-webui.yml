@@ -4,9 +4,19 @@
 # Set up Open WebUI with all its dependencies on Kubernetes
 # - storage: persistent storage for all systems
 # - tika: Apache Tika server for document extraction and processing
-# - qdrant: Qdrant as a vector database for Open WebUI, replacing the default ChromaDB
 # - ollama: install a minimal LLM (qwen3:0.6b) in the cluster. The model is small and mainly serves as a proof of concept.
 # - openwebui: the web frontend that connects directly to both in-cluster Ollama and host Ollama
+# - (optional) qdrant: a general-purpose vector database, can be used by Open WebUI or other apps
+#
+# Prerequisites:
+# - A PostgreSQL instance must be running in the target namespace with the pgvector extension enabled in the target database (e.g., openwebui)
+# - Persistent storage and required secrets must be set up
+#
+# Ollama deployment:
+# - By default, Ollama is deployed in-cluster for dev/test.
+# - For production, you can skip in-cluster Ollama by running:
+#   ansible-playbook playbooks/200-setup-open-webui.yml -e deploy_ollama_incluster=false
+#   and configure Open WebUI to use a host-based Ollama instance (e.g., http://host.lima.internal:11434)
 #
 # Architecture:
 # - OpenWebUI connects directly to both Ollama instances (in-cluster and on host)
@@ -15,6 +25,7 @@
 #
 # Usage:
 # ansible-playbook playbooks/200-setup-open-webui.yml -e kube_context="rancher-desktop"
+#   (add -e deploy_ollama_incluster=false to skip in-cluster Ollama)
 
 - name: Set up Open WebUI with subsystems on Kubernetes
   hosts: localhost
@@ -27,17 +38,21 @@
     pod_readiness_timeout: 600  # 10 minutes timeout for pod readiness
     # Helm chart references
     tika_chart: "tika/tika"
-    qdrant_chart: "qdrant/qdrant"
     ollama_chart: "ollama-helm/ollama"
     openwebui_chart: "open-webui/open-webui"
     openwebui_repo_url: "https://helm.openwebui.com/"
     # Config files
     storage_config_file: "{{ manifests_folder }}/200-ai-persistent-storage.yaml"
     tika_config_file: "{{ manifests_folder }}/201-tika-config.yaml"
-    qdrant_config_file: "{{ manifests_folder }}/203-qdrant-config.yaml"
     ollama_config_file: "{{ manifests_folder }}/205-ollama-config.yaml"
     openwebui_config_file: "{{ manifests_folder }}/209-openwebui-config.yaml"
     openwebui_ingress_file: "{{ manifests_folder }}/210-openwebui-ingress.yaml"
+    # Postgres connection info for vector DB check
+    postgres_user: "openwebui"
+    postgres_db: "openwebui"
+    postgres_service: "postgresql"  # Update if your service name differs
+    # Ollama deployment toggle
+    deploy_ollama_incluster: true
 
   tasks:
     - name: 1. Get current Kubernetes context if kube_context not provided
@@ -111,7 +126,42 @@
           kubectl edit secret urbalurba-secrets -n {{ ai_namespace }}
       when: "'Missing recommended secret keys' in secret_keys_check.stdout"
 
-    - name: 7. Apply persistent storage resources
+    - block:
+        - name: 7a. Check if PostgreSQL service exists in namespace
+          kubernetes.core.k8s_info:
+            kind: Service
+            namespace: "{{ ai_namespace }}"
+            name: "{{ postgres_service }}"
+            kubeconfig: "{{ merged_kubeconf_file }}"
+          register: postgres_service_check
+          failed_when: postgres_service_check.resources | length == 0
+          ignore_errors: false
+
+        - name: 7b. Get PostgreSQL pod name
+          shell: |
+            kubectl get pods -n {{ ai_namespace }} -l app.kubernetes.io/name=postgresql -o jsonpath='{.items[0].metadata.name}'
+          environment:
+            KUBECONFIG: "{{ merged_kubeconf_file }}"
+          register: postgres_pod_name
+          changed_when: false
+
+        - name: 7c. Check if pgvector extension is enabled in the target database
+          shell: |
+            kubectl exec -n {{ ai_namespace }} {{ postgres_pod_name.stdout }} -- \
+              psql -U {{ postgres_user }} -d {{ postgres_db }} -c "SELECT extname FROM pg_extension WHERE extname = 'vector';"
+          register: pgvector_check
+          environment:
+            KUBECONFIG: "{{ merged_kubeconf_file }}"
+          changed_when: false
+          failed_when: "'vector' not in pgvector_check.stdout"
+
+        - name: 7d. Fail if pgvector extension is not enabled
+          ansible.builtin.fail:
+            msg: "The pgvector extension is not enabled in the target PostgreSQL database ({{ postgres_db }}). Please ensure it is enabled before proceeding."
+          when: "'vector' not in pgvector_check.stdout"
+      name: "7. Prerequisite: Check PostgreSQL with pgvector (moved up for early failure)"
+
+    - name: 8. Apply persistent storage resources
       ansible.builtin.command: kubectl apply -f {{ storage_config_file }} -n {{ ai_namespace }}
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
@@ -119,10 +169,6 @@
       changed_when: storage_result.rc == 0
       failed_when: storage_result.rc != 0
       
-    - name: 8. Display storage creation result
-      ansible.builtin.debug:
-        msg: "Persistent storage setup result: {{ storage_result.stdout_lines | default(['No output']) }}"
-
     - name: 9a. Check existing Helm repositories
       ansible.builtin.command: helm repo list
       register: helm_repo_list
@@ -134,7 +180,6 @@
         repo_url: "{{ item.url }}"
       loop:
         - { name: 'tika', url: 'https://apache.jfrog.io/artifactory/tika' }
-        - { name: 'qdrant', url: 'https://qdrant.github.io/qdrant-helm' }
         - { name: 'ollama-helm', url: 'https://otwld.github.io/ollama-helm/' }
         - { name: 'open-webui', url: '{{ openwebui_repo_url }}' }
       when: item.name not in helm_repo_list.stdout
@@ -144,7 +189,7 @@
       ansible.builtin.command: helm repo update
       changed_when: false
     
-    # Install Tika
+    # 10. Deploy Apache Tika server
     - name: 10a. Deploy Apache Tika server
       ansible.builtin.command: >
         helm upgrade --install tika {{ tika_chart }} 
@@ -173,37 +218,8 @@
       ansible.builtin.debug:
         msg: "Tika readiness status: {{ 'Ready' if tika_wait_result.rc == 0 else 'Not ready yet, continuing anyway' }}"
     
-    # Install Qdrant
-    - name: 11a. Deploy Qdrant vector database
-      ansible.builtin.command: >
-        helm upgrade --install qdrant {{ qdrant_chart }}
-        -f {{ qdrant_config_file }}
-        --namespace {{ ai_namespace }}
-        --timeout {{ installation_timeout }}s
-      environment:
-        KUBECONFIG: "{{ merged_kubeconf_file }}"
-      register: qdrant_result
-      changed_when: true
-    
-    - name: 11b. Display Qdrant deployment result
-      ansible.builtin.debug:
-        msg: "Qdrant deployment initiated. Waiting for readiness..."
-    
-    - name: 11c. Wait for Qdrant pods to be ready
-      ansible.builtin.shell: |
-        kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=qdrant -n {{ ai_namespace }} --timeout={{ pod_readiness_timeout }}s
-      environment:
-        KUBECONFIG: "{{ merged_kubeconf_file }}"
-      register: qdrant_wait_result
-      changed_when: false
-      ignore_errors: true
-    
-    - name: 11d. Display Qdrant readiness status
-      ansible.builtin.debug:
-        msg: "Qdrant readiness status: {{ 'Ready' if qdrant_wait_result.rc == 0 else 'Not ready yet, continuing anyway' }}"
-    
-    # Install Ollama without waiting for it to be ready
-    - name: 12a. Deploy Ollama for local LLM support
+    # Install Ollama without waiting for it to be ready (optional)
+    - name: 11a. Deploy Ollama for local LLM support
       ansible.builtin.command: >
         helm upgrade --install ollama {{ ollama_chart }}
         -f {{ ollama_config_file }}
@@ -213,13 +229,15 @@
         KUBECONFIG: "{{ merged_kubeconf_file }}"
       register: ollama_result
       changed_when: true
+      when: deploy_ollama_incluster | bool
     
-    - name: 12b. Display Ollama deployment result
+    - name: 11b. Display Ollama deployment result
       ansible.builtin.debug:
         msg: "Ollama deployment initiated. Note: Ollama may take 10-15 minutes to become ready as it downloads the model. Continuing with other components."
+      when: deploy_ollama_incluster | bool
     
     # Install Open WebUI
-    - name: 13a. Deploy Open WebUI frontend
+    - name: 12a. Deploy Open WebUI frontend
       ansible.builtin.command: >
         helm upgrade --install open-webui {{ openwebui_chart }}
         -f {{ openwebui_config_file }}
@@ -230,11 +248,11 @@
       register: openwebui_result
       changed_when: true
     
-    - name: 13b. Display Open WebUI deployment result
+    - name: 12b. Display Open WebUI deployment result
       ansible.builtin.debug:
         msg: "Open WebUI deployment initiated. Waiting for readiness (this may take several minutes)..."
     
-    - name: 13c. Wait for Open WebUI pods to be ready
+    - name: 12c. Wait for Open WebUI pods to be ready
       ansible.builtin.shell: |
         # Wait with a longer timeout for Open WebUI
         kubectl wait --for=condition=ready pod -l app=open-webui -n {{ ai_namespace }} --timeout={{ pod_readiness_timeout }}s
@@ -244,12 +262,12 @@
       changed_when: false
       ignore_errors: true
     
-    - name: 13d. Display Open WebUI readiness status
+    - name: 12d. Display Open WebUI readiness status
       ansible.builtin.debug:
         msg: "Open WebUI readiness status: {{ 'Ready' if openwebui_wait_result.rc == 0 else 'Not ready yet, continuing anyway' }}"
     
     # Apply Open WebUI ingress configuration
-    - name: 13e. Apply Open WebUI ingress configuration
+    - name: 12e. Apply Open WebUI ingress configuration
       ansible.builtin.command: >
         kubectl apply -f {{ openwebui_ingress_file }} -n {{ ai_namespace }}
       environment:
@@ -257,18 +275,18 @@
       register: openwebui_ingress_result
       changed_when: true
     
-    - name: 13f. Display Open WebUI ingress configuration result
+    - name: 12f. Display Open WebUI ingress configuration result
       ansible.builtin.debug:
         msg: "Open WebUI ingress configuration applied"
     
     # Give the deployment a bit more time to stabilize
-    - name: 13g. Give the deployment a bit more time to stabilize
+    - name: 12g. Give the deployment a bit more time to stabilize
       ansible.builtin.pause:
         seconds: 30
       when: openwebui_wait_result.rc != 0
     
     # Verify deployments and services
-    - name: 14a. Get all AI stack pods
+    - name: 13a. Get all AI stack pods
       ansible.builtin.shell: |
         kubectl get pods -n {{ ai_namespace }}
       environment:
@@ -276,11 +294,11 @@
       register: ai_pods
       changed_when: false
     
-    - name: 14b. Display AI stack pods
+    - name: 13b. Display AI stack pods
       ansible.builtin.debug:
         var: ai_pods.stdout_lines
     
-    - name: 15a. Get all AI stack services
+    - name: 14a. Get all AI stack services
       ansible.builtin.shell: |
         kubectl get svc -n {{ ai_namespace }}
       environment:
@@ -288,12 +306,12 @@
       register: ai_services
       changed_when: false
     
-    - name: 15b. Display AI stack services
+    - name: 14b. Display AI stack services
       ansible.builtin.debug:
         var: ai_services.stdout_lines
     
     # Get Open WebUI service name and port for access
-    - name: 16a. Get Open WebUI service details
+    - name: 15a. Get Open WebUI service details
       ansible.builtin.shell: |
         kubectl get svc -n {{ ai_namespace }} | grep open-webui | grep -v 'No resources'
       environment:
@@ -302,14 +320,14 @@
       changed_when: false
       ignore_errors: true
     
-    - name: 16b. Extract Open WebUI service name and port
+    - name: 15b. Extract Open WebUI service name and port
       ansible.builtin.set_fact:
         openwebui_service_name: "{{ openwebui_service.stdout.split()[0] | default('open-webui') }}"
         openwebui_service_port: "{{ openwebui_service.stdout.split()[4].split(':')[0] | default('8080') }}"
       when: openwebui_service.stdout is defined and openwebui_service.stdout != ""
     
     # Determine if the installation was successful
-    - name: 17a. Count running pods
+    - name: 16a. Count running pods
       ansible.builtin.shell: |
         kubectl get pods -n {{ ai_namespace }} | grep -v NAME | grep -c Running || echo "0"
       environment:
@@ -318,13 +336,13 @@
       changed_when: false
       ignore_errors: true
     
-    - name: 17b. Determine installation success
+    - name: 16b. Determine installation success
       ansible.builtin.set_fact:
         # Relaxed criteria - don't count on Ollama being ready
         services_setup_successful: "{{ (running_pods_count.stdout | int >= 3) }}"
     
     # FIX: Check for pods still initializing - modified to avoid shell arithmetic issues
-    - name: 17c. Check for pods still initializing
+    - name: 16c. Check for pods still initializing
       ansible.builtin.shell: |
         CREATING_PODS=$(kubectl get pods -n {{ ai_namespace }} | grep -c "ContainerCreating" || echo "0")
         INIT_PODS=$(kubectl get pods -n {{ ai_namespace }} | grep -c "Init:" || echo "0")
@@ -340,17 +358,17 @@
       ignore_errors: true
     
     # FIX: Modified to avoid using ternary operator since it was causing issues
-    - name: 17d. Set initialization message
+    - name: 16d. Set initialization message
       ansible.builtin.set_fact:
         initialization_message: "Some pods are still initializing. This is normal for the first deployment."
       when: initializing_pods_count.stdout | int > 0
     
-    - name: 17d-alt. Set initialization message when no pods initializing
+    - name: 16d-alt. Set initialization message when no pods initializing
       ansible.builtin.set_fact:
         initialization_message: "All pods have completed initialization."
       when: initializing_pods_count.stdout | int == 0
     
-    - name: 18. Display final installation status
+    - name: 17. Display final installation status
       ansible.builtin.debug:
         msg:
           - "==============================================="
@@ -362,7 +380,6 @@
           - "📦 Components installed:"
           - "• Persistent Storage"
           - "• Apache Tika (document extraction)"
-          - "• Qdrant (vector database)"
           - "• Ollama (local LLM in cluster)"
           - "• Open WebUI (frontend with direct connections to host and cluster Ollamas)"
           - ""

@@ -1,8 +1,10 @@
 #!/bin/bash
 # filename: 05-cloud-setup-postgres.sh
-# description: Setup PostgreSQL on microk8s cluster using Ansible playbook. Verifies storage folder and deploys PostgreSQL.
+# description: Setup PostgreSQL on a cluster using Ansible playbook. Verifies storage folder and deploys PostgreSQL.
 # usage: ./05-cloud-setup-postgres.sh [target-host]
 # example: ./05-cloud-setup-postgres.sh multipass-microk8s
+# or in case of rancher desktop use: ./05-cloud-setup-postgres.sh rancher-desktop
+# If no target host is provided, the script will default to multipass-microk8s.
 
 # Ensure the script is run with Bash
 if [ -z "$BASH_VERSION" ]; then
@@ -72,8 +74,22 @@ run_playbook() {
 # Test Ansible connection
 test_connection() {
     echo "Testing connection to $TARGET_HOST..."
-    cd $ANSIBLE_DIR && ansible $TARGET_HOST -m ping
+    cd "$ANSIBLE_DIR" || return 1
+    local output
+    output=$(ansible "$TARGET_HOST" -m ping 2>&1)
+    echo "$output"
+    if echo "$output" | grep -q "UNREACHABLE"; then
+        add_status "Test connection" "Fail"
+        add_error "Test connection" "Ansible unreachable: $output"
+        return 1
+    fi
+    if echo "$output" | grep -q "FAILED"; then
+        add_status "Test connection" "Fail"
+        add_error "Test connection" "Ansible failed: $output"
+        return 1
+    fi
     check_command_success "Test connection"
+    return $?
 }
 
 # Verify Kubernetes context

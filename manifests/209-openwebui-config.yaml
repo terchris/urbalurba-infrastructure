@@ -31,7 +31,8 @@ ollama:
 # Sets up link to the ollama running in the cluster and the ollama running on the host (same as using the OLLAMA_BASE_URLS)
 ollamaUrls:
   - "http://ollama:11434"
-  - "http://host.docker.internal:11434"  
+  - "http://host.lima.internal:11434"    
+#dor docker  - "http://host.docker.internal:11434"  
 
 # Enable Pipelines for document processing
 pipelines:

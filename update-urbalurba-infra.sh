@@ -17,6 +17,9 @@
 # Version: 1.1.0
 # License: MIT
 
+# TODO: the automatic instal is not good enugh.
+
+
 # GitHub Repository Info
 REPO_OWNER="terchris"
 REPO_NAME="urbalurba-infrastructure"

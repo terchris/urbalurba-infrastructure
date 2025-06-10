@@ -1,0 +1,76 @@
+# Docker ignore file for Urbalurba PostgreSQL container
+# Optimizes build context and reduces image size
+
+# Documentation files (not needed in container)
+*.md
+README*
+readme*
+
+# Git files
+.git
+.gitignore
+.github
+
+# Build artifacts and temporary files
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Local development files
+.env
+.env.local
+.env.*.local
+
+# Test files and directories
+test/
+tests/
+*_test.*
+*_test_*
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Docker files (prevent recursion)
+Dockerfile*
+.dockerignore
+
+# Build scripts (not needed in final image)
+build.sh
+*.sh
+
+# Node modules (if any)
+node_modules/
+npm-debug.log*
+
+# Python cache (if any)
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Any local configuration or secrets
+config.local.*
+secrets.*
+*.key
+*.pem
+*.crt

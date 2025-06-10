@@ -1,6 +1,54 @@
 # File: 042-database-postgresql-config.yaml
-# Description: Configuration for PostgreSQL Helm chart
-# This file defines the values used when installing PostgreSQL via Helm
+#
+# Description:
+# PostgreSQL Helm chart configuration using custom Urbalurba PostgreSQL container
+# with pre-built AI and geospatial extensions for modern data-intensive applications.
+#
+# Custom Container: ghcr.io/terchris/urbalurba-postgresql:latest
+# - Based on Bitnami PostgreSQL 16 with additional extensions
+# - Pre-built with pgvector, PostGIS, hstore, ltree, and other essential extensions
+# - Multi-architecture support (amd64/arm64) with security scanning
+# - Documentation: containers/postgresql/readme-postgres-container.md
+#
+# Available Extensions (8 total):
+# - pgvector: Vector similarity search and AI embeddings
+# - PostGIS: Geospatial data types and operations
+# - hstore: Key-value pairs in database columns
+# - ltree: Hierarchical tree-like data structures
+# - uuid-ossp: UUID generation functions
+# - pg_trgm: Trigram matching for fuzzy text search
+# - btree_gin: Additional indexing methods
+# - pgcrypto: Cryptographic functions
+#
+# Suitable for:
+# - AI applications requiring vector search (RAG, embeddings)
+# - Geospatial applications (mapping, location services)
+# - Modern web applications with complex data types
+# - Applications requiring hierarchical data or advanced indexing
+#
+# Requirements:
+# - Helm repo: bitnami/postgresql should be added to your helm repos
+# - A PersistentVolumeClaim (PVC) must exist or be dynamically provisioned for storage
+# - (Recommended) Set the database password using a Kubernetes secret or Helm values
+#
+# Usage:
+# installing: helm install postgresql bitnami/postgresql -f 042-database-postgresql-config.yaml -n default
+# upgrading:  helm upgrade postgresql bitnami/postgresql -f 042-database-postgresql-config.yaml -n default
+# uninstalling: helm uninstall postgresql -n default
+#
+# Debugging commands:
+# check pod status: kubectl get pods -n default | grep postgresql
+# view logs: kubectl logs -f statefulset/postgresql -n default
+# port-forward for direct DB access: kubectl port-forward svc/postgresql 5432:5432 -n default
+# test connection: psql postgresql://<user>:<password>@localhost:5432/<database>
+# verify extensions: kubectl exec -it postgresql-0 -- psql -U postgres -c "SELECT extname FROM pg_extension ORDER BY extname;"
+#
+# All extensions are enabled in the default database at initialization.
+# If you create a new database, manually enable extensions using:
+# CREATE EXTENSION IF NOT EXISTS <extension_name>;
+#
+# For more information about the custom container:
+# See: containers/postgresql/readme-postgres-container.md
 
 global:
   postgresql:
@@ -8,10 +56,38 @@ global:
       ports:
         postgresql: 5432
 
+# Use custom Urbalurba PostgreSQL container with pre-built extensions
+image:
+  registry: ghcr.io
+  repository: terchris/urbalurba-postgresql
+  tag: latest
+  pullPolicy: Always
+
 primary:
   persistence:
     enabled: true
     size: 8Gi  # Adjust size as needed
+
+  # Enable all available extensions at startup
+  # All 8 extensions are pre-built into the custom container
+  initdb:
+    scripts:
+      enable-extensions.sql: |
+        -- AI and Vector Search Extensions
+        CREATE EXTENSION IF NOT EXISTS vector;
+        
+        -- Geospatial Extensions
+        CREATE EXTENSION IF NOT EXISTS postgis;
+        
+        -- Advanced Data Type Extensions
+        CREATE EXTENSION IF NOT EXISTS hstore;
+        CREATE EXTENSION IF NOT EXISTS ltree;
+        
+        -- Utility Extensions
+        CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+        CREATE EXTENSION IF NOT EXISTS pg_trgm;
+        CREATE EXTENSION IF NOT EXISTS btree_gin;
+        CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 service:
   type: ClusterIP
@@ -27,4 +103,5 @@ resources:
     memory: 512Mi
     cpu: 500m
 
-# Add any additional PostgreSQL configurations here
+# Custom PostgreSQL container provides all extensions
+# No additional configuration needed - extensions are pre-built and ready to use

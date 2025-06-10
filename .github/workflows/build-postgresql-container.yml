@@ -1,0 +1,357 @@
+# filename: .github/workflows/build-postgresql-container.yml
+# 
+# GitHub Actions workflow for building and publishing the Urbalurba PostgreSQL container
+# 
+# This workflow builds a custom PostgreSQL container with extensions (pgvector, PostGIS, hstore, ltree)
+# for both x86_64 and ARM64 architectures. It includes security scanning, testing, and automatic
+# publishing to GitHub Container Registry.
+#
+# Triggers:
+#   - Push to main branch (when PostgreSQL container files change)
+#   - Pull requests (when PostgreSQL container files change)
+#   - Manual dispatch with custom version
+#   - Release tags
+#
+# Registry: ghcr.io/terchris/urbalurba-postgresql
+# Supported Architectures: linux/amd64, linux/arm64
+
+name: 🐘 Build PostgreSQL Container
+
+# Define when this workflow should run
+on:
+  push:
+    branches:
+      - main
+    paths:
+      # Only run when PostgreSQL container files change
+      - 'containers/postgresql/**'
+      - '.github/workflows/build-postgresql-container.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      # Test changes in pull requests
+      - 'containers/postgresql/**'
+      - '.github/workflows/build-postgresql-container.yml'
+  release:
+    types: [published]
+  workflow_dispatch:
+    # Allow manual triggering with custom parameters
+    inputs:
+      version:
+        description: 'Container version to build'
+        required: false
+        default: 'latest'
+        type: string
+      push_image:
+        description: 'Push image to registry'
+        required: false
+        default: true
+        type: boolean
+
+# Required permissions for this workflow
+permissions:
+  contents: read          # Read repository contents
+  packages: write         # Push to GitHub Container Registry
+  security-events: write  # Upload security scan results
+
+# Environment variables used throughout the workflow
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/urbalurba-postgresql
+
+jobs:
+  # ==============================================================================
+  # BUILD JOB
+  # Builds the multi-architecture PostgreSQL container with extensions
+  # ==============================================================================
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    
+    # Expose outputs for other jobs to use
+    outputs:
+      image: ${{ steps.meta.outputs.tags }}
+      digest: ${{ steps.build.outputs.digest }}
+      
+    steps:
+      # Step 1: Get the source code
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Get full history for better caching
+
+      # Step 2: Set up Docker BuildX for multi-architecture builds
+      - name: 🔧 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64  # Support both x86 and ARM
+
+      # Step 3: Login to GitHub Container Registry (skip for PRs for security)
+      - name: 🔐 Log in to Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}          # GitHub username
+          password: ${{ secrets.GITHUB_TOKEN }}  # Automatic GitHub token
+
+      # Step 4: Generate image tags and labels based on the trigger
+      - name: 🏷️ Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            # Latest tag for main branch pushes
+            type=raw,value=latest,enable={{is_default_branch}}
+            # Custom version for manual workflow dispatch
+            type=raw,value=${{ github.event.inputs.version }},enable=${{ github.event_name == 'workflow_dispatch' }}
+            # Version tags for releases (e.g., v1.0.0)
+            type=ref,event=tag,prefix=v
+            # Branch names for branch pushes
+            type=ref,event=branch
+            # Pull request tags (e.g., pr-123)
+            type=ref,event=pr,prefix=pr-
+            # Short SHA with branch and date for unique identification
+            type=sha,prefix={{branch}}-,suffix=-{{date 'YYYYMMDD'}},format=short
+          labels: |
+            # Standard OCI image labels for better container metadata
+            org.opencontainers.image.title=Urbalurba PostgreSQL
+            org.opencontainers.image.description=PostgreSQL with pgvector, PostGIS, hstore, and ltree extensions
+            org.opencontainers.image.vendor=Urbalurba Infrastructure
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.documentation=https://github.com/${{ github.repository }}/blob/main/containers/postgresql/readme-postgres-container.md
+
+      # Step 5: Verify Dockerfile syntax before building
+      - name: 🔍 Verify Dockerfile
+        run: |
+          docker buildx build --check containers/postgresql/
+
+      # Step 6: Build and optionally push the container image
+      - name: 🚀 Build and push container image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: containers/postgresql          # Build context
+          file: containers/postgresql/Dockerfile  # Dockerfile location
+          platforms: linux/amd64,linux/arm64     # Multi-architecture build
+          # Only push if not a PR and push_image is not explicitly false
+          push: ${{ github.event_name != 'pull_request' && (github.event.inputs.push_image != 'false') }}
+          tags: ${{ steps.meta.outputs.tags }}    # Use generated tags
+          labels: ${{ steps.meta.outputs.labels }} # Use generated labels
+          # Use GitHub Actions cache for faster builds
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          # Disable provenance and SBOM for smaller images
+          provenance: false
+          sbom: false
+
+      # Step 7: Output build results to workflow summary
+      - name: 📝 Output build results
+        run: |
+          echo "🏷️ **Built Tags:**" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🔑 **Image Digest:** \`${{ steps.build.outputs.digest }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📦 **Registry:** \`${{ env.REGISTRY }}\`" >> $GITHUB_STEP_SUMMARY
+
+  # ==============================================================================
+  # SECURITY SCAN JOB
+  # Scans the built image for vulnerabilities using Trivy
+  # Only runs for pushed images (not PRs) to avoid rate limits
+  # ==============================================================================
+  security-scan:
+    runs-on: ubuntu-latest
+    needs: build                              # Wait for build to complete
+    if: github.event_name != 'pull_request'  # Skip for PRs
+    timeout-minutes: 30
+    
+    steps:
+      # Step 1: Get source code for security scanning context
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      # Step 2: Login to pull the built image for scanning
+      - name: 🔐 Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Step 3: Run Trivy vulnerability scanner and generate SARIF report
+      - name: 🛡️ Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ needs.build.outputs.image }}  # Use built image
+          format: 'sarif'                              # SARIF format for GitHub Security
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'                    # Focus on high-severity issues
+
+      # Step 4: Upload security scan results to GitHub Security tab
+      - name: 📊 Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()  # Upload even if scan finds issues
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      # Step 5: Generate human-readable summary
+      - name: 🔍 Run Trivy for summary
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ needs.build.outputs.image }}
+          format: 'table'                    # Human-readable table format
+          output: 'trivy-summary.txt'
+
+      # Step 6: Add security scan results to workflow summary
+      - name: 📝 Add security scan results to summary
+        if: always()
+        run: |
+          echo "## 🛡️ Security Scan Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** \`${{ needs.build.outputs.image }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Scan Date:** $(date -u)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -f trivy-summary.txt ]; then
+            echo "### Vulnerability Summary" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat trivy-summary.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ **No vulnerabilities found or scan failed**" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📊 **Detailed results available in Security tab**" >> $GITHUB_STEP_SUMMARY
+
+  # ==============================================================================
+  # TEST JOB
+  # Tests the PostgreSQL container functionality on both architectures
+  # Verifies that all extensions work correctly
+  # ==============================================================================
+  test:
+    runs-on: ubuntu-latest
+    needs: build
+    timeout-minutes: 30
+    strategy:
+      matrix:
+        arch: [amd64, arm64]  # Test both architectures
+        
+    steps:
+      # Step 1: Get source code for test context
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      # Step 2: Set up Docker BuildX for multi-arch support
+      - name: 🔧 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Step 3: Login to pull images for testing (skip for PRs)
+      - name: 🔐 Log in to Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Step 4: Test PostgreSQL container functionality
+      - name: 🧪 Test PostgreSQL container (${{ matrix.arch }})
+        timeout-minutes: 15
+        run: |
+          # Extract the first tag for testing
+          IMAGE_TAG=$(echo "${{ needs.build.outputs.image }}" | head -n1)
+          
+          # Clean up any existing test containers
+          docker stop postgres-test-${{ matrix.arch }} 2>/dev/null || true
+          docker rm postgres-test-${{ matrix.arch }} 2>/dev/null || true
+          
+          # For PR builds, build image locally since it's not pushed to registry
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            docker buildx build \
+              --platform linux/${{ matrix.arch }} \
+              --tag test-image:latest \
+              --load \
+              containers/postgresql/
+            IMAGE_TAG="test-image:latest"
+          fi
+          
+          # Start PostgreSQL container with test configuration
+          docker run -d \
+            --name postgres-test-${{ matrix.arch }} \
+            --platform linux/${{ matrix.arch }} \
+            -e POSTGRESQL_PASSWORD=testpass123 \
+            -e POSTGRESQL_DATABASE=testdb \
+            -e POSTGRESQL_USERNAME=testuser \
+            -p 5432:5432 \
+            ${IMAGE_TAG}
+          
+          # Wait for PostgreSQL to be ready (up to 2 minutes)
+          timeout 120s bash -c 'while ! docker exec postgres-test-${{ matrix.arch }} pg_isready -U postgres; do sleep 2; done'
+          
+          # Test all extensions can be created
+          docker exec -e PGPASSWORD=testpass123 postgres-test-${{ matrix.arch }} psql -U postgres -d testdb -c "
+            CREATE EXTENSION IF NOT EXISTS vector;
+            CREATE EXTENSION IF NOT EXISTS hstore;
+            CREATE EXTENSION IF NOT EXISTS ltree;
+            CREATE EXTENSION IF NOT EXISTS postgis;
+            CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";
+            CREATE EXTENSION IF NOT EXISTS pg_trgm;
+            CREATE EXTENSION IF NOT EXISTS btree_gin;
+            CREATE EXTENSION IF NOT EXISTS pgcrypto;
+          "
+          
+          # Verify all expected extensions are available
+          EXTENSIONS=$(docker exec -e PGPASSWORD=testpass123 postgres-test-${{ matrix.arch }} psql -U postgres -d testdb -t -c "
+            SELECT string_agg(extname, ', ' ORDER BY extname) 
+            FROM pg_extension 
+            WHERE extname IN ('vector', 'hstore', 'ltree', 'postgis', 'uuid-ossp', 'pg_trgm', 'btree_gin', 'pgcrypto');
+          " | xargs)
+          
+          echo "Extensions verified: ${EXTENSIONS}"
+          
+          # Test basic functionality of each extension
+          docker exec -e PGPASSWORD=testpass123 postgres-test-${{ matrix.arch }} psql -U postgres -d testdb -c "
+            -- Test vector operations (pgvector)
+            CREATE TABLE test_vectors (id SERIAL, embedding vector(3));
+            INSERT INTO test_vectors (embedding) VALUES ('[1,2,3]'), ('[4,5,6]');
+            SELECT embedding <-> '[1,2,3]' as distance FROM test_vectors ORDER BY distance LIMIT 1;
+            
+            -- Test hstore key-value operations
+            CREATE TABLE test_hstore (id SERIAL, data hstore);
+            INSERT INTO test_hstore (data) VALUES ('a=>1,b=>2');
+            SELECT data->'a' FROM test_hstore;
+            
+            -- Test ltree hierarchical data
+            CREATE TABLE test_ltree (id SERIAL, path ltree);
+            INSERT INTO test_ltree (path) VALUES ('root.branch.leaf');
+            SELECT path FROM test_ltree WHERE path ~ 'root.*';
+            
+            -- Test PostGIS geospatial operations
+            CREATE TABLE test_postgis (id SERIAL, geom GEOMETRY);
+            INSERT INTO test_postgis (geom) VALUES (ST_Point(1, 1));
+            SELECT ST_AsText(geom) FROM test_postgis;
+            
+            -- Test UUID generation
+            SELECT uuid_generate_v4();
+          "
+          
+          # Cleanup test container (always run, even if tests fail)
+          docker stop postgres-test-${{ matrix.arch }} 2>/dev/null || true
+          docker rm postgres-test-${{ matrix.arch }} 2>/dev/null || true
+
+      # Step 5: Add test results to workflow summary
+      - name: 📝 Add test results to summary
+        if: always()
+        run: |
+          echo "## 🧪 Test Results (${{ matrix.arch }})" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ $? -eq 0 ]; then
+            echo "✅ **Tests passed for linux/${{ matrix.arch }}**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Tests failed for linux/${{ matrix.arch }}**" >> $GITHUB_STEP_SUMMARY
+          fi

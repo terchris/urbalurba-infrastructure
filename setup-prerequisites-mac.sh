@@ -21,6 +21,12 @@
 # Version: 1.1.0
 # License: MIT
 
+
+#TODO: This script is not working as expected. The way it installs rancher and test that rancher is installed is not good enugh.
+
+
+
+
 # Function to handle errors
 handle_error() {
     echo "Error: $1"

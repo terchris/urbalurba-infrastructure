@@ -1,23 +1,41 @@
-# 203-qdrant-config.yaml
+# File: 044-qdrant-config.yaml
+#
 # Description:
-# Installs Qdrant as a vector database for Open WebUI, replacing the default ChromaDB
-# Includes persistent storage for Qdrant data
-# 
+# General-purpose Qdrant Helm chart configuration for vector database workloads
+# - Provides persistent storage for vector and metadata
+# - Suitable for use as a shared vector database for multiple applications (RAG, AI search, etc.)
+# - Configurable resources and security context
+#
 # Requirements:
-# Helm repo: qdrant/qdrant-helm should be added to your helm repos
+# - Helm repo: qdrant/qdrant-helm should be added to your helm repos
+# - A PersistentVolumeClaim (PVC) must exist or be dynamically provisioned for storage
+# - (Recommended) Set the API key using a Kubernetes secret or Helm values
 #
 # Usage:
-# installing: helm install qdrant qdrant/qdrant -f 203-qdrant-config.yaml -n ai --create-namespace
-# upgrading:  helm upgrade qdrant qdrant/qdrant -f 203-qdrant-config.yaml -n ai
+# installing: helm install qdrant qdrant/qdrant -f 044-qdrant-config.yaml -n ai
+# upgrading:  helm upgrade qdrant qdrant/qdrant -f 044-qdrant-config.yaml -n ai
 # uninstalling: helm uninstall qdrant -n ai
 #
-# Some debugging commands:
+# Debugging commands:
 # check pod status: kubectl get pods -n ai | grep qdrant
 # view logs: kubectl logs -f statefulset/qdrant -n ai
 # port-forward for direct API access: kubectl port-forward svc/qdrant 6333:6333 -n ai
 # test API: curl http://localhost:6333/collections
-
-# Set to single node for simplicity, increase for production
+#
+# Notes:
+# - API key authentication is enabled by default; set the key via secret or values
+# - Persistent storage is required for production use
+# - This config is suitable for most vector search and embedding workloads
+# - For advanced monitoring, enable metrics and serviceMonitor as needed
+#
+# ---
+# Legacy reference: 203-qdrant-config.yaml
+# - The previous config was focused on Open WebUI integration and used the secret key 'OPENWEBUI_QDRANT_API_KEY'.
+# - This file uses a generic secret key 'QDRANT_API_KEY' for broader compatibility.
+# - All resource, storage, and service settings are preserved for compatibility.
+# - If migrating from 203, ensure your secrets and PVCs match the new naming.
+# - For Open WebUI, set the Qdrant URI and API key accordingly.
+# ---
 replicaCount: 1
 
 image:
@@ -27,9 +45,9 @@ image:
 
 # Pod configuration
 podAnnotations:
-  app.kubernetes.io/part-of: "open-webui-stack"
+  app.kubernetes.io/part-of: "vector-stack"
 
-# Required resources
+# Resource requests and limits
 resources:
   requests:
     memory: 512Mi
@@ -51,7 +69,7 @@ snapshotPersistence:
   existingClaim: "qdrant-snapshots"
   size: 5Gi
 
-# Service configuration to make Qdrant available to Open WebUI
+# Service configuration
 service:
   type: ClusterIP
   ports:
@@ -93,7 +111,7 @@ env:
     valueFrom:
       secretKeyRef:
         name: urbalurba-secrets
-        key: OPENWEBUI_QDRANT_API_KEY
+        key: QDRANT_API_KEY
 
 # Configure metrics endpoint for monitoring
 metrics:
@@ -110,4 +128,4 @@ containerSecurityContext:
   readOnlyRootFilesystem: true
 
 podSecurityContext:
-  fsGroup: 3000
+  fsGroup: 3000 
