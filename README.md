@@ -1,47 +1,163 @@
-# Readme Urbalurba Infrastructure
+# Urbalurba Infrastructure
 
-This is the readme for the Urbalurba Infrastructure.
+**A zero-friction developer platform for building, testing, and deploying modern apps—without needing to know Kubernetes, GitOps, or the cloud.**
 
-## Overview
+## 🎯 What Is Urbalurba Infrastructure?
 
-The goal of the Urbalurba Infrastructure is to provide a environment for developers, system admins and devops engineers that can be used to develop, test and deploy applications.
+Urbalurba Infrastructure provides a complete datacenter environment on your laptop. It's a full infrastructure stack that includes all the services that cloud providers (AWS, Azure, GCP) offer—running locally on a single machine with the same configuration you'd use in production.
 
-It is a full infrastructure stack that has the services that the cloud infrastructure providers (AWS, Azure, GCP) provide.
+### The Problem It Solves
 
-This is done by provisioning a full infrastructure that runs on a single machine like the developers laptop. The same infrastructure can be deployed to the cloud providers (AWS, Azure, GCP) or on-premises. So if the application works on the developers laptop then the same application will work in the cloud or on-premises.
+- **"It works on my machine"** syndrome - Applications behave differently in development vs production
+- **Complex cloud setup** - Developers waste time configuring cloud services instead of building
+- **Permission bottlenecks** - Waiting for cloud access and permissions slows development
+- **Expensive development** - Cloud costs accumulate during development and testing
+- **Data privacy concerns** - Sensitive data must leave your environment for cloud AI services
 
-The stack provides open source versions of the services that the cloud providers offer. It contains services like databases, message queues, monitoring, logging, etc.
+### The Solution
 
-## What is included?
+- ✅ **Identical environments** - Same infrastructure locally, in cloud, and on-premises
+- ✅ **Zero cloud dependencies** during development - Full control without permissions
+- ✅ **Privacy-first** - AI and all services run locally on your data
+- ✅ **Cost-effective** - No cloud costs during development
+- ✅ **Production-ready** - Deploy the exact same stack to any cloud provider
 
-- [AI package (OpenWebUI)](doc/package-ai.md) - Sets up ChatGPT like system that runs AI locally. Enables you to use AI on private documents with no need to worry about the privacy of the documents.
+## 🏗️ What's Included
 
-TODO: analyze  the doc folder and the markdown readme files there to create a overall readme for the infrastructure.
+### Core Infrastructure
+- **Kubernetes cluster** - Container orchestration (via Rancher Desktop)
+- **Docker runtime** - Container execution environment
+- **Provision Host** - Centralized management container with all tools needed to manage the local infrastructure
 
-## Installation
+### Data Services
+- **Databases** - PostgreSQL, Redis, and other data stores
+- **Message queues** - Async communication between services
+- **Object storage** - File and blob storage solutions
 
-### For Mac/Linux users:
-The installation script will handle all prerequisites and installation in one go. It will:
-1. Install Homebrew (if not present)
-2. Install Rancher Desktop (which includes kubectl)
-3. Download and install the Urbalurba Infrastructure
+### AI & Machine Learning
+- **[AI Package](doc/package-ai.md)** - ChatGPT-like system running locally
+- **Private AI models** - Use AI on your sensitive documents safely
+- **Local LLM execution** - Run AI models without cloud dependencies
 
-Run the following command to install:
+### Development Tools
+- **GitOps workflows** - Automated deployments
+- **Development containers** - Consistent dev environments
+- **Infrastructure as Code** - Declarative configuration management via Kubernetes manifests
+
+## 🚀 Getting Started
+
+### Quick Installation
+
+Run this single command to set up everything:
+
 ```bash
-curl -L https://raw.githubusercontent.com/terchris/urbalurba-infrastructure/main/update-urbalurba-infra.sh -o update-urbalurba-infra.sh && chmod +x update-urbalurba-infra.sh && ./update-urbalurba-infra.sh
+curl -L https://raw.githubusercontent.com/terchris/urbalurba-infrastructure/main/install-urbalurba.sh -o install-urbalurba.sh && chmod +x install-urbalurba.sh && ./install-urbalurba.sh
 ```
 
-### For Windows users:
-Windows installation will be added soon.
+**Prerequisites:**
+- macOS 10.15+ (Windows support coming soon)
+- 8GB+ free disk space
+- Remove Docker Desktop if installed (conflicts with Rancher Desktop)
 
-Notes:
+### What the Installer Does
 
-- It solves the problem of "it works on my machine" 
-- It is a full infrastructure stack that has the services that the cloud infrastructure providers (AWS, Azure, GCP) provide.
-- It is a single machine that can be deployed to the cloud providers (AWS, Azure, GCP) or on-premises.
-- It is a full infrastructure stack that can be used to develop, test and deploy applications.
-- The developer has full control over the dev and test environment. Not needing any permissions in the cloud during development and test.
-- The cloud infrastructure team dont need to provide any permissions in the cloud during development and test.
+1. **Sets up prerequisites** - Homebrew, Xcode tools, checks Docker Desktop conflicts
+2. **Installs Rancher Desktop** - Kubernetes + Docker with optimal configuration
+3. **Installs k9s** - Terminal-based Kubernetes UI for cluster management
+4. **Downloads Urbalurba** - Latest infrastructure packages and configurations
+5. **Deploys manifests** - Applies Kubernetes manifests to set up all services
+6. **Creates provision-host** - Management container with all tools needed
 
+### Installation Options
 
+```bash
+# Interactive (asks permission at each step)
+./install-urbalurba.sh
 
+# Automatic (no prompts)
+./install-urbalurba.sh --auto
+
+# Preview only (show what would be installed)
+./install-urbalurba.sh --commands
+```
+
+## 🎯 Use Cases
+
+### For Developers
+- Build microservices with real databases and messaging
+- Test with production-like infrastructure locally
+- Develop AI applications with private, local models
+- No waiting for cloud access or permissions
+
+### For DevOps Teams
+- Prototype infrastructure changes safely
+- Test deployment pipelines before cloud rollout
+- Validate configurations in identical environments
+- Reduce cloud costs during development phases
+
+### For Organizations
+- Enable "shift-left" development practices
+- Maintain data privacy during development
+- Accelerate development cycles
+- Reduce dependency on cloud infrastructure teams
+
+## 📁 Repository Structure
+
+```
+urbalurba-infrastructure/
+├── manifests/           # Kubernetes manifests for all services
+├── doc/                 # Documentation and guides
+│   └── package-ai.md   # AI package setup and usage
+├── install-urbalurba.sh # Main installation script
+├── Brewfile            # macOS dependencies definition
+└── README.md           # This file
+```
+
+## 📚 Documentation
+
+- **[AI Package](doc/package-ai.md)** - Local ChatGPT setup and usage
+- **[Manifests](manifests/)** - Kubernetes configurations for all services
+- **Service Documentation** - Individual service setups and configurations
+- **Deployment Guides** - Moving from local to cloud production
+
+## 🌟 Key Benefits
+
+1. **Rapid Development** - Everything ready out of the box
+2. **True Portability** - Same environment everywhere
+3. **Data Privacy** - Nothing leaves your machine
+4. **Cost Effective** - No cloud charges during development
+5. **Team Consistency** - Everyone uses identical environments
+6. **Production Confidence** - Test with real infrastructure locally
+
+## 🔄 Development to Production Flow
+
+1. **Develop** - Build and test on Urbalurba Infrastructure locally
+2. **Version** - Commit configurations and deployments to Git
+3. **Deploy** - Apply same configs to cloud Kubernetes clusters
+4. **Monitor** - Use same observability tools in production
+
+Your application works identically everywhere because it's the same infrastructure stack.
+
+## 🛠️ Management
+
+The **provision-host** container includes all the tools needed to manage your local infrastructure:
+
+- **Infrastructure configuration management** - Modify and deploy services
+- **Service deployment and scaling** - Control resource allocation
+- **Environment provisioning** - Set up new environments quickly
+- **Local development workflows** - Integrated toolchain for development
+
+Access the management tools through the provision-host container once the system is running.
+
+## 🔧 Architecture
+
+Urbalurba Infrastructure uses **Infrastructure as Code** principles with Kubernetes manifests stored in the [`manifests/`](manifests/) directory. Each service is defined declaratively, making it easy to:
+
+- **Version control** all infrastructure changes
+- **Reproduce** environments exactly
+- **Scale** services up or down as needed
+- **Deploy** the same configuration anywhere
+
+---
+
+**Ready to eliminate "works on my machine" forever? Install Urbalurba Infrastructure and start building with confidence.**
