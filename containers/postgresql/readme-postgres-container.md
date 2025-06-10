@@ -72,7 +72,7 @@ cd containers/postgresql
 ```bash
 # Run the container
 docker run -d --name postgres-test \
-  -e POSTGRESQL_PASSWORD=testpass123 \
+  -e POSTGRESQL_POSTGRES_PASSWORD=testpass123 \
   -e POSTGRESQL_DATABASE=testdb \
   -p 5432:5432 \
   ghcr.io/terchris/urbalurba-postgresql:latest

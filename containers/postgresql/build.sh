@@ -130,7 +130,7 @@ test_image() {
     log_info "Starting test container..."
     docker run -d \
         --name urbalurba-postgres-test \
-        -e POSTGRESQL_PASSWORD=testpass123 \
+        -e POSTGRESQL_POSTGRES_PASSWORD=testpass123 \
         -e POSTGRESQL_DATABASE=testdb \
         -p 15432:5432 \
         "${test_image}" > /dev/null
@@ -240,7 +240,7 @@ main() {
     else
         echo ""
         echo "📦 Local image built successfully"
-        echo "  • Run locally: docker run -d -e POSTGRESQL_PASSWORD=yourpass -p 5432:5432 ${IMAGE_NAME}:${VERSION}"
+        echo "  • Run locally: docker run -d -e POSTGRESQL_POSTGRES_PASSWORD=yourpass -p 5432:5432 ${IMAGE_NAME}:${VERSION}"
     fi
 }
 

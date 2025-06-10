@@ -293,9 +293,8 @@ jobs:
           docker run -d \
             --name postgres-test-${{ matrix.arch }} \
             --platform linux/${{ matrix.arch }} \
-            -e POSTGRESQL_PASSWORD=testpass123 \
+            -e POSTGRESQL_POSTGRES_PASSWORD=testpass123 \
             -e POSTGRESQL_DATABASE=testdb \
-            -e POSTGRESQL_USERNAME=testuser \
             -p 5432:5432 \
             ${IMAGE_TAG}
           
