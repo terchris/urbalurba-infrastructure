@@ -183,11 +183,20 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Step 3: Run Trivy vulnerability scanner and generate SARIF report
+      # Step 3: Extract single image reference for scanning
+      - name: 🏷️ Extract primary image for scanning
+        id: scan-image
+        run: |
+          # Extract the first tag for security scanning
+          PRIMARY_IMAGE=$(echo "${{ needs.build.outputs.image }}" | head -n1)
+          echo "image=${PRIMARY_IMAGE}" >> $GITHUB_OUTPUT
+          echo "Scanning image: ${PRIMARY_IMAGE}"
+
+      # Step 4: Run Trivy vulnerability scanner and generate SARIF report
       - name: 🛡️ Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ needs.build.outputs.image }}  # Use built image
+          image-ref: ${{ steps.scan-image.outputs.image }}  # Use single image reference
           format: 'sarif'                              # SARIF format for GitHub Security
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH'                    # Focus on high-severity issues
@@ -203,7 +212,7 @@ jobs:
       - name: 🔍 Run Trivy for summary
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ needs.build.outputs.image }}
+          image-ref: ${{ steps.scan-image.outputs.image }}
           format: 'table'                    # Human-readable table format
           output: 'trivy-summary.txt'
 
@@ -213,7 +222,7 @@ jobs:
         run: |
           echo "## 🛡️ Security Scan Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Image:** \`${{ needs.build.outputs.image }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** \`${{ steps.scan-image.outputs.image }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Scan Date:** $(date -u)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
