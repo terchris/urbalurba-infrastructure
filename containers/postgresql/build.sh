@@ -135,6 +135,22 @@ test_image() {
         -p 15432:5432 \
         "${test_image}" > /dev/null
 
+    # Check if container started successfully
+    sleep 5
+    for i in {1..10}; do
+        if docker ps --filter "name=urbalurba-postgres-test" --format "{{.Names}}" | grep -q urbalurba-postgres-test; then
+            log_success "Container started successfully"
+            break
+        elif [ $i -eq 10 ]; then
+            log_error "Container failed to start. Checking logs:"
+            docker logs urbalurba-postgres-test
+            exit 1
+        else
+            log_info "Waiting for container to start... (attempt $i/10)"
+            sleep 2
+        fi
+    done
+
     # Wait for PostgreSQL to be ready
     log_info "Waiting for PostgreSQL to be ready..."
     local max_attempts=30

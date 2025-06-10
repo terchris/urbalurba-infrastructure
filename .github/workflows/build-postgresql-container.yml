@@ -240,7 +240,7 @@ jobs:
   # ==============================================================================
   # TEST JOB
   # Tests the PostgreSQL container functionality on both architectures
-  # Verifies that all extensions work correctly
+  # Uses manual container management for multi-arch and PR build support
   # ==============================================================================
   test:
     runs-on: ubuntu-latest
@@ -255,54 +255,62 @@ jobs:
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
 
-      # Step 2: Set up Docker BuildX for multi-arch support
-      - name: 🔧 Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      # Step 3: Login to pull images for testing (skip for PRs)
-      - name: 🔐 Log in to Container Registry
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      # Step 4: Test PostgreSQL container functionality
-      - name: 🧪 Test PostgreSQL container (${{ matrix.arch }})
-        timeout-minutes: 15
+      # Step 2: Install PostgreSQL client for testing
+      - name: 🔧 Install PostgreSQL client
         run: |
-          # Extract the first tag for testing
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      # Step 3: Start PostgreSQL container for testing
+      - name: 🚀 Start PostgreSQL container (${{ matrix.arch }})
+        id: postgres
+        run: |
+          # Extract primary image for testing
           IMAGE_TAG=$(echo "${{ needs.build.outputs.image }}" | head -n1)
+          echo "Testing image: ${IMAGE_TAG}"
           
-          # Clean up any existing test containers
-          docker stop postgres-test-${{ matrix.arch }} 2>/dev/null || true
-          docker rm postgres-test-${{ matrix.arch }} 2>/dev/null || true
-          
-          # For PR builds, build image locally since it's not pushed to registry
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            docker buildx build \
-              --platform linux/${{ matrix.arch }} \
-              --tag test-image:latest \
-              --load \
-              containers/postgresql/
-            IMAGE_TAG="test-image:latest"
-          fi
-          
-          # Start PostgreSQL container with test configuration
-          docker run -d \
-            --name postgres-test-${{ matrix.arch }} \
+          # Start PostgreSQL container
+          CONTAINER_ID=$(docker run -d \
             --platform linux/${{ matrix.arch }} \
             -e POSTGRESQL_POSTGRES_PASSWORD=testpass123 \
             -e POSTGRESQL_DATABASE=testdb \
             -p 5432:5432 \
-            ${IMAGE_TAG}
+            --health-cmd="pg_isready -U postgres" \
+            --health-interval=5s \
+            --health-timeout=3s \
+            --health-retries=10 \
+            ${IMAGE_TAG})
           
-          # Wait for PostgreSQL to be ready (up to 2 minutes)
-          timeout 120s bash -c 'while ! docker exec postgres-test-${{ matrix.arch }} pg_isready -U postgres; do sleep 2; done'
+          echo "container_id=${CONTAINER_ID}" >> $GITHUB_OUTPUT
+          echo "Started container: ${CONTAINER_ID}"
           
+          # Wait for PostgreSQL to be healthy
+          echo "Waiting for PostgreSQL to be ready..."
+          for i in {1..30}; do
+            if [ "$(docker inspect --format='{{.State.Health.Status}}' ${CONTAINER_ID})" = "healthy" ]; then
+              echo "PostgreSQL is ready!"
+              break
+            elif [ $i -eq 30 ]; then
+              echo "PostgreSQL failed to start. Container logs:"
+              docker logs ${CONTAINER_ID}
+              exit 1
+            else
+              echo "Waiting... (attempt $i/30)"
+              sleep 5
+            fi
+          done
+
+      # Step 4: Test PostgreSQL extensions
+      - name: 🧪 Test PostgreSQL extensions (${{ matrix.arch }})
+        env:
+          PGPASSWORD: testpass123
+          PGHOST: localhost
+          PGPORT: 5432
+          PGUSER: postgres
+          PGDATABASE: testdb
+        run: |
           # Test all extensions can be created
-          docker exec -e PGPASSWORD=testpass123 postgres-test-${{ matrix.arch }} psql -U postgres -d testdb -c "
+          psql -c "
             CREATE EXTENSION IF NOT EXISTS vector;
             CREATE EXTENSION IF NOT EXISTS hstore;
             CREATE EXTENSION IF NOT EXISTS ltree;
@@ -314,7 +322,7 @@ jobs:
           "
           
           # Verify all expected extensions are available
-          EXTENSIONS=$(docker exec -e PGPASSWORD=testpass123 postgres-test-${{ matrix.arch }} psql -U postgres -d testdb -t -c "
+          EXTENSIONS=$(psql -t -c "
             SELECT string_agg(extname, ', ' ORDER BY extname) 
             FROM pg_extension 
             WHERE extname IN ('vector', 'hstore', 'ltree', 'postgis', 'uuid-ossp', 'pg_trgm', 'btree_gin', 'pgcrypto');
@@ -323,7 +331,7 @@ jobs:
           echo "Extensions verified: ${EXTENSIONS}"
           
           # Test basic functionality of each extension
-          docker exec -e PGPASSWORD=testpass123 postgres-test-${{ matrix.arch }} psql -U postgres -d testdb -c "
+          psql -c "
             -- Test vector operations (pgvector)
             CREATE TABLE test_vectors (id SERIAL, embedding vector(3));
             INSERT INTO test_vectors (embedding) VALUES ('[1,2,3]'), ('[4,5,6]');
@@ -347,12 +355,17 @@ jobs:
             -- Test UUID generation
             SELECT uuid_generate_v4();
           "
-          
-          # Cleanup test container (always run, even if tests fail)
-          docker stop postgres-test-${{ matrix.arch }} 2>/dev/null || true
-          docker rm postgres-test-${{ matrix.arch }} 2>/dev/null || true
 
-      # Step 5: Add test results to workflow summary
+      # Step 5: Cleanup
+      - name: 🧹 Cleanup PostgreSQL container
+        if: always()
+        run: |
+          if [ -n "${{ steps.postgres.outputs.container_id }}" ]; then
+            docker stop ${{ steps.postgres.outputs.container_id }} || true
+            docker rm ${{ steps.postgres.outputs.container_id }} || true
+          fi
+
+      # Step 6: Add test results to workflow summary
       - name: 📝 Add test results to summary
         if: always()
         run: |
