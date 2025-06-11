@@ -1,0 +1,125 @@
+# 208-openwebui-config.yaml
+#
+# Description:
+# Helm values file for deploying Open WebUI with the official Helm chart.
+# - Uses external PostgreSQL (with pgvector) via pre-constructed DATABASE_URL from secrets.
+# - Connects to both in-cluster and host Ollama instances.
+# - Uses an external Tika deployment for document extraction.
+# - Pipelines enabled for document processing.
+# - Persistent storage via existing PVC.
+# - Custom resource requests/limits for stability and performance.
+# - Ingress is disabled here (handled separately in a separate manifest).
+#
+# Usage:
+#   helm upgrade --install open-webui open-webui/open-webui -n ai -f manifests/208-openwebui-config.yaml
+#
+# Prerequisites:
+# - The 'urbalurba-secrets' secret must exist in the 'ai' namespace with DATABASE_URL key
+# - PersistentVolumeClaim 'openwebui-data' must exist in the 'ai' namespace.
+# - Tika and Ollama should be deployed separately if not using the chart's built-in options.
+
+nameOverride: ""
+namespaceOverride: "ai"
+
+# External services configuration
+ollama:
+  enabled: false  # Using external Ollama instances
+
+ollamaUrls:
+  - "http://ollama:11434"                  # In-cluster Ollama
+  - "http://host.lima.internal:11434"      # Host Ollama (adjust for your environment)
+
+pipelines:
+  enabled: true
+
+tika:
+  enabled: false  # Using external Tika deployment
+
+websocket:
+  enabled: false
+
+redis-cluster:
+  enabled: false
+
+# Database configuration - using pre-constructed DATABASE_URL from secret
+databaseUrl: ""
+
+postgresql:
+  enabled: false  # Using external PostgreSQL
+
+# Storage configuration
+persistence:
+  enabled: true
+  existingClaim: "openwebui-data"
+  accessModes:
+    - ReadWriteOnce
+  size: 2Gi
+
+# Resource management
+resources:
+  requests:
+    memory: 1.5Gi
+    cpu: 500m
+  limits:
+    memory: 3Gi
+    cpu: 1500m
+
+# Environment variables
+extraEnvVars:
+  # Database connection - use pre-constructed DATABASE_URL from secret
+  - name: DATABASE_URL
+    valueFrom:
+      secretKeyRef:
+        name: urbalurba-secrets
+        key: DATABASE_URL
+
+  # Model configuration
+  - name: DEFAULT_MODELS
+    value: "qwen3:0.6b"
+
+  # Authentication
+  - name: WEBUI_AUTH
+    value: "true"
+  - name: DEFAULT_USER_ROLE
+    value: "user"
+
+  # Document processing with Tika
+  - name: CONTENT_EXTRACTION_ENGINE
+    value: "tika"
+  - name: TIKA_SERVER_URL
+    value: "http://tika:9998"
+
+  # Vector database configuration (PostgreSQL with pgvector)
+  - name: VECTOR_DB
+    value: "pgvector"
+  - name: PGVECTOR_COLLECTION_NAME
+    value: "openwebui_documents"
+
+  # Embedding configuration
+  - name: RAG_EMBEDDING_MODEL
+    value: "all-MiniLM-L6-v2"
+
+  # Additional features (verified Open WebUI environment variables)
+  - name: ENABLE_RAG_LOCAL_WEB_FETCH
+    value: "true"
+  - name: ENABLE_WEB_SEARCH
+    value: "false"
+  - name: ENABLE_IMAGE_GENERATION
+    value: "true"
+  - name: ENABLE_COMMUNITY_SHARING
+    value: "false"
+  - name: ENABLE_ADMIN_EXPORT
+    value: "true"
+
+# Application logging configuration
+logging:
+  level: "info"
+  components:
+    rag: "info"
+    db: "info"
+    models: "info"
+    ollama: "info"
+
+# Networking (Ingress disabled - managed separately)
+ingress:
+  enabled: false

@@ -4,7 +4,6 @@
 # Also installs the dependencies for the open-webui: 
 # - storage : persistent storage for all systems
 # - tika : Apache Tika server for document extraction and processing
-# - qdrant : Qdrant as a vector database for Open WebUI, replacing the default ChromaDB
 # - ollama: install a minimal LLM (qwen3:0.6b) in the cluster. The model is so small so it is mainly there to prove that it works. Remove it when you have a real model.
 #
 # Architecture:
@@ -102,7 +101,7 @@ check_secret() {
 # Function to check if Helm repos are added
 check_helm_repos() {
     echo "Checking Helm repositories..."
-    local required_repos=("tika" "qdrant" "ollama-helm" "open-webui")
+    local required_repos=("tika" "ollama-helm" "open-webui")
     local missing_repos=()
     
     for repo in "${required_repos[@]}"; do
@@ -154,7 +153,6 @@ print_summary() {
         echo "Components installed:"
         echo "- Persistent storage for all services"
         echo "- Apache Tika (document extraction)"
-        echo "- Qdrant (vector database)"
         echo "- Ollama (local LLM in cluster)"
         echo "- Open WebUI (frontend with direct connections to Ollama instances)"
         echo ""

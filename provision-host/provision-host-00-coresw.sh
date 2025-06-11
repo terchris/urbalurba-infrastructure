@@ -111,6 +111,12 @@ main() {
     sudo apt-get update -qq
     sudo apt-get install -qq -y curl
 
+    # Install psycopg2-binary for Ansible PostgreSQL modules
+    echo "Installing psycopg2-binary Python package for Ansible PostgreSQL support"
+    sudo apt-get install -qq -y python3-pip
+    sudo pip3 install --upgrade pip
+    sudo pip3 install psycopg2-binary
+
     install_github_cli || return 1
 
     print_summary

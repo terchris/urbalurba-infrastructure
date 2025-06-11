@@ -1,0 +1,130 @@
+---
+# u06-openwebui-create-postgres.yml
+#
+# Description:
+#   This playbook fully automates the creation of a PostgreSQL user and database for Open WebUI inside a Kubernetes cluster.
+#   It fetches required credentials from Kubernetes secrets in both the 'ai' and 'default' namespaces:
+#     - The Open WebUI user, password, and database are fetched from the 'urbalurba-secrets' secret in the 'ai' namespace.
+#     - The PostgreSQL admin password and host are fetched from the 'urbalurba-secrets' secret in the 'default' namespace.
+#   It automatically sets up a temporary kubectl port-forward to the PostgreSQL service in the 'default' namespace,
+#   waits for the port to be ready, performs all required database operations, and then cleans up the port-forward process.
+#
+#   No manual port-forwarding or database exposure is required. All operations are performed securely via localhost.
+#
+# What this playbook does:
+#   1. Fetches Open WebUI DB credentials from the 'ai' namespace secret.
+#   2. Fetches PostgreSQL admin credentials and host from the 'default' namespace secret.
+#   3. Sets all required Ansible variables.
+#   4. Starts a background port-forward from localhost:5432 to the PostgreSQL service in Kubernetes (namespace: default).
+#   5. Waits for the port to be ready.
+#   6. Ensures the Open WebUI database user exists.
+#   7. Ensures the Open WebUI database exists and is owned by the user.
+#   8. Grants all privileges on the database to the user.
+#   9. Enables the 'pgvector' extension in the database.
+#   10. Cleans up the port-forward process at the end.
+#
+# Required variables (pass with -e or set in your inventory):
+#   pg_admin_user      - The PostgreSQL admin/superuser (e.g., 'postgres')
+#   pg_admin_password  - The password for the admin user
+#   pg_user            - The Open WebUI database user to create (e.g., 'openwebui')
+#   pg_password        - The password for the Open WebUI user
+#   pg_db              - The database to create (e.g., 'openwebui')
+#   pg_port            - (Optional) The port to use (default: 5432)
+#
+# Usage example:
+#   ansible-playbook playbooks/utility/u06-openwebui-create-postgres.yml \
+#     -e "pg_admin_user=postgres pg_admin_password=YOUR_ADMIN_PASSWORD pg_user=openwebui pg_password=YOUR_OPENWEBUI_PASSWORD pg_db=openwebui"
+#
+# Notes:
+#   - This playbook assumes the PostgreSQL service is named 'postgresql' and is running in the 'default' namespace.
+#   - The playbook must be run from a machine with access to the Kubernetes cluster (kubectl configured).
+#   - No changes to your cluster networking or DB exposure are required.
+#
+# -----------------------------------------------------------------------------
+
+- name: 1. Get urbalurba-secrets from ai namespace
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Secret
+    name: urbalurba-secrets
+    namespace: ai
+  register: openwebui_secret
+
+- name: 2. Get urbalurba-secrets from default namespace
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Secret
+    name: urbalurba-secrets
+    namespace: default
+  register: default_secret
+
+- name: 3. Set DB connection variables from secrets
+  set_fact:
+    pg_user: "{{ openwebui_secret.resources[0].data.OPENWEBUI_POSTGRES_USER | b64decode }}"
+    pg_password: "{{ openwebui_secret.resources[0].data.OPENWEBUI_POSTGRES_PASSWORD | b64decode }}"
+    pg_db: "{{ openwebui_secret.resources[0].data.OPENWEBUI_POSTGRES_DB | b64decode }}"
+    pg_host: "{{ default_secret.resources[0].data.PGHOST | b64decode }}"
+    pg_admin_user: "postgres"
+    pg_admin_password: "{{ default_secret.resources[0].data.PGPASSWORD | b64decode }}"
+
+- name: 4. Start port-forward to PostgreSQL in background
+  shell: |
+    kubectl port-forward svc/postgresql 5432:5432 -n default > /tmp/pg-portforward.log 2>&1 &
+    echo $! > /tmp/pg-portforward.pid
+  async: 10
+  poll: 0
+
+- name: 5. Wait for PostgreSQL port-forward to be ready
+  wait_for:
+    host: localhost
+    port: 5432
+    delay: 2
+    timeout: 30
+
+- name: 6. Ensure PostgreSQL user exists
+  community.postgresql.postgresql_user:
+    name: "{{ pg_user }}"
+    password: "{{ pg_password }}"
+    login_host: "localhost"
+    login_user: "{{ pg_admin_user }}"
+    login_password: "{{ pg_admin_password }}"
+    port: "{{ pg_port | default(5432) }}"
+    state: present
+
+- name: 7. Ensure PostgreSQL database exists
+  community.postgresql.postgresql_db:
+    name: "{{ pg_db }}"
+    owner: "{{ pg_user }}"
+    login_host: "localhost"
+    login_user: "{{ pg_admin_user }}"
+    login_password: "{{ pg_admin_password }}"
+    port: "{{ pg_port | default(5432) }}"
+    state: present
+
+- name: 8. Grant all privileges on database to user
+  community.postgresql.postgresql_privs:
+    db: "{{ pg_db }}"
+    type: database
+    privs: ALL
+    objs: "{{ pg_db }}"
+    roles: "{{ pg_user }}"
+    login_host: "localhost"
+    login_user: "{{ pg_admin_user }}"
+    login_password: "{{ pg_admin_password }}"
+    port: "{{ pg_port | default(5432) }}"
+
+- name: 9. Enable pgvector extension
+  community.postgresql.postgresql_ext:
+    name: vector
+    db: "{{ pg_db }}"
+    login_host: "localhost"
+    login_user: "{{ pg_admin_user }}"
+    login_password: "{{ pg_admin_password }}"
+    port: "{{ pg_port | default(5432) }}"
+    state: present
+
+- name: 10. Stop port-forward process
+  shell: |
+    kill $(cat /tmp/pg-portforward.pid) || true
+    rm -f /tmp/pg-portforward.pid
+  ignore_errors: yes 
