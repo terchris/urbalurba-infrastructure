@@ -1,6 +1,47 @@
 # 210-openwebui-ingress.yaml
-# Description: Ingress configuration for OpenWebUI using Traefik
-# This is a separate ingress configuration for additional control over the ingress settings
+#
+# Description:
+# Ingress configuration for OpenWebUI using Traefik with proper priority handling.
+# This configuration ensures OpenWebUI gets specific hostname routing while allowing
+# a default nginx service to handle all other undefined hostnames.
+#
+# Architecture:
+# - openwebui.localhost → OpenWebUI service (specific host rule)
+# - *.localhost (any other hostname) → nginx default service (wildcard rule)
+#
+# Priority Explanation:
+# Traefik evaluates ingress rules by priority. Without explicit priority, ingress rules
+# are evaluated in arbitrary order, which can cause conflicts when multiple ingresses
+# use overlapping host patterns.
+#
+# In this setup:
+# 1. nginx-root-ingress (default namespace) has host: "*" (catches all traffic)
+# 2. open-webui ingress (ai namespace) has host: "openwebui.localhost" (specific)
+#
+# Problem: Traefik might evaluate the wildcard "*" rule before the specific host rule,
+# causing openwebui.localhost to be handled by nginx instead of OpenWebUI.
+#
+# Solution: Use traefik.ingress.kubernetes.io/priority annotation to ensure
+# specific host rules are evaluated before wildcard rules.
+#
+# Priority Values:
+# - Higher numbers = Higher priority (evaluated first)
+# - Default priority = 0
+# - Recommended: specific hosts = 100+, wildcards = 0-10
+#
+# Service Port Configuration:
+# - OpenWebUI service exposes port 80 (service level)
+# - Service forwards port 80 → pod port 8080 (pod level)
+# - Ingress should point to service port 80, NOT pod port 8080
+#
+# Usage:
+#   kubectl apply -f 210-openwebui-ingress.yaml
+#
+# Verification:
+#   kubectl describe ingress open-webui -n ai
+#   curl -H "Host: openwebui.localhost" http://192.168.64.2
+#   curl -H "Host: undefined.localhost" http://192.168.64.2  # Should go to nginx
+#
 
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -8,9 +49,24 @@ metadata:
   name: open-webui
   namespace: ai
   annotations:
+    # Disable SSL redirect (optional, for development)
     traefik.ingress.kubernetes.io/ssl-redirect: "false"
+    
+    # CRITICAL: Set high priority to ensure this specific host rule
+    # is evaluated BEFORE the wildcard nginx ingress rule
+    # Higher number = higher priority (evaluated first)
+    traefik.ingress.kubernetes.io/priority: "100"
+    
+    # Optional: Add custom headers for debugging
+    # traefik.ingress.kubernetes.io/request-modifier: "AddHeader"
+    
+  labels:
+    app: open-webui
+    component: ingress
 spec:
+  # Use Traefik ingress controller
   ingressClassName: traefik
+  
   rules:
     - host: "openwebui.localhost"
       http:
@@ -21,4 +77,6 @@ spec:
               service:
                 name: open-webui
                 port:
-                  number: 8080 
+                  # IMPORTANT: Use service port 80, NOT pod port 8080
+                  # The service handles the port mapping: 80 → 8080
+                  number: 80
