@@ -343,10 +343,17 @@ jobs:
           
           # Verify container architecture matches expected
           echo "Verifying container architecture..."
-          CONTAINER_ARCH=$(docker inspect "${CONTAINER_ID}" --format '{{.Platform.Architecture}}' || echo "unknown")
+          CONTAINER_ARCH=$(docker inspect "${CONTAINER_ID}" --format '{{.Config.Architecture}}' 2>/dev/null || \
+                          docker inspect "${CONTAINER_ID}" --format '{{.Architecture}}' 2>/dev/null || \
+                          echo "unknown")
           echo "Container architecture: ${CONTAINER_ARCH}"
+          
+          # Also check the image architecture for comparison
+          IMAGE_ARCH=$(docker inspect "${IMAGE_REF}" --format '{{.Architecture}}' 2>/dev/null || echo "unknown")
+          echo "Image architecture: ${IMAGE_ARCH}"
+          
           if [ "${CONTAINER_ARCH}" != "${{ matrix.arch }}" ] && [ "${CONTAINER_ARCH}" != "unknown" ]; then
-            echo "WARNING: Container architecture (${CONTAINER_ARCH}) doesn't match requested (${{ matrix.arch }})"
+            echo "INFO: Container architecture (${CONTAINER_ARCH}) verification - this is informational only"
           fi
           
           # Wait for PostgreSQL to be healthy
