@@ -72,6 +72,7 @@ cd containers/postgresql
 ```bash
 # Run the container
 docker run -d --name postgres-test \
+  -e POSTGRESQL_PASSWORD=testpass123 \
   -e POSTGRESQL_POSTGRES_PASSWORD=testpass123 \
   -e POSTGRESQL_DATABASE=testdb \
   -p 5432:5432 \
@@ -212,9 +213,9 @@ CREATE INDEX ON categories USING gist(path);
 - **Impact**: All PostgreSQL 16 packages now available
 
 **Authentication in tests**:
-- **Problem**: psql commands failing with "no password supplied" error
-- **Solution**: Added `PGPASSWORD` environment variable to all test commands
-- **Impact**: Automated testing now works reliably
+- **Problem**: psql commands failing with "no password supplied" error and container startup failing with "POSTGRESQL_PASSWORD environment variable is empty"
+- **Solution**: Added both `POSTGRESQL_PASSWORD` and `POSTGRESQL_POSTGRES_PASSWORD` environment variables, plus `PGPASSWORD` for test commands
+- **Impact**: Container startup and automated testing now work reliably
 
 **SQL syntax in extension verification**:
 - **Problem**: `ORDER BY` clause error in `string_agg()` queries

@@ -272,6 +272,7 @@ jobs:
           # Start PostgreSQL container
           CONTAINER_ID=$(docker run -d \
             --platform linux/${{ matrix.arch }} \
+            -e POSTGRESQL_PASSWORD=testpass123 \
             -e POSTGRESQL_POSTGRES_PASSWORD=testpass123 \
             -e POSTGRESQL_DATABASE=testdb \
             -p 5432:5432 \
