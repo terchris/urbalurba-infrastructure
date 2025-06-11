@@ -6,6 +6,101 @@ The provision host is a containerized environment that contains all necessary to
 
 The provision host is set up using a series of scripts that install and configure various tools and services. These scripts are designed to be run in sequence to ensure proper installation and configuration.
 
+## Using the Provision Host
+
+The **provision-host** is your central management environment for the Urbalurba Kubernetes cluster. It contains all the tools and scripts needed to set up, configure, and manage the various systems, applications, and services running in your cluster.
+
+### 1. Logging In
+
+After the provision-host container or VM is running, you can access it with:
+
+```bash
+docker exec -it provision-host bash
+```
+Or, if using a VM:
+```bash
+ssh provision-host
+```
+
+You will land in a shell with all management tools pre-installed.
+
+---
+
+### 2. Directory Structure
+
+Inside the provision-host, the main working directory is:
+
+```
+/mnt/urbalurbadisk/
+```
+
+Key subdirectories include:
+- `provision-host/kubernetes/` — Contains scripts for setting up and managing applications/services in the Kubernetes cluster.
+- `manifests/` — Kubernetes manifests for all services.
+- `ansible/` — Ansible playbooks and roles for advanced automation.
+- `secrets/` — Secure storage for sensitive files (private keys, etc.).
+
+---
+
+### 3. Managing Applications and Services
+
+To set up or manage applications in the Kubernetes cluster:
+
+1. **Navigate to the scripts directory:**
+   ```bash
+   cd /mnt/urbalurbadisk/provision-host/kubernetes/
+   ```
+
+2. **Explore available scripts:**
+   - Scripts are organized in numbered folders (e.g., `01-core-systems`, `02-databases`, etc.).
+   - Each folder contains scripts for specific applications or services.
+   - Scripts in `not-in-use/` subfolders are currently inactive;
+   - To activate you can just run it.
+   - If you want the service to be automatically activated when the cluster is provisioned, you can move the script to the `active/` folder. This is done before the provision-host is built.
+
+3. **Run a provisioning script:**
+   - To provision the entire cluster (all active scripts):
+     ```bash
+     ./provision-kubernetes.sh
+     ```
+   - To run a specific script (e.g., set up PostgreSQL):
+     ```bash
+     cd 02-databases
+     ./05-cloud-setup-postgres.sh
+     ```
+
+4. **Activate/Deactivate Applications:**
+   - Move scripts in or out of the `not-in-use/` folders to control which applications are provisioned.
+
+---
+
+### 4. Best Practices
+
+- Always review scripts before running them.
+- Run scripts in the recommended order (numerical).
+- Use version control for any changes to scripts or configuration files.
+- Store sensitive data only in the `secrets/` directory.
+
+---
+
+### 5. Example Workflow
+
+```bash
+# Log in to the provision-host
+docker exec -it provision-host bash
+
+# Go to the Kubernetes provisioning scripts
+cd /mnt/urbalurbadisk/provision-host/kubernetes/
+
+# List available application setup scripts
+ls 02-databases/
+
+# Run a script to set up PostgreSQL
+./02-databases/05-cloud-setup-postgres.sh
+```
+
+---
+
 ## Installation Scripts
 
 ### 1. Core Software Installation (`provision-host-00-coresw.sh`)

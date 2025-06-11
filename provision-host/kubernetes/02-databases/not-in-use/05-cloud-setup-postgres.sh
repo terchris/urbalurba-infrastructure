@@ -4,7 +4,7 @@
 # usage: ./05-cloud-setup-postgres.sh [target-host]
 # example: ./05-cloud-setup-postgres.sh multipass-microk8s
 # or in case of rancher desktop use: ./05-cloud-setup-postgres.sh rancher-desktop
-# If no target host is provided, the script will default to multipass-microk8s.
+# If no target host is provided, the script will default to rancher-desktop.
 
 # Ensure the script is run with Bash
 if [ -z "$BASH_VERSION" ]; then
@@ -23,7 +23,7 @@ PLAYBOOK_PATH_VERIFY_POSTGRES="$ANSIBLE_DIR/playbooks/utility/u02-verify-postgre
 MERGED_KUBECONF_FILE="/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
 
 # Check if TARGET_HOST is provided as an argument, otherwise set default
-TARGET_HOST=${1:-"multipass-microk8s"}
+TARGET_HOST=${1:-"rancher-desktop"}
 
 # Function to add status
 add_status() {

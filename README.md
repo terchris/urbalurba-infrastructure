@@ -149,6 +149,8 @@ The **provision-host** container includes all the tools needed to manage your lo
 
 Access the management tools through the provision-host container once the system is running.
 
+> **Note:** For detailed instructions on how to use the provision-host management container—including how to log in, where to find setup scripts, and how to manage applications/services in your Kubernetes cluster—see [Provision Host Documentation](doc/provision-host-readme.md).
+
 ## 🔧 Architecture
 
 Urbalurba Infrastructure uses **Infrastructure as Code** principles with Kubernetes manifests stored in the [`manifests/`](manifests/) directory. Each service is defined declaratively, making it easy to:

@@ -68,6 +68,12 @@
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
 
+    - name: 7.5 Drop test database if it exists
+      command: >
+        kubectl exec -n default {{ postgres_pod_name }} -- bash -c "if PGPASSWORD='{{ postgres_password }}' psql -h '{{ postgres_host }}' -U postgres -lqt | cut -d \| -f 1 | grep -qw '{{ test_db_name }}'; then PGPASSWORD='{{ postgres_password }}' dropdb -h '{{ postgres_host }}' -U postgres {{ test_db_name }}; fi"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+
     - name: 8. Create test database
       command: kubectl exec -n default {{ postgres_pod_name }} -- bash -c "PGPASSWORD='{{ postgres_password }}' createdb -h '{{ postgres_host }}' -U postgres {{ test_db_name }}"
       environment:
@@ -126,7 +132,8 @@
         KUBECONFIG: "{{ merged_kubeconf_file }}"
 
     - name: 19. Test pgvector functionality
-      command: kubectl exec -n default {{ postgres_pod_name }} -- bash -c \"PGPASSWORD='{{ postgres_password }}' psql -h '{{ postgres_host }}' -U postgres -d {{ test_db_name }} -c \\\"CREATE TABLE vector_test (id serial PRIMARY KEY, embedding vector(3)); INSERT INTO vector_test (embedding) VALUES ('[1,2,3]'); SELECT * FROM vector_test;\\\"\"
+      command: >
+        kubectl exec -n default {{ postgres_pod_name }} -- bash -c "PGPASSWORD='{{ postgres_password }}' psql -h '{{ postgres_host }}' -U postgres -d {{ test_db_name }} -c \"CREATE TABLE IF NOT EXISTS vector_test (id serial PRIMARY KEY, embedding vector(3)); INSERT INTO vector_test (embedding) VALUES ('[1,2,3]'); SELECT * FROM vector_test;\""
       register: vector_result
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
@@ -142,7 +149,8 @@
         KUBECONFIG: "{{ merged_kubeconf_file }}"
 
     - name: 22. Test postgis functionality
-      command: kubectl exec -n default {{ postgres_pod_name }} -- bash -c \"PGPASSWORD='{{ postgres_password }}' psql -h '{{ postgres_host }}' -U postgres -d {{ test_db_name }} -c \\\"CREATE TABLE gis_test (id serial PRIMARY KEY, geom geometry(Point, 4326)); INSERT INTO gis_test (geom) VALUES (ST_SetSRID(ST_MakePoint(10, 20), 4326)); SELECT id, ST_AsText(geom) FROM gis_test;\\\"\"
+      command: >
+        kubectl exec -n default {{ postgres_pod_name }} -- bash -c 'PGPASSWORD="{{ postgres_password }}" psql -h "{{ postgres_host }}" -U postgres -d {{ test_db_name }} -c "CREATE TABLE IF NOT EXISTS gis_test (id serial PRIMARY KEY, geom geometry(Point, 4326)); INSERT INTO gis_test (geom) VALUES (ST_SetSRID(ST_MakePoint(10, 20), 4326)); SELECT id, ST_AsText(geom) FROM gis_test;"'
       register: postgis_result
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
@@ -158,7 +166,8 @@
         KUBECONFIG: "{{ merged_kubeconf_file }}"
 
     - name: 25. Test ltree functionality
-      command: kubectl exec -n default {{ postgres_pod_name }} -- bash -c \"PGPASSWORD='{{ postgres_password }}' psql -h '{{ postgres_host }}' -U postgres -d {{ test_db_name }} -c \\\"CREATE TABLE ltree_test (id serial PRIMARY KEY, path ltree); INSERT INTO ltree_test (path) VALUES ('Top.Science.Astronomy'); SELECT * FROM ltree_test;\\\"\"
+      command: >
+        kubectl exec -n default {{ postgres_pod_name }} -- bash -c "PGPASSWORD='{{ postgres_password }}' psql -h '{{ postgres_host }}' -U postgres -d {{ test_db_name }} -c \"CREATE TABLE IF NOT EXISTS ltree_test (id serial PRIMARY KEY, path ltree); INSERT INTO ltree_test (path) VALUES ('Top.Science.Astronomy'); SELECT * FROM ltree_test;\""
       register: ltree_result
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
