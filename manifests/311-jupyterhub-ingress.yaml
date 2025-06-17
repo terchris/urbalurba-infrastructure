@@ -1,0 +1,93 @@
+# 311-jupyterhub-ingress.yaml
+#
+# Description:
+# Ingress configuration for JupyterHub using Traefik with proper priority handling.
+# This configuration provides web access to the Databricks replacement notebook interface
+# via a dedicated hostname, ensuring JupyterHub gets specific routing while allowing
+# other services to handle different hostnames.
+#
+# Architecture:
+# - jupyterhub.localhost → JupyterHub proxy service (specific host rule)
+# - Databricks-style notebook interface accessible via web browser
+# - Integrates with Spark Kubernetes Operator for distributed computing
+# - Uses Traefik ingress controller for SSL termination and routing
+#
+# Priority Explanation:
+# Traefik evaluates ingress rules by priority. Higher numbers = higher priority.
+# This ingress uses priority 100 to ensure the specific host routing takes precedence
+# over any wildcard ingress rules that might exist in the cluster.
+#
+# Without explicit priority, ingress rules are evaluated in arbitrary order, which
+# can cause conflicts when multiple ingresses use overlapping host patterns.
+#
+# Service Port Configuration:
+# - JupyterHub proxy service (proxy-public) exposes port 80 (service level)
+# - Service forwards port 80 → pod port 8000 (JupyterHub hub internal port)
+# - Ingress should point to service port 80, NOT pod port 8000
+# - The proxy-public service is created automatically by the JupyterHub Helm chart
+#
+# Part of: Databricks Replacement Project - Phase 2 (Notebook Interface)
+# Replaces: Databricks workspace web interface and collaborative environment
+# Depends on: JupyterHub deployment (310-jupyterhub-config.yaml)
+#
+# Usage:
+#   kubectl apply -f 311-jupyterhub-ingress.yaml
+#
+# Verification:
+#   kubectl describe ingress jupyterhub -n jupyterhub
+#   kubectl get svc proxy-public -n jupyterhub
+#   curl -H "Host: jupyterhub.localhost" http://192.168.64.2
+#   
+# Access:
+#   http://jupyterhub.localhost (via browser)
+#   Username: admin (or any username - DummyAuthenticator accepts any)
+#   Password: SecretPassword1 (from urbalurba-secrets/JUPYTERHUB_AUTH_PASSWORD)
+#
+# Troubleshooting:
+#   - If ingress doesn't work, check Traefik is running: kubectl get pods -n kube-system | grep traefik
+#   - Verify service exists: kubectl get svc proxy-public -n jupyterhub
+#   - Check ingress events: kubectl describe ingress jupyterhub -n jupyterhub
+#   - Test NodePort fallback: http://localhost:30080
+#
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: jupyterhub
+  namespace: jupyterhub
+  annotations:
+    # Disable SSL redirect for development environment
+    traefik.ingress.kubernetes.io/ssl-redirect: "false"
+    
+    # CRITICAL: Set high priority to ensure this specific host rule
+    # is evaluated BEFORE any wildcard nginx or default ingress rules
+    # Higher number = higher priority (evaluated first)
+    traefik.ingress.kubernetes.io/priority: "100"
+    
+    # Optional: Add custom headers for debugging (uncomment if needed)
+    # traefik.ingress.kubernetes.io/request-modifier: "AddHeader X-Forwarded-Proto https"
+    
+  labels:
+    app: jupyterhub
+    component: ingress
+    part-of: databricks-replacement
+    phase: notebook-interface
+spec:
+  # Use Traefik ingress controller (must match your cluster setup)
+  ingressClassName: traefik
+  
+  rules:
+    - host: "jupyterhub.localhost"
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                # IMPORTANT: Use proxy-public service name (created by JupyterHub Helm chart)
+                # This is the standard service name for JupyterHub proxy
+                name: proxy-public
+                port:
+                  # IMPORTANT: Use service port 80, NOT pod port 8000
+                  # The proxy-public service handles the port mapping internally
+                  number: 80

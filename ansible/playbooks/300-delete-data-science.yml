@@ -1,0 +1,429 @@
+---
+# file: ansible/playbooks/300-delete-data-science.yml
+# Description:
+# Complete removal of Databricks Replacement Data Science stack from Kubernetes
+# Phase 1: Remove Spark Kubernetes Operator (Processing Engine)
+# Phase 2: Remove JupyterHub (Notebook Interface)
+# MODIFIED: Preserves urbalurba-secrets to avoid re-authentication setup
+#
+# Part of: Databricks Replacement Project - Complete Stack Removal
+# Removes: Spark compute clusters, job execution, workspace notebooks, and all related resources
+# Preserves: Authentication secrets and namespace structure for easy reinstallation
+#
+# Prerequisites:
+# - kubectl configured for target cluster
+# - Helm 3.x installed
+# - Appropriate permissions to delete resources
+#
+# Architecture:
+# - Removes Spark Operator and all SparkApplications
+# - Removes JupyterHub and all user sessions/notebooks
+# - Cleans up CRDs, RBAC, and Helm releases
+# - PRESERVES namespaces and urbalurba-secrets for quick reinstallation
+# - Provides comprehensive verification of removal
+#
+# Usage:
+# ansible-playbook playbooks/300-delete-data-science.yml -e kube_context="rancher-desktop"
+
+- name: Remove Databricks Replacement Data Science stack from Kubernetes
+  hosts: localhost
+  gather_facts: false
+  vars:
+    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    spark_namespace: "spark-operator"
+    jupyterhub_namespace: "jupyterhub"
+    deletion_timeout: 120  # 2 minutes timeout for deletions
+    
+    # Helm releases to remove
+    spark_helm_release: "spark-kubernetes-operator"
+    jupyterhub_helm_release: "jupyterhub"
+    
+    # Helm repositories to optionally remove
+    spark_helm_repo: "spark-kubernetes-operator"
+    jupyterhub_helm_repo: "jupyterhub"
+    
+    # CRDs to remove
+    spark_crds:
+      - "sparkapplications.spark.apache.org"
+      - "sparkclusters.spark.apache.org"
+
+  tasks:
+
+    - name: 1. Print removal description
+      ansible.builtin.debug:
+        msg: |
+          🧹 Starting Databricks Replacement Stack removal with SECRET PRESERVATION
+          📊 Phase 1: Remove Spark Kubernetes Operator (Processing Engine)
+          📊 Phase 2: Remove JupyterHub (Notebook Interface)
+          🎯 Target: {{ kube_context | default('rancher-desktop') }}
+          📁 Namespaces: {{ spark_namespace }}, {{ jupyterhub_namespace }}
+          🔐 PRESERVING: urbalurba-secrets and namespace structure
+          ⚠️  This will remove ALL workloads but KEEP authentication configuration
+
+    # ============= PHASE 1: SPARK APPLICATION CLEANUP =============
+
+    - name: 2. Check if spark-operator namespace exists
+      ansible.builtin.shell: kubectl get namespace {{ spark_namespace }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: spark_namespace_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: 3. Get running Spark applications
+      ansible.builtin.shell: kubectl get sparkapp -n {{ spark_namespace }} --no-headers 2>/dev/null | wc -l
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: spark_apps_count
+      changed_when: false
+      ignore_errors: true
+      when: spark_namespace_check.rc == 0
+
+    - name: 4. Delete all Spark applications
+      ansible.builtin.shell: kubectl delete sparkapp --all -n {{ spark_namespace }} --timeout={{ deletion_timeout }}s
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: spark_apps_deletion
+      changed_when: true
+      ignore_errors: true
+      when: spark_namespace_check.rc == 0 and (spark_apps_count.stdout | int) > 0
+
+    - name: 5. Display Spark applications cleanup result
+      ansible.builtin.debug:
+        msg: |
+          Spark applications cleanup:
+          {{ 'Found and deleted ' + spark_apps_count.stdout + ' applications' if spark_namespace_check.rc == 0 and (spark_apps_count.stdout | int) > 0 else 'No applications found' }}
+
+    # ============= PHASE 2: JUPYTERHUB USER SESSION CLEANUP =============
+
+    - name: 6. Check if jupyterhub namespace exists
+      ansible.builtin.shell: kubectl get namespace {{ jupyterhub_namespace }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: jupyterhub_namespace_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: 7. Get running user notebook sessions
+      ansible.builtin.shell: kubectl get pods -n {{ jupyterhub_namespace }} -l component=singleuser-server --no-headers 2>/dev/null | wc -l
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: user_notebooks_count
+      changed_when: false
+      ignore_errors: true
+      when: jupyterhub_namespace_check.rc == 0
+
+    - name: 8. Delete user notebook sessions
+      ansible.builtin.shell: kubectl delete pods -n {{ jupyterhub_namespace }} -l component=singleuser-server --timeout={{ deletion_timeout }}s
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: user_notebooks_deletion
+      changed_when: true
+      ignore_errors: true
+      when: jupyterhub_namespace_check.rc == 0 and (user_notebooks_count.stdout | int) > 0
+
+    - name: 9. Get remaining user pods (like jupyter-admin)
+      ansible.builtin.shell: kubectl get pods -n {{ jupyterhub_namespace }} --no-headers 2>/dev/null | grep -E "jupyter-|user-" | wc -l
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: user_pods_count
+      changed_when: false
+      ignore_errors: true
+      when: jupyterhub_namespace_check.rc == 0
+
+    - name: 10. Force delete remaining user pods
+      ansible.builtin.shell: >-
+        kubectl get pods -n {{ jupyterhub_namespace }} --no-headers 2>/dev/null | 
+        grep -E "jupyter-|user-" | 
+        awk '{print $1}' | 
+        xargs -r kubectl delete pod -n {{ jupyterhub_namespace }} --force --grace-period=0
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: user_pods_deletion
+      changed_when: true
+      ignore_errors: true
+      when: jupyterhub_namespace_check.rc == 0 and (user_pods_count.stdout | int) > 0
+
+    - name: 11. Display user sessions cleanup result
+      ansible.builtin.debug:
+        msg: |
+          JupyterHub user sessions cleanup:
+          {{ 'Cleaned up ' + (user_notebooks_count.stdout | default('0')) + ' notebook sessions and ' + (user_pods_count.stdout | default('0')) + ' user pods' if jupyterhub_namespace_check.rc == 0 else 'JupyterHub namespace not found' }}
+
+    # ============= PHASE 3: HELM RELEASES REMOVAL =============
+
+    - name: 12. Check for Spark Helm release
+      ansible.builtin.shell: helm list -n {{ spark_namespace }} | grep {{ spark_helm_release }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: spark_helm_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: 13. Remove Spark Helm release
+      ansible.builtin.shell: helm uninstall {{ spark_helm_release }} -n {{ spark_namespace }} --timeout {{ deletion_timeout }}s
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: spark_helm_removal
+      changed_when: true
+      ignore_errors: true
+      when: spark_helm_check.rc == 0
+
+    - name: 14. Check for JupyterHub Helm release
+      ansible.builtin.shell: helm list -n {{ jupyterhub_namespace }} | grep {{ jupyterhub_helm_release }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: jupyterhub_helm_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: 15. Remove JupyterHub Helm release
+      ansible.builtin.shell: helm uninstall {{ jupyterhub_helm_release }} -n {{ jupyterhub_namespace }} --timeout {{ deletion_timeout }}s
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: jupyterhub_helm_removal
+      changed_when: true
+      ignore_errors: true
+      when: jupyterhub_helm_check.rc == 0
+
+    - name: 16. Display Helm releases removal result
+      ansible.builtin.debug:
+        msg: |
+          Helm releases removal:
+          - Spark: {{ 'Removed' if spark_helm_check.rc == 0 else 'Not found' }}
+          - JupyterHub: {{ 'Removed' if jupyterhub_helm_check.rc == 0 else 'Not found' }}
+
+    # ============= PHASE 4: WAIT FOR POD TERMINATION =============
+
+    - name: 17. Wait for Spark pods to terminate
+      ansible.builtin.shell: kubectl get pods -n {{ spark_namespace }} --no-headers 2>/dev/null | grep -v urbalurba-secrets | wc -l
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: spark_pods_remaining
+      changed_when: false
+      ignore_errors: true
+      retries: 12
+      delay: 5
+      until: (spark_pods_remaining.stdout | int) == 0 or spark_namespace_check.rc != 0
+
+    - name: 18. Wait for JupyterHub pods to terminate
+      ansible.builtin.shell: kubectl get pods -n {{ jupyterhub_namespace }} --no-headers 2>/dev/null | wc -l
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: jupyterhub_pods_remaining
+      changed_when: false
+      ignore_errors: true
+      retries: 12
+      delay: 5
+      until: (jupyterhub_pods_remaining.stdout | int) == 0 or jupyterhub_namespace_check.rc != 0
+
+    - name: 19. Force delete any remaining pods (except those that might be system pods)
+      ansible.builtin.shell: |
+        # Only delete pods that are clearly from our applications
+        kubectl get pods -n {{ spark_namespace }} --no-headers 2>/dev/null | grep -E "(spark-|operator-)" | awk '{print $1}' | xargs -r kubectl delete pod -n {{ spark_namespace }} --force --grace-period=0 2>/dev/null || true
+        kubectl get pods -n {{ jupyterhub_namespace }} --no-headers 2>/dev/null | grep -E "(hub-|proxy-|user-|continuous-)" | awk '{print $1}' | xargs -r kubectl delete pod -n {{ jupyterhub_namespace }} --force --grace-period=0 2>/dev/null || true
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: force_pod_deletion
+      changed_when: true
+      ignore_errors: true
+      when: (spark_pods_remaining.stdout | int) > 0 or (jupyterhub_pods_remaining.stdout | int) > 0
+
+    - name: 20. Display pod termination status
+      ansible.builtin.debug:
+        msg: |
+          Pod termination status:
+          - Spark pods remaining: {{ spark_pods_remaining.stdout | default('N/A') }}
+          - JupyterHub pods remaining: {{ jupyterhub_pods_remaining.stdout | default('N/A') }}
+          {{ '- Force deletion applied' if force_pod_deletion is defined and force_pod_deletion.changed else '' }}
+
+    # ============= PHASE 5: CUSTOM RESOURCE DEFINITIONS CLEANUP =============
+
+    - name: 21. Remove Spark CRDs
+      ansible.builtin.shell: kubectl delete crd {{ item }} --timeout=30s
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: crd_removal
+      changed_when: true
+      ignore_errors: true
+      loop: "{{ spark_crds }}"
+
+    - name: 22. Display CRD removal results
+      ansible.builtin.debug:
+        msg: |
+          CRD removal results:
+          {% for item in crd_removal.results %}
+          - {{ item.item }}: {{ 'Removed' if item.rc == 0 else 'Not found or failed' }}
+          {% endfor %}
+
+    # ============= PHASE 6: SELECTIVE RESOURCE CLEANUP (PRESERVE SECRETS) =============
+
+    - name: 23. Remove non-secret resources from spark-operator namespace
+      ansible.builtin.shell: |
+        # Remove everything except secrets and the namespace itself
+        kubectl delete all --all -n {{ spark_namespace }} --timeout={{ deletion_timeout }}s 2>/dev/null || true
+        kubectl delete configmaps --all -n {{ spark_namespace }} --timeout=30s 2>/dev/null || true
+        kubectl delete serviceaccounts --all -n {{ spark_namespace }} --timeout=30s 2>/dev/null || true
+        kubectl delete roles --all -n {{ spark_namespace }} --timeout=30s 2>/dev/null || true
+        kubectl delete rolebindings --all -n {{ spark_namespace }} --timeout=30s 2>/dev/null || true
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: spark_namespace_cleanup
+      changed_when: true
+      ignore_errors: true
+      when: spark_namespace_check.rc == 0
+
+    - name: 24. Remove non-secret resources from jupyterhub namespace
+      ansible.builtin.shell: |
+        # Remove everything except secrets and the namespace itself
+        kubectl delete all --all -n {{ jupyterhub_namespace }} --timeout={{ deletion_timeout }}s 2>/dev/null || true
+        kubectl delete configmaps --all -n {{ jupyterhub_namespace }} --timeout=30s 2>/dev/null || true
+        kubectl delete serviceaccounts --all -n {{ jupyterhub_namespace }} --timeout=30s 2>/dev/null || true
+        kubectl delete roles --all -n {{ jupyterhub_namespace }} --timeout=30s 2>/dev/null || true
+        kubectl delete rolebindings --all -n {{ jupyterhub_namespace }} --timeout=30s 2>/dev/null || true
+        kubectl delete persistentvolumeclaims --all -n {{ jupyterhub_namespace }} --timeout=30s 2>/dev/null || true
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: jupyterhub_namespace_cleanup
+      changed_when: true
+      ignore_errors: true
+      when: jupyterhub_namespace_check.rc == 0
+
+    - name: 25. Verify secrets are preserved
+      ansible.builtin.shell: |
+        echo "Secrets in {{ spark_namespace }}: $(kubectl get secrets -n {{ spark_namespace }} 2>/dev/null | grep urbalurba-secrets | wc -l)"
+        echo "Secrets in {{ jupyterhub_namespace }}: $(kubectl get secrets -n {{ jupyterhub_namespace }} 2>/dev/null | grep urbalurba-secrets | wc -l)"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: secrets_verification
+      changed_when: false
+      ignore_errors: true
+
+    - name: 26. Display namespace cleanup results
+      ansible.builtin.debug:
+        msg: |
+          Namespace cleanup results (PRESERVING SECRETS):
+          - {{ spark_namespace }}: {{ 'Cleaned (secrets preserved)' if spark_namespace_cleanup is defined and spark_namespace_cleanup.rc == 0 else 'Not found or failed' }}
+          - {{ jupyterhub_namespace }}: {{ 'Cleaned (secrets preserved)' if jupyterhub_namespace_cleanup is defined and jupyterhub_namespace_cleanup.rc == 0 else 'Not found or failed' }}
+          
+          {{ secrets_verification.stdout }}
+
+    # ============= PHASE 7: RBAC CLEANUP =============
+
+    - name: 27. Find and remove cluster-wide RBAC resources
+      ansible.builtin.shell: |
+        # Find and delete cluster roles
+        kubectl get clusterroles -o name 2>/dev/null | grep -E "(spark|jupyter)" | xargs -r kubectl delete 2>/dev/null || true
+        # Find and delete cluster role bindings  
+        kubectl get clusterrolebindings -o name 2>/dev/null | grep -E "(spark|jupyter)" | xargs -r kubectl delete 2>/dev/null || true
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: rbac_cleanup
+      changed_when: true
+      ignore_errors: true
+
+    - name: 28. Display RBAC cleanup result
+      ansible.builtin.debug:
+        msg: "RBAC cleanup completed - removed any cluster-wide roles and bindings"
+
+    # ============= PHASE 8: FINAL VERIFICATION =============
+
+    - name: 29. Verify removal with secret preservation
+      ansible.builtin.shell: |
+        echo "=== Verification Results ==="
+        echo "Remaining CRDs: $(kubectl get crd 2>/dev/null | grep -E '(spark|jupyter)' | wc -l)"
+        echo "Spark namespace: $(kubectl get namespace {{ spark_namespace }} 2>/dev/null | grep -v NAME | wc -l)"
+        echo "JupyterHub namespace: $(kubectl get namespace {{ jupyterhub_namespace }} 2>/dev/null | grep -v NAME | wc -l)"
+        echo "Helm releases: $(helm list --all-namespaces 2>/dev/null | grep -E '(spark|jupyter)' | wc -l)"
+        echo "Remaining application pods: $(kubectl get pods --all-namespaces 2>/dev/null | grep -E '(spark-|jupyter-|hub-|proxy-|user-)' | wc -l)"
+        echo "Preserved secrets: $(kubectl get secrets --all-namespaces 2>/dev/null | grep urbalurba-secrets | wc -l)"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: final_verification
+      changed_when: false
+      ignore_errors: true
+
+    - name: 30. Count remaining resources for success determination
+      ansible.builtin.shell: |
+        CRDS=$(kubectl get crd 2>/dev/null | grep -E '(spark|jupyter)' | wc -l)
+        HELM_RELEASES=$(helm list --all-namespaces 2>/dev/null | grep -E '(spark|jupyter)' | wc -l)
+        PODS=$(kubectl get pods --all-namespaces 2>/dev/null | grep -E '(spark-|jupyter-|hub-|proxy-|user-)' | wc -l)
+        TOTAL=$((CRDS + HELM_RELEASES + PODS))
+        echo $TOTAL
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: remaining_resources_count
+      changed_when: false
+      ignore_errors: true
+
+    - name: 31. Determine removal success
+      ansible.builtin.set_fact:
+        removal_successful: "{{ (remaining_resources_count.stdout | int) == 0 }}"
+
+    # ============= OPTIONAL: HELM REPOSITORY CLEANUP =============
+
+    - name: 32. Check for Helm repositories (informational)
+      ansible.builtin.shell: |
+        echo "=== Helm Repositories ==="
+        echo "Spark repo exists: $(helm repo list 2>/dev/null | grep {{ spark_helm_repo }} | wc -l)"
+        echo "JupyterHub repo exists: $(helm repo list 2>/dev/null | grep {{ jupyterhub_helm_repo }} | wc -l)"
+      register: helm_repos_status
+      changed_when: false
+      ignore_errors: true
+
+    - name: 33. Display final removal status
+      ansible.builtin.debug:
+        msg: |
+          ================================================================
+          🧹 Databricks Replacement Stack Removal Complete (SECRETS PRESERVED)
+          ================================================================
+
+          {{ '✅ SUCCESS: Complete removal achieved with secrets preserved!' if removal_successful else '⚠️ PARTIAL SUCCESS: Some resources may remain' }}
+
+          📊 Removal Summary:
+          • Spark Kubernetes Operator: {{ 'Removed ✅' if spark_helm_check.rc == 0 else 'Not found ✅' }}
+          • JupyterHub Notebook Interface: {{ 'Removed ✅' if jupyterhub_helm_check.rc == 0 else 'Not found ✅' }}
+          • Spark Applications: {{ spark_apps_count.stdout | default('0') }} removed
+          • User Sessions: {{ (user_notebooks_count.stdout | default('0')) + ' notebooks + ' + (user_pods_count.stdout | default('0')) + ' user pods' }}
+          • Helm Releases: Both removed
+          • CRDs: {{ spark_crds | length }} removed
+          • Namespaces: PRESERVED with secrets intact ✅
+          • RBAC: Cluster resources cleaned
+
+          🔐 IMPORTANT - Secrets Preserved:
+          • urbalurba-secrets maintained in both namespaces
+          • JupyterHub authentication configuration intact
+          • No need to reapply secrets on next installation
+
+          🔍 Final Verification:
+          {{ final_verification.stdout }}
+
+          {{ helm_repos_status.stdout }}
+
+          🚀 Next Steps:
+          {% if removal_successful %}
+          Your cluster is clean and ready for INSTANT reinstallation:
+          1. Run: ./02-setup-data-science.sh rancher-desktop
+          2. This will deploy both Spark + JupyterHub instantly (no secret setup needed)
+          3. Access JupyterHub at: http://jupyterhub.localhost
+          4. Login with your existing credentials (no password reconfiguration needed)
+          {% else %}
+          Some resources may remain. Manual cleanup may be needed:
+          1. Check: kubectl get all --all-namespaces | grep -E '(spark|jupyter)'
+          2. Check: kubectl get crd | grep -E '(spark|jupyter)'
+          3. Check: helm list --all-namespaces
+          {% endif %}
+
+          🔄 Fast Reinstallation Benefits:
+          • No secret reapplication needed
+          • Same JupyterHub password works immediately
+          • Instant deployment (skips authentication setup)
+          • Preserved namespace structure for quick startup
+
+          📝 Helm Repository Cleanup (Optional):
+          • Remove Spark repo: helm repo remove {{ spark_helm_repo }}
+          • Remove JupyterHub repo: helm repo remove {{ jupyterhub_helm_repo }}
+
+          ================================================================
+          {{ '🎉 DATABRICKS REPLACEMENT REMOVED WITH SECRETS PRESERVED!' if removal_successful else '⚠️ REVIEW REMAINING RESOURCES' }}
+          ================================================================

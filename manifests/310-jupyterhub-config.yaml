@@ -1,0 +1,74 @@
+# 310-jupyterhub-config.yaml
+#
+# Description:
+# Helm values file for deploying JupyterHub with PySpark integration for Databricks replacement.
+# Uses password from urbalurba-secrets Kubernetes secret.
+#
+# Part of: Databricks Replacement Project - Phase 2 (Notebook Interface)
+# Replaces: Databricks workspace notebooks and collaborative environment
+#
+# Usage:
+#   helm upgrade --install jupyterhub jupyterhub/jupyterhub -n jupyterhub -f manifests/310-jupyterhub-config.yaml
+
+hub:
+  # Load password from secret into environment variable
+  extraEnv:
+    JUPYTERHUB_AUTH_PASSWORD:
+      valueFrom:
+        secretKeyRef:
+          name: urbalurba-secrets
+          key: JUPYTERHUB_AUTH_PASSWORD
+  
+  # Custom configuration to read password from environment variable
+  # 
+  # WHY THIS IS NEEDED:
+  # JupyterHub's YAML configuration does not support environment variable substitution.
+  # You cannot use syntax like password: "${JUPYTERHUB_AUTH_PASSWORD}" in the config section.
+  # 
+  # HOW THIS WORKS:
+  # 1. extraEnv loads the secret value into environment variable JUPYTERHUB_AUTH_PASSWORD
+  # 2. extraConfig executes Python code during JupyterHub startup
+  # 3. The Python code reads the environment variable and sets the authenticator password
+  # 4. This is the standard pattern for using Kubernetes secrets with JupyterHub configuration
+  #
+  # THE PYTHON CODE:
+  # - c.DummyAuthenticator.password = sets the password for the DummyAuthenticator
+  # - os.environ.get('JUPYTERHUB_AUTH_PASSWORD', 'fallback') = reads env var with fallback
+  # - This executes during JupyterHub hub pod startup before authentication begins
+  extraConfig:
+    dummy-auth-config: |
+      import os
+      c.DummyAuthenticator.password = os.environ.get('JUPYTERHUB_AUTH_PASSWORD', 'fallback-password')
+  
+  config:
+    JupyterHub:
+      authenticator_class: "dummy"
+
+proxy:
+  service:
+    type: NodePort
+    nodePorts:
+      http: 30080
+
+singleuser:
+  image:
+    name: jupyter/pyspark-notebook
+    tag: "spark-3.5.0"
+  
+  storage:
+    dynamic:
+      storageClass: local-path
+      
+  lifecycleHooks:
+    postStart:
+      exec:
+        command:
+          - "bash"
+          - "-c"
+          - |
+            pip install --user pyspark==3.5.0 findspark plotly seaborn scikit-learn
+            echo "✅ PySpark installed successfully"
+            
+  extraEnv:
+    PYSPARK_PYTHON: /opt/conda/bin/python
+    PYSPARK_DRIVER_PYTHON: /opt/conda/bin/python
