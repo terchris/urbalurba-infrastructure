@@ -1,0 +1,142 @@
+# 300-spark-config.yaml
+#
+# Description:
+# Helm values file for deploying Spark Kubernetes Operator with the official Helm chart.
+# Provides distributed data processing engine for the Databricks replacement.
+# - ARM64 compatible for Apple Silicon hardware
+# - Proper RBAC configuration for job submission
+# - Resource management and cleanup
+# - SparkApplication CRD support
+#
+# Part of: Databricks Replacement Project - Phase 1 (Processing Engine)
+# Replaces: Databricks compute clusters and job execution
+#
+# Usage:
+#   helm upgrade --install spark-kubernetes-operator spark-kubernetes-operator/spark-kubernetes-operator -n spark-operator -f manifests/300-spark-config.yaml
+#
+# Prerequisites:
+# - Kubernetes cluster with sufficient resources (6+ CPUs, 8+ GB RAM)
+# - spark-operator namespace created
+# - RBAC configuration applied (301-spark-operator-rbac.yaml)
+
+# Spark Operator configuration
+sparkOperator:
+  # Image configuration
+  image:
+    repository: apache/spark-operator
+    tag: ""  # Use chart default
+    pullPolicy: IfNotPresent
+
+  # Replica configuration (single instance for development)
+  replicas: 1
+
+  # Resource configuration (adjust based on cluster capacity)
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 250m
+    limits:
+      memory: 512Mi
+      cpu: 500m
+
+  # Service account configuration
+  serviceAccount:
+    create: true
+    name: spark-kubernetes-operator
+
+  # RBAC configuration
+  rbac:
+    create: true
+    createRole: true
+    createClusterRole: true
+
+  # Webhook configuration (disable for simplicity)
+  webhook:
+    enable: false
+    port: 8080
+
+  # Metrics configuration
+  metrics:
+    enable: false
+    port: 8080
+
+  # Log level
+  logLevel: 2
+
+# Default Spark configuration for submitted jobs
+spark:
+  # Default Spark image (ARM64 compatible)
+  image:
+    repository: apache/spark
+    tag: "4.0.0"
+    pullPolicy: IfNotPresent
+
+  # Default job configuration
+  jobNamespace: spark-operator
+
+  # Service account for Spark applications
+  serviceAccountName: spark
+
+  # Default resource configuration for Spark jobs
+  driver:
+    cores: 1
+    coreLimit: "1000m"
+    memory: "1g"
+    serviceAccount: spark
+    
+  executor:
+    cores: 1
+    instances: 1
+    memory: "1g"
+
+  # Monitoring configuration
+  monitoring:
+    enabled: false
+    prometheus:
+      jmxExporterJar: "/prometheus/jmx_prometheus_javaagent-0.11.0.jar"
+
+  # Python configuration (for PySpark jobs)
+  pythonVersion: "3"
+
+# Security configuration
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+# Node selection (optional - useful for specific node pools)
+nodeSelector: {}
+
+# Tolerations (optional - useful for dedicated nodes)
+tolerations: []
+
+# Affinity rules (optional)
+affinity: {}
+
+# Pod annotations
+podAnnotations: {}
+
+# Pod labels
+podLabels:
+  component: spark-operator
+  part-of: databricks-replacement
+
+# Environment variables
+env: []
+
+# Volume mounts (optional)
+volumeMounts: []
+
+# Volumes (optional)  
+volumes: []
+
+# Ingress (disabled - not needed for operator)
+ingress:
+  enabled: false
+
+# Service configuration (ClusterIP for operator)
+service:
+  type: ClusterIP
+  port: 8080
+
+# Configuration for Spark History Server (disabled for now

@@ -5,6 +5,7 @@
 # Configured to use the Qwen3-0.6B model (600M parameters)
 # Includes persistent storage for models
 # Uses the 'ai' namespace for all resources
+# OPTIMIZED: Reduced memory requirements from 4Gi/8Gi to 1.5Gi/2Gi for Qwen3:0.6b model
 #
 # Usage:
 # Add the Ollama Helm repository:
@@ -34,14 +35,15 @@ namespaceOverride: "ai"
 # Number of replicas - keeping at 1 for model consistency
 replicaCount: 1
 
-# Container resource limits optimized for M2 Mac
+# Container resource limits optimized for Qwen3:0.6b model (523MB)
+# OPTIMIZED: Reduced from 4Gi/8Gi to 1.5Gi/2Gi based on actual usage
 resources:
   requests:
-    memory: 4Gi
-    cpu: 1500m
+    memory: 1.5Gi  # Reduced from 4Gi - matches actual usage ~1.86Gi
+    cpu: 500m      # Reduced from 1500m - sufficient for small model
   limits:
-    memory: 8Gi
-    cpu: 2000m
+    memory: 2Gi    # Reduced from 8Gi - provides headroom for spikes
+    cpu: 1         # Reduced from 2000m - adequate for single model
 
 # Persistent storage for model files
 persistentVolume:
@@ -60,7 +62,7 @@ ollama:
     run:
       - qwen3:0.6b
   
-  # Model configuration optimized for M2 CPU
+  # Model configuration optimized for M2 CPU and small model
   modelConfig:
     context_length: 32768  # Qwen supports 32K context
     num_threads: 8       # M2 has 8 cores
@@ -81,7 +83,7 @@ service:
   type: ClusterIP
   port: 11434
   
-# Adjust the probes for better stability on CPU
+# Adjust the probes for better stability on CPU with small model
 livenessProbe:
   enabled: true
   initialDelaySeconds: 90
@@ -96,7 +98,7 @@ readinessProbe:
   timeoutSeconds: 5
   failureThreshold: 6
 
-# Optional environment variables optimized for M2 CPU
+# Optional environment variables optimized for M2 CPU and small model
 extraEnv:
   - name: OLLAMA_HOST
     value: "0.0.0.0"
@@ -112,6 +114,11 @@ extraEnv:
     value: "*"  # Allow all origins for API access
   - name: OLLAMA_KEEP_ALIVE
     value: "5m"  # Keep model loaded in memory
+  # Memory optimization for small model
+  - name: OLLAMA_MAX_LOADED_MODELS
+    value: "1"   # Limit to one model for resource efficiency
+  - name: OLLAMA_NUM_PARALLEL
+    value: "2"   # Reduced parallel requests for small model
 
 # Deployment update strategy
 # Using Recreate since model loading doesn't support multiple concurrent instances well

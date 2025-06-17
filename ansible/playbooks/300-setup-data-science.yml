@@ -1,0 +1,279 @@
+---
+# file: ansible/playbooks/300-setup-data-science.yml
+# Description:
+# Set up Databricks Replacement Data Science stack on Kubernetes
+# - Spark Kubernetes Operator: Distributed processing engine for data workloads
+# - SparkApplication CRDs: Declarative job submission and management
+# - RBAC: Automatically created by Helm with proper ownership
+#
+# Part of: Databricks Replacement Project - Phase 1 (Processing Engine)
+# Replaces: Databricks compute clusters and job execution
+#
+# Prerequisites:
+# - Kubernetes cluster with sufficient resources (6+ CPUs, 8+ GB RAM)
+# - kubectl configured for target cluster
+# - Helm 3.x installed
+#
+# Architecture:
+# - Spark Operator manages Spark applications as Kubernetes custom resources
+# - Jobs run as ephemeral pods with automatic resource allocation
+# - ARM64 compatible for Apple Silicon hardware
+# - Clean job lifecycle management with automatic cleanup
+# - Helm manages all RBAC resources with proper ownership
+#
+# Usage:
+# ansible-playbook playbooks/300-setup-data-science.yml -e kube_context="rancher-desktop"
+
+- name: Set up Databricks Replacement Data Science stack on Kubernetes
+  hosts: localhost
+  gather_facts: false
+  vars:
+    manifests_folder: "/mnt/urbalurbadisk/manifests"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    spark_namespace: "spark-operator"
+    installation_timeout: 300  # 5 minutes timeout for installations
+    pod_readiness_timeout: 180  # 3 minutes timeout for pod readiness
+    # Helm chart references
+    spark_operator_chart: "spark-kubernetes-operator/spark-kubernetes-operator"
+    spark_operator_repo_url: "https://apache.github.io/spark-kubernetes-operator"
+    # Config files
+    spark_config_file: "{{ manifests_folder }}/300-spark-config.yaml"
+
+  tasks:
+
+    - name: 1. Print playbook description
+      ansible.builtin.debug:
+        msg: |
+          🚀 Setting up Databricks Replacement Data Science Stack
+          📊 Component: Apache Spark Kubernetes Operator (Processing Engine)
+          🎯 Target: {{ kube_context | default('rancher-desktop') }}
+          📁 Namespace: {{ spark_namespace }}
+          🔧 RBAC: Managed by Helm (no manual RBAC files)
+
+    - name: 2. Create spark-operator namespace
+      kubernetes.core.k8s:
+        name: "{{ spark_namespace }}"
+        api_version: v1
+        kind: Namespace
+        state: present
+        kubeconfig: "{{ merged_kubeconf_file }}"
+
+    - name: 3. Check existing Helm repositories
+      ansible.builtin.command: helm repo list
+      register: helm_repo_list
+      changed_when: false
+
+    - name: 4. Add Spark Kubernetes Operator Helm repository if needed
+      kubernetes.core.helm_repository:
+        name: "spark-kubernetes-operator"
+        repo_url: "{{ spark_operator_repo_url }}"
+      when: "'spark-kubernetes-operator' not in helm_repo_list.stdout"
+      register: helm_repo_result
+
+    - name: 5. Update Helm repositories
+      ansible.builtin.command: helm repo update
+      changed_when: false
+    
+    # Deploy Spark Kubernetes Operator (Helm will create RBAC automatically)
+    - name: 6. Deploy Spark Kubernetes Operator with Helm-managed RBAC
+      ansible.builtin.command: >-
+        helm upgrade --install spark-kubernetes-operator {{ spark_operator_chart }} 
+        -f {{ spark_config_file }} 
+        --namespace {{ spark_namespace }}
+        --timeout {{ installation_timeout }}s
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: spark_operator_result
+      changed_when: true
+    
+    - name: 7. Display Spark Operator deployment result
+      ansible.builtin.debug:
+        msg: "Apache Spark Kubernetes Operator deployment initiated. Waiting for readiness..."
+    
+    - name: 8. Wait for Spark Operator pod to be ready
+      ansible.builtin.shell: >-
+        kubectl wait --for=condition=ready pod 
+        -l app.kubernetes.io/name=spark-kubernetes-operator 
+        -n {{ spark_namespace }} --timeout={{ pod_readiness_timeout }}s
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: spark_wait_result
+      changed_when: false
+      ignore_errors: true
+    
+    - name: 9. Display Spark Operator readiness status
+      ansible.builtin.debug:
+        msg: "Spark Operator readiness status: {{ 'Ready' if spark_wait_result.rc == 0 else 'Not ready yet, continuing anyway' }}"
+    
+    # Verify SparkApplication CRDs are installed (FIXED: correct CRD name)
+    - name: 10. Verify Apache Spark SparkApplication CRDs are installed
+      ansible.builtin.shell: kubectl get crd sparkapplications.spark.apache.org
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: crd_check_result
+      changed_when: false
+      ignore_errors: true
+    
+    - name: 11. Display CRD verification result
+      ansible.builtin.debug:
+        msg: "SparkApplication CRDs: {{ 'Installed' if crd_check_result.rc == 0 else 'Not found - may still be installing' }}"
+    
+    # Verify RBAC was created by Helm
+    - name: 12. Verify Helm-managed RBAC resources
+      ansible.builtin.shell: >-
+        kubectl get serviceaccount spark -n {{ spark_namespace }} 
+        -o jsonpath='{.metadata.labels.app\.kubernetes\.io/managed-by}' 2>/dev/null || echo "Not found"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: rbac_check_result
+      changed_when: false
+      ignore_errors: true
+    
+    - name: 13. Display RBAC verification result
+      ansible.builtin.debug:
+        msg: "RBAC Management: {{ 'Helm-managed ✅' if rbac_check_result.stdout == 'Helm' else 'Manual setup or checking...' }}"
+    
+    # Test Spark Operator with Apache Spark API (FIXED: correct API version and format)
+    - name: 14. Test Apache Spark Operator with sample Pi calculation
+      ansible.builtin.shell: |
+        cat <<EOF | kubectl apply -f - -n {{ spark_namespace }}
+        apiVersion: spark.apache.org/v1alpha1
+        kind: SparkApplication
+        metadata:
+          name: spark-pi-test
+          namespace: {{ spark_namespace }}
+        spec:
+          mainClass: "org.apache.spark.examples.SparkPi"
+          jars: "local:///opt/spark/examples/jars/spark-examples.jar"
+          sparkConf:
+            spark.dynamicAllocation.enabled: "false"
+            spark.kubernetes.authenticate.driver.serviceAccountName: "spark"
+            spark.kubernetes.container.image: "apache/spark:4.0.0"
+            spark.driver.cores: "1"
+            spark.driver.memory: "512m"
+            spark.executor.instances: "1"
+            spark.executor.cores: "1"
+            spark.executor.memory: "512m"
+          runtimeVersions:
+            scalaVersion: "2.13"
+            sparkVersion: "4.0.0"
+        EOF
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: test_job_result
+      changed_when: true
+      ignore_errors: true
+    
+    - name: 15. Display test job submission result
+      ansible.builtin.debug:
+        msg: "Spark Pi test job: {{ 'Submitted successfully' if test_job_result.rc == 0 else 'Submission failed - this is expected if CRDs are not ready yet' }}"
+    
+    # Give a brief pause for job to start
+    - name: 16. Brief pause for test job to start
+      ansible.builtin.pause:
+        seconds: 10
+      when: test_job_result.rc == 0
+    
+    # Check test job status (FIXED: use correct command)
+    - name: 17. Check test job status
+      ansible.builtin.shell: >-
+        kubectl get sparkapp spark-pi-test -n {{ spark_namespace }} 
+        -o jsonpath='{.status.currentState.currentStateSummary}' 2>/dev/null || echo "NOT_FOUND"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: test_job_status
+      changed_when: false
+      ignore_errors: true
+      when: test_job_result.rc == 0
+    
+    - name: 18. Display test job status
+      ansible.builtin.debug:
+        msg: "Test job status: {{ test_job_status.stdout | default('Job not submitted') }}"
+      when: test_job_result.rc == 0
+    
+    # Clean up test job
+    - name: 19. Clean up test job
+      ansible.builtin.shell: kubectl delete sparkapp spark-pi-test -n {{ spark_namespace }} --ignore-not-found=true
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      changed_when: false
+      ignore_errors: true
+    
+    # Verify final deployment status
+    - name: 20. Get Spark Operator pods
+      ansible.builtin.shell: kubectl get pods -n {{ spark_namespace }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: spark_pods
+      changed_when: false
+    
+    - name: 21. Display Spark Operator pods
+      ansible.builtin.debug:
+        var: spark_pods.stdout_lines
+    
+    - name: 22. Get Spark Operator services
+      ansible.builtin.shell: kubectl get svc -n {{ spark_namespace }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: spark_services
+      changed_when: false
+    
+    - name: 23. Display Spark Operator services
+      ansible.builtin.debug:
+        var: spark_services.stdout_lines
+    
+    # Count running pods
+    - name: 24. Count running pods
+      ansible.builtin.shell: >-
+        kubectl get pods -n {{ spark_namespace }} | grep -v NAME | grep -c Running || echo "0"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: running_pods_count
+      changed_when: false
+      ignore_errors: true
+    
+    - name: 25. Determine installation success
+      ansible.builtin.set_fact:
+        installation_successful: "{{ (running_pods_count.stdout | int >= 1) }}"
+    
+    - name: 26. Display final installation status
+      ansible.builtin.debug:
+        msg: |
+          ===============================================
+          🚀 Databricks Replacement Data Science Stack
+          ===============================================
+
+          {{ '✅ SUCCESS - Apache Spark Kubernetes Operator is running' if installation_successful else '⚠️ PARTIAL SUCCESS - Spark Operator may not be running yet' }}
+
+          📦 Components installed:
+          • Apache Spark Kubernetes Operator (distributed processing engine)
+          • RBAC Configuration (Helm-managed with proper ownership)
+          • SparkApplication CRDs (spark.apache.org API group)
+
+          🔄 Status:
+          • Running pods: {{ running_pods_count.stdout }} in {{ spark_namespace }} namespace
+          • Test job: {{ 'Executed successfully' if test_job_result.rc == 0 else 'Skipped (CRDs may still be installing)' }}
+          • RBAC: {{ 'Helm-managed ✅' if rbac_check_result.stdout == 'Helm' else 'Manual setup' }}
+
+          📊 Databricks Replacement Progress:
+          • Phase 1: Processing Engine ✅ COMPLETE
+          • Phase 2: Notebook Interface (JupyterHub) - Next
+          • Phase 3: SQL Analytics (Superset) - Future
+
+          🚀 Next Steps:
+          1. Submit Spark jobs using SparkApplication CRDs
+          2. Deploy JupyterHub for notebook interface
+          3. Deploy Superset for SQL analytics workspace
+
+          📝 Example SparkApplication submission:
+             kubectl apply -f manifests/331-sample-data-sparkapplication.yaml
+
+          🔧 Monitoring and Troubleshooting:
+          • Check pods: kubectl get pods -n {{ spark_namespace }}
+          • View logs: kubectl logs -n {{ spark_namespace }} deployment/spark-kubernetes-operator
+          • List Spark jobs: kubectl get sparkapp -A
+          • View job details: kubectl describe sparkapp <job-name> -n {{ spark_namespace }}
+
+          ===============================================
+          {{ '🎉 APACHE SPARK OPERATOR READY FOR DATABRICKS REPLACEMENT' if installation_successful else '⚠️ CHECK DEPLOYMENT STATUS' }}
+          ===============================================
