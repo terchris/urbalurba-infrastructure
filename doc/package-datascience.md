@@ -281,3 +281,58 @@ spark.sql("""
 4. **Production Migration**: Scale to full enterprise deployment
 
 **Your complete analytics platform replacement - Databricks + Tableau/Power BI - is within reach!**
+
+# MySQL Setup Documentation
+
+## Overview
+This document describes the process and files involved in setting up MySQL in the urbalurba infrastructure using Ansible, Helm, and Kubernetes. The setup is modeled after the PostgreSQL workflow for consistency and maintainability.
+
+## Files Involved
+
+### 1. provision-host/kubernetes/02-databases/06-setup-mysql.sh
+- **Purpose:** Orchestrates the setup of MySQL on the target Kubernetes cluster.
+- **Usage:**
+  ```bash
+  ./06-setup-mysql.sh [target-host]
+  ```
+  - If no target host is provided, defaults to `rancher-desktop`.
+  - Runs the Ansible playbooks to deploy and verify MySQL.
+
+### 2. ansible/playbooks/040-database-mysql.yml
+- **Purpose:** Ansible playbook to deploy MySQL using the Bitnami Helm chart.
+- **Details:**
+  - Installs the Bitnami MySQL Helm chart in the `default` namespace.
+  - Configures MySQL to use credentials from the `urbalurba-secrets` Kubernetes secret.
+  - Ensures compatibility with ARM64 (Apple Silicon) and other architectures supported by Bitnami.
+
+### 3. ansible/playbooks/utility/u08-verify-mysql.yml
+- **Purpose:** Ansible playbook to verify the MySQL deployment.
+- **Details:**
+  - Checks that the MySQL pod is running and ready.
+  - Executes a test query (`SHOW DATABASES;`) inside the MySQL pod to confirm connectivity and basic functionality.
+
+### 4. manifests/043-database-mysql-config.yaml
+- **Purpose:** Kubernetes manifest for MySQL configuration.
+- **Details:**
+  - Defines a `Service` for MySQL to expose port 3306 within the cluster.
+  - Optionally includes a `ConfigMap` for custom MySQL configuration (e.g., `my.cnf`).
+
+### 5. topsecret/kubernetes/kubernetes-secrets.yml
+- **Purpose:** Stores sensitive credentials for MySQL and other services.
+- **Details:**
+  - Add the following keys for MySQL:
+    ```yaml
+    MYSQL_ROOT_PASSWORD: SecretPassword1
+    MYSQL_DATABASE: mydatabase
+    MYSQL_USER: myuser
+    MYSQL_PASSWORD: SecretPassword1
+    MYSQL_HOST: mysql.default
+    ```
+  - These are referenced by the Helm chart and Ansible playbooks for secure configuration.
+
+## References
+- [Bitnami MySQL Helm Chart Documentation](https://artifacthub.io/packages/helm/bitnami/mysql)
+
+## See Also
+- PostgreSQL setup documentation for a similar workflow.
+- Other database and service setup guides in this documentation folder.

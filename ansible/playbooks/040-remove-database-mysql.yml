@@ -1,0 +1,63 @@
+---
+# file: ansible/playbooks/040-remove-database-mysql.yml
+# Description: Remove MySQL database from Kubernetes cluster
+# This playbook:
+# - Uninstalls the MySQL Helm release
+# - Waits for MySQL pods to terminate
+# - Preserves urbalurba-secrets and namespace structure
+# Usage:
+# ansible-playbook playbooks/040-remove-database-mysql.yml -e target_host="rancher-desktop"
+
+- name: Remove MySQL Database from Kubernetes
+  hosts: localhost
+  gather_facts: false
+  vars:
+    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    mysql_namespace: "default"
+    mysql_helm_release: "mysql"
+    deletion_timeout: 120
+
+  tasks:
+    - name: 1. Print removal description
+      ansible.builtin.debug:
+        msg: |
+          🧹 Starting MySQL removal
+          🎯 Target: {{ target_host | default('rancher-desktop') }}
+          📁 Namespace: {{ mysql_namespace }}
+          🔐 PRESERVING: urbalurba-secrets and namespace structure
+          ⚠️  This will remove the MySQL Helm release and pods but KEEP authentication configuration
+
+    - name: 2. Check for MySQL Helm release
+      ansible.builtin.shell: helm list -n {{ mysql_namespace }} | grep {{ mysql_helm_release }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: mysql_helm_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: 3. Remove MySQL Helm release
+      ansible.builtin.shell: helm uninstall {{ mysql_helm_release }} -n {{ mysql_namespace }} --timeout {{ deletion_timeout }}s
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: mysql_helm_removal
+      changed_when: true
+      ignore_errors: true
+      when: mysql_helm_check.rc == 0
+
+    - name: 4. Wait for MySQL pods to terminate
+      ansible.builtin.shell: kubectl get pods -n {{ mysql_namespace }} -l app.kubernetes.io/name=mysql --no-headers 2>/dev/null | wc -l
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: mysql_pods_count
+      until: mysql_pods_count.stdout | int == 0
+      retries: 20
+      delay: 10
+      changed_when: false
+
+    - name: 5. Display MySQL removal result
+      ansible.builtin.debug:
+        msg: |
+          MySQL removal complete:
+          - Helm release: {{ 'Removed' if mysql_helm_check.rc == 0 else 'Not found' }}
+          - All MySQL pods terminated
+          - urbalurba-secrets and namespace preserved 

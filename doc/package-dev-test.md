@@ -39,3 +39,7 @@ The templates are designed so that when you push to GitHub your code will be bui
 
 The deployment is done using ArgoCD. And once deployed you can open your browser and test the application.
 
+## Database Setup
+
+- See [MySQL Setup Documentation](./package-datascience.md#mysql-setup-documentation) for details on deploying and verifying MySQL in the cluster.
+

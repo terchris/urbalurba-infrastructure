@@ -1,0 +1,111 @@
+---
+# File: ansible/playbooks/utility/u08-verify-mysql.yml
+# Description: Test connection to MySQL server and basic CRUD functionality.
+# This playbook:
+# - Verifies connection and basic CRUD
+# Usage:
+# ansible-playbook playbooks/utility/u08-verify-mysql.yml
+
+- name: Verify MySQL Database
+  hosts: localhost
+  gather_facts: false
+  vars:
+    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    test_db_name: "test_verify_db"
+    test_table_name: "test_table"
+
+  tasks:
+    - name: 1. Verify MySQL secret values
+      kubernetes.core.k8s_info:
+        kind: Secret
+        name: urbalurba-secrets
+        namespace: default
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: secret_info
+
+    - name: 2. Fail if MySQL secrets are not set correctly
+      ansible.builtin.fail:
+        msg: "MySQL secrets are not set correctly in urbalurba-secrets"
+      when: >
+        secret_info.resources | length == 0 or
+        secret_info.resources[0].data.MYSQL_ROOT_PASSWORD is not defined or
+        secret_info.resources[0].data.MYSQL_HOST is not defined
+
+    - name: 3. Set MySQL password and host
+      ansible.builtin.set_fact:
+        mysql_root_password: "{{ secret_info.resources[0].data.MYSQL_ROOT_PASSWORD | b64decode }}"
+        mysql_host: "{{ secret_info.resources[0].data.MYSQL_HOST | b64decode }}"
+
+    - name: 4. Get MySQL pod name
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ merged_kubeconf_file }}"
+        kind: Pod
+        namespace: default
+        label_selectors:
+          - app.kubernetes.io/name=mysql
+      register: mysql_pods
+      retries: 30
+      delay: 10
+      until: mysql_pods.resources | length > 0
+
+    - name: 5. Fail if no MySQL pod found
+      ansible.builtin.fail:
+        msg: "No MySQL pod found after multiple attempts"
+      when: mysql_pods.resources | length == 0
+
+    - name: 6. Set MySQL pod name
+      ansible.builtin.set_fact:
+        mysql_pod_name: "{{ mysql_pods.resources[0].metadata.name }}"
+
+    - name: 7. Wait for MySQL to be ready
+      command: kubectl exec -n default {{ mysql_pod_name }} -- bash -c "mysqladmin ping -h '{{ mysql_host }}' -uroot -p'{{ mysql_root_password }}'"
+      register: mysql_ready
+      until: "'mysqld is alive' in mysql_ready.stdout"
+      retries: 30
+      delay: 10
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+
+    - name: 8. Drop test database if it exists
+      command: >
+        kubectl exec -n default {{ mysql_pod_name }} -- bash -c "mysql -h '{{ mysql_host }}' -uroot -p'{{ mysql_root_password }}' -e \"DROP DATABASE IF EXISTS {{ test_db_name }};\""
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+
+    - name: 9. Create test database
+      command: >
+        kubectl exec -n default {{ mysql_pod_name }} -- bash -c "mysql -h '{{ mysql_host }}' -uroot -p'{{ mysql_root_password }}' -e \"CREATE DATABASE {{ test_db_name }};\""
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+
+    - name: 10. Create test table and insert data
+      command: >
+        kubectl exec -n default {{ mysql_pod_name }} -- bash -c "mysql -h '{{ mysql_host }}' -uroot -p'{{ mysql_root_password }}' -D {{ test_db_name }} -e \"CREATE TABLE {{ test_table_name }} (id INT PRIMARY KEY AUTO_INCREMENT, data VARCHAR(255)); INSERT INTO {{ test_table_name }} (data) VALUES ('test_value');\""
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+
+    - name: 11. Retrieve data from test table
+      command: >
+        kubectl exec -n default {{ mysql_pod_name }} -- bash -c "mysql -h '{{ mysql_host }}' -uroot -p'{{ mysql_root_password }}' -D {{ test_db_name }} -e \"SELECT * FROM {{ test_table_name }};\""
+      register: retrieve_result
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+
+    - name: 12. Display retrieved data
+      ansible.builtin.debug:
+        var: retrieve_result.stdout_lines
+
+    - name: 13. Verify retrieved data
+      ansible.builtin.fail:
+        msg: "Failed to retrieve expected test data"
+      when: "'test_value' not in retrieve_result.stdout"
+
+    - name: 14. Drop test database
+      command: >
+        kubectl exec -n default {{ mysql_pod_name }} -- bash -c "mysql -h '{{ mysql_host }}' -uroot -p'{{ mysql_root_password }}' -e \"DROP DATABASE {{ test_db_name }};\""
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+
+    - name: 15. Confirm MySQL is working correctly
+      ansible.builtin.debug:
+        msg: "MySQL is working correctly. Test database created, data inserted and retrieved successfully, and test database dropped." 
