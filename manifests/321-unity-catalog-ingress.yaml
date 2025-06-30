@@ -1,0 +1,145 @@
+# 321-unity-catalog-ingress.yaml
+#
+# Description:
+# Ingress configuration for Unity Catalog using Traefik with proper priority handling.
+# This configuration provides web access to the Unity Catalog REST API server
+# via a dedicated hostname, ensuring Unity Catalog gets specific routing.
+#
+# Architecture:
+# - unity-api.localhost → Unity Catalog REST API server (catalog operations)
+# - Databricks-style data catalog REST API accessible via web browser and CLI tools
+# - Integrates with Spark Kubernetes Operator for metadata operations
+# - Uses Traefik ingress controller for SSL termination and routing
+#
+# Priority Explanation:
+# Traefik evaluates ingress rules by priority. Higher numbers = higher priority.
+# This ingress uses priority 100 to ensure the specific host routing takes precedence
+# over any wildcard ingress rules that might exist in the cluster.
+#
+# Without explicit priority, ingress rules are evaluated in arbitrary order, which
+# can cause conflicts when multiple ingresses use overlapping host patterns.
+#
+# Service Port Configuration:
+# - Unity Catalog Server service exposes port 8080 (REST API)
+# - Service forwards to pod port 8080
+# - Ingress should point to service port, NOT pod port directly
+# - Service is created by the Unity Catalog deployment manifest
+#
+# Part of: Databricks Replacement Project - Phase 2.5 (Data Catalog & Governance)
+# Replaces: Databricks Unity Catalog REST API access
+# Depends on: Unity Catalog deployment (320-unity-catalog-deployment.yaml)
+#
+# Usage:
+#   kubectl apply -f 321-unity-catalog-ingress.yaml
+#
+# Verification:
+#   kubectl describe ingress unity-catalog-api -n unity-catalog
+#   kubectl get svc -n unity-catalog
+#   curl -H "Host: unity-api.localhost" http://192.168.64.2/api/1.0/unity-catalog/catalogs
+#   
+# Access:
+#   REST API: http://unity-api.localhost
+#   
+# Example API Usage:
+#   curl http://unity-api.localhost/api/1.0/unity-catalog/catalogs
+#   curl http://unity-api.localhost/api/1.0/unity-catalog/catalogs/main/schemas
+#   curl -X POST http://unity-api.localhost/api/1.0/unity-catalog/catalogs \
+#     -H "Content-Type: application/json" \
+#     -d '{"name":"my_catalog","comment":"My data catalog"}'
+#
+# Troubleshooting:
+#   - If ingress doesn't work, check Traefik is running: kubectl get pods -n kube-system | grep traefik
+#   - Verify services exist: kubectl get svc -n unity-catalog
+#   - Check ingress events: kubectl describe ingress unity-catalog-api -n unity-catalog
+#   - Test service directly: kubectl port-forward -n unity-catalog svc/unity-catalog-server 8080:8080
+#
+
+---
+# Ingress for Unity Catalog REST API Server
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: unity-catalog-api
+  namespace: unity-catalog
+  annotations:
+    # Disable SSL redirect for development environment
+    traefik.ingress.kubernetes.io/ssl-redirect: "false"
+    
+    # CRITICAL: Set high priority to ensure this specific host rule
+    # is evaluated BEFORE any wildcard nginx or default ingress rules
+    # Higher number = higher priority (evaluated first)
+    traefik.ingress.kubernetes.io/priority: "100"
+    
+    # Add CORS headers for API access from external tools
+    traefik.ingress.kubernetes.io/cors-allow-origin: "*"
+    traefik.ingress.kubernetes.io/cors-allow-methods: "GET,POST,PUT,DELETE,PATCH,OPTIONS"
+    traefik.ingress.kubernetes.io/cors-allow-headers: "Content-Type,Authorization,X-Requested-With"
+    
+    # Optional: Add custom headers for debugging (uncomment if needed)
+    # traefik.ingress.kubernetes.io/request-modifier: "AddHeader X-Unity-Catalog-Version v0.2.0"
+    
+  labels:
+    app: unity-catalog
+    component: api-ingress
+    part-of: databricks-replacement
+    phase: data-catalog
+spec:
+  # Use Traefik ingress controller (must match your cluster setup)
+  ingressClassName: traefik
+  
+  rules:
+    - host: "unity-api.localhost"
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                # Unity Catalog REST API service (created by deployment manifest)
+                name: unity-catalog-server
+                port:
+                  # Unity Catalog server port 8080
+                  number: 8080
+
+---
+# Optional: Combined ingress for multiple paths (commented out by default)
+# Uncomment this section if you want to serve the API under different paths
+# 
+# apiVersion: networking.k8s.io/v1
+# kind: Ingress
+# metadata:
+#   name: unity-catalog-combined
+#   namespace: unity-catalog
+#   annotations:
+#     traefik.ingress.kubernetes.io/ssl-redirect: "false"
+#     traefik.ingress.kubernetes.io/priority: "100"
+#     traefik.ingress.kubernetes.io/cors-allow-origin: "*"
+#     traefik.ingress.kubernetes.io/cors-allow-methods: "GET,POST,PUT,DELETE,PATCH,OPTIONS"
+#     traefik.ingress.kubernetes.io/cors-allow-headers: "Content-Type,Authorization,X-Requested-With"
+#   labels:
+#     app: unity-catalog
+#     component: combined-ingress
+#     part-of: databricks-replacement
+#     phase: data-catalog
+# spec:
+#   ingressClassName: traefik
+#   rules:
+#     - host: "unity-catalog.localhost"
+#       http:
+#         paths:
+#           # API routes
+#           - path: /api
+#             pathType: Prefix
+#             backend:
+#               service:
+#                 name: unity-catalog-server
+#                 port:
+#                   number: 8080
+#           # Health check
+#           - path: /health
+#             pathType: Prefix
+#             backend:
+#               service:
+#                 name: unity-catalog-server
+#                 port:
+#                   number: 8080

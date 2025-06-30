@@ -1,0 +1,233 @@
+---
+# File: ansible/playbooks/utility/u07-setup-unity-catalog-database.yml
+# Description: Create Unity Catalog database and user in PostgreSQL.
+# This utility playbook sets up the database prerequisites for Unity Catalog OSS.
+#
+# This playbook:
+# - Creates a dedicated Unity Catalog database in PostgreSQL
+# - Creates a dedicated Unity Catalog user with appropriate permissions
+# - Verifies the database and user setup is working correctly
+# - Tests basic database operations for Unity Catalog
+#
+# Prerequisites:
+# - PostgreSQL deployed with urbalurba-postgresql container (using 05-cloud-setup-postgres.sh)
+# - urbalurba-secrets containing PGPASSWORD for PostgreSQL access
+# - kubectl configured for target cluster
+#
+# Usage:
+# ansible-playbook playbooks/utility/u07-setup-unity-catalog-database.yml -e target_host="rancher-desktop"
+
+- name: Setup Unity Catalog Database in PostgreSQL
+  hosts: localhost
+  gather_facts: false
+  vars:
+    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    unity_catalog_db_name: "unity_catalog"
+    unity_catalog_user: "unity_catalog_user"
+    unity_catalog_password: "unity_catalog_password"
+
+  tasks:
+    - name: 1. Check if target_host is provided
+      ansible.builtin.fail:
+        msg: "The variable 'target_host' is mandatory. Use -e target_host=your_host_name to specify it."
+      when: target_host is not defined
+
+    - name: 2. Print playbook description
+      ansible.builtin.debug:
+        msg: |
+          🗄️ Setting up Unity Catalog database in PostgreSQL
+          🎯 Target: {{ target_host }}
+          📊 Database: {{ unity_catalog_db_name }}
+          👤 User: {{ unity_catalog_user }}
+          🔐 Using PostgreSQL credentials from urbalurba-secrets
+
+    - name: 3. Check if PostgreSQL is available
+      ansible.builtin.shell: >-
+        kubectl get service postgresql -n default
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: postgres_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: 4. Fail if PostgreSQL is not available
+      ansible.builtin.fail:
+        msg: "PostgreSQL is required. Please deploy PostgreSQL first using ./05-cloud-setup-postgres.sh"
+      when: postgres_check.rc != 0
+
+    - name: 5. Get PostgreSQL credentials from urbalurba-secrets
+      kubernetes.core.k8s_info:
+        kind: Secret
+        name: urbalurba-secrets
+        namespace: default
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: secret_info
+
+    - name: 6. Fail if PostgreSQL secrets are not set correctly
+      ansible.builtin.fail:
+        msg: "PostgreSQL secrets are not set correctly in urbalurba-secrets"
+      when: >
+        secret_info.resources | length == 0 or
+        secret_info.resources[0].data.PGPASSWORD is not defined or
+        secret_info.resources[0].data.PGHOST is not defined
+
+    - name: 7. Set PostgreSQL credentials
+      ansible.builtin.set_fact:
+        postgres_password: "{{ secret_info.resources[0].data.PGPASSWORD | b64decode }}"
+        postgres_host: "{{ secret_info.resources[0].data.PGHOST | b64decode }}"
+
+    - name: 8. Get PostgreSQL pod name
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ merged_kubeconf_file }}"
+        kind: Pod
+        namespace: default
+        label_selectors:
+          - app.kubernetes.io/name=postgresql
+      register: postgres_pods
+      retries: 30
+      delay: 10
+      until: postgres_pods.resources | length > 0
+
+    - name: 9. Fail if no PostgreSQL pod found
+      ansible.builtin.fail:
+        msg: "No PostgreSQL pod found after multiple attempts"
+      when: postgres_pods.resources | length == 0
+
+    - name: 10. Set PostgreSQL pod name
+      ansible.builtin.set_fact:
+        postgres_pod_name: "{{ postgres_pods.resources[0].metadata.name }}"
+
+    - name: 11. Wait for PostgreSQL to be ready
+      command: kubectl exec -n default {{ postgres_pod_name }} -- bash -c "PGPASSWORD='{{ postgres_password }}' psql -h '{{ postgres_host }}' -U postgres -c \"SELECT 1;\""
+      register: postgres_ready
+      until: postgres_ready.rc == 0
+      retries: 30
+      delay: 10
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+
+    - name: 12. Check if Unity Catalog database already exists
+      command: >
+        kubectl exec -n default {{ postgres_pod_name }} -- bash -c "PGPASSWORD='{{ postgres_password }}' psql -h '{{ postgres_host }}' -U postgres -lqt | cut -d \| -f 1 | grep -qw '{{ unity_catalog_db_name }}'"
+      register: db_exists_check
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      ignore_errors: true
+      changed_when: false
+
+    - name: 13. Create Unity Catalog database if it doesn't exist
+      command: kubectl exec -n default {{ postgres_pod_name }} -- bash -c "PGPASSWORD='{{ postgres_password }}' createdb -h '{{ postgres_host }}' -U postgres {{ unity_catalog_db_name }}"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: create_db_result
+      when: db_exists_check.rc != 0
+
+    - name: 14. Display database creation result
+      ansible.builtin.debug:
+        msg: "Unity Catalog database: {{ 'Created successfully ✅' if db_exists_check.rc != 0 and create_db_result.rc == 0 else 'Already exists ✅' }}"
+
+    - name: 15. Check if Unity Catalog user already exists
+      command: >
+        kubectl exec -n default {{ postgres_pod_name }} -- bash -c "PGPASSWORD='{{ postgres_password }}' psql -h '{{ postgres_host }}' -U postgres -d {{ unity_catalog_db_name }} -tAc \"SELECT 1 FROM pg_roles WHERE rolname='{{ unity_catalog_user }}';\" | wc -l"
+      register: user_exists_check
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      changed_when: false
+
+    - name: 16. Create Unity Catalog user if it doesn't exist
+      command: >
+        kubectl exec -n default {{ postgres_pod_name }} -- bash -c "PGPASSWORD='{{ postgres_password }}' psql -h '{{ postgres_host }}' -U postgres -d {{ unity_catalog_db_name }} -c \"CREATE USER {{ unity_catalog_user }} WITH PASSWORD '{{ unity_catalog_password }}';\""
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: create_user_result
+      when: user_exists_check.stdout | int == 0
+      ignore_errors: true
+
+    - name: 17. Grant privileges to Unity Catalog user
+      command: >
+        kubectl exec -n default {{ postgres_pod_name }} -- bash -c "PGPASSWORD='{{ postgres_password }}' psql -h '{{ postgres_host }}' -U postgres -d {{ unity_catalog_db_name }} -c \"GRANT ALL PRIVILEGES ON DATABASE {{ unity_catalog_db_name }} TO {{ unity_catalog_user }}; GRANT ALL PRIVILEGES ON SCHEMA public TO {{ unity_catalog_user }}; GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO {{ unity_catalog_user }}; GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO {{ unity_catalog_user }}; ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO {{ unity_catalog_user }}; ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO {{ unity_catalog_user }};\""
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: grant_privileges_result
+
+    - name: 18. Display user creation result
+      ansible.builtin.debug:
+        msg: "Unity Catalog user: {{ 'Created and configured successfully ✅' if user_exists_check.stdout | int == 0 else 'Already exists, privileges updated ✅' }}"
+
+    - name: 19. Test connection with Unity Catalog user
+      command: >
+        kubectl exec -n default {{ postgres_pod_name }} -- bash -c "PGPASSWORD='{{ unity_catalog_password }}' psql -h '{{ postgres_host }}' -U {{ unity_catalog_user }} -d {{ unity_catalog_db_name }} -c \"SELECT current_database(), current_user, version();\""
+      register: connection_test
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+
+    - name: 20. Display connection test result
+      ansible.builtin.debug:
+        var: connection_test.stdout_lines
+
+    - name: 21. Test table creation with Unity Catalog user
+      command: >
+        kubectl exec -n default {{ postgres_pod_name }} -- bash -c "PGPASSWORD='{{ unity_catalog_password }}' psql -h '{{ postgres_host }}' -U {{ unity_catalog_user }} -d {{ unity_catalog_db_name }} -c \"CREATE TABLE IF NOT EXISTS unity_catalog_test (id SERIAL PRIMARY KEY, name VARCHAR(100), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP); INSERT INTO unity_catalog_test (name) VALUES ('test_entry'); SELECT * FROM unity_catalog_test;\""
+      register: table_test
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+
+    - name: 22. Display table test result
+      ansible.builtin.debug:
+        var: table_test.stdout_lines
+
+    - name: 23. Clean up test table
+      command: >
+        kubectl exec -n default {{ postgres_pod_name }} -- bash -c "PGPASSWORD='{{ unity_catalog_password }}' psql -h '{{ postgres_host }}' -U {{ unity_catalog_user }} -d {{ unity_catalog_db_name }} -c \"DROP TABLE IF EXISTS unity_catalog_test;\""
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+
+    - name: 24. Create connection string for Unity Catalog
+      ansible.builtin.set_fact:
+        unity_catalog_connection_url: "postgresql://{{ unity_catalog_user }}:{{ unity_catalog_password }}@{{ postgres_host }}:5432/{{ unity_catalog_db_name }}"
+
+    - name: 25. Display setup summary
+      ansible.builtin.debug:
+        msg: |
+          ===============================================
+          🗄️ Unity Catalog Database Setup Complete
+          ===============================================
+
+          ✅ Database Setup Summary:
+          • PostgreSQL Host: {{ postgres_host }}
+          • Database Name: {{ unity_catalog_db_name }}
+          • Username: {{ unity_catalog_user }}
+          • Password: {{ unity_catalog_password }}
+          • Connection URL: {{ unity_catalog_connection_url }}
+
+          ✅ Verification Results:
+          • Database Created: ✅
+          • User Created: ✅
+          • Privileges Granted: ✅
+          • Connection Test: ✅
+          • Table Operations: ✅
+
+          🔐 Required Secrets for Unity Catalog:
+          Add these to your urbalurba-secrets in the unity-catalog namespace:
+
+          UNITY_CATALOG_DATABASE_URL: "{{ unity_catalog_connection_url }}"
+          UNITY_CATALOG_DATABASE_USER: "{{ unity_catalog_user }}"
+          UNITY_CATALOG_DATABASE_PASSWORD: "{{ unity_catalog_password }}"
+
+          🚀 Next Steps:
+          1. Update your kubernetes-secrets-template.yml with the above values
+          2. Apply secrets to unity-catalog namespace:
+             kubectl apply -f kubernetes-secrets-template.yml
+          3. Deploy Unity Catalog:
+             ./03-setup-unity-catalog.sh {{ target_host }}
+
+          🔧 Manual Connection Test:
+          kubectl exec -it {{ postgres_pod_name }} -n default -- psql "{{ unity_catalog_connection_url }}"
+
+          ===============================================
+          🎉 Database Ready for Unity Catalog Deployment!
+          ===============================================
+
+    - name: 26. Verify database is accessible for Unity Catalog
+      ansible.builtin.debug:
+        msg: "Unity Catalog database setup completed successfully and verified working."

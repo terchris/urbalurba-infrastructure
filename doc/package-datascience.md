@@ -230,14 +230,6 @@ spark.sql("""
 - **Unified access**: Single sign-on across JupyterHub and Metabase
 - **Shared infrastructure**: Leverages existing Kubernetes cluster
 
-### **vs. Original Concept (DuckDB + Trino)**
-| Original Draft | Current Implementation | Advantage |
-|---------------|----------------------|-----------|
-| DuckDB (single-node) | Spark 4.0 (distributed) | True scalability |
-| Trino (query federation) | Native PySpark | 100% Databricks compatibility |
-| Parquet-only | Full Spark ecosystem | Complete data platform |
-| Development-focused | Production-ready | Enterprise deployment |
-
 ## 🔧 Technical Details
 
 ### **Resource Requirements**

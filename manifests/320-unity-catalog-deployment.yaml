@@ -1,0 +1,369 @@
+# 320-unity-catalog-deployment.yaml
+#
+# Description:
+# Kubernetes deployment manifests for Unity Catalog OSS with PostgreSQL backend.
+# Provides enterprise data governance, three-level namespace, and metadata management.
+# Uses official Unity Catalog Docker image with direct Kubernetes deployment.
+#
+# Part of: Databricks Replacement Project - Phase 2.5 (Data Catalog & Governance)
+# Replaces: Databricks Unity Catalog and Hive Metastore functionality
+#
+# Usage:
+#   kubectl apply -f 320-unity-catalog-deployment.yaml
+#
+# Prerequisites:
+# - PostgreSQL deployed with urbalurba-postgresql container
+# - unity-catalog namespace created
+# - urbalurba-secrets applied to unity-catalog namespace
+# - Unity Catalog database created in PostgreSQL (use u07-setup-unity-catalog-database.yml)
+#
+# Features:
+# - PostgreSQL backend for metadata storage
+# - REST API for catalog operations
+# - Integration with existing Spark cluster
+# - RBAC and access control
+# - Data lineage tracking
+# - Schema evolution management
+#
+# Architecture:
+# - Unity Catalog Server provides REST API and metadata management
+# - PostgreSQL stores all catalog metadata (catalogs, schemas, tables, permissions)
+# - Spark clients connect via Unity Catalog client library
+# - Integrates with JupyterHub for notebook access
+
+---
+# Service Account for Unity Catalog
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: unity-catalog-server
+  namespace: unity-catalog
+  labels:
+    app: unity-catalog
+    component: server
+    part-of: databricks-replacement
+    phase: data-catalog
+
+---
+# ConfigMap for Unity Catalog Server Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: unity-catalog-config
+  namespace: unity-catalog
+  labels:
+    app: unity-catalog
+    component: server
+    part-of: databricks-replacement
+    phase: data-catalog
+data:
+  # Unity Catalog server configuration
+  application.properties: |
+    # Server configuration
+    server.host=0.0.0.0
+    server.port=8080
+    
+    # Database configuration (will be overridden by environment variables)
+    hibernate.connection.driver_class=org.postgresql.Driver
+    hibernate.connection.url=jdbc:postgresql://postgresql.default:5432/unity_catalog
+    hibernate.connection.username=unity_catalog_user
+    hibernate.connection.password=unity_catalog_password
+    
+    # Hibernate configuration
+    hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
+    hibernate.hbm2ddl.auto=update
+    hibernate.show_sql=false
+    hibernate.format_sql=false
+    
+    # Unity Catalog specific settings
+    unity.catalog.log.level=INFO
+    unity.catalog.warehouse.dir=/tmp/unity-catalog/warehouse
+    
+    # Authentication configuration
+    unity.catalog.auth.mode=SIMPLE
+
+---
+# PersistentVolumeClaim for Unity Catalog warehouse data
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: unity-catalog-warehouse-pvc
+  namespace: unity-catalog
+  labels:
+    app: unity-catalog
+    component: storage
+    part-of: databricks-replacement
+    phase: data-catalog
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: local-path
+
+---
+# Deployment for Unity Catalog Server
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: unity-catalog-server
+  namespace: unity-catalog
+  labels:
+    app: unity-catalog
+    component: server
+    part-of: databricks-replacement
+    phase: data-catalog
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: unity-catalog
+      component: server
+  template:
+    metadata:
+      labels:
+        app: unity-catalog
+        component: server
+        part-of: databricks-replacement
+        phase: data-catalog
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: unity-catalog-server
+      securityContext:
+        runAsNonRoot: false
+        runAsUser: 0
+        fsGroup: 0
+      initContainers:
+        # Wait for PostgreSQL to be ready
+        - name: wait-for-postgres
+          image: postgres:16
+          command:
+            - sh
+            - -c
+            - |
+              until pg_isready -h postgresql.default -p 5432 -U unity_catalog_user; do
+                echo "Waiting for PostgreSQL...";
+                sleep 2;
+              done;
+              echo "PostgreSQL is ready!"
+          env:
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: urbalurba-secrets
+                  key: UNITY_CATALOG_DATABASE_PASSWORD
+      containers:
+        - name: unity-catalog-server
+          image: unitycatalog/unitycatalog:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            # Database configuration from secrets
+            - name: HIBERNATE_CONNECTION_URL
+              valueFrom:
+                secretKeyRef:
+                  name: urbalurba-secrets
+                  key: UNITY_CATALOG_DATABASE_URL
+            - name: HIBERNATE_CONNECTION_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: urbalurba-secrets
+                  key: UNITY_CATALOG_DATABASE_USER
+            - name: HIBERNATE_CONNECTION_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: urbalurba-secrets
+                  key: UNITY_CATALOG_DATABASE_PASSWORD
+            
+            # Unity Catalog server configuration
+            - name: UC_SERVER_HOST
+              value: "0.0.0.0"
+            - name: UC_SERVER_PORT
+              value: "8080"
+            - name: UC_LOG_LEVEL
+              value: "INFO"
+            
+            # Authentication configuration
+            - name: UC_AUTH_MODE
+              value: "SIMPLE"
+            
+            # Warehouse directory
+            - name: UC_WAREHOUSE_DIR
+              value: "/tmp/unity-catalog/warehouse"
+            
+            # Java options for better container support
+            - name: JAVA_OPTS
+              value: "-Xmx1g -Xms512m -Djava.security.egd=file:/dev/./urandom"
+          
+          # Resource configuration
+          resources:
+            requests:
+              memory: 512Mi
+              cpu: 500m
+            limits:
+              memory: 1Gi
+              cpu: 1000m
+          
+          # Volume mounts
+          volumeMounts:
+            - name: warehouse-storage
+              mountPath: /tmp/unity-catalog/warehouse
+            - name: config-volume
+              mountPath: /opt/unitycatalog/etc/conf
+              readOnly: true
+          
+          # Health checks
+          livenessProbe:
+            httpGet:
+              path: /api/1.0/unity-catalog/catalogs
+              port: 8080
+            initialDelaySeconds: 120
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          
+          readinessProbe:
+            httpGet:
+              path: /api/1.0/unity-catalog/catalogs
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          
+          # Startup probe (gives more time for initial startup)
+          startupProbe:
+            httpGet:
+              path: /api/1.0/unity-catalog/catalogs
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 12  # 2 minutes total
+          
+          # Security context
+          securityContext:
+            runAsUser: 0
+            runAsGroup: 0
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: false  # Unity Catalog needs write access for temp files
+      
+      volumes:
+        - name: warehouse-storage
+          persistentVolumeClaim:
+            claimName: unity-catalog-warehouse-pvc
+        - name: config-volume
+          configMap:
+            name: unity-catalog-config
+      
+      # Restart policy
+      restartPolicy: Always
+      
+      # Node selection (optional)
+      nodeSelector: {}
+      
+      # Tolerations (optional)
+      tolerations: []
+      
+      # Affinity rules (optional)
+      affinity: {}
+
+---
+# Service for Unity Catalog Server
+apiVersion: v1
+kind: Service
+metadata:
+  name: unity-catalog-server
+  namespace: unity-catalog
+  labels:
+    app: unity-catalog
+    component: server
+    part-of: databricks-replacement
+    phase: data-catalog
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+      protocol: TCP
+  selector:
+    app: unity-catalog
+    component: server
+
+---
+# ClusterRole for Unity Catalog (if needed for future features)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: unity-catalog-server
+  labels:
+    app: unity-catalog
+    component: server
+    part-of: databricks-replacement
+    phase: data-catalog
+rules: []  # No special permissions needed currently
+
+---
+# ClusterRoleBinding for Unity Catalog
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: unity-catalog-server
+  labels:
+    app: unity-catalog
+    component: server
+    part-of: databricks-replacement
+    phase: data-catalog
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: unity-catalog-server
+subjects:
+  - kind: ServiceAccount
+    name: unity-catalog-server
+    namespace: unity-catalog
+
+---
+# Optional: HorizontalPodAutoscaler for Unity Catalog Server
+# Uncomment if you want automatic scaling based on CPU/memory usage
+# apiVersion: autoscaling/v2
+# kind: HorizontalPodAutoscaler
+# metadata:
+#   name: unity-catalog-server-hpa
+#   namespace: unity-catalog
+#   labels:
+#     app: unity-catalog
+#     component: server
+#     part-of: databricks-replacement
+#     phase: data-catalog
+# spec:
+#   scaleTargetRef:
+#     apiVersion: apps/v1
+#     kind: Deployment
+#     name: unity-catalog-server
+#   minReplicas: 1
+#   maxReplicas: 3
+#   metrics:
+#     - type: Resource
+#       resource:
+#         name: cpu
+#         target:
+#           type: Utilization
+#           averageUtilization: 70
+#     - type: Resource
+#       resource:
+#         name: memory
+#         target:
+#           type: Utilization
+#           averageUtilization: 80
