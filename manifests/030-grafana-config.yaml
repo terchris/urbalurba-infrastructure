@@ -1,0 +1,149 @@
+# file: /mnt/urbalurbadisk/manifests/030-grafana-config.yaml
+# Helm values for Grafana (official chart) with OpenTelemetry datasources
+#
+# Description:
+# - Uses admin credentials from urbalurba-secrets
+# - Enables persistent storage with default storage class
+# - Configures ingress for Traefik (*.localhost)
+# - Preconfigures datasources for Prometheus, Loki, and Tempo with correct OTLP-aware settings
+#
+# Usage:
+#   helm upgrade --install grafana grafana/grafana \
+#     --namespace monitoring --create-namespace \
+#     --values manifests/030-grafana-config.yaml
+
+# Admin credentials from secret
+admin:
+  existingSecret: urbalurba-secrets
+  userKey: grafana-admin-user
+  passwordKey: grafana-admin-password
+
+# Persistence configuration
+persistence:
+  enabled: true
+  storageClassName: ""
+  accessModes:
+    - ReadWriteOnce
+  size: 5Gi
+
+# Resource configuration for local development
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+
+# Ingress configuration
+ingress:
+  enabled: true
+  ingressClassName: traefik
+  annotations:
+    traefik.ingress.kubernetes.io/ssl-redirect: "false"
+    traefik.ingress.kubernetes.io/priority: "100"
+  hosts:
+    - grafana.localhost
+  path: /
+  tls: []  # No TLS for local dev
+
+# Datasources provisioned at startup (updated for OTLP compatibility)
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+      # Prometheus datasource
+      - name: Prometheus
+        type: prometheus
+        access: proxy
+        url: http://prometheus-server.monitoring.svc.cluster.local:9090
+        isDefault: true
+        editable: true
+      
+      # Loki datasource (updated for OTLP log format)
+      - name: Loki
+        type: loki
+        access: proxy
+        url: http://loki-gateway.monitoring.svc.cluster.local
+        editable: true
+        jsonData:
+          # Configure for OpenTelemetry log format
+          derivedFields:
+            - name: "trace_id"
+              label: "trace_id"
+              url: "${__value.raw}"
+              datasourceUid: "tempo"
+              matcherRegex: "([a-f0-9]{32})"
+      
+      # Tempo datasource (updated for OpenTelemetry traces)
+      - name: Tempo
+        type: tempo
+        access: proxy
+        url: http://tempo.monitoring.svc.cluster.local:3100
+        uid: "tempo"
+        editable: true
+        jsonData:
+          # Configure trace to logs
+          tracesToLogs:
+            datasourceUid: "loki"
+            tags: ["service_name"]
+            mappedTags:
+              - key: "service.name"
+                value: "service_name"
+            mapTagNamesEnabled: true
+            spanStartTimeShift: "-1h"
+            spanEndTimeShift: "1h"
+            filterByTraceID: true
+            filterBySpanID: false
+          # Configure trace to metrics
+          tracesToMetrics:
+            datasourceUid: "prometheus"
+            tags:
+              - key: "service.name"
+                value: "service_name"
+            queries:
+              - name: "Request rate"
+                query: "rate(traces_service_graph_request_total{service=\"$${service_name}\"}[5m])"
+          # Configure service map
+          serviceMap:
+            datasourceUid: "prometheus"
+          # Node graph settings
+          nodeGraph:
+            enabled: true
+
+# Grafana configuration
+grafana.ini:
+  server:
+    domain: grafana.localhost
+    root_url: "http://grafana.localhost"
+  
+  # Feature toggles for OpenTelemetry
+  feature_toggles:
+    enable: "traceqlEditor,correlations"
+  
+  # Analytics disabled for local development
+  analytics:
+    reporting_enabled: false
+    check_for_updates: false
+  
+  # Users configuration
+  users:
+    allow_sign_up: false
+    auto_assign_org: true
+    auto_assign_org_role: Editor
+
+# Plugins configuration for enhanced OpenTelemetry support
+plugins:
+  - grafana-opensearch-datasource
+
+# Sidecar configuration for dynamic dashboards
+sidecar:
+  dashboards:
+    enabled: true
+    searchNamespace: ALL
+  datasources:
+    enabled: false  # We're using static config above
+
+# ServiceMonitor disabled for resource constraints
+serviceMonitor:
+  enabled: false

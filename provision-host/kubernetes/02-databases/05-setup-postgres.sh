@@ -1,9 +1,9 @@
 #!/bin/bash
-# filename: 05-cloud-setup-postgres.sh
+# filename: 05-setup-postgres.sh
 # description: Setup PostgreSQL on a cluster using Ansible playbook. Verifies storage folder and deploys PostgreSQL.
-# usage: ./05-cloud-setup-postgres.sh [target-host]
-# example: ./05-cloud-setup-postgres.sh multipass-microk8s
-# or in case of rancher desktop use: ./05-cloud-setup-postgres.sh rancher-desktop
+# usage: ./05-setup-postgres.sh [target-host]
+# example: ./05-setup-postgres.sh multipass-microk8s
+# or in case of rancher desktop use: ./05-setup-postgres.sh rancher-desktop
 # If no target host is provided, the script will default to rancher-desktop.
 
 # Ensure the script is run with Bash

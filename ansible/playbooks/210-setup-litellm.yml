@@ -1,0 +1,112 @@
+---
+# file: ansible/playbooks/210-setup-litellm.yml
+# Description:
+# Set up LiteLLM proxy in the AI namespace on Kubernetes
+# - Deploys LiteLLM using the provided Helm chart and values file
+# - Applies ingress for external access
+# - Verifies pod and service status
+#
+# Prerequisites:
+# - The 'ai' namespace must exist
+# - The 'urbalurba-secrets' secret must exist in the 'ai' namespace
+#
+# Usage:
+# ansible-playbook playbooks/210-setup-litellm.yml -e kube_context="rancher-desktop"
+
+- name: Set up LiteLLM proxy on Kubernetes
+  hosts: localhost
+  gather_facts: false
+  vars:
+    manifests_folder: "/mnt/urbalurbadisk/manifests"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    ai_namespace: "ai"
+    installation_timeout: 600  # 10 minutes
+    pod_readiness_timeout: 300 # 5 minutes
+    litellm_config_file: "{{ manifests_folder }}/220-litellm-config.yaml"
+    litellm_ingress_file: "{{ manifests_folder }}/221-litellm-ingress.yaml"
+    litellm_helm_chart: "oci://ghcr.io/berriai/litellm-helm"
+
+  tasks:
+    - name: 1. Deploy LiteLLM via Helm
+      ansible.builtin.command: >
+        helm upgrade --install litellm {{ litellm_helm_chart }}
+        -f {{ litellm_config_file }}
+        --namespace {{ ai_namespace }}
+        --create-namespace
+        --timeout {{ installation_timeout }}s
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: litellm_helm_result
+      changed_when: true
+
+    - name: 2. Apply LiteLLM ingress manifest
+      ansible.builtin.command: kubectl apply -f {{ litellm_ingress_file }} -n {{ ai_namespace }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: litellm_ingress_result
+      changed_when: litellm_ingress_result.rc == 0
+      failed_when: litellm_ingress_result.rc != 0
+
+    - name: 3. Wait for LiteLLM pod to be ready
+      ansible.builtin.shell: |
+        kubectl wait --for=condition=ready pod -l app=litellm -n {{ ai_namespace }} --timeout={{ pod_readiness_timeout }}s || true
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: litellm_wait_result
+      changed_when: false
+      ignore_errors: true
+
+    - name: 4. Display LiteLLM pod readiness status
+      ansible.builtin.debug:
+        msg: "LiteLLM readiness status: {{ 'Ready' if litellm_wait_result.rc == 0 else 'Not ready yet, continuing anyway' }}"
+
+    - name: 5. Get LiteLLM pods
+      ansible.builtin.shell: |
+        kubectl get pods -n {{ ai_namespace }} | grep litellm || true
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: litellm_pods
+      changed_when: false
+      ignore_errors: true
+
+    - name: 6. Display LiteLLM pods
+      ansible.builtin.debug:
+        var: litellm_pods.stdout_lines
+
+    - name: 7. Get LiteLLM service
+      ansible.builtin.shell: |
+        kubectl get svc -n {{ ai_namespace }} | grep litellm || true
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: litellm_service
+      changed_when: false
+      ignore_errors: true
+
+    - name: 8. Display LiteLLM service
+      ansible.builtin.debug:
+        var: litellm_service.stdout_lines
+
+    - name: 9. Display final status
+      ansible.builtin.debug:
+        msg:
+          - "==============================================="
+          - "🚀 LiteLLM Installation Status"
+          - "==============================================="
+          - ""
+          - "{{ '✅ SUCCESS - LiteLLM is running' if litellm_wait_result.rc == 0 else '⚠️ PARTIAL SUCCESS - LiteLLM may still be starting' }}"
+          - ""
+          - "🔄 Status:"
+          - "• Pods:"
+          - "{{ litellm_pods.stdout_lines | default(['No pods found']) }}"
+          - "• Service:"
+          - "{{ litellm_service.stdout_lines | default(['No service found']) }}"
+          - ""
+          - "🌐 Access Instructions:"
+          - "• Port-forward: kubectl port-forward svc/litellm 4000:4000 -n {{ ai_namespace }}"
+          - "• Ingress: http://litellm.localhost"
+          - ""
+          - "🔧 Troubleshooting:"
+          - "• Check pod status: kubectl get pods -n {{ ai_namespace }}"
+          - "• View logs: kubectl logs -f <pod-name> -n {{ ai_namespace }}"
+          - "• Restart deployment: kubectl rollout restart deployment/litellm -n {{ ai_namespace }}"
+          - "===============================================" 

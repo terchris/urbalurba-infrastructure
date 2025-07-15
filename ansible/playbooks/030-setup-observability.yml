@@ -1,0 +1,255 @@
+---
+# File: playbooks/030-setup-observability.yml
+# Description: Set up Observability Stack (Grafana, Loki, Tempo, Prometheus, OpenTelemetry Collector) using official Helm charts
+#
+# This playbook performs the following tasks:
+# 1. Adds/updates official Helm repositories
+# 2. Installs/upgrades each component using Helm and the corresponding values file in manifests/
+# 3. Waits for pods to be ready
+#
+# Usage:
+#   ansible-playbook playbooks/030-setup-observability.yml -e kube_context=your-context
+
+- name: Set up Observability Stack
+  hosts: localhost
+  gather_facts: false
+  vars:
+    manifests_folder: "{{ playbook_dir | dirname }}/../manifests"
+    kube_context: "{{ kube_context | default('rancher-desktop') }}"
+    namespace: monitoring
+    helm_repos:
+      - { name: 'grafana', url: 'https://grafana.github.io/helm-charts' }
+      - { name: 'prometheus-community', url: 'https://prometheus-community.github.io/helm-charts' }
+      - { name: 'open-telemetry', url: 'https://open-telemetry.github.io/opentelemetry-helm-charts' }
+  tasks:
+    - name: 1. Add/update Helm repositories
+      kubernetes.core.helm_repository:
+        name: "{{ item.name }}"
+        repo_url: "{{ item.url }}"
+      loop: "{{ helm_repos }}"
+
+    - name: 2. Update Helm repositories
+      ansible.builtin.command: helm repo update
+      changed_when: false
+
+    - name: 3. Install/upgrade Prometheus
+      kubernetes.core.helm:
+        name: prometheus
+        chart_ref: prometheus-community/prometheus
+        release_namespace: "{{ namespace }}"
+        create_namespace: true
+        values_files:
+          - "{{ manifests_folder }}/036-prometheus-config.yaml"
+        kube_context: "{{ kube_context }}"
+        wait: true
+
+    # --- PROMETHEUS VERIFICATION ---
+    - name: 3a. Wait for Prometheus pod to be ready
+      ansible.builtin.command: >
+        kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=prometheus-server --namespace {{ namespace }} --timeout=180s --context {{ kube_context }}
+      register: prometheus_pod_wait
+      changed_when: false
+      failed_when: prometheus_pod_wait.rc != 0
+
+    - name: 3b. Get Prometheus pod status
+      ansible.builtin.command: >
+        kubectl get pods -n {{ namespace }} -l app.kubernetes.io/name=prometheus-server --context {{ kube_context }}
+      register: prometheus_pod_status
+      changed_when: false
+
+    - name: 3c. Show Prometheus pod status
+      ansible.builtin.debug:
+        var: prometheus_pod_status.stdout_lines
+
+    - name: 3d. Get Prometheus service
+      ansible.builtin.command: >
+        kubectl get svc prometheus-server -n {{ namespace }} --context {{ kube_context }} -o json
+      register: prometheus_svc_json
+      changed_when: false
+      failed_when: prometheus_svc_json.rc != 0
+
+    - name: 3e. Verify Prometheus service port
+      ansible.builtin.set_fact:
+        prometheus_service_port: "{{ (prometheus_svc_json.stdout | from_json).spec.ports[0].port }}"
+      failed_when: prometheus_service_port != 80
+
+    - name: 3f. Show Prometheus service details
+      ansible.builtin.debug:
+        var: prometheus_svc_json.stdout
+
+    # Ingress verification will be added after we confirm how/when it is applied
+
+    - name: 4. Install/upgrade Loki
+      kubernetes.core.helm:
+        name: loki
+        chart_ref: grafana/loki-stack
+        release_namespace: "{{ namespace }}"
+        values_files:
+          - "{{ manifests_folder }}/032-loki-config.yaml"
+        kube_context: "{{ kube_context }}"
+        wait: true
+
+    # --- LOKI VERIFICATION ---
+    - name: 4a. Wait for Loki pod to be ready
+      ansible.builtin.command: >
+        kubectl wait --for=condition=ready pod -l app=loki --namespace {{ namespace }} --timeout=180s --context {{ kube_context }}
+      register: loki_pod_wait
+      changed_when: false
+      failed_when: loki_pod_wait.rc != 0
+
+    - name: 4b. Get Loki pod status
+      ansible.builtin.command: >
+        kubectl get pods -n {{ namespace }} -l app=loki --context {{ kube_context }}
+      register: loki_pod_status
+      changed_when: false
+
+    - name: 4c. Show Loki pod status
+      ansible.builtin.debug:
+        var: loki_pod_status.stdout_lines
+
+    - name: 4d. Get Loki service
+      ansible.builtin.command: >
+        kubectl get svc loki -n {{ namespace }} --context {{ kube_context }} -o json
+      register: loki_svc_json
+      changed_when: false
+      failed_when: loki_svc_json.rc != 0
+
+    - name: 4e. Verify Loki service port
+      ansible.builtin.set_fact:
+        loki_service_port: "{{ (loki_svc_json.stdout | from_json).spec.ports[0].port }}"
+      failed_when: loki_service_port != 3100
+
+    - name: 4f. Show Loki service details
+      ansible.builtin.debug:
+        var: loki_svc_json.stdout
+
+    # No Ingress is deployed for Loki, as it does not provide a UI or require external access.
+
+    - name: 5. Install/upgrade Tempo
+      kubernetes.core.helm:
+        name: tempo
+        chart_ref: grafana/tempo
+        release_namespace: "{{ namespace }}"
+        values_files:
+          - "{{ manifests_folder }}/034-tempo-config.yaml"
+        kube_context: "{{ kube_context }}"
+        wait: true
+
+    # --- TEMPO VERIFICATION ---
+    - name: 5a. Wait for Tempo pod to be ready
+      ansible.builtin.command: >
+        kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=tempo --namespace {{ namespace }} --timeout=180s --context {{ kube_context }}
+      register: tempo_pod_wait
+      changed_when: false
+      failed_when: tempo_pod_wait.rc != 0
+
+    - name: 5b. Get Tempo pod status
+      ansible.builtin.command: >
+        kubectl get pods -n {{ namespace }} -l app.kubernetes.io/name=tempo --context {{ kube_context }}
+      register: tempo_pod_status
+      changed_when: false
+
+    - name: 5c. Show Tempo pod status
+      ansible.builtin.debug:
+        var: tempo_pod_status.stdout_lines
+
+    - name: 5d. Get Tempo service
+      ansible.builtin.command: >
+        kubectl get svc tempo -n {{ namespace }} --context {{ kube_context }} -o json
+      register: tempo_svc_json
+      changed_when: false
+      failed_when: tempo_svc_json.rc != 0
+
+    - name: 5e. Show Tempo service details
+      ansible.builtin.debug:
+        var: tempo_svc_json.stdout
+
+    # No Ingress is deployed for Tempo, as it does not provide a UI or require external access.
+
+    - name: 6. Install/upgrade OpenTelemetry Collector
+      kubernetes.core.helm:
+        name: otel-collector
+        chart_ref: open-telemetry/opentelemetry-collector
+        release_namespace: "{{ namespace }}"
+        values_files:
+          - "{{ manifests_folder }}/038-opentelemetry-config.yaml"
+        kube_context: "{{ kube_context }}"
+        wait: true
+
+    - name: 7. Install/upgrade Grafana
+      kubernetes.core.helm:
+        name: grafana
+        chart_ref: grafana/grafana
+        release_namespace: "{{ namespace }}"
+        values_files:
+          - "{{ manifests_folder }}/030-grafana-config.yaml"
+        kube_context: "{{ kube_context }}"
+        wait: true
+
+    # --- GRAFANA VERIFICATION ---
+    - name: 7a. Wait for Grafana pod to be ready
+      ansible.builtin.command: >
+        kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=grafana --namespace {{ namespace }} --timeout=180s --context {{ kube_context }}
+      register: grafana_pod_wait
+      changed_when: false
+      failed_when: grafana_pod_wait.rc != 0
+
+    - name: 7b. Get Grafana pod status
+      ansible.builtin.command: >
+        kubectl get pods -n {{ namespace }} -l app.kubernetes.io/name=grafana --context {{ kube_context }}
+      register: grafana_pod_status
+      changed_when: false
+
+    - name: 7c. Show Grafana pod status
+      ansible.builtin.debug:
+        var: grafana_pod_status.stdout_lines
+
+    - name: 7d. Get Grafana service
+      ansible.builtin.command: >
+        kubectl get svc grafana -n {{ namespace }} --context {{ kube_context }} -o json
+      register: grafana_svc_json
+      changed_when: false
+      failed_when: grafana_svc_json.rc != 0
+
+    - name: 7e. Show Grafana service details
+      ansible.builtin.debug:
+        var: grafana_svc_json.stdout
+
+    - name: 7f. Get Grafana ingress
+      ansible.builtin.command: >
+        kubectl get ingress grafana -n {{ namespace }} --context {{ kube_context }} -o json
+      register: grafana_ingress_json
+      changed_when: false
+      failed_when: grafana_ingress_json.rc != 0
+
+    - name: 7g. Show Grafana ingress details
+      ansible.builtin.debug:
+        var: grafana_ingress_json.stdout
+
+    - name: 8. Wait for all pods in monitoring namespace to be ready
+      ansible.builtin.command: >
+        kubectl wait --for=condition=ready pod --all --namespace {{ namespace }} --timeout=300s --context {{ kube_context }}
+      register: wait_result
+      until: wait_result.rc == 0
+      retries: 10
+      delay: 15
+
+    - name: 9. Display status of all services in monitoring namespace
+      ansible.builtin.command: >
+        kubectl get svc -n {{ namespace }} --context {{ kube_context }}
+      register: svc_status
+      changed_when: false
+
+    - name: 10. Display status of all ingresses in monitoring namespace
+      ansible.builtin.command: >
+        kubectl get ingress -n {{ namespace }} --context {{ kube_context }}
+      register: ingress_status
+      changed_when: false
+
+    - name: 11. Show service status
+      ansible.builtin.debug:
+        var: svc_status.stdout_lines
+
+    - name: 12. Show ingress status
+      ansible.builtin.debug:
+        var: ingress_status.stdout_lines 

@@ -1,0 +1,107 @@
+# 039-otel-collector-ingress.yaml
+#
+# Description:
+# Ingress configuration for OpenTelemetry Collector using Traefik with proper priority handling.
+# This configuration exposes the OTLP HTTP endpoint for receiving telemetry data from applications.
+#
+# Architecture:
+# - otel-collector.localhost → OpenTelemetry Collector service (specific host rule)
+# - Handles OTLP HTTP traffic on port 4318
+# - Routes to /v1/traces, /v1/logs, /v1/metrics endpoints
+#
+# Priority Explanation:
+# Set high priority to ensure this specific host rule is evaluated before any wildcard rules.
+# This prevents conflicts with other ingress configurations that might use wildcard patterns.
+#
+# OTLP Endpoint Configuration:
+# - OTLP HTTP uses port 4318 by default
+# - Service exposes port 4318 (service level)
+# - Service forwards port 4318 → pod port 4318 (pod level)
+# - Ingress points to service port 4318
+#
+# Supported OTLP paths:
+# - /v1/traces (for trace data)
+# - /v1/logs (for log data)  
+# - /v1/metrics (for metric data)
+#
+# Usage:
+#   kubectl apply -f 039-otel-collector-ingress.yaml
+#
+# Verification:
+#   kubectl describe ingress otel-collector -n monitoring
+#   curl -H "Host: otel-collector.localhost" http://192.168.64.2/v1/logs
+#
+# Dev Container Usage:
+#   export OTEL_EXPORTER_OTLP_ENDPOINT="http://otel-collector.localhost"
+#   export OTEL_EXPORTER_OTLP_HEADERS="Content-Type=application/json"
+#
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: otel-collector
+  namespace: monitoring
+  annotations:
+    # Disable SSL redirect for development
+    traefik.ingress.kubernetes.io/ssl-redirect: "false"
+    
+    # CRITICAL: Set high priority to ensure this specific host rule
+    # is evaluated BEFORE any wildcard ingress rules
+    # Higher number = higher priority (evaluated first)
+    traefik.ingress.kubernetes.io/priority: "150"
+    
+    # Handle OTLP-specific requirements
+    # Allow large payloads for telemetry data
+    traefik.ingress.kubernetes.io/proxy-body-size: "50m"
+    
+    # Preserve original headers for OTLP
+    traefik.ingress.kubernetes.io/pass-host-header: "true"
+    
+    # Optional: Add debugging headers
+    # traefik.ingress.kubernetes.io/request-modifier: "AddHeader"
+    
+  labels:
+    app: otel-collector
+    component: ingress
+spec:
+  # Use Traefik ingress controller
+  ingressClassName: traefik
+  
+  rules:
+    - host: "otel-collector.localhost"
+      http:
+        paths:
+          # OTLP HTTP endpoints - order matters for path matching
+          - path: /v1/traces
+            pathType: Prefix
+            backend:
+              service:
+                name: otel-collector
+                port:
+                  # OTLP HTTP port
+                  number: 4318
+          
+          - path: /v1/logs
+            pathType: Prefix
+            backend:
+              service:
+                name: otel-collector
+                port:
+                  number: 4318
+          
+          - path: /v1/metrics
+            pathType: Prefix
+            backend:
+              service:
+                name: otel-collector
+                port:
+                  number: 4318
+          
+          # Catch-all for any other OTLP paths
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: otel-collector
+                port:
+                  number: 4318
