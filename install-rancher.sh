@@ -139,7 +139,7 @@ if [ ! -f "secrets/id_rsa_ansible.pub" ] || [ ! -f "secrets/id_rsa_ansible" ]; t
 fi
 
 # Check if Rancher Desktop is running and Kubernetes is enabled
-if ! rdctl list-settings &> /dev/null; then
+if [ ! rdctl list-settings &> /dev/null ] || [ ! docker images &> /dev/null ]; then
     echo "Error: Rancher Desktop is not running. Please start Rancher Desktop first."
     exit 1
 fi
