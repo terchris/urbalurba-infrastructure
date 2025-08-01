@@ -214,39 +214,31 @@
         KUBECONFIG: "{{ merged_kubeconf_file }}"
       ignore_errors: true
     
-    # Final check for any remaining resources in the namespace
-    - name: 14a. Check for any remaining resources in monitoring namespace (before namespace deletion)
-      ansible.builtin.shell: |
-        kubectl api-resources --verbs=list --namespaced -o name | xargs -n 1 kubectl get --show-kind --ignore-not-found -n {{ monitoring_namespace }} 2>/dev/null | grep -v "No resources found" || echo "No remaining resources"
-      environment:
-        KUBECONFIG: "{{ merged_kubeconf_file }}"
-      register: remaining_resources_before
-      changed_when: false
-      ignore_errors: true
-    
-    - name: 14b. Display remaining resources before namespace deletion (if any)
-      ansible.builtin.debug:
-        var: remaining_resources_before.stdout_lines
-      when: remaining_resources_before.stdout != "No remaining resources" and remaining_resources_before.stdout_lines | length > 0
-    
     # Force delete the namespace
-    - name: 15a. Delete the monitoring namespace
+    - name: 14a. Delete the monitoring namespace
       ansible.builtin.shell: |
         kubectl delete namespace {{ monitoring_namespace }} --timeout={{ deletion_timeout }}s
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
       register: namespace_deletion_result
+      failed_when: namespace_deletion_result.rc != 0 and
+                  ('not found' not in namespace_deletion_result.stderr | lower)
+      when: namespace_deletion_result is not defined or namespace_deletion_result.rc != 0
       ignore_errors: true
     
-    - name: 15b. Force delete namespace if it's stuck
+    - name: 14b. Force delete namespace if it's stuck
       ansible.builtin.shell: |
         kubectl delete namespace {{ monitoring_namespace }} --grace-period=0 --force
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
       when: namespace_deletion_result.rc != 0
+      register: force_namespace_deletion_result
+      # Ensure we don't fail if the namespace is already gone
+      failed_when: force_namespace_deletion_result.rc != 0 and
+                  ('not found' not in force_namespace_deletion_result.stderr | lower)
       ignore_errors: true
     
-    - name: 15c. Wait for namespace to be fully deleted (with timeout)
+    - name: 14c. Wait for namespace to be fully deleted (with timeout)
       ansible.builtin.shell: |
         timeout 120s bash -c 'while kubectl get namespace {{ monitoring_namespace }} 2>/dev/null; do echo "Waiting for namespace deletion..."; sleep 5; done' || true
       environment:
@@ -255,7 +247,7 @@
       ignore_errors: true
     
     # Final verification
-    - name: 16a. Verify namespace deletion
+    - name: 15a. Verify namespace deletion
       ansible.builtin.shell: |
         kubectl get namespace {{ monitoring_namespace }} 2>/dev/null || echo "Namespace successfully deleted"
       environment:
@@ -264,7 +256,7 @@
       changed_when: false
       ignore_errors: true
     
-    - name: 16b. Verify Helm release removal
+    - name: 15b. Verify Helm release removal
       ansible.builtin.shell: |
         helm list --all-namespaces | grep {{ promstack_release_name }} || echo "Helm release successfully removed"
       environment:
@@ -273,7 +265,7 @@
       changed_when: false
       ignore_errors: true
     
-    - name: 16c. Check for any remaining Prometheus CRDs (monitoring.coreos.com group)
+    - name: 15c. Check for any remaining Prometheus CRDs (monitoring.coreos.com group)
       ansible.builtin.shell: |
         kubectl get crd -o jsonpath='{.items[?(@.spec.group=="monitoring.coreos.com")].metadata.name}' | tr ' ' '\n' | grep -v '^$' || echo "All Prometheus CRDs successfully removed"
       environment:
@@ -282,7 +274,7 @@
       changed_when: false
       ignore_errors: true
     
-    - name: 17. Display final cleanup status
+    - name: 16. Display final cleanup status
       ansible.builtin.debug:
         msg: |
           Prometheus Stack Cleanup Status:
