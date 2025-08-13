@@ -1,0 +1,304 @@
+---
+# file: ansible/playbooks/231-delete-promstack.yml
+# Description:
+# Delete Prometheus Stack from Kubernetes
+# - Uninstalls kube-prometheus-stack Helm chart
+# - Removes all associated resources including CRDs, PVCs, ServiceAccounts
+# - Cleans up the monitoring namespace
+# - Ensures complete removal of all Prometheus stack components
+#
+# Usage:
+# ansible-playbook playbooks/231-delete-promstack.yml -e kube_context="rancher-desktop"
+
+- name: Delete Prometheus Stack from Kubernetes
+  hosts: localhost
+  gather_facts: false
+  vars:
+    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    monitoring_namespace: "monitoring"
+    deletion_timeout: 300  # 5 minutes timeout for deletions
+    # Helm chart references
+    promstack_release_name: "prometheus-stack"
+
+  tasks:
+    - name: 1. Get current Kubernetes context if kube_context not provided
+      ansible.builtin.shell: |
+        kubectl config current-context
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: current_context
+      changed_when: false
+      when: kube_context is not defined
+      
+    - name: 2. Set kube_context from current context if not provided
+      ansible.builtin.set_fact:
+        kube_context: "{{ current_context.stdout }}"
+      when: kube_context is not defined
+
+    - name: 3. Print playbook description
+      ansible.builtin.debug:
+        msg: "Deleting Prometheus Stack from Kubernetes context: {{ kube_context }}"
+    
+    # Check if Helm release exists
+    - name: 4a. Check if Prometheus Stack Helm release exists
+      ansible.builtin.shell: |
+        helm list -n {{ monitoring_namespace }} | grep {{ promstack_release_name }} || echo "not_found"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: helm_release_check
+      changed_when: false
+      ignore_errors: true
+    
+    - name: 4b. Display Helm release status
+      ansible.builtin.debug:
+        msg: "{{ 'Prometheus Stack Helm release found' if 'not_found' not in helm_release_check.stdout else 'Prometheus Stack Helm release not found' }}"
+    
+    # Uninstall Helm chart if it exists
+    - name: 5a. Uninstall Prometheus Stack Helm chart
+      ansible.builtin.shell: |
+        helm uninstall {{ promstack_release_name }} -n {{ monitoring_namespace }} --timeout {{ deletion_timeout }}s
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: helm_uninstall_result
+      when: "'not_found' not in helm_release_check.stdout"
+      ignore_errors: true
+    
+    - name: 5b. Display Helm uninstall result
+      ansible.builtin.debug:
+        msg: "{{ 'Helm chart uninstalled successfully' if helm_uninstall_result is succeeded else 'Helm chart uninstall failed or was not needed' }}"
+      when: helm_uninstall_result is defined
+    
+    # Wait for pods to terminate
+    - name: 6a. Wait for all pods in monitoring namespace to terminate
+      ansible.builtin.shell: |
+        kubectl wait --for=delete pods --all -n {{ monitoring_namespace }} --timeout={{ deletion_timeout }}s || true
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: pods_deletion_result
+      ignore_errors: true
+    
+    - name: 6b. Display pod deletion status
+      ansible.builtin.debug:
+        msg: "Pod deletion completed (or timed out)"
+    
+    # Force delete any remaining pods
+    - name: 7a. Get any remaining pods in monitoring namespace
+      ansible.builtin.shell: |
+        kubectl get pods -n {{ monitoring_namespace }} --no-headers 2>/dev/null | wc -l || echo "0"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: remaining_pods_count
+      changed_when: false
+      ignore_errors: true
+    
+    - name: 7b. Force delete remaining pods if any exist
+      ansible.builtin.shell: |
+        kubectl delete pods --all -n {{ monitoring_namespace }} --force --grace-period=0
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      when: remaining_pods_count.stdout | int > 0
+      ignore_errors: true
+    
+    # Delete PVCs (they might not be deleted automatically)
+    - name: 8a. Get all PVCs in monitoring namespace
+      ansible.builtin.shell: |
+        kubectl get pvc -n {{ monitoring_namespace }} --no-headers 2>/dev/null || echo "No PVCs found"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: pvcs_list
+      changed_when: false
+      ignore_errors: true
+    
+    - name: 8b. Display PVCs to be deleted
+      ansible.builtin.debug:
+        var: pvcs_list.stdout_lines
+      when: pvcs_list.stdout != "No PVCs found"
+    
+    - name: 8c. Delete all PVCs in monitoring namespace
+      ansible.builtin.shell: |
+        kubectl delete pvc --all -n {{ monitoring_namespace }} --timeout={{ deletion_timeout }}s
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      when: pvcs_list.stdout != "No PVCs found"
+      ignore_errors: true
+    
+    # Delete ServiceAccounts
+    - name: 9a. Delete ServiceAccounts created by Prometheus stack
+      ansible.builtin.shell: |
+        kubectl delete serviceaccount -n {{ monitoring_namespace }} \
+        -l "app.kubernetes.io/managed-by=Helm" \
+        --timeout={{ deletion_timeout }}s || true
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      ignore_errors: true
+    
+    # Delete ClusterRoles and ClusterRoleBindings
+    - name: 10a. Delete ClusterRoles created by Prometheus stack
+      ansible.builtin.shell: |
+        kubectl delete clusterrole \
+        -l "app.kubernetes.io/managed-by=Helm,app.kubernetes.io/instance={{ promstack_release_name }}" \
+        --timeout={{ deletion_timeout }}s || true
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      ignore_errors: true
+    
+    - name: 10b. Delete ClusterRoleBindings created by Prometheus stack
+      ansible.builtin.shell: |
+        kubectl delete clusterrolebinding \
+        -l "app.kubernetes.io/managed-by=Helm,app.kubernetes.io/instance={{ promstack_release_name }}" \
+        --timeout={{ deletion_timeout }}s || true
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      ignore_errors: true
+    
+    # Delete CRDs created by Prometheus Operator (by group)
+    - name: 11a. Get Prometheus Operator CRDs (monitoring.coreos.com group)
+      ansible.builtin.shell: |
+        kubectl get crd -o jsonpath='{.items[?(@.spec.group=="monitoring.coreos.com")].metadata.name}' | tr ' ' '\n' | grep -v '^$' || echo "No CRDs found"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: prometheus_crds
+      changed_when: false
+      ignore_errors: true
+    
+    - name: 11b. Display Prometheus CRDs to be deleted
+      ansible.builtin.debug:
+        var: prometheus_crds.stdout_lines
+      when: prometheus_crds.stdout != "No CRDs found"
+    
+    - name: 11c. Delete Prometheus Operator CRDs (monitoring.coreos.com group)
+      ansible.builtin.shell: |
+        kubectl delete crd {{ item }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      loop: "{{ prometheus_crds.stdout_lines }}"
+      when: prometheus_crds.stdout != "No CRDs found" and item != ""
+      ignore_errors: true
+    
+    # Delete any remaining secrets
+    - name: 12a. Delete secrets created by Prometheus stack
+      ansible.builtin.shell: |
+        kubectl delete secret -n {{ monitoring_namespace }} \
+        -l "app.kubernetes.io/managed-by=Helm" \
+        --timeout={{ deletion_timeout }}s || true
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      ignore_errors: true
+    
+    # Delete any remaining configmaps
+    - name: 12b. Delete configmaps created by Prometheus stack
+      ansible.builtin.shell: |
+        kubectl delete configmap -n {{ monitoring_namespace }} \
+        -l "app.kubernetes.io/managed-by=Helm" \
+        --timeout={{ deletion_timeout }}s || true
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      ignore_errors: true
+    
+    # Delete any webhook configurations that might block namespace deletion
+    - name: 13a. Delete ValidatingAdmissionWebhooks related to Prometheus
+      ansible.builtin.shell: |
+        kubectl delete validatingadmissionwebhook \
+        -l "app.kubernetes.io/name=prometheus-operator" \
+        --timeout={{ deletion_timeout }}s || true
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      ignore_errors: true
+    
+    - name: 13b. Delete MutatingAdmissionWebhooks related to Prometheus
+      ansible.builtin.shell: |
+        kubectl delete mutatingadmissionwebhook \
+        -l "app.kubernetes.io/name=prometheus-operator" \
+        --timeout={{ deletion_timeout }}s || true
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      ignore_errors: true
+    
+    # Force delete the namespace
+    - name: 14a. Delete the monitoring namespace
+      ansible.builtin.shell: |
+        kubectl delete namespace {{ monitoring_namespace }} --timeout={{ deletion_timeout }}s
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: namespace_deletion_result
+      failed_when: namespace_deletion_result.rc != 0 and
+                  ('not found' not in namespace_deletion_result.stderr | lower)
+      when: namespace_deletion_result is not defined or namespace_deletion_result.rc != 0
+      ignore_errors: true
+    
+    - name: 14b. Force delete namespace if it's stuck
+      ansible.builtin.shell: |
+        kubectl delete namespace {{ monitoring_namespace }} --grace-period=0 --force
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      when: namespace_deletion_result.rc != 0
+      register: force_namespace_deletion_result
+      # Ensure we don't fail if the namespace is already gone
+      failed_when: force_namespace_deletion_result.rc != 0 and
+                  ('not found' not in force_namespace_deletion_result.stderr | lower)
+      ignore_errors: true
+    
+    - name: 14c. Wait for namespace to be fully deleted (with timeout)
+      ansible.builtin.shell: |
+        timeout 120s bash -c 'while kubectl get namespace {{ monitoring_namespace }} 2>/dev/null; do echo "Waiting for namespace deletion..."; sleep 5; done' || true
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      when: namespace_deletion_result is defined
+      ignore_errors: true
+    
+    # Final verification
+    - name: 15a. Verify namespace deletion
+      ansible.builtin.shell: |
+        kubectl get namespace {{ monitoring_namespace }} 2>/dev/null || echo "Namespace successfully deleted"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: namespace_check
+      changed_when: false
+      ignore_errors: true
+    
+    - name: 15b. Verify Helm release removal
+      ansible.builtin.shell: |
+        helm list --all-namespaces | grep {{ promstack_release_name }} || echo "Helm release successfully removed"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: helm_check
+      changed_when: false
+      ignore_errors: true
+    
+    - name: 15c. Check for any remaining Prometheus CRDs (monitoring.coreos.com group)
+      ansible.builtin.shell: |
+        kubectl get crd -o jsonpath='{.items[?(@.spec.group=="monitoring.coreos.com")].metadata.name}' | tr ' ' '\n' | grep -v '^$' || echo "All Prometheus CRDs successfully removed"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: crds_check
+      changed_when: false
+      ignore_errors: true
+    
+    - name: 16. Display final cleanup status
+      ansible.builtin.debug:
+        msg: |
+          Prometheus Stack Cleanup Status:
+          
+          Namespace: {{ 'Successfully deleted' if 'successfully deleted' in namespace_check.stdout else 'May still exist - check manually' }}
+          Helm Release: {{ 'Successfully removed' if 'successfully removed' in helm_check.stdout else 'May still exist - check manually' }}
+          CRDs: {{ 'Successfully removed' if 'successfully removed' in crds_check.stdout else 'Some CRDs may remain - check manually' }}
+          
+          Verification Commands:
+          - Check namespace: kubectl get namespace {{ monitoring_namespace }}
+          - Check Helm releases: helm list --all-namespaces
+          - Check CRDs (monitoring.coreos.com): kubectl get crd -o jsonpath='{.items[?(@.spec.group=="monitoring.coreos.com")].metadata.name}'
+          - Check ClusterRoles: kubectl get clusterrole | grep prometheus
+          - Check ClusterRoleBindings: kubectl get clusterrolebinding | grep prometheus
+          
+          Manual cleanup commands (if needed):
+          - Force delete namespace: kubectl delete namespace {{ monitoring_namespace }} --grace-period=0 --force
+          - Remove finalizers: kubectl patch namespace {{ monitoring_namespace }} -p '{"metadata":{"finalizers":null}}'
+          - Delete specific CRDs: kubectl delete crd <crd-name>
+          - List all monitoring.coreos.com CRDs: kubectl get crd -o jsonpath='{.items[?(@.spec.group=="monitoring.coreos.com")].metadata.name}'
+          
+          If namespace is stuck in "Terminating" state, you may need to:
+          1. Check for resources with finalizers: kubectl get all -n {{ monitoring_namespace }} -o yaml | grep finalizers
+          2. Remove finalizers manually from stuck resources
+          3. Or use: kubectl patch namespace {{ monitoring_namespace }} -p '{"metadata":{"finalizers":null}}'
+          
+          CLEANUP {{ 'COMPLETED SUCCESSFULLY' if 'successfully deleted' in namespace_check.stdout and 'successfully removed' in helm_check.stdout else 'COMPLETED WITH WARNINGS - Manual verification recommended' }}

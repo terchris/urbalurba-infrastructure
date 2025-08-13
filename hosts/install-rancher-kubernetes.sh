@@ -92,7 +92,7 @@ if ! command -v kubectl &> /dev/null; then
 fi
 
 # Check if Rancher Desktop is running
-if ! rdctl list-settings &> /dev/null; then
+if [ ! rdctl list-settings &> /dev/null ] || [ ! docker images &> /dev/null ]; then
     echo "Error: Rancher Desktop is not running. Please start Rancher Desktop first."
     exit 1
 fi
