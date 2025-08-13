@@ -56,7 +56,12 @@ global:
       ports:
         postgresql: 5432
 
+# in order to use a custom image we also need to set allowInsecureImages: true
+  security:
+    allowInsecureImages: true
+
 # Use custom Urbalurba PostgreSQL container with pre-built extensions
+
 image:
   registry: ghcr.io
   repository: terchris/urbalurba-postgresql
