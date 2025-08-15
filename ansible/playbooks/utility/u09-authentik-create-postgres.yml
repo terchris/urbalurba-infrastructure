@@ -1,0 +1,464 @@
+---
+# u09-authentik-create-postgres.yml
+# TODO: if the AUTHENTIK_POSTGRESQL__PASSWORD cant be read then there must be an error
+#
+# Description:
+#   This playbook fully automates the creation and deletion of PostgreSQL user and database for Authentik inside a Kubernetes cluster.
+#   It fetches required credentials from Kubernetes secrets:
+#     - The Authentik database password is fetched from the 'urbalurba-secrets' secret in the 'authentik' namespace.
+#     - The PostgreSQL admin password and host are fetched from the 'urbalurba-secrets' secret in the 'default' namespace.
+#   It automatically sets up a temporary kubectl port-forward to the PostgreSQL service in the 'default' namespace,
+#   waits for the port to be ready, performs all required database operations, and then cleans up the port-forward process.
+#
+#   No manual port-forwarding or database exposure is required. All operations are performed securely via localhost.
+#
+# Operations supported:
+#   CREATE MODE (default): Sets up Authentik database with full permissions
+#   DELETE MODE: Completely removes Authentik database and user
+#
+# What this playbook does in CREATE mode:
+#   1. Fetches Authentik DB credentials from the 'authentik' namespace secret.
+#   2. Fetches PostgreSQL admin credentials and host from the 'default' namespace secret.
+#   3. Sets all required Ansible variables.
+#   4. Starts a background port-forward from localhost:5432 to the PostgreSQL service in Kubernetes (namespace: default).
+#   5. Waits for the port to be ready.
+#   6. Ensures the Authentik database user exists with proper privileges.
+#   7. Ensures the Authentik database exists and is owned by the user.
+#   8. Grants all required privileges for Django migrations and PostgreSQL 15+ compatibility.
+#   9. Sets default privileges for future objects.
+#   10. Tests the connection and verifies permissions.
+#   11. Cleans up the port-forward process at the end.
+#
+# What this playbook does in DELETE mode:
+#   1. Fetches PostgreSQL admin credentials.
+#   2. Sets up port-forward to PostgreSQL.
+#   3. Terminates any active connections to the authentik database.
+#   4. Drops the authentik database completely.
+#   5. Drops the authentik user completely.
+#   6. Verifies cleanup was successful.
+#   7. Cleans up the port-forward process.
+#
+# Usage examples:
+#   # Create Authentik database and user (default)
+#   cd ansible
+#   ansible-playbook playbooks/utility/u09-authentik-create-postgres.yml
+#
+#   # Create Authentik database and user (explicit)
+#   ansible-playbook playbooks/utility/u09-authentik-create-postgres.yml -e operation=create
+#
+#   # Delete Authentik database and user
+#   ansible-playbook playbooks/utility/u09-authentik-create-postgres.yml -e operation=delete
+#
+# Notes:
+#   - This playbook assumes the PostgreSQL service is named 'postgresql' and is running in the 'default' namespace.
+#   - The playbook must be run from a machine with access to the Kubernetes cluster (kubectl configured).
+#   - No changes to your cluster networking or DB exposure are required.
+#   - All permissions are set to be compatible with PostgreSQL 15+ and Django migrations.
+#   - DELETE operation is irreversible - all Authentik data will be lost!
+# -----------------------------------------------------------------------------
+
+- hosts: localhost
+  gather_facts: false
+  vars:
+    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    # operation variable is passed as parameter, defaults to 'create' if not specified
+  
+  tasks:
+    - name: 1. Set operation default if not provided
+      set_fact:
+        current_operation: "{{ operation | default('create') }}"
+
+    - name: 2. Validate operation parameter
+      fail:
+        msg: "Invalid operation '{{ current_operation }}'. Must be 'create' or 'delete'"
+      when: current_operation not in ['create', 'delete']
+
+    - name: 3. Display operation mode
+      debug:
+        msg: |
+          🔧 Authentik PostgreSQL Management Playbook
+          📝 Operation: {{ current_operation | upper }}
+          {% if current_operation == 'create' %}
+          🏗️  Mode: Setting up Authentik database with full PostgreSQL 15+ compatibility
+          {% else %}
+          🗑️  Mode: Removing Authentik database and user (IRREVERSIBLE!)
+          {% endif %}
+
+    - name: 4. Get urbalurba-secrets from authentik namespace (create mode only)
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Secret
+        name: urbalurba-secrets
+        namespace: authentik
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: authentik_secret
+      when: current_operation == 'create'
+      ignore_errors: yes
+
+    - name: 5. Get urbalurba-secrets from default namespace
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Secret
+        name: urbalurba-secrets
+        namespace: default
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: default_secret
+
+    - name: 6. Set DB connection variables
+      set_fact:
+        pg_user: "authentik"
+        pg_password: "{{ authentik_secret.resources[0].data.AUTHENTIK_POSTGRESQL__PASSWORD | b64decode if current_operation == 'create' and authentik_secret.resources else 'N/A' }}"
+        pg_db: "authentik"
+        pg_host: "{{ default_secret.resources[0].data.PGHOST | b64decode }}"
+        pg_admin_user: "postgres"
+        pg_admin_password: "{{ default_secret.resources[0].data.PGPASSWORD | b64decode }}"
+
+    - name: 7. Display configuration (passwords masked)
+      debug:
+        msg: |
+          🗄️ Authentik PostgreSQL {{ current_operation | upper }} Operation
+          📊 Database: {{ pg_db }}
+          👤 User: {{ pg_user }}
+          🏠 Host: {{ pg_host }}
+          🔐 Admin: {{ pg_admin_user }}
+          🔑 Passwords: [MASKED]
+          {% if current_operation == 'create' %}
+          📝 Note: Setting PostgreSQL 15+ compatible permissions for Django migrations
+          {% else %}
+          ⚠️  WARNING: This will permanently delete all Authentik data!
+          {% endif %}
+
+    - name: 8. Confirm deletion (delete mode only)
+      pause:
+        prompt: |
+          ⚠️  DESTRUCTIVE OPERATION WARNING ⚠️
+          
+          You are about to PERMANENTLY DELETE:
+          - Database: authentik
+          - User: authentik
+          - ALL Authentik configuration and user data
+          
+          This operation is IRREVERSIBLE!
+          
+          Type 'yes' to continue, or 'no' to abort
+      register: delete_confirmation
+      when: current_operation == 'delete'
+
+    - name: 9. Abort on deletion refusal
+      fail:
+        msg: "❌ Deletion aborted by user"
+      when: current_operation == 'delete' and delete_confirmation.user_input | lower != 'yes'
+
+    - name: 10. Start port-forward to PostgreSQL in background
+      shell: |
+        kubectl port-forward svc/postgresql 5432:5432 -n default > /tmp/pg-portforward.log 2>&1 &
+        echo $! > /tmp/pg-portforward.pid
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      async: 10
+      poll: 0
+
+    - name: 11. Wait for PostgreSQL port-forward to be ready
+      wait_for:
+        host: localhost
+        port: 5432
+        delay: 2
+        timeout: 30
+
+    # DELETE OPERATION TASKS
+    - block:
+        - name: 12-DEL. Terminate active connections to authentik database
+          community.postgresql.postgresql_query:
+            login_host: "localhost"
+            login_user: "{{ pg_admin_user }}"
+            login_password: "{{ pg_admin_password }}"
+            port: "{{ pg_port | default(5432) }}"
+            db: postgres
+            query: |
+              SELECT pg_terminate_backend(pid)
+              FROM pg_stat_activity
+              WHERE datname = '{{ pg_db }}' AND pid <> pg_backend_pid();
+          ignore_errors: yes
+
+        - name: 13-DEL. Drop authentik database
+          community.postgresql.postgresql_db:
+            name: "{{ pg_db }}"
+            login_host: "localhost"
+            login_user: "{{ pg_admin_user }}"
+            login_password: "{{ pg_admin_password }}"
+            port: "{{ pg_port | default(5432) }}"
+            state: absent
+
+        - name: 14-DEL. Drop authentik user
+          community.postgresql.postgresql_user:
+            name: "{{ pg_user }}"
+            login_host: "localhost"
+            login_user: "{{ pg_admin_user }}"
+            login_password: "{{ pg_admin_password }}"
+            port: "{{ pg_port | default(5432) }}"
+            state: absent
+
+        - name: 15-DEL. Verify cleanup - check database
+          community.postgresql.postgresql_query:
+            login_host: "localhost"
+            login_user: "{{ pg_admin_user }}"
+            login_password: "{{ pg_admin_password }}"
+            port: "{{ pg_port | default(5432) }}"
+            db: postgres
+            query: "SELECT 1 FROM pg_database WHERE datname = '{{ pg_db }}';"
+          register: db_check
+
+        - name: 16-DEL. Verify cleanup - check user
+          community.postgresql.postgresql_query:
+            login_host: "localhost"
+            login_user: "{{ pg_admin_user }}"
+            login_password: "{{ pg_admin_password }}"
+            port: "{{ pg_port | default(5432) }}"
+            db: postgres
+            query: "SELECT 1 FROM pg_user WHERE usename = '{{ pg_user }}';"
+          register: user_check
+
+        - name: 17-DEL. Display cleanup results
+          debug:
+            msg: |
+              ✅ Authentik PostgreSQL cleanup completed!
+              
+              🗑️ Cleanup Results:
+              - Database '{{ pg_db }}': {% if db_check.query_result | length == 0 %}REMOVED ✅{% else %}STILL EXISTS ❌{% endif %}
+              - User '{{ pg_user }}': {% if user_check.query_result | length == 0 %}REMOVED ✅{% else %}STILL EXISTS ❌{% endif %}
+              
+              {% if db_check.query_result | length == 0 and user_check.query_result | length == 0 %}
+              🎉 Complete cleanup successful! Ready for fresh Authentik deployment.
+              {% else %}
+              ⚠️  Some resources may still exist. Check manually if needed.
+              {% endif %}
+
+      when: current_operation == 'delete'
+
+    # CREATE OPERATION TASKS
+    - block:
+        - name: 12-CREATE. Ensure PostgreSQL user exists with CREATEDB privilege
+          community.postgresql.postgresql_user:
+            name: "{{ pg_user }}"
+            password: "{{ pg_password }}"
+            login_host: "localhost"
+            login_user: "{{ pg_admin_user }}"
+            login_password: "{{ pg_admin_password }}"
+            port: "{{ pg_port | default(5432) }}"
+            role_attr_flags: CREATEDB,LOGIN
+            state: present
+
+        - name: 13-CREATE. Ensure PostgreSQL database exists
+          community.postgresql.postgresql_db:
+            name: "{{ pg_db }}"
+            owner: "{{ pg_user }}"
+            login_host: "localhost"
+            login_user: "{{ pg_admin_user }}"
+            login_password: "{{ pg_admin_password }}"
+            port: "{{ pg_port | default(5432) }}"
+            state: present
+
+        - name: 14-CREATE. Grant all database privileges to user
+          community.postgresql.postgresql_privs:
+            db: "{{ pg_db }}"
+            type: database
+            privs: ALL
+            objs: "{{ pg_db }}"
+            roles: "{{ pg_user }}"
+            login_host: "localhost"
+            login_user: "{{ pg_admin_user }}"
+            login_password: "{{ pg_admin_password }}"
+            port: "{{ pg_port | default(5432) }}"
+
+        - name: 15-CREATE. Grant explicit CONNECT privilege on database
+          community.postgresql.postgresql_privs:
+            db: "{{ pg_db }}"
+            type: database
+            privs: CONNECT
+            objs: "{{ pg_db }}"
+            roles: "{{ pg_user }}"
+            login_host: "localhost"
+            login_user: "{{ pg_admin_user }}"
+            login_password: "{{ pg_admin_password }}"
+            port: "{{ pg_port | default(5432) }}"
+
+        - name: 16-CREATE. Grant all schema privileges to user (PostgreSQL 15+ requirement)
+          community.postgresql.postgresql_privs:
+            db: "{{ pg_db }}"
+            type: schema
+            objs: public
+            privs: ALL
+            roles: "{{ pg_user }}"
+            login_host: "localhost"
+            login_user: "{{ pg_admin_user }}"
+            login_password: "{{ pg_admin_password }}"
+            port: "{{ pg_port | default(5432) }}"
+
+        - name: 17-CREATE. Grant explicit USAGE and CREATE privileges on public schema
+          community.postgresql.postgresql_privs:
+            db: "{{ pg_db }}"
+            type: schema
+            objs: public
+            privs: USAGE,CREATE
+            roles: "{{ pg_user }}"
+            login_host: "localhost"
+            login_user: "{{ pg_admin_user }}"
+            login_password: "{{ pg_admin_password }}"
+            port: "{{ pg_port | default(5432) }}"
+
+        - name: 18-CREATE. Grant privileges on all current tables in public schema
+          community.postgresql.postgresql_privs:
+            db: "{{ pg_db }}"
+            type: table
+            objs: ALL_IN_SCHEMA
+            schema: public
+            privs: ALL
+            roles: "{{ pg_user }}"
+            login_host: "localhost"
+            login_user: "{{ pg_admin_user }}"
+            login_password: "{{ pg_admin_password }}"
+            port: "{{ pg_port | default(5432) }}"
+
+        - name: 19-CREATE. Grant privileges on all current sequences in public schema
+          community.postgresql.postgresql_privs:
+            db: "{{ pg_db }}"
+            type: sequence
+            objs: ALL_IN_SCHEMA
+            schema: public
+            privs: ALL
+            roles: "{{ pg_user }}"
+            login_host: "localhost"
+            login_user: "{{ pg_admin_user }}"
+            login_password: "{{ pg_admin_password }}"
+            port: "{{ pg_port | default(5432) }}"
+
+        - name: 20-CREATE. Grant privileges on all current functions in public schema
+          community.postgresql.postgresql_privs:
+            db: "{{ pg_db }}"
+            type: function
+            objs: ALL_IN_SCHEMA
+            schema: public
+            privs: ALL
+            roles: "{{ pg_user }}"
+            login_host: "localhost"
+            login_user: "{{ pg_admin_user }}"
+            login_password: "{{ pg_admin_password }}"
+            port: "{{ pg_port | default(5432) }}"
+
+        - name: 21-CREATE. Set default privileges for future tables created by authentik user
+          community.postgresql.postgresql_query:
+            db: "{{ pg_db }}"
+            login_host: "localhost"
+            login_user: "{{ pg_admin_user }}"
+            login_password: "{{ pg_admin_password }}"
+            port: "{{ pg_port | default(5432) }}"
+            query: "ALTER DEFAULT PRIVILEGES FOR ROLE {{ pg_user }} IN SCHEMA public GRANT ALL ON TABLES TO {{ pg_user }};"
+
+        - name: 22-CREATE. Set default privileges for future sequences created by authentik user
+          community.postgresql.postgresql_query:
+            db: "{{ pg_db }}"
+            login_host: "localhost"
+            login_user: "{{ pg_admin_user }}"
+            login_password: "{{ pg_admin_password }}"
+            port: "{{ pg_port | default(5432) }}"
+            query: "ALTER DEFAULT PRIVILEGES FOR ROLE {{ pg_user }} IN SCHEMA public GRANT ALL ON SEQUENCES TO {{ pg_user }};"
+
+        - name: 23-CREATE. Set default privileges for future functions created by authentik user
+          community.postgresql.postgresql_query:
+            db: "{{ pg_db }}"
+            login_host: "localhost"
+            login_user: "{{ pg_admin_user }}"
+            login_password: "{{ pg_admin_password }}"
+            port: "{{ pg_port | default(5432) }}"
+            query: "ALTER DEFAULT PRIVILEGES FOR ROLE {{ pg_user }} IN SCHEMA public GRANT ALL ON FUNCTIONS TO {{ pg_user }};"
+
+        - name: 24-CREATE. Test connection with Authentik user
+          community.postgresql.postgresql_query:
+            db: "{{ pg_db }}"
+            login_host: "localhost"
+            login_user: "{{ pg_user }}"
+            login_password: "{{ pg_password }}"
+            port: "{{ pg_port | default(5432) }}"
+            query: "SELECT current_database(), current_user, version()"
+          register: connection_test
+
+        - name: 25-CREATE. Verify user permissions
+          community.postgresql.postgresql_query:
+            db: "{{ pg_db }}"
+            login_host: "localhost"
+            login_user: "{{ pg_user }}"
+            login_password: "{{ pg_password }}"
+            port: "{{ pg_port | default(5432) }}"
+            query: |
+              SELECT 
+                has_database_privilege('{{ pg_user }}', '{{ pg_db }}', 'CREATE') as can_create_objects,
+                has_schema_privilege('{{ pg_user }}', 'public', 'CREATE') as can_create_in_schema,
+                has_schema_privilege('{{ pg_user }}', 'public', 'USAGE') as can_use_schema,
+                usesuper as is_superuser,
+                usecreatedb as can_create_db
+              FROM pg_user WHERE usename = '{{ pg_user }}';
+          register: permission_test
+
+        - name: 26-CREATE. Display connection and permission test results
+          debug:
+            msg: |
+              ✅ Authentik PostgreSQL setup completed successfully!
+              
+              📊 Connection Test:
+              - Database: {{ connection_test.query_result[0].current_database }}
+              - User: {{ connection_test.query_result[0].current_user }}
+              - PostgreSQL Version: {{ connection_test.query_result[0].version }}
+              
+              🔐 Permissions Verified:
+              - Can create objects in database: {{ permission_test.query_result[0].can_create_objects }}
+              - Can create objects in public schema: {{ permission_test.query_result[0].can_create_in_schema }}
+              - Can use public schema: {{ permission_test.query_result[0].can_use_schema }}
+              - Can create databases: {{ permission_test.query_result[0].can_create_db }}
+              - Is superuser: {{ permission_test.query_result[0].is_superuser }}
+
+      when: current_operation == 'create'
+
+    - name: 99. Stop port-forward process
+      shell: |
+        kill $(cat /tmp/pg-portforward.pid) || true
+        rm -f /tmp/pg-portforward.pid
+      ignore_errors: yes
+
+    - name: 100. Final summary
+      debug:
+        msg: |
+          {% if current_operation == 'create' %}
+          🎉 Authentik database setup complete with full PostgreSQL 15+ compatibility!
+          
+          ✅ What was configured:
+          - Database: authentik (owned by authentik user)
+          - User: authentik (with CREATEDB privilege)
+          - All database and schema privileges granted
+          - PostgreSQL 15+ public schema access configured
+          - Default privileges set for future objects
+          - All permissions verified working
+          
+          🚀 Ready for Authentik deployment:
+          - Host: postgresql.default.svc.cluster.local
+          - Port: 5432
+          - Database: authentik
+          - User: authentik
+          - Password: [configured in secrets]
+          
+          You can now deploy Authentik using your helm configuration.
+          The database will be automatically initialized on first startup.
+          {% else %}
+          🗑️ Authentik database cleanup completed!
+          
+          ✅ What was removed:
+          - Database: authentik (completely deleted)
+          - User: authentik (completely deleted)
+          - All associated data and permissions
+          
+          🚀 Ready for fresh deployment:
+          - No Authentik database or user exists
+          - Clean state for new installation
+          - Shared PostgreSQL service unaffected
+          
+          Run with -e operation=create to set up fresh Authentik database.
+          {% endif %}

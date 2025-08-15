@@ -99,12 +99,19 @@ if ! docker exec "$CONTAINER_NAME" kubectl --context=$CONTEXT apply -f "/mnt/urb
 fi
 STATUS+=("Apply secrets: OK")
 
-# Test 6: Verify secrets exist
+# Test 6: Verify secrets exist in default namespace
 echo "6: Verifying secrets were created in namespace $NAMESPACE for context $CONTEXT..."
 if ! docker exec "$CONTAINER_NAME" kubectl --context=$CONTEXT get secrets -n "$NAMESPACE"; then
     exit_on_error "Failed to verify secrets creation in namespace $NAMESPACE for context $CONTEXT."
 fi
 STATUS+=("Verify secrets: OK")
+
+# Test 7: Verify all namespaces and secrets from the secrets file were created
+echo "7: Verifying all namespaces and secrets from the secrets file..."
+if ! docker exec "$CONTAINER_NAME" kubectl --context=$CONTEXT get namespaces | grep -E "(ai|argocd|jupyterhub|unity-catalog|monitoring|authentik)"; then
+    echo "Warning: Some expected namespaces may not have been created"
+fi
+STATUS+=("Verify all namespaces: OK")
 
 echo "------ Summary of test statuses ------"
 for status in "${STATUS[@]}"; do

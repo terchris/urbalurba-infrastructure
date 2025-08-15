@@ -12,8 +12,7 @@ topsecret/
 │   ├── kubernetes-secrets-template.yml # Template for Kubernetes secrets
 │   └── kubernetes-secrets.yml          # Actual secrets file (not in Git)
 ├── readme-topsecret.md                 # This documentation file
-├── update-kubernetes-secrets-rancher.sh # Script for initial setup of secrets on provision-host in Docker
-└── update-kubernetes-secrets-v2.sh     # Script for pushing secrets to Kubernetes clusters
+└── update-kubernetes-secrets-v2.sh     # Main script for deploying secrets to Kubernetes clusters
 ```
 
 ## Setting Up Secrets
@@ -33,17 +32,16 @@ Edit `kubernetes-secrets.yml` and add your secret values. This file should **nev
 
 ### 2. Applying Secrets to Clusters
 
-Use the update scripts to apply secrets to different Kubernetes clusters:
+Use the automated script to apply secrets to different Kubernetes clusters:
 
 ```bash
-# Push secrets to the default cluster (from merged kubeconfig)
-./update-kubernetes-secrets-v2.sh
+# Deploy secrets to a specific cluster
+./update-kubernetes-secrets-v2.sh <context-name>
 
-# Push secrets to a specific cluster
-./update-kubernetes-secrets-v2.sh azure-microk8s
-
-# Initial setup of secrets on the provision-host in Docker environment
-./update-kubernetes-secrets-rancher.sh
+# Examples:
+./update-kubernetes-secrets-v2.sh rancher-desktop    # Local development
+./update-kubernetes-secrets-v2.sh azure-microk8s     # Azure VM cluster
+./update-kubernetes-secrets-v2.sh multipass-microk8s # Multipass VM cluster
 ```
 
 ### 3. Kubeconfig Management
@@ -99,3 +97,4 @@ If you encounter issues with secrets:
 - Both `kubeconf-all` and `kubernetes-secrets.yml` are excluded from Git to protect sensitive information
 - The `update-kubernetes-secrets-v2.sh` script is the primary tool for deploying secrets to your clusters
 - Always verify that secrets are properly applied before deploying applications that depend on them
+- The script automatically creates all required namespaces and applies secrets to their respective namespaces

@@ -22,26 +22,26 @@
 #   ./update-kubernetes-secrets-v2.sh azure-microk8s
 #   ./update-kubernetes-secrets-v2.sh rancher-desktop
 
-# Initialize associative arrays for status and errors
-declare -A STATUS
-declare -A ERRORS
+# Initialize status tracking arrays
+STATUS=()
+ERRORS=()
 
 # Variables
 NAMESPACE="default"
-KUBERNETES_SECRETS_FILE="/mnt/urbalurbadisk/topsecret/kubernetes/kubernetes-secrets.yml"
+KUBERNETES_SECRETS_FILE="./kubernetes/kubernetes-secrets.yml"
 
 # Function to add status to our tracking array
 add_status() {
     local step=$1
     local status=$2
-    STATUS["$step"]=$status
+    STATUS+=("$step: $status")
 }
 
 # Function to add error details to our tracking array
 add_error() {
     local step=$1
     local error=$2
-    ERRORS["$step"]="${ERRORS[$step]}${ERRORS[$step]:+$'\n'}$error"
+    ERRORS+=("$step: $error")
 }
 
 # Function to check command success and update status accordingly
@@ -60,8 +60,8 @@ check_command_success() {
 # Function to print summary of operations
 print_summary() {
     echo "---------- Update Kubernetes Secrets Summary ----------"
-    for step in "${!STATUS[@]}"; do
-        echo "$step: ${STATUS[$step]}"
+    for status in "${STATUS[@]}"; do
+        echo "$status"
     done
 
     if [ ${#ERRORS[@]} -eq 0 ]; then
@@ -69,10 +69,13 @@ print_summary() {
         echo "Kubernetes secrets have been successfully updated in context: $CONTEXT"
     else
         echo "Errors occurred during update:"
-        for step in "${!ERRORS[@]}"; do
-            echo "  $step: ${ERRORS[$step]}"
+        for error in "${ERRORS[@]}"; do
+            echo "  $error"
         done
     fi
+
+    # Return 0 if no errors, 1 otherwise
+    return ${#ERRORS[@]}
 }
 
 # Check for context parameter

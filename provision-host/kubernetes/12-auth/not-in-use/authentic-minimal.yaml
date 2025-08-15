@@ -1,0 +1,51 @@
+# filename: authentic-minimal.yaml
+# description: minimal authentik configuration with hardcoded values
+# install: helm upgrade --install authentik authentik/authentik -f provision-host/kubernetes/12-auth/not-in-use/authentic-minimal.yaml -n authentik --create-namespace
+# uninstall: helm uninstall authentik -n authentik
+
+authentik:
+    secret_key: "DuoCca6w0D7bMpfOhDZkQlKJ0fRMc+yEypgLilE754jMX2OoEffb3TzWzHqJ8880viR3UcWe6Zxgh6LL"
+    # This sends anonymous usage-data, stack traces on errors and
+    # performance data to sentry.io, and is fully opt-in
+    error_reporting:
+        enabled: true
+    
+    # PostgreSQL connection settings - Using existing shared PostgreSQL server
+    # Database and user created by ansible/playbooks/utility/u09-authentik-create-postgres.yml
+    postgresql:
+        host: "postgresql.default.svc.cluster.local"
+        name: authentik
+        user: authentik
+        port: 5432
+        password: "SecretPassword1"
+
+    # Redis connection settings - Using existing shared Redis server
+    redis:
+        host: "redis-master.default.svc.cluster.local"
+        port: 6379
+        password: "SecretPassword1"
+
+# Global environment variables - Applied to both server and worker pods
+global:
+    env:
+        # Bootstrap configuration - Automatically creates admin account on first startup
+        - name: AUTHENTIK_BOOTSTRAP_EMAIL
+          value: "admin@urbalurba.local"  # Change this to your desired admin email
+        - name: AUTHENTIK_BOOTSTRAP_PASSWORD
+          value: "SecretPassword1"    # Change this to your desired admin password
+
+server:
+    ingress:
+        # Specify kubernetes ingress controller class name
+        ingressClassName: traefik
+        enabled: true
+        hosts:
+            - authentik.localhost
+
+# PostgreSQL configuration - DISABLED since we're using existing shared PostgreSQL
+postgresql:
+    enabled: false
+
+# Redis configuration - DISABLED since we're using existing shared Redis  
+redis:
+    enabled: false

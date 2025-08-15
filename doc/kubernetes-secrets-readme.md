@@ -229,6 +229,24 @@ Cloudflare is used for DNS management and tunneling. You need to create an API t
   - Default: `sk-SecretPassword1`
   - Used for: LiteLLM integration
 
+## Authentik Namespace Configuration
+- `AUTHENTIK_SECRET_KEY`: Secret key for encryption
+  - Default: `DuoCca6w0D7bMpfOhDZkQlKJ0fRMc+yEypgLilE754jMX2OoEffb3TzWzHqJ8880viR3UcWe6Zxgh6LL`
+  - Used for: Data encryption and security
+  - Generate with: `openssl rand 60 | base64 -w 0`
+- `AUTHENTIK_POSTGRES_PASSWORD`: PostgreSQL database password
+  - Default: `SecretPassword1`
+  - Used for: Authentik database access
+- `AUTHENTIK_REDIS_PASSWORD`: Redis password
+  - Default: `SecretPassword1`
+  - Used for: Redis session and cache storage
+- `AUTHENTIK_ADMIN_EMAIL`: Admin user email
+  - Default: `admin@localhost`
+  - Used for: Initial admin user creation
+- `AUTHENTIK_ADMIN_PASSWORD`: Admin user password
+  - Default: `SecretPassword1`
+  - Used for: Initial admin user authentication
+
 ## ArgoCD Configuration
 - `admin.password`: Admin password (bcrypt hashed)
   - Used for: ArgoCD admin access
@@ -236,21 +254,43 @@ Cloudflare is used for DNS management and tunneling. You need to create an API t
   - Format: `YYYY-MM-DDTHH:MM:SSZ`
   - Used for: Password management
 
-## Creating the Secrets File
+## Creating and Deploying the Secrets File
 
-You have two options to create the secrets file:
+You have several options to create and deploy the secrets file:
 
-1. **Manual Creation**:
+1. **Manual Creation and Deployment**:
    ```bash
+   # Copy the template
    cp kubernetes/kubernetes-secrets-template.yml kubernetes/kubernetes-secrets.yml
-   # Then edit the file with your values
+   
+   # Edit the file with your values
+   nano kubernetes/kubernetes-secrets.yml
+   
+   # Deploy directly with kubectl
+   kubectl apply -f kubernetes/kubernetes-secrets.yml
    ```
 
-2. **Using the Script**:
+2. **Using the Automated Script (Recommended)**:
+   ```bash
+   cd topsecret
+   ./update-kubernetes-secrets-v2.sh <context-name>
+   ```
+   
+   **Available contexts:**
+   - `rancher-desktop` - For local Rancher Desktop development
+   - `azure-microk8s` - For Azure VM with MicroK8s
+   - `multipass-microk8s` - For Multipass VM with MicroK8s
+   
+   **Example:**
+   ```bash
+   ./update-kubernetes-secrets-v2.sh rancher-desktop
+   ```
+
+3. **Legacy Script (Deprecated)**:
    ```bash
    ./create-kubernetes-secrets.sh new
    ```
-   This will guide you through setting each value interactively.
+   This interactive script is deprecated in favor of the automated deployment script.
 
 ## Security Best Practices
 

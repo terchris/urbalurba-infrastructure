@@ -213,7 +213,7 @@ main() {
 
     # Step 4: Apply secrets to the Azure MicroK8s cluster
     echo "==========> Step 4: Applying secrets to the Azure MicroK8s cluster: $CLUSTER_NAME"
-    run_script_from_directory "Apply secrets to Azure MicroK8s" "$URB_PATH/topsecret" "update-kubernetes-secrets-v2.sh" "$CLUSTER_NAME" || { print_summary; return 1; }
+    run_script_from_directory "Apply secrets to Azure MicroK8s" "$URB_PATH/topsecret" "update-kubernetes-secrets-rancher.sh" "$CLUSTER_NAME" || { print_summary; return 1; }
 
     # Step 5: Provision kubernetes services on the cluster
     echo "==========> Step 5: Start the installation of kubernetes systems on: $CLUSTER_NAME"
