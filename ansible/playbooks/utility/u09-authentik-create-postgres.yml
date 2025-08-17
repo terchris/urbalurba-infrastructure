@@ -47,7 +47,7 @@
 #   ansible-playbook playbooks/utility/u09-authentik-create-postgres.yml -e operation=create
 #
 #   # Delete Authentik database and user
-#   ansible-playbook playbooks/utility/u09-authentik-create-postgres.yml -e operation=delete
+#   ansible-playbook /mnt/urbalurbadisk/ansible/playbooks/utility/u09-authentik-create-postgres.yml -e operation=delete
 #
 # Notes:
 #   - This playbook assumes the PostgreSQL service is named 'postgresql' and is running in the 'default' namespace.

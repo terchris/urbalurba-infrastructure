@@ -21,26 +21,11 @@ metadata:
   name: nginx-root-ingress
   namespace: default
   annotations:
-    # Explicitly specify Traefik as the ingress controller
-    kubernetes.io/ingress.class: "traefik"
-    # Disable TLS redirect - remove if you want HTTPS redirection
-    traefik.ingress.kubernetes.io/ssl-redirect: "false"
-    # Only match if no other ingress rules match
-    traefik.ingress.kubernetes.io/router.priority: "1"
+    # Ensure TLS is handled properly
+    traefik.ingress.kubernetes.io/ssl-redirect: "false"  # Allow both HTTP and HTTPS
 spec:
+  ingressClassName: traefik  # Use this instead of the deprecated annotation
   rules:
-  - host: "" # Empty to match any hostname
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: nginx
-            port:
-              name: http
-  # Add a fallback rule for any host
-  # This ensures that requests not matching other ingress rules go to Nginx
   - http:
       paths:
       - path: /
@@ -49,4 +34,4 @@ spec:
           service:
             name: nginx
             port:
-              name: http
+              number: 80

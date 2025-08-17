@@ -1,0 +1,46 @@
+# 073-authentik-ingress.yaml
+#
+# Description:
+# Ingress configuration for Authentik admin interface and authentication endpoints.
+# - Provides external access to Authentik admin interface
+# - Handles authentication flows and OAuth2 endpoints
+# - Uses Traefik for ingress routing
+# - Configured for local development with .localhost domain
+#
+# Usage:
+#   kubectl apply -f 073-authentik-ingress.yaml -n authentik
+#
+# Access:
+#   http://authentik.localhost/if/admin/ - Admin interface
+#   http://authentik.localhost/if/flow/ - Authentication flows
+#   http://authentik.localhost/application/o/ - OAuth2 endpoints
+#
+# Authentication:
+#   Default Login: admin@urbalurba.local
+#   Default Password: SecretPassword1
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: authentik
+  namespace: authentik
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+    traefik.ingress.kubernetes.io/priority: "10"
+    traefik.ingress.kubernetes.io/ssl-redirect: "false"
+  labels:
+    app.kubernetes.io/name: authentik
+    app.kubernetes.io/component: server
+spec:
+  rules:
+  - host: authentik.localhost
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: authentik-server
+            port:
+              number: 80

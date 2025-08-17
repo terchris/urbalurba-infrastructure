@@ -102,7 +102,7 @@ auth:
 
 resources:
   requests:
-    memory: 256Mi
+    memory: 240Mi    # Enough to get out of red zone (185Mi ÷ 0.8 = 231Mi)
     cpu: 250m
   limits:
     memory: 512Mi

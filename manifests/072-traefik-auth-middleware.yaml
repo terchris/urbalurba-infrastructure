@@ -1,0 +1,42 @@
+# 072-traefik-auth-middleware.yaml
+#
+# Description:
+# Traefik ForwardAuth middleware for Authentik integration.
+# - Configures Traefik to forward authentication requests to Authentik embedded outpost
+# - Handles OAuth2 redirect flows for unauthenticated users
+# - Passes authentication headers to protected applications
+# - Integrates with Authentik's embedded outpost service
+#
+# Usage:
+#   kubectl apply -f 072-traefik-auth-middleware.yaml
+#
+# Integration:
+#   Add annotation to ingress: traefik.ingress.kubernetes.io/router.middlewares: "default-authentik-forward-auth@kubernetescrd"
+#
+# Authentication Flow:
+# 1. User requests protected resource
+# 2. Traefik forwards auth check to Authentik outpost
+# 3. If not authenticated, user redirected to Authentik login
+# 4. After successful login, user redirected back with headers
+# 5. Application receives request with authentication headers
+
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: authentik-forward-auth
+  namespace: default
+  labels:
+    app: authentik
+    component: forward-auth-middleware
+spec:
+  forwardAuth:
+    address: http://ak-outpost-authentik-embedded-outpost.authentik.svc.cluster.local:9000/outpost.goauthentik.io/auth/traefik
+    trustForwardHeader: true
+    authResponseHeaders:
+      - X-Forwarded-User
+      - X-Forwarded-Email
+      - X-Forwarded-Groups
+      - X-Forwarded-Name
+      - X-Forwarded-Preferred-Username
+      - X-Forwarded-User-Id

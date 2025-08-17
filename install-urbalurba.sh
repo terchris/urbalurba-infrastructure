@@ -1,4 +1,6 @@
 #!/bin/bash
+# TODO: this does not work. I cant get it to install rancher properly
+
 # install-urbalurba.sh - Complete Urbalurba Infrastructure Installer
 # 
 # This is an enhanced version of update-urbalurba-infra.sh that provides:

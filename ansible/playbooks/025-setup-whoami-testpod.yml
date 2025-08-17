@@ -1,0 +1,248 @@
+---
+# file: ansible/playbooks/025-setup-whoami-testpod.yml
+# Description:
+# Deploy and verify whoami test application for authentication testing
+# - Deploys whoami application with proper Kubernetes resources
+# - Tests connectivity using cluster-internal methods (no localhost DNS dependency)
+# - Verifies service is ready before proceeding with authentication setup
+# - Provides baseline testing without authentication for comparison
+#
+# Prerequisites:
+# - Kubernetes cluster running
+# - Traefik ingress controller deployed
+# - kubectl access configured
+#
+# Usage:
+# ansible-playbook playbooks/025-setup-whoami-testpod.yml -e kube_context="rancher-desktop"
+# ansible-playbook /mnt/urbalurbadisk/ansible/playbooks/025-setup-whoami-testpod.yml -e operation=delete  # To remove whoami
+
+- name: Setup and Verify Whoami Test Application
+  hosts: localhost
+  gather_facts: false
+  vars:
+    manifests_folder: "/mnt/urbalurbadisk/manifests"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    whoami_test_app_file: "{{ manifests_folder }}/071-whoami-test-app.yaml"
+    test_timeout: 120  # 2 minutes timeout for tests
+    # operation variable is passed as external parameter, defaults handled in tasks
+
+  tasks:
+
+    - name: "Operation: Set operation default if not provided"
+      set_fact:
+        current_operation: "{{ operation | default('deploy') }}"
+
+    - name: "Operation: Display operation mode"
+      ansible.builtin.debug:
+        msg: |
+          🔧 Whoami Test Application Management
+          📝 Operation: {{ current_operation | upper }}
+          {% if current_operation == 'delete' %}
+          🗑️  Mode: Removing whoami test application
+          {% else %}
+          🏗️  Mode: Deploying and verifying whoami test application
+          {% endif %}
+
+    # DELETE OPERATION
+    - block:
+        - name: "Delete 1: Remove whoami deployment"
+          ansible.builtin.shell: |
+            kubectl delete deployment whoami -n default --ignore-not-found=true
+          environment:
+            KUBECONFIG: "{{ merged_kubeconf_file }}"
+          register: delete_deployment_result
+          changed_when: true
+
+        - name: "Delete 2: Remove whoami service"
+          ansible.builtin.shell: |
+            kubectl delete service whoami -n default --ignore-not-found=true
+          environment:
+            KUBECONFIG: "{{ merged_kubeconf_file }}"
+          register: delete_service_result
+          changed_when: true
+
+        - name: "Delete 3: Remove whoami ingress"
+          ansible.builtin.shell: |
+            kubectl delete ingress whoami -n default --ignore-not-found=true
+          environment:
+            KUBECONFIG: "{{ merged_kubeconf_file }}"
+          register: delete_ingress_result
+          changed_when: true
+
+        - name: "Delete 4: Verify cleanup"
+          ansible.builtin.shell: |
+            kubectl get pods,svc,ingress -l app=whoami -n default 2>/dev/null || echo "No whoami resources found"
+          environment:
+            KUBECONFIG: "{{ merged_kubeconf_file }}"
+          register: cleanup_verify
+          changed_when: false
+
+        - name: "Delete 5: Display cleanup results"
+          ansible.builtin.debug:
+            msg: |
+              ===============================================
+              🗑️ Whoami Test Application Cleanup Complete
+              ===============================================
+              
+              ✅ Cleanup Results:
+              • Deployment: Removed
+              • Service: Removed  
+              • Ingress: Removed
+              
+              🔍 Verification:
+              {{ cleanup_verify.stdout }}
+              
+              🎉 Whoami test application successfully removed!
+              ===============================================
+
+      when: current_operation == 'delete'
+
+    # DEPLOY OPERATION
+    - block:
+        - name: "Step 1.1: Deploy whoami test application"
+          ansible.builtin.command: >
+            kubectl apply -f {{ whoami_test_app_file }}
+          environment:
+            KUBECONFIG: "{{ merged_kubeconf_file }}"
+          register: whoami_deploy_result
+          changed_when: true
+
+        - name: "Step 1.2: Display deployment result"
+          ansible.builtin.debug:
+            msg: "✅ Whoami application deployed"
+
+        - name: "Step 2.1: Wait for whoami deployment to be ready"
+          ansible.builtin.shell: |
+            kubectl wait --for=condition=available deployment/whoami -n default --timeout={{ test_timeout }}s
+          environment:
+            KUBECONFIG: "{{ merged_kubeconf_file }}"
+          register: whoami_deployment_wait
+          changed_when: false
+
+        - name: "Step 2.2: Wait for whoami pods to be ready"
+          ansible.builtin.shell: |
+            kubectl wait --for=condition=ready pod -l app=whoami -n default --timeout={{ test_timeout }}s
+          environment:
+            KUBECONFIG: "{{ merged_kubeconf_file }}"
+          register: whoami_pod_wait
+          changed_when: false
+
+        - name: "Step 2.3: Display readiness result"
+          ansible.builtin.debug:
+            msg: "✅ Whoami pods are ready and running"
+
+        - name: "Step 3.1: Get whoami service details"
+          ansible.builtin.shell: |
+            kubectl get svc whoami -n default -o jsonpath='{.spec.clusterIP}:{.spec.ports[0].port}'
+          environment:
+            KUBECONFIG: "{{ merged_kubeconf_file }}"
+          register: whoami_service_info
+          changed_when: false
+
+        - name: "Step 3.2: Test whoami service connectivity (cluster-internal)"
+          ansible.builtin.shell: |
+            kubectl run curl-test-whoami --image=curlimages/curl --rm -i --restart=Never --command -- \
+              curl -s -w "HTTP_STATUS:%{http_code}" http://whoami.default.svc.cluster.local
+          environment:
+            KUBECONFIG: "{{ merged_kubeconf_file }}"
+          register: whoami_cluster_test
+          changed_when: false
+
+        - name: "Step 3.3: Verify whoami responds correctly"
+          ansible.builtin.assert:
+            that:
+              - "'HTTP_STATUS:200' in whoami_cluster_test.stdout"
+              - "'Hostname:' in whoami_cluster_test.stdout"
+            fail_msg: "Whoami service is not responding correctly"
+            success_msg: "✅ Whoami service responds correctly via cluster DNS"
+
+        - name: "Step 4.1: Check whoami ingress exists"
+          ansible.builtin.shell: |
+            kubectl get ingress whoami -n default -o jsonpath='{.metadata.name}'
+          environment:
+            KUBECONFIG: "{{ merged_kubeconf_file }}"
+          register: whoami_ingress_check
+          changed_when: false
+
+        - name: "Step 4.2: Get ingress details"
+          ansible.builtin.shell: |
+            kubectl describe ingress whoami -n default
+          environment:
+            KUBECONFIG: "{{ merged_kubeconf_file }}"
+          register: whoami_ingress_details
+          changed_when: false
+
+        - name: "Step 4.3: Verify ingress configuration"
+          ansible.builtin.assert:
+            that:
+              - "'whoami.localhost' in whoami_ingress_details.stdout"
+              - "'whoami:80' in whoami_ingress_details.stdout"
+            fail_msg: "Whoami ingress is not configured correctly"
+            success_msg: "✅ Whoami ingress configured for whoami.localhost"
+
+        - name: "Step 5.1: Test whoami via Traefik ingress (from cluster)"
+          ansible.builtin.shell: |
+            kubectl run curl-test-ingress --image=curlimages/curl --rm -i --restart=Never --command -- \
+              curl -s -H "Host: whoami.localhost" -w "HTTP_STATUS:%{http_code}" \
+              http://traefik.kube-system.svc.cluster.local
+          environment:
+            KUBECONFIG: "{{ merged_kubeconf_file }}"
+          register: whoami_ingress_test
+          changed_when: false
+          failed_when: false  # Don't fail if this doesn't work yet
+
+        - name: "Step 5.2: Display ingress test result"
+          ansible.builtin.debug:
+            msg: |
+              🔍 Ingress test result: {{ 'SUCCESS' if 'HTTP_STATUS:200' in whoami_ingress_test.stdout else 'NEEDS HOST ACCESS' }}
+              📝 Note: Full external access test requires host machine DNS resolution for *.localhost
+
+        - name: "Step 6.1: Get final whoami status"
+          ansible.builtin.shell: |
+            echo "=== PODS ==="
+            kubectl get pods -l app=whoami -n default
+            echo "=== SERVICES ==="
+            kubectl get svc whoami -n default
+            echo "=== INGRESS ==="
+            kubectl get ingress whoami -n default
+          environment:
+            KUBECONFIG: "{{ merged_kubeconf_file }}"
+          register: whoami_final_status
+          changed_when: false
+
+        - name: "Step 6.2: Display final verification summary"
+          ansible.builtin.debug:
+            msg: |
+              ===============================================
+              🎉 Whoami Test Application Setup Complete
+              ===============================================
+              
+              ✅ Status Summary:
+              • Deployment: Ready and available
+              • Pods: Running and ready  
+              • Service: Responding correctly ({{ whoami_service_info.stdout }})
+              • Ingress: Configured for whoami.localhost
+              • Cluster Access: Working via http://whoami.default.svc.cluster.local
+              
+              📊 Resources Created:
+              {{ whoami_final_status.stdout }}
+              
+              🧪 Verification Results:
+              • Cluster-internal access: ✅ Working
+              • Service discovery: ✅ Working 
+              • Ingress configuration: ✅ Correct
+              • External access: Test from host machine
+              
+              🌐 Access Information:
+              • Internal: http://whoami.default.svc.cluster.local
+              • External: http://whoami.localhost (requires host DNS)
+              • Cluster IP: {{ whoami_service_info.stdout }}
+              
+              🔄 Next Steps:
+              • Test external access from host: curl http://whoami.localhost
+              • Ready for authentication middleware integration
+              • Can proceed with Authentik deployment and auth flow setup
+              
+              ===============================================
+
+      when: current_operation == 'deploy'
