@@ -1,0 +1,141 @@
+# 070-authentik-complete-hardcoded.yaml
+#
+# Description:
+# Complete Authentik Helm values for deploying Authentik in the 'authentik' namespace using EXTERNAL 
+# PostgreSQL and Redis running in the 'default' namespace. Uses hardcoded values for simplicity and 
+# proper global environment variables for outpost functionality.
+#
+# Components:
+# - Authentik Server: Main identity provider and authentication interface
+# - Authentik Worker: Background task processing (enabled for full functionality)
+# - External PostgreSQL: Primary database (postgresql.default.svc.cluster.local)
+# - External Redis: Session storage (redis-master.default.svc.cluster.local)
+# - Embedded Outpost: Automatically created proxy outpost for forward authentication
+# - Traefik Ingress: HTTP routing for local development access
+# - Blueprint Automation: Automatic configuration via YAML blueprints
+#
+# Prerequisites:
+# - PostgreSQL and Redis deployed and running in 'default' namespace
+# - Run: ansible-playbook playbooks/utility/u09-authentik-create-postgres.yml
+#   (This creates the 'authentik' database and user with password 'SecretPassword1' in PostgreSQL)
+# - Authentik namespace with urbalurba-secrets containing AUTHENTIK_POSTGRESQL__PASSWORD
+#
+# Features:
+# - Hardcoded credentials for simplified local development setup
+# - Global environment variables for proper outpost communication (CRITICAL)
+# - Automatic admin user creation via bootstrap environment variables
+# - Full server and worker deployment for complete functionality
+# - Embedded outpost automatically configured for forward authentication
+# - Blueprint automation for provider and application configuration
+# - Development-optimized with HTTP and insecure mode enabled
+#
+# Usage:
+# kubectl apply -f manifests/077-authentik-blueprint-configmap.yaml
+# helm repo add authentik https://charts.goauthentik.io
+# helm repo update
+# helm upgrade --install authentik authentik/authentik -f manifests/070-authentik-complete-hardcoded.yaml -n authentik --create-namespace
+#
+# Access:
+# - Admin Interface: http://authentik.localhost/if/admin/
+# - Login: admin@urbalurba.local / SecretPassword1
+# - API: http://authentik.localhost/api/v3/
+# - Forward Auth Endpoint: http://ak-outpost-authentik-embedded-outpost.authentik.svc.cluster.local:9000/outpost.goauthentik.io/auth/traefik
+#
+# Notes:
+# - Bootstrap variables (AUTHENTIK_BOOTSTRAP_*) are only read on first startup for initial admin user creation
+# - Global environment variables (AUTHENTIK_HOST, AUTHENTIK_HOST_BROWSER) are CRITICAL for outpost functionality
+# - AUTHENTIK_HOST: Internal cluster URL for outpost-to-server communication
+# - AUTHENTIK_HOST_BROWSER: External URL for browser redirects during authentication
+# - AUTHENTIK_INSECURE: Allows HTTP connections in development (do not use in production)
+# - The embedded outpost is automatically created and configured for Traefik forward authentication
+# - Blueprints are automatically applied when ConfigMaps are mounted to /blueprints
+# - All passwords are hardcoded for development simplicity (use secrets in production)
+#
+# Security Warning:
+# This configuration uses hardcoded passwords suitable ONLY for local development.
+# For production deployments, use the secret-based configuration in 070-authentik-config.yaml
+#
+# Namespace: authentik
+
+# Main Authentik configuration
+authentik:
+  # CRITICAL: Secret key for session encryption and security (must be 50+ random characters)
+  # Generate new key for production: openssl rand -base64 60
+  secret_key: "DuoCca6w0D7bMpfOhDZkQlKJ0fRMc+yEypgLilE754jMX2OoEffb3TzWzHqJ8880viR3UcWe6Zxgh6LL"
+  
+  # Enable error reporting for development debugging
+  error_reporting:
+    enabled: true
+  
+  # External PostgreSQL connection settings
+  # Points to PostgreSQL service in 'default' namespace
+  postgresql:
+    host: "postgresql.default.svc.cluster.local"
+    name: authentik
+    user: authentik
+    port: 5432
+    password: "SecretPassword1"  # Hardcoded for development
+
+  # External Redis connection settings  
+  # Points to Redis service in 'default' namespace
+  redis:
+    host: "redis-master.default.svc.cluster.local"
+    port: 6379
+    password: "SecretPassword1"  # Hardcoded for development
+
+# Blueprint configuration for automated setup
+# Mounts ConfigMaps containing blueprint YAML files
+blueprints:
+  configMaps:
+    - authentik-whoami-blueprint
+
+# CRITICAL: Global environment variables for proper outpost configuration
+# These variables are essential for the embedded outpost to function correctly
+global:
+  env:
+    # Bootstrap admin account (only processed on first startup)
+    # Creates initial admin user for accessing the Authentik interface
+    - name: AUTHENTIK_BOOTSTRAP_EMAIL
+      value: "admin@urbalurba.local"
+    - name: AUTHENTIK_BOOTSTRAP_PASSWORD
+      value: "SecretPassword1"
+    
+    # CRITICAL: Internal cluster URL for outpost-to-server communication
+    # Outposts use this URL to connect back to the Authentik server
+    # Must be the internal Kubernetes service URL (not external localhost URL)
+    - name: AUTHENTIK_HOST
+      value: "http://authentik-server.authentik.svc.cluster.local:80"
+    
+    # CRITICAL: External browser URL for authentication redirects
+    # Users' browsers are redirected to this URL during authentication flows
+    # Must be the external URL that browsers can access
+    - name: AUTHENTIK_HOST_BROWSER
+      value: "http://authentik.localhost"
+    
+    # Allow HTTP connections in development environment
+    # Required for localhost development without TLS certificates
+    # WARNING: Never enable in production
+    - name: AUTHENTIK_INSECURE
+      value: "true"
+
+# Authentik server configuration
+server:
+  # Traefik ingress for external access
+  ingress:
+    ingressClassName: traefik
+    enabled: true
+    hosts:
+      - authentik.localhost
+
+# Worker configuration (enabled for full functionality)
+# The worker handles background tasks like sending emails, LDAP sync, etc.
+# Keep enabled for complete Authentik functionality
+worker:
+  enabled: true
+
+# Disable built-in database services (using external ones in 'default' namespace)
+postgresql:
+  enabled: false
+
+redis:
+  enabled: false

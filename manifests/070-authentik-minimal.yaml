@@ -1,6 +1,7 @@
-# filename: authentic-minimal.yaml
+# filename: 070-authentik-minimal.yaml
+# temporary - but working
 # description: minimal authentik configuration with hardcoded values
-# install: helm upgrade --install authentik authentik/authentik -f provision-host/kubernetes/12-auth/not-in-use/authentic-minimal.yaml -n authentik --create-namespace
+# install: helm upgrade --install authentik authentik/authentik -f manifests/070-authentik-minimal.yaml -n authentik --create-namespace
 # uninstall: helm uninstall authentik -n authentik
 
 authentik:
@@ -33,6 +34,11 @@ global:
           value: "admin@urbalurba.local"  # Change this to your desired admin email
         - name: AUTHENTIK_BOOTSTRAP_PASSWORD
           value: "SecretPassword1"    # Change this to your desired admin password
+        # Tell Authentik what URL outposts should use to connect back (internal cluster URL)
+        - name: AUTHENTIK_HOST
+          value: "http://authentik-server.authentik.svc.cluster.local:80"
+        - name: AUTHENTIK_HOST_BROWSER
+          value: "http://authentik.localhost"
 
 server:
     ingress:

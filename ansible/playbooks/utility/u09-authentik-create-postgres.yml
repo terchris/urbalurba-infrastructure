@@ -1,6 +1,5 @@
 ---
-# u09-authentik-create-postgres.yml
-# TODO: if the AUTHENTIK_POSTGRESQL__PASSWORD cant be read then there must be an error
+# ansible/playbooks/utility/u09-authentik-create-postgres.yml
 #
 # Description:
 #   This playbook fully automates the creation and deletion of PostgreSQL user and database for Authentik inside a Kubernetes cluster.
@@ -18,16 +17,17 @@
 #
 # What this playbook does in CREATE mode:
 #   1. Fetches Authentik DB credentials from the 'authentik' namespace secret.
-#   2. Fetches PostgreSQL admin credentials and host from the 'default' namespace secret.
-#   3. Sets all required Ansible variables.
-#   4. Starts a background port-forward from localhost:5432 to the PostgreSQL service in Kubernetes (namespace: default).
-#   5. Waits for the port to be ready.
-#   6. Ensures the Authentik database user exists with proper privileges.
-#   7. Ensures the Authentik database exists and is owned by the user.
-#   8. Grants all required privileges for Django migrations and PostgreSQL 15+ compatibility.
-#   9. Sets default privileges for future objects.
-#   10. Tests the connection and verifies permissions.
-#   11. Cleans up the port-forward process at the end.
+#   2. Validates that required secrets exist with proper keys.
+#   3. Fetches PostgreSQL admin credentials and host from the 'default' namespace secret.
+#   4. Sets all required Ansible variables.
+#   5. Starts a background port-forward from localhost:5432 to the PostgreSQL service in Kubernetes (namespace: default).
+#   6. Waits for the port to be ready.
+#   7. Ensures the Authentik database user exists with proper privileges.
+#   8. Ensures the Authentik database exists and is owned by the user.
+#   9. Grants all required privileges for Django migrations and PostgreSQL 15+ compatibility.
+#   10. Sets default privileges for future objects.
+#   11. Tests the connection and verifies permissions.
+#   12. Cleans up the port-forward process at the end.
 #
 # What this playbook does in DELETE mode:
 #   1. Fetches PostgreSQL admin credentials.
@@ -94,6 +94,29 @@
       register: authentik_secret
       when: current_operation == 'create'
       ignore_errors: yes
+
+    - name: 4.1. Verify AUTHENTIK_POSTGRESQL__PASSWORD exists in authentik namespace
+      fail:
+        msg: |
+          ❌ Missing required secret configuration for Authentik database setup!
+          
+          Issue: {% if authentik_secret.resources | length == 0 %}Secret 'urbalurba-secrets' not found in 'authentik' namespace{% else %}Key 'AUTHENTIK_POSTGRESQL__PASSWORD' not found in secret{% endif %}
+          
+          Required:
+          - Namespace: authentik
+          - Secret: urbalurba-secrets  
+          - Key: AUTHENTIK_POSTGRESQL__PASSWORD
+          
+          Please ensure:
+          1. The 'authentik' namespace exists
+          2. The 'urbalurba-secrets' secret exists in the 'authentik' namespace
+          3. The secret contains the key 'AUTHENTIK_POSTGRESQL__PASSWORD' with the database password
+          
+          💡 You may need to deploy the urbalurba-secrets to the authentik namespace first.
+      when: 
+        - current_operation == 'create'
+        - authentik_secret.resources | length == 0 or 
+          'AUTHENTIK_POSTGRESQL__PASSWORD' not in (authentik_secret.resources[0].data | default({}))
 
     - name: 5. Get urbalurba-secrets from default namespace
       kubernetes.core.k8s_info:

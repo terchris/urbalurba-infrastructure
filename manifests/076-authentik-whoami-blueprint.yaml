@@ -1,0 +1,53 @@
+# yaml-language-server: $schema=https://goauthentik.io/blueprints/schema.json
+version: 1
+metadata:
+  name: "Whoami Forward Auth Blueprint"
+  labels:
+    blueprints.goauthentik.io/instantiate: "true"
+    blueprints.goauthentik.io/description: |
+      Automatically configures Authentik with a proxy provider and application 
+      for the whoami test application using forward authentication with Traefik.
+
+context: {}
+
+entries:
+  # Create the Proxy Provider for Whoami
+  - model: authentik_providers_proxy.proxyprovider
+    state: present
+    id: whoami-proxy-provider
+    identifiers:
+      name: whoami-proxy
+    attrs:
+      name: whoami-proxy
+      authorization_flow: !Find [authentik_flows.flow, [slug, default-authorization-flow]]
+      external_host: http://whoami.localhost
+      mode: forward_single
+      # Forward auth specific settings
+      intercept_header_auth: true
+      basic_auth_enabled: false
+      basic_auth_password_attribute: ""
+      basic_auth_user_attribute: ""
+      
+  # Create the Application
+  - model: authentik_core.application
+    state: present
+    id: whoami-application
+    identifiers:
+      slug: whoami-test
+    attrs:
+      name: "Whoami Test Application"
+      slug: whoami-test
+      provider: !KeyOf whoami-proxy-provider
+      meta_launch_url: http://whoami.localhost
+      policy_engine_mode: any
+
+  # Add the application to the embedded outpost
+  # Note: This uses the default embedded outpost that should already exist
+  - model: authentik_outposts.outpost
+    state: present
+    identifiers:
+      name: "authentik Embedded Outpost"
+    attrs:
+      name: "authentik Embedded Outpost"
+      providers:
+        - !KeyOf whoami-proxy-provider
