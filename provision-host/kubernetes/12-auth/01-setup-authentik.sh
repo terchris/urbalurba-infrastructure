@@ -26,6 +26,26 @@
 # Deployment: 
 #   MANUAL - Must be run manually (in not-in-use/ subfolder)
 #   Move to main folder to enable auto-deployment during install-rancher.sh
+#
+# TODO: Configuration Management Improvements
+# =========================================
+# Current Stage: Using hardcoded configuration (manifests/070-authentik-complete-hardcoded.yaml)
+# 
+# Next Stage: Migrate to using variables from Kubernetes secrets
+# - Replace hardcoded values with secret references
+# - Update Helm values to use secret-based configuration
+# - Remove dependency on hardcoded configuration files
+#
+# Final Stage: Clean up legacy configuration files
+# - Remove manifests/070-authentik-config.yaml (no longer needed)
+# - Remove manifests/070-authentik-minimal.yaml (no longer needed)
+# - Keep only the production-ready secret-based configuration
+#
+# Benefits of migration:
+# - Better security through centralized secret management
+# - Easier configuration updates without code changes
+# - Better compliance with Kubernetes best practices
+# - Simplified deployment and maintenance
 
 # Ensure the script is run with Bash
 if [ -z "$BASH_VERSION" ]; then
