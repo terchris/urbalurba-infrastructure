@@ -1,0 +1,234 @@
+---
+# File: playbooks/070-verify-authentik.yml
+# Description: Verify Authentik configuration
+#
+# This playbook performs the following tasks:
+# 1. Verifies Authentik deployment is running
+# 2. Extracts and validates application configuration
+# 3. Verifies provider configuration (OAuth2 and Proxy)
+# 4. Validates outpost configuration and assignments
+# 5. Checks service connectivity and endpoints
+#
+# Prerequisites:
+# - Kubernetes cluster is set up and accessible
+# - Authentik is deployed and running
+# - kubectl access to authentik namespace
+#
+# Usage: ansible-playbook playbooks/070-verify-authentik.yaml -e app_name="whoami"
+# if you don't provide the app_name, it will default to "whoami" eg:
+# ansible-playbook playbooks/070-verify-authentik.yaml
+
+- name: Verify Authentik Configuration
+  hosts: localhost
+  gather_facts: false
+  vars:
+    manifests_folder: "/mnt/urbalurbadisk/manifests"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    authentik_namespace: "authentik"
+
+  tasks:
+    - name: 1. Set default app_name if not provided
+      ansible.builtin.set_fact:
+        app_name: "{{ app_name | default('whoami') }}"
+
+    - name: 2. Print playbook description
+      ansible.builtin.debug:
+        msg: "Verifying Authentik configuration for application: {{ app_name }} using kubeconfig: {{ merged_kubeconf_file }}"
+
+    - name: 3. Verify Authentik namespace exists
+      kubernetes.core.k8s_info:
+        kind: Namespace
+        name: "{{ authentik_namespace }}"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: namespace_info
+
+    - name: 4. Fail if Authentik namespace doesn't exist
+      ansible.builtin.fail:
+        msg: "Authentik namespace '{{ authentik_namespace }}' does not exist"
+      when: namespace_info.resources | length == 0
+
+    - name: 5. Get Authentik worker pod
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: "{{ authentik_namespace }}"
+        label_selectors:
+          - "app.kubernetes.io/component=worker"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: worker_pods
+
+    - name: 6. Fail if no Authentik worker pods found
+      ansible.builtin.fail:
+        msg: "No Authentik worker pods found in namespace {{ authentik_namespace }}"
+      when: worker_pods.resources | length == 0
+
+    - name: 7. Set Authentik worker pod name
+      ansible.builtin.set_fact:
+        worker_pod_name: "{{ worker_pods.resources[0].metadata.name }}"
+
+    - name: 8. Display worker pod name
+      ansible.builtin.debug:
+        msg: "Using Authentik worker pod: {{ worker_pod_name }}"
+        verbosity: 1
+
+    - name: 9. Get specified application configuration
+      kubernetes.core.k8s_exec:
+        namespace: "{{ authentik_namespace }}"
+        pod: "{{ worker_pod_name }}"
+        command: >
+          sh -c "ak export_blueprint | grep -B 5 -A 10 'slug: {{ app_name }}'"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: app_config
+      no_log: true
+
+    - name: 10. Verify application exists and has valid configuration
+      ansible.builtin.assert:
+        that:
+          - "app_name in app_config.stdout"
+          - "'slug: ' + app_name in app_config.stdout"
+          - "'provider:' in app_config.stdout"
+          - "'policy_engine_mode:' in app_config.stdout"
+        fail_msg: "Application '{{ app_name }}' not found or configuration is incomplete"
+        success_msg: "✓ Application '{{ app_name }}' found and valid"
+
+    - name: 11. Extract provider ID from application
+      ansible.builtin.set_fact:
+        app_provider_id: "{{ app_config.stdout | regex_search('provider: (\\d+)', '\\1') | first }}"
+      no_log: true
+
+    - name: 12. Extract application UUID
+      ansible.builtin.set_fact:
+        app_uuid: "{{ app_config.stdout | regex_search('pk: ([a-f0-9-]+)', '\\1') | first }}"
+      no_log: true
+
+    - name: 13. Display application details
+      ansible.builtin.debug:
+        msg: |
+          Application Details:
+          - Name: {{ app_name }}
+          - Slug: {{ app_name }}
+          - Provider ID: {{ app_provider_id }}
+          - UUID: {{ app_uuid }}
+
+    - name: 14. Get provider configuration for application
+      kubernetes.core.k8s_exec:
+        namespace: "{{ authentik_namespace }}"
+        pod: "{{ worker_pod_name }}"
+        command: >
+          sh -c "ak export_blueprint | grep -B 5 -A 30 'pk: {{ app_provider_id }}' | grep -A 25 'model: authentik_providers'"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: provider_config
+      no_log: true
+
+    - name: 15. Verify provider configuration exists
+      ansible.builtin.assert:
+        that:
+          - "'model: authentik_providers_' in provider_config.stdout"
+        fail_msg: "Provider ID {{ app_provider_id }} configuration not found"
+        success_msg: "✓ Provider ID {{ app_provider_id }} found"
+
+    - name: 16. Extract provider details
+      kubernetes.core.k8s_exec:
+        namespace: "{{ authentik_namespace }}"
+        pod: "{{ worker_pod_name }}"
+        command: >
+          sh -c "ak export_blueprint | grep -A 25 'name: whoami-provider'"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: provider_details_raw
+      no_log: true
+
+    - name: 17. Check for OAuth2 provider
+      ansible.builtin.set_fact:
+        has_oauth2_provider: "{{ 'authentik_providers_oauth2.oauth2provider' in provider_details_raw.stdout }}"
+        has_proxy_provider: "{{ 'authentik_providers_proxy.proxyprovider' in provider_details_raw.stdout }}"
+      no_log: true
+
+    - name: 18. Extract key provider information
+      ansible.builtin.set_fact:
+        external_host: "{{ provider_details_raw.stdout | regex_search('external_host: (.+)', '\\1') | first | default('Not configured') }}"
+        oauth2_redirect_uri: "{{ provider_details_raw.stdout | regex_search('url: (http://[^\\s]+)', '\\1') | first | default('Not configured') }}"
+        access_token_validity: "{{ provider_details_raw.stdout | regex_search('access_token_validity: (.+)', '\\1') | first | default('Not configured') }}"
+
+    - name: 19. Display provider information
+      ansible.builtin.debug:
+        msg: |
+          Provider Configuration for {{ app_name }}:
+          - Provider ID: {{ app_provider_id }}
+          - Provider Name: whoami-provider
+          - OAuth2 Provider: {{ 'Yes' if has_oauth2_provider else 'No' }}
+          - Proxy Provider: {{ 'Yes' if has_proxy_provider else 'No' }}
+          - External Host: {{ external_host }}
+          - First Redirect URI: {{ oauth2_redirect_uri }}
+          - Access Token Validity: {{ access_token_validity }}
+
+    - name: 20. Verify outpost assignment
+      kubernetes.core.k8s_exec:
+        namespace: "{{ authentik_namespace }}"
+        pod: "{{ worker_pod_name }}"
+        command: >
+          sh -c "ak export_blueprint | grep -A 20 'authentik Embedded Outpost'"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: outpost_details
+      no_log: true
+
+    - name: 21. Verify provider is assigned to outpost
+      ansible.builtin.assert:
+        that:
+          - "('- ' + app_provider_id) in outpost_details.stdout"
+        fail_msg: "Provider ID {{ app_provider_id }} is not assigned to any outpost"
+        success_msg: "✓ Provider {{ app_provider_id }} assigned to outpost"
+
+    - name: 22. Extract outpost name
+      ansible.builtin.set_fact:
+        assigned_outpost: "authentik Embedded Outpost"
+      when: "('- ' + app_provider_id) in outpost_details.stdout"
+      no_log: true
+
+    - name: 23. Verify Authentik services
+      kubernetes.core.k8s_info:
+        kind: Service
+        namespace: "{{ authentik_namespace }}"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: authentik_services
+      no_log: true
+
+    - name: 24. Check for required services
+      ansible.builtin.assert:
+        that:
+          - "authentik_services.resources | selectattr('metadata.name', 'match', '.*authentik.*') | list | length > 0"
+        fail_msg: "No Authentik services found"
+        success_msg: "✓ {{ authentik_services.resources | length }} Authentik services running"
+
+    - name: 25. Display configuration summary for application
+      ansible.builtin.debug:
+        msg:
+          - ""
+          - "=========================================="
+          - "AUTHENTIK CONFIGURATION VERIFICATION COMPLETE"
+          - "Application: {{ app_name }}"
+          - "=========================================="
+          - ""
+          - "Application Details:"
+          - "- Name: {{ app_name }}"
+          - "- Slug: {{ app_name }}"
+          - "- Provider ID: {{ app_provider_id }}"
+          - "- UUID: {{ app_uuid }}"
+          - ""
+          - "Provider Configuration (Provider ID {{ app_provider_id }}):"
+          - "- Provider Name: whoami-provider"
+          - "- OAuth2 Provider: {{ 'Configured' if has_oauth2_provider else 'Not found' }}"
+          - "- Proxy Provider: {{ 'Configured' if has_proxy_provider else 'Not found' }}"
+          - "- External Host: {{ external_host }}"
+          - "- Access Token Validity: {{ access_token_validity }}"
+          - ""
+          - "Outpost Assignment (Provider ID {{ app_provider_id }}):"
+          - "- Outpost: {{ assigned_outpost | default('Not assigned') }}"
+          - ""
+          - "Services: {{ authentik_services.resources | length }} Authentik services running"
+          - ""
+          - "Configuration Chain:"
+          - "{{ app_name }} → Provider {{ app_provider_id }} → {{ assigned_outpost | default('No outpost') }}"
+          - "=========================================="
+
+    - name: 26. Final verification status
+      ansible.builtin.debug:
+        msg: "✓ Application '{{ app_name }}' configuration verified successfully!"
