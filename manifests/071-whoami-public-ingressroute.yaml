@@ -1,0 +1,47 @@
+# File: manifests/071-whoami-public-ingressroute.yaml
+#
+# Description:
+# Unprotected IngressRoute for whoami service testing
+# Provides public access to whoami service without authentication
+# Used for testing basic routing functionality before adding authentication
+#
+# Usage:
+# kubectl apply -f 071-whoami-public-ingressroute.yaml
+#
+# Dependencies:
+# - 070-whoami-service-and-deployment.yaml (whoami service must exist)
+#
+# Testing:
+# curl http://whoami-public.localhost
+# Should return whoami output without any authentication requirements
+#
+# Integration:
+# - Routes whoami-public.localhost to whoami service
+# - No middleware applied - direct routing
+# - Used to verify basic Traefik routing before adding authentication complexity
+# - Complements protected route (077-whoami-protected-ingressroute.yaml)
+#
+# Cluster Standards Compliance:
+# - Uses traefik.io/v1alpha1 API version
+# - IngressRoute CRD (not standard Kubernetes Ingress)
+# - Follows established cluster ingress standards
+
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: whoami-public
+  namespace: default
+  labels:
+    app: whoami
+    component: public-routing
+    protection: none
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`whoami-public.localhost`)
+      kind: Rule
+      services:
+        - name: whoami
+          port: 80

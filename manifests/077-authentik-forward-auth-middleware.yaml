@@ -1,0 +1,75 @@
+# File: manifests/077-authentik-forward-auth-middleware.yaml
+#
+# Description:
+# Traefik Middleware for Authentik forward authentication
+# Configures Traefik to forward authentication requests to Authentik embedded outpost
+# Handles OAuth2 redirect flows for unauthenticated users
+# Passes authentication headers to protected applications
+#
+# Usage:
+# kubectl apply -f 077-authentik-forward-auth-middleware.yaml
+#
+# Dependencies:
+# - 075-authentik-complete-hardcoded.yaml (Authentik must be deployed and running)
+# - Authentik outpost service must be available
+# - Authentik UI configuration must be completed (application, provider, outpost assignment)
+#
+# Testing:
+# kubectl get middleware authentik-forward-auth -n default
+# kubectl describe middleware authentik-forward-auth -n default
+#
+# Outpost Health Check:
+# kubectl run debug-pod --image=curlimages/curl --rm -it --restart=Never -- \
+#   curl -v http://authentik-server.authentik.svc.cluster.local:80/outpost.goauthentik.io/auth/traefik
+#
+# Integration:
+# Reference in IngressRoute middleware section:
+#   middlewares:
+#     - name: authentik-forward-auth
+#       namespace: default
+#
+# Authentication Flow:
+# 1. User requests protected resource
+# 2. Traefik forwards auth check to Authentik outpost
+# 3. If not authenticated, user redirected to Authentik login
+# 4. After successful login, user redirected back with headers
+# 5. Application receives request with authentication headers
+#
+# Cluster Standards Compliance:
+# - Uses traefik.io/v1alpha1 API version
+# - Middleware CRD (follows cluster ingress standards)
+#
+# Authentik 2025.8 Compatibility:
+# - Headers remain the same across versions
+# - Outpost endpoint updated to use authentik-server service
+# - Forward authentication flow unchanged
+
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: authentik-forward-auth
+  namespace: default
+  labels:
+    app: authentik
+    component: forward-auth-middleware
+spec:
+  forwardAuth:
+    # Authentik embedded outpost endpoint for forward authentication
+    address: http://authentik-server.authentik.svc.cluster.local:80/outpost.goauthentik.io/auth/traefik
+    trustForwardHeader: true
+    # Headers to pass from Authentik to protected application
+    # These are the actual headers Authentik provides (not X-Forwarded-*)
+    authResponseHeaders:
+      - X-authentik-username
+      - X-authentik-groups
+      - X-authentik-entitlements
+      - X-authentik-email
+      - X-authentik-name
+      - X-authentik-uid
+      - X-authentik-jwt
+      - X-authentik-meta-jwks
+      - X-authentik-meta-outpost
+      - X-authentik-meta-provider
+      - X-authentik-meta-app
+      - X-authentik-meta-version

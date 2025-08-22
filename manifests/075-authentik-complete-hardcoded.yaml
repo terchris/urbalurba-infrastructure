@@ -1,0 +1,120 @@
+# File: manifests/075-authentik-complete-hardcoded.yaml
+#
+# Description:
+# Helm values file for deploying Authentik 2025.8.0 in the 'authentik' namespace with:
+# - External PostgreSQL and Redis (running in 'default' namespace)
+# - Automatic bootstrap admin account
+# - Traefik ingress for external access
+# - Embedded outpost for forward authentication
+# - Blueprint system enabled for automated configuration
+# - Worker metrics enabled for Prometheus monitoring (2025.8+ feature)
+#
+# Usage:
+# helm repo add authentik https://charts.goauthentik.io
+# helm repo update
+# helm install authentik authentik/authentik -f 075-authentik-complete-hardcoded.yaml -n authentik
+#
+# Dependencies:
+# - PostgreSQL service running in default namespace
+# - Redis service running in default namespace
+# - Authentik database and user created in PostgreSQL
+# - 073-authentik-whoami-blueprint.yaml MUST be applied FIRST
+#
+# Database Setup:
+# Run this command to create the required database:
+# docker exec -it provision-host ansible-playbook /mnt/urbalurbadisk/ansible/playbooks/utility/u09-authentik-create-postgres.yml
+#
+# Testing:
+# curl -I http://authentik.localhost
+# Should return HTTP 302 redirect to authentication flow
+#
+# Login Credentials:
+# Email: admin@urbalurba.local
+# Password: SecretPassword1
+#
+# Integration:
+# - Creates embedded outpost service for forward authentication
+# - Outpost endpoint: ak-outpost-authentik-embedded-outpost.authentik.svc.cluster.local:9000
+# - UI accessible at: http://authentik.localhost
+# - Blueprint system enabled for automated configuration
+# - Worker metrics exposed for Prometheus monitoring
+#
+# ⚠️ 2025.8 Breaking Changes:
+# - Redis dependency removed for background tasks
+# - New task engine (Dramatiq replaces Celery)
+# - Task metrics now exposed by worker, not server
+# - Some environment variables renamed/removed
+
+---
+authentik:
+  # CRITICAL: Secret key for session encryption and security (must be 50+ chars)
+  secret_key: "DuoCca6w0D7bMpfOhDZkQlKJ0fRMc+yEypgLilE754jMX2OoEffb3TzWzHqJ8880viR3UcWe6Zxgh6LL"
+
+  # Debugging and error reporting
+  error_reporting:
+    enabled: true
+
+  # External PostgreSQL configuration
+  postgresql:
+    host: "postgresql.default.svc.cluster.local"
+    name: authentik
+    user: authentik
+    port: 5432
+    password: "SecretPassword1"
+
+  # External Redis configuration (still needed for caching, not background tasks)
+  redis:
+    host: "redis-master.default.svc.cluster.local"
+    port: 6379
+    password: "SecretPassword1"
+
+# CRITICAL: Environment variables for Authentik + outpost communication
+global:
+  env:
+    # Bootstrap admin account (only used on *first startup*)
+    - name: AUTHENTIK_BOOTSTRAP_EMAIL
+      value: "admin@urbalurba.local"
+    - name: AUTHENTIK_BOOTSTRAP_PASSWORD
+      value: "SecretPassword1"
+    # Internal cluster URL (used by outpost → server communication)
+    - name: AUTHENTIK_HOST
+      value: "http://authentik-server.authentik.svc.cluster.local:80"
+
+    # External browser URL (redirects users back here)
+    - name: AUTHENTIK_HOST_BROWSER
+      value: "http://authentik.localhost"
+
+    # Allow HTTP (⚠️ dev only — don’t use in production)
+    - name: AUTHENTIK_INSECURE
+      value: "true"
+
+# Blueprint system configuration
+blueprints:
+  # List of ConfigMaps containing blueprints
+  # Only keys ending with .yaml will be discovered and applied
+  configMaps:
+    - "whoami-forward-auth-blueprint"
+
+# Authentik server ingress configuration
+server:
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    hosts:
+      - authentik.localhost
+
+# Worker enabled with metrics for Prometheus monitoring (2025.8+ feature)
+worker:
+  enabled: true
+  # Enable metrics for better observability of background tasks
+  metrics:
+    enabled: true
+    # Optional: Enable ServiceMonitor for Prometheus scraping
+    serviceMonitor:
+      enabled: false  # Set to true if using Prometheus Operator
+
+# Disable built-in Postgres/Redis (using external services)
+postgresql:
+  enabled: false
+redis:
+  enabled: false

@@ -1,0 +1,86 @@
+# File: manifests/070-whoami-service-and-deployment.yaml
+#
+# Description:
+# Basic whoami service and deployment for forward authentication testing
+# Provides target service that will be protected by Authentik forward auth
+# Also serves as unprotected service for testing basic routing functionality
+#
+# Usage:
+# kubectl apply -f 070-whoami-service-and-deployment.yaml
+#
+# Dependencies:
+# - None (standalone deployment)
+#
+# Testing:
+# kubectl port-forward svc/whoami 8081:80 &
+# curl http://localhost:8081
+# kill %1
+#
+# Integration:
+# - Service will be referenced by both public and protected IngressRoutes
+# - Single service serves both protected and unprotected access patterns
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: whoami
+  namespace: default
+  labels:
+    app: whoami
+    component: test-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: whoami
+  template:
+    metadata:
+      labels:
+        app: whoami
+        component: test-service
+    spec:
+      containers:
+      - name: whoami
+        image: traefik/whoami:v1.10.2
+        ports:
+        - containerPort: 80
+          name: http
+        resources:
+          limits:
+            cpu: 100m
+            memory: 128Mi
+          requests:
+            cpu: 50m
+            memory: 64Mi
+        livenessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: whoami
+  namespace: default
+  labels:
+    app: whoami
+    component: test-service
+spec:
+  selector:
+    app: whoami
+  ports:
+  - name: http
+    port: 80
+    targetPort: http
+    protocol: TCP
+  type: ClusterIP

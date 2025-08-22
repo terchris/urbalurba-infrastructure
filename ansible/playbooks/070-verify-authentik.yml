@@ -16,7 +16,7 @@
 #
 # Usage: ansible-playbook playbooks/070-verify-authentik.yaml -e app_name="whoami"
 # if you don't provide the app_name, it will default to "whoami" eg:
-# ansible-playbook playbooks/070-verify-authentik.yaml
+# ansible-playbook /mnt/urbalurbadisk/ansible/playbooks/070-verify-authentik.yml
 
 - name: Verify Authentik Configuration
   hosts: localhost
