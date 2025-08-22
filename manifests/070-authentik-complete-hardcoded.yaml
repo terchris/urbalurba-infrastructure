@@ -1,5 +1,5 @@
 # 070-authentik-complete-hardcoded.yaml
-#
+# TODO: this is working - but it has hardcoded values. once everything is working we need to use secrets
 # Description:
 # Helm values file for deploying Authentik with forward authentication support.
 # - Uses external PostgreSQL database (configured via secrets)
@@ -30,6 +30,7 @@ redis:
 
 # Authentik configuration
 authentik:
+  log_level: debug #temp setting
   secret_key: ""  # Will be set via environment variable from secret
   postgresql:
     host: "postgresql.default.svc.cluster.local"
@@ -43,7 +44,17 @@ authentik:
     password: ""  # Will be set via environment variable from secret
   error_reporting:
     enabled: false
-  
+
+
+# Blueprint configuration is global and not below authentik
+blueprints:
+  enabled: true
+  configMaps:
+    - authentik-combined-blueprints
+
+
+
+
 # Server configuration
 server:
   name: "server"
@@ -155,6 +166,7 @@ worker:
       value: "SecretPassword1"
     - name: AUTHENTIK_BOOTSTRAP_EMAIL
       value: "admin@urbalurba.local"
+
 
 # Global settings
 global:

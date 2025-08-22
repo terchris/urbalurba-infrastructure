@@ -17,7 +17,7 @@
 # - Kubernetes cluster with proper RBAC permissions
 #
 # Usage:
-# ansible-playbook playbooks/070-setup-authentik.yml -e kube_context="rancher-desktop"
+# ansible-playbook ansible/playbooks/070-setup-authentik.yml -e kube_context="rancher-desktop"
 #   (add -e deploy_test_apps=false to skip test application deployment)
 
 - name: Set up Authentik Authentication System on Kubernetes
@@ -39,6 +39,7 @@
     whoami_test_app_file: "{{ manifests_folder }}/071-whoami-test-app.yaml"
     traefik_middleware_file: "{{ manifests_folder }}/072-traefik-auth-middleware.yaml"
     authentik_ingress_file: "{{ manifests_folder }}/073-authentik-ingress.yaml"
+    whoami_blueprint_file: "{{ manifests_folder }}/076-authentik-simple-whoami-blueprint.yaml"
     
     # Test application deployment toggle
     deploy_test_apps: true
@@ -146,7 +147,7 @@
       ansible.builtin.debug:
         msg: "✅ Traefik forward auth middleware deployed successfully"
 
-    # Phase 4: Setup database by running the utility playbook  
+    # Phase 4: Setup database and deploy blueprints BEFORE Helm
     - name: "Phase 4.1: Run Authentik PostgreSQL database setup"
       ansible.builtin.shell: |
         cd /mnt/urbalurbadisk/ansible && ansible-playbook playbooks/utility/u09-authentik-create-postgres.yml -e operation=create
@@ -158,7 +159,35 @@
         msg: |
           ✅ Authentik PostgreSQL database setup completed
           🔄 Exit code: {{ db_setup_result.rc }}
-          📝 Ready for Authentik deployment
+          📝 Ready for blueprint deployment
+
+    - name: "Phase 4.3: Deploy blueprint ConfigMap BEFORE Authentik deployment"
+      ansible.builtin.command: >
+        kubectl apply -f {{ whoami_blueprint_file }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: blueprint_predeploy
+      changed_when: true
+      when: deploy_test_apps | bool
+
+    - name: "Phase 4.4: Verify blueprint ConfigMap exists before Helm deployment"
+      ansible.builtin.shell: |
+        kubectl get configmap authentik-combined-blueprints -n {{ authentik_namespace }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: blueprint_precheck
+      failed_when: blueprint_precheck.rc != 0
+      changed_when: false
+      when: deploy_test_apps | bool
+
+    - name: "Phase 4.5: Display blueprint pre-deployment status"
+      ansible.builtin.debug:
+        msg: |
+          ✅ Blueprint ConfigMap deployed BEFORE Authentik Helm deployment
+          📝 This ensures Helm can successfully mount the ConfigMap during pod creation
+          🔧 ConfigMap 'authentik-combined-blueprints' exists in {{ authentik_namespace }} namespace
+          🎯 Helm will now be able to mount blueprints on first boot
+      when: deploy_test_apps | bool
 
     # Phase 5: Install Authentik and verify it
     - name: "Phase 5.1: Check existing Helm repositories"
@@ -279,8 +308,30 @@
           📝 Note: This tests routing from within the cluster via Traefik
           🌐 External access verification: Test from host machine for full verification
 
-    # Phase 6: Configure whoami authentication and test complete flow
-    - name: "Phase 6.1: Update whoami ingress to use forward auth middleware"
+# Phase 6: Wait for Authentik to process blueprints and verify deployment
+    - name: "Phase 6.1: Wait for Authentik to process the pre-deployed blueprints"
+      ansible.builtin.pause:
+        seconds: 60
+      when: deploy_test_apps | bool
+
+    - name: "Phase 6.2: Verify blueprint ConfigMap is deployed and processed"
+      ansible.builtin.shell: |
+        kubectl get configmap authentik-combined-blueprints -n {{ authentik_namespace }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: blueprint_verification
+      changed_when: false
+      when: deploy_test_apps | bool
+
+    - name: "Phase 6.3: Display blueprint deployment status"
+      ansible.builtin.debug:
+        msg: |
+          ✅ Authentik blueprints deployed and processed successfully
+          📝 Blueprint verification: {{ blueprint_verification.stdout if blueprint_verification is defined else 'N/A' }}
+          ⏰ Blueprints were deployed BEFORE Helm and should be fully processed
+
+# Phase 7: Configure whoami authentication and test complete flow
+    - name: "Phase 7.1: Update whoami ingress to use forward auth middleware"
       ansible.builtin.shell: |
         kubectl patch ingress whoami -n default -p '{
           "metadata": {
@@ -294,11 +345,11 @@
       register: whoami_patch_result
       changed_when: true
 
-    - name: "Phase 6.2: Wait for ingress update to propagate"
+    - name: "Phase 7.2: Wait for ingress update to propagate"
       ansible.builtin.pause:
         seconds: 15
 
-    - name: "Phase 6.3: Test whoami authentication requirement (cluster-internal)"
+    - name: "Phase 7.3: Test whoami authentication requirement (cluster-internal)"
       ansible.builtin.shell: |
         kubectl run curl-test-auth --image=curlimages/curl --rm -i --restart=Never --command -- \
           curl -s -H "Host: whoami.localhost" -w "HTTP_STATUS:%{http_code}" \
@@ -309,7 +360,7 @@
       changed_when: false
       failed_when: false  # Don't fail - we expect this might not work perfectly from cluster
 
-    - name: "Phase 6.4: Display authentication test result"
+    - name: "Phase 7.4: Display authentication test result"
       ansible.builtin.debug:
         msg: |
           🔍 Authentication test result: {{ 'REDIRECT' if '302' in whoami_auth_test.stdout else 'NEEDS VERIFICATION' }}
@@ -317,7 +368,7 @@
           🌐 External test: Access http://whoami.localhost from host machine for full verification
 
     # Final verification and status reporting
-    - name: "Phase 7.1: Get all Authentik pods"
+    - name: "Phase 8.1: Get all Authentik pods"
       ansible.builtin.shell: |
         kubectl get pods -n {{ authentik_namespace }}
       environment:
@@ -325,11 +376,11 @@
       register: authentik_pods
       changed_when: false
     
-    - name: "Phase 7.2: Display Authentik pods"
+    - name: "Phase 8.2: Display Authentik pods"
       ansible.builtin.debug:
         var: authentik_pods.stdout_lines
     
-    - name: "Phase 7.3: Get all services"
+    - name: "Phase 8.3: Get all services"
       ansible.builtin.shell: |
         kubectl get svc -n {{ authentik_namespace }}
       environment:
@@ -337,11 +388,11 @@
       register: authentik_services
       changed_when: false
     
-    - name: "Phase 7.4: Display Authentik services"
+    - name: "Phase 8.4: Display Authentik services"
       ansible.builtin.debug:
         var: authentik_services.stdout_lines
 
-    - name: "Phase 7.5: Get middleware status"
+    - name: "Phase 8.5: Get middleware status"
       ansible.builtin.shell: |
         kubectl get middleware -n default
       environment:
@@ -349,11 +400,11 @@
       register: middleware_status
       changed_when: false
     
-    - name: "Phase 7.6: Display middleware status"
+    - name: "Phase 8.6: Display middleware status"
       ansible.builtin.debug:
         var: middleware_status.stdout_lines
     
-    - name: "Phase 7.7: Count running pods"
+    - name: "Phase 8.7: Count running pods"
       ansible.builtin.shell: |
         kubectl get pods -n {{ authentik_namespace }} | grep -v NAME | grep -c Running || echo "0"
       environment:
@@ -361,11 +412,11 @@
       register: running_pods_count
       changed_when: false
     
-    - name: "Phase 7.8: Determine installation success"
+    - name: "Phase 8.8: Determine installation success"
       ansible.builtin.set_fact:
         installation_successful: "{{ (running_pods_count.stdout | int >= 2) }}"
     
-    - name: "Phase 7.9: Display final installation status"
+    - name: "Phase 8.9: Display final installation status"
       ansible.builtin.debug:
         msg:
           - "==============================================="
@@ -379,6 +430,7 @@
           - "• Authentik server and worker pods"
           - "• Traefik forward authentication middleware"
           - "• Whoami test application with auth protection"
+          - "• Authentik blueprints (whoami app + test users) - deployed BEFORE Helm"
           - "• Complete authentication flow"
           - ""
           - "🔄 Status:"
@@ -408,11 +460,15 @@
           - "Authentik Embedded Outpost → OAuth2 Redirect → Authentik Login →"
           - "OAuth2 Callback → Whoami Application (with auth headers)"
           - ""
+          - "🔧 Blueprint Configuration:"
+          - "• Whoami proxy provider configured in Authentik (deployed BEFORE Helm)"
+          - "• Test users (developer, viewer, testuser) with appropriate groups"
+          - "• Forward auth middleware protecting whoami.localhost"
           - "==============================================="
           - "{{ '🎉 INSTALLATION SUCCESSFUL' if installation_successful else '⚠️ INSTALLATION STATUS: Some components may still be starting' }}"
           - "==============================================="
 
-    - name: "Phase 7.10: Final verification instructions"
+    - name: "Phase 8.10: Final verification instructions"
       ansible.builtin.debug:
         msg: |
           🔍 IMPORTANT: External Access Verification Required

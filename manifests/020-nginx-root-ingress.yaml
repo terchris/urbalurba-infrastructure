@@ -1,37 +1,48 @@
 # File: 020-nginx-root-ingress.yaml
-# Description: Sets up Ingress for Nginx using Traefik as the ingress controller
+#
+# Description:
+# Traefik IngressRoute for nginx catch-all/fallback routing
+# Converted from standard Kubernetes Ingress to follow cluster ingress standards
 #
 # CATCHALL/FALLBACK CONFIGURATION:
-# - This creates a fallback rule for all paths not defined elsewhere in Traefik
-# - All requests that don't match other Ingress rules will be sent to Nginx
-# - More specific path-based routes (like /apim) will take precedence
+# - Creates a low-priority fallback rule for all paths not defined elsewhere
+# - All requests that don't match other IngressRoute rules will be sent to nginx
+# - More specific routes (like protected services) will take precedence due to higher priority
 # - Nginx serves as the default backend for any undefined paths
 #
-# IMPORTANT NOTES:
-# - This configuration uses Traefik as the ingress controller (not nginx ingress)
-# - It configures a default route (/) for any host
-# - This works with Tailscale funnel → Traefik → Nginx routing pattern
+# PRIORITY SYSTEM:
+# - Uses priority: 1 (lowest) to ensure other routes are matched first
+# - Protected services should use higher priorities (10-100)
+# - Specific path routes should use medium priorities (5-50)
+#
+# CLUSTER STANDARDS COMPLIANCE:
+# - Uses traefik.io/v1alpha1 API version (required)
+# - IngressRoute CRD instead of standard Kubernetes Ingress
+# - No annotations - features configured via CRD spec
 #
 # Traffic Flow:
-# Tailscale funnel → Traefik ingress controller → Nginx service → Nginx pods → PVC content
+# User Request → Traefik → (no specific route match) → nginx service → nginx pods → PVC content
+#
+# Integration Notes:
+# - Works with Tailscale funnel → Traefik → nginx routing pattern
+# - Compatible with forward authentication on other routes
+# - Does not interfere with protected IngressRoute configurations
 
-apiVersion: networking.k8s.io/v1
-kind: Ingress
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
 metadata:
-  name: nginx-root-ingress
+  name: nginx-root-catch-all
   namespace: default
-  annotations:
-    # Ensure TLS is handled properly
-    traefik.ingress.kubernetes.io/ssl-redirect: "false"  # Allow both HTTP and HTTPS
+  labels:
+    app: nginx
+    component: catch-all-routing
 spec:
-  ingressClassName: traefik  # Use this instead of the deprecated annotation
-  rules:
-  - http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: nginx
-            port:
-              number: 80
+  entryPoints:
+    - web
+  routes:
+    - match: PathPrefix(`/`)
+      kind: Rule
+      priority: 1  # Lowest priority - ensures all other routes are checked first
+      services:
+        - name: nginx
+          port: 80

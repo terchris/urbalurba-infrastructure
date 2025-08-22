@@ -6,7 +6,7 @@
 #   1. First runs the 020-setup-web-files.yml playbook to prepare the storage and content
 #   2. Then deploys Nginx using the Bitnami Helm chart
 #   3. Configures Nginx to mount and serve the prepared content
-#   4. Sets up ingress for external access
+#   4. Sets up IngressRoute for external access (follows cluster ingress standards)
 #
 # Usage:
 #   ansible-playbook playbooks/020-setup-nginx.yml -e kube_context=your-context
@@ -25,7 +25,7 @@
     manifests_folder: "/mnt/urbalurbadisk/manifests"
     merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
     nginx_content_filename: "urbalurba-test.html"
-    nginx_ingress_manifest: "{{ manifests_folder }}/020-nginx-root-ingress.yaml"
+    nginx_ingressroute_manifest: "{{ manifests_folder }}/020-nginx-root-ingress.yaml"
     nginx_config_manifest: "{{ manifests_folder }}/020-nginx-config.yaml"
 
   tasks:
@@ -102,9 +102,9 @@
       ansible.builtin.debug:
         var: pod_files.stdout_lines
 
-    - name: 11. Apply Nginx root path ingress configuration
+    - name: 11. Apply Nginx root path IngressRoute configuration
       ansible.builtin.command: >
-        kubectl apply -f {{ nginx_ingress_manifest }}
+        kubectl apply -f {{ nginx_ingressroute_manifest }}
         --context {{ kube_context }}
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
@@ -148,18 +148,18 @@
       ansible.builtin.debug:
         var: curl_index.stdout_lines
 
-    - name: 17. Verify ingress was created successfully
+    - name: 17. Verify IngressRoute was created successfully
       ansible.builtin.command: >
-        kubectl get ingress nginx-root-ingress
+        kubectl get ingressroute nginx-root-catch-all
         --context {{ kube_context }}
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
-      register: ingress_check
+      register: ingressroute_check
       changed_when: false
 
-    - name: 18. Display ingress status
+    - name: 18. Display IngressRoute status
       ansible.builtin.debug:
-        var: ingress_check.stdout_lines
+        var: ingressroute_check.stdout_lines
 
     - name: 19. Success message
       ansible.builtin.debug:
@@ -168,10 +168,17 @@
           
           Pod name: {{ nginx_pod.stdout }}
           Service endpoint: {{ nginx_endpoint.stdout }}
-          Ingress address: {{ ingress_check.stdout.split()[3] if ingress_check.rc == 0 and ingress_check.stdout_lines|length > 1 else 'Not available' }}
+          IngressRoute: nginx-root-catch-all (catch-all routing with priority 1)
           
           Nginx is now running and serving the web content from the PVC.
-          You can access the test page at http://[your-ingress-host]/{{ nginx_content_filename }}
+          The IngressRoute follows cluster ingress standards (traefik.io/v1alpha1).
+          
+          Routing behavior:
+          - Specific domain routes (like whoami.localhost) take precedence
+          - Catch-all routing serves nginx content for unmatched requests
+          
+          To test:
+          curl http://[any-undefined-domain].localhost  # Should show nginx content
           
           To reload the website content without redeploying Nginx:
           ansible-playbook playbooks/020-setup-web-files.yml -e kube_context={{ kube_context }}

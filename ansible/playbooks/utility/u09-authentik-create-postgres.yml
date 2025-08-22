@@ -40,11 +40,10 @@
 #
 # Usage examples:
 #   # Create Authentik database and user (default)
-#   cd ansible
-#   ansible-playbook playbooks/utility/u09-authentik-create-postgres.yml
+#   ansible-playbook /mnt/urbalurbadisk/ansible/playbooks/utility/u09-authentik-create-postgres.yml
 #
 #   # Create Authentik database and user (explicit)
-#   ansible-playbook playbooks/utility/u09-authentik-create-postgres.yml -e operation=create
+#   ansible-playbook /mnt/urbalurbadisk/ansible/playbooks/utility/u09-authentik-create-postgres.yml -e operation=create
 #
 #   # Delete Authentik database and user
 #   ansible-playbook /mnt/urbalurbadisk/ansible/playbooks/utility/u09-authentik-create-postgres.yml -e operation=delete
