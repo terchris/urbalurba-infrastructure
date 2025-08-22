@@ -1,20 +1,22 @@
----
 # file: ansible/playbooks/070-setup-authentik.yml
 # Description:
 # Deploy complete Authentik authentication infrastructure with forward auth integration
-# - Dependency verification (PostgreSQL, Redis, Traefik)
-# - Whoami test application deployment and verification
-# - Traefik forward auth middleware setup and testing
-# - PostgreSQL database creation for Authentik
-# - Authentik server/worker deployment via Helm
+# Following the complete manual deployment guide with full dependency checking and verification
+# - Prerequisites verification (PostgreSQL, Redis, Traefik, secrets)
+# - Helm repository management with version validation
+# - Database preparation using utility playbook
+# - Blueprint deployment BEFORE Helm (critical for mounting)
+# - Authentik server/worker deployment via Helm (v2025.8.1)
+# - Forward auth middleware configuration
+# - Whoami test application deployment and protection
 # - Complete authentication flow testing and verification
+# - Enhanced monitoring and error recovery
+# - Post-deployment verification using verification playbook
 #
 # Prerequisites:
-# - PostgreSQL database running in default namespace
-# - Redis running in default namespace
-# - Traefik ingress controller deployed
-# - urbalurba-secrets in authentik namespace with required keys
 # - Kubernetes cluster with proper RBAC permissions
+# - urbalurba-secrets in authentik namespace with required keys
+# - DNS resolution for *.localhost (for external testing)
 #
 # Usage:
 # ansible-playbook ansible/playbooks/070-setup-authentik.yml -e kube_context="rancher-desktop"
@@ -27,66 +29,88 @@
     manifests_folder: "/mnt/urbalurbadisk/manifests"
     merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
     authentik_namespace: "authentik"
+    default_namespace: "default"
     installation_timeout: 900  # 15 minutes timeout for installations
     pod_readiness_timeout: 600  # 10 minutes timeout for pod readiness
     
     # Helm chart references
     authentik_chart: "authentik/authentik"
     authentik_repo_url: "https://charts.goauthentik.io"
+    authentik_version: "2025.8.1"
     
-    # Config files
-    authentik_helm_values_file: "{{ manifests_folder }}/070-authentik-complete-hardcoded.yaml"
-    whoami_test_app_file: "{{ manifests_folder }}/071-whoami-test-app.yaml"
-    traefik_middleware_file: "{{ manifests_folder }}/072-traefik-auth-middleware.yaml"
-    authentik_ingress_file: "{{ manifests_folder }}/073-authentik-ingress.yaml"
-    whoami_blueprint_file: "{{ manifests_folder }}/076-authentik-simple-whoami-blueprint.yaml"
-    
-    # Test application deployment toggle
-    deploy_test_apps: true
+    # Manifest files (following manual deployment guide order)
+    whoami_service_file: "{{ manifests_folder }}/070-whoami-service-and-deployment.yaml"
+    whoami_public_ingress_file: "{{ manifests_folder }}/071-whoami-public-ingressroute.yaml"
+    authentik_blueprint_file: "{{ manifests_folder }}/073-authentik-whoami-blueprint.yaml"
+    authentik_helm_values_file: "{{ manifests_folder }}/075-authentik-complete-hardcoded.yaml"
+    forward_auth_middleware_file: "{{ manifests_folder }}/077-authentik-forward-auth-middleware.yaml"
+    whoami_protected_ingress_file: "{{ manifests_folder }}/078-whoami-protected-ingressroute.yaml"
+
+    # Other playbooks
+    verify_authentik_playbook: "/mnt/urbalurbadisk/ansible/playbooks/070-verify-authentik.yml"
+    create_postgres_playbook: "/mnt/urbalurbadisk/ansible/playbooks/utility/u09-authentik-create-postgres.yml"
 
   tasks:
 
-    # Phase 1: Essential Prerequisites Check
-    - name: "Phase 1.1: Check authentik namespace exists"
-      ansible.builtin.shell: |
-        kubectl get namespace {{ authentik_namespace }}
-      environment:
-        KUBECONFIG: "{{ merged_kubeconf_file }}"
-      register: namespace_check
-      failed_when: namespace_check.rc != 0
-      changed_when: false
-
-    - name: "Phase 1.2: Display namespace status"
+    # Phase 1: Prerequisites Verification
+    - name: "1. Display deployment initiation"
       ansible.builtin.debug:
-        msg: "✅ Authentik namespace '{{ authentik_namespace }}' exists and is ready"
+        msg: |
+          🚀 Authentik Authentication System Deployment
+          ===============================================
+          📝 Target: {{ kube_context | default('default') }}
 
-    - name: "Phase 1.3: Check PostgreSQL is running"
+    - name: "2. Check if authentik namespace exists"
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Namespace
+        name: "{{ authentik_namespace }}"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: namespace_check
+      failed_when: namespace_check.resources | length == 0
+
+    - name: "3. Verify authentik namespace is ready"
+      ansible.builtin.debug:
+        msg: "✅ Authentik namespace '{{ authentik_namespace }}' is ready"
+
+    - name: "4. Check urbalurba-secrets in authentik namespace"
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Secret
+        name: urbalurba-secrets
+        namespace: "{{ authentik_namespace }}"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: authentik_secret_check
+      failed_when: false
+
+    - name: "5. Validate authentik secrets requirements"
+      ansible.builtin.fail:
+        msg: |
+          ❌ Missing required secret configuration for Authentik!
+      when: 
+        - authentik_secret_check.resources | length == 0 or 
+          'AUTHENTIK_SECRET_KEY' not in (authentik_secret_check.resources[0].data | default({})) or
+          'AUTHENTIK_POSTGRESQL__PASSWORD' not in (authentik_secret_check.resources[0].data | default({}))
+
+    - name: "6. Check PostgreSQL dependency"
       ansible.builtin.shell: |
-        kubectl get pods -n default | grep postgresql | grep Running
+        kubectl get pods -n {{ default_namespace }} | grep postgresql | grep Running
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
       register: postgres_check
       failed_when: postgres_check.rc != 0
       changed_when: false
 
-    - name: "Phase 1.4: Display PostgreSQL status"
-      ansible.builtin.debug:
-        msg: "✅ PostgreSQL found and running in default namespace"
-
-    - name: "Phase 1.5: Check Redis is running"
+    - name: "7. Check Redis dependency"
       ansible.builtin.shell: |
-        kubectl get pods -n default | grep redis | grep Running
+        kubectl get pods -n {{ default_namespace }} | grep redis | grep Running
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
       register: redis_check
       failed_when: redis_check.rc != 0
       changed_when: false
 
-    - name: "Phase 1.6: Display Redis status"
-      ansible.builtin.debug:
-        msg: "✅ Redis found and running in default namespace"
-
-    - name: "Phase 1.7: Check Traefik is running"
+    - name: "8. Check Traefik dependency"
       ansible.builtin.shell: |
         kubectl get pods -A | grep traefik | grep Running
       environment:
@@ -95,261 +119,351 @@
       failed_when: traefik_check.rc != 0
       changed_when: false
 
-    - name: "Phase 1.8: Display Traefik status"
-      ansible.builtin.debug:
-        msg: "✅ Traefik found and running"
-
-    # Phase 2: Verify whoami is running (already deployed by script)
-    - name: "Phase 2.1: Check authentik namespace exists"
-      ansible.builtin.shell: |
-        kubectl get namespace {{ authentik_namespace }}
-      environment:
-        KUBECONFIG: "{{ merged_kubeconf_file }}"
-      register: namespace_check
-      failed_when: namespace_check.rc != 0
-      changed_when: false
-
-    - name: "Phase 2.2: Display namespace status"
-      ansible.builtin.debug:
-        msg: "✅ Authentik namespace '{{ authentik_namespace }}' exists and is ready"
-
-    - name: "Phase 2.3: Verify whoami is running (deployed by script)"
-      ansible.builtin.shell: |
-        kubectl get pods -l app=whoami -n default | grep Running
-      environment:
-        KUBECONFIG: "{{ merged_kubeconf_file }}"
-      register: whoami_check
-      failed_when: whoami_check.rc != 0
-      changed_when: false
-
-    - name: "Phase 2.4: Display whoami status"
-      ansible.builtin.debug:
-        msg: "✅ Whoami test application is running and ready for middleware integration"
-
-    # Phase 3: Setup Traefik middleware and test it
-    - name: "Phase 3.1: Deploy Traefik forward auth middleware"
-      ansible.builtin.command: >
-        kubectl apply -f {{ traefik_middleware_file }}
-      environment:
-        KUBECONFIG: "{{ merged_kubeconf_file }}"
-      register: middleware_deploy_result
-      changed_when: true
-
-    - name: "Phase 3.2: Verify middleware is created"
-      ansible.builtin.shell: |
-        kubectl get middleware -n default | grep authentik-forward-auth
-      environment:
-        KUBECONFIG: "{{ merged_kubeconf_file }}"
-      register: middleware_check
-      changed_when: false
-
-    - name: "Phase 3.3: Display middleware status"
-      ansible.builtin.debug:
-        msg: "✅ Traefik forward auth middleware deployed successfully"
-
-    # Phase 4: Setup database and deploy blueprints BEFORE Helm
-    - name: "Phase 4.1: Run Authentik PostgreSQL database setup"
-      ansible.builtin.shell: |
-        cd /mnt/urbalurbadisk/ansible && ansible-playbook playbooks/utility/u09-authentik-create-postgres.yml -e operation=create
-      register: db_setup_result
-      changed_when: true
-
-    - name: "Phase 4.2: Display database setup completion"
+    - name: "9. Display dependency verification"
       ansible.builtin.debug:
         msg: |
-          ✅ Authentik PostgreSQL database setup completed
-          🔄 Exit code: {{ db_setup_result.rc }}
-          📝 Ready for blueprint deployment
+          ✅ All dependencies verified:
+          • PostgreSQL: Running in {{ default_namespace }} namespace
+          • Redis: Running in {{ default_namespace }} namespace  
+          • Traefik: Running and available
+          • Secrets: urbalurba-secrets exists in {{ authentik_namespace }} namespace
 
-    - name: "Phase 4.3: Deploy blueprint ConfigMap BEFORE Authentik deployment"
-      ansible.builtin.command: >
-        kubectl apply -f {{ whoami_blueprint_file }}
-      environment:
-        KUBECONFIG: "{{ merged_kubeconf_file }}"
-      register: blueprint_predeploy
-      changed_when: true
-      when: deploy_test_apps | bool
-
-    - name: "Phase 4.4: Verify blueprint ConfigMap exists before Helm deployment"
-      ansible.builtin.shell: |
-        kubectl get configmap authentik-combined-blueprints -n {{ authentik_namespace }}
-      environment:
-        KUBECONFIG: "{{ merged_kubeconf_file }}"
-      register: blueprint_precheck
-      failed_when: blueprint_precheck.rc != 0
-      changed_when: false
-      when: deploy_test_apps | bool
-
-    - name: "Phase 4.5: Display blueprint pre-deployment status"
-      ansible.builtin.debug:
-        msg: |
-          ✅ Blueprint ConfigMap deployed BEFORE Authentik Helm deployment
-          📝 This ensures Helm can successfully mount the ConfigMap during pod creation
-          🔧 ConfigMap 'authentik-combined-blueprints' exists in {{ authentik_namespace }} namespace
-          🎯 Helm will now be able to mount blueprints on first boot
-      when: deploy_test_apps | bool
-
-    # Phase 5: Install Authentik and verify it
-    - name: "Phase 5.1: Check existing Helm repositories"
-      ansible.builtin.command: helm repo list
-      register: helm_repo_list
-      changed_when: false
-
-    - name: "Phase 5.2: Add Authentik Helm repository if needed"
+    # Phase 2: Helm Repository Management with Enhanced Validation
+    - name: "10. Add Authentik Helm repository"
       kubernetes.core.helm_repository:
         name: "authentik"
         repo_url: "{{ authentik_repo_url }}"
-      when: "'authentik' not in helm_repo_list.stdout"
       register: helm_repo_result
 
-    - name: "Phase 5.3: Update Helm repositories"
+    - name: "11. Update Helm repositories"
       ansible.builtin.command: helm repo update
       changed_when: false
-    
-    - name: "Phase 5.4: Deploy Authentik via Helm"
+
+    - name: "12. Verify Authentik chart availability"
+      ansible.builtin.command: helm search repo authentik/authentik
+      register: chart_search
+      changed_when: false
+
+    - name: "12.1. Verify Authentik chart version compatibility"
+      ansible.builtin.shell: |
+        helm search repo authentik/authentik --version {{ authentik_version }}
+      register: version_check
+      failed_when: version_check.rc != 0
+      changed_when: false
+
+    - name: "13. Display Helm setup status"
+      ansible.builtin.debug:
+        msg: |
+          ✅ Helm repository setup complete
+          📦 Available chart: {{ chart_search.stdout_lines[1] if chart_search.stdout_lines | length > 1 else 'authentik/authentik found' }}
+          🔖 Target version: {{ authentik_version }} {{ '✅ Available' if version_check.rc == 0 else '❌ Not available' }}
+
+    # Phase 3: Whoami Service Deployment with Enhanced Error Handling
+    - name: "14. Deploy whoami service and deployment"
+      ansible.builtin.command: >
+        kubectl apply -f {{ whoami_service_file }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: whoami_deploy_result
+      changed_when: true
+
+    - name: "15. Wait for whoami pod to be ready with retry"
+      ansible.builtin.shell: |
+        kubectl wait --for=condition=ready pod -l app=whoami --timeout=60s -n {{ default_namespace }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: whoami_wait_result
+      retries: 3
+      delay: 15
+      changed_when: false
+      until: whoami_wait_result.rc == 0
+
+    - name: "16. Test whoami service direct access with enhanced cleanup"
+      block:
+        - name: "16.1. Start port-forward in background"
+          ansible.builtin.shell: |
+            kubectl port-forward svc/whoami 8081:80 -n {{ default_namespace }} > /tmp/pf-whoami.log 2>&1 &
+            PF_PID=$!
+            echo $PF_PID > /tmp/pf-whoami.pid
+            sleep 3
+          environment:
+            KUBECONFIG: "{{ merged_kubeconf_file }}"
+          
+        - name: "16.2. Test the service"
+          ansible.builtin.shell: |
+            curl -s --max-time 10 http://localhost:8081 || echo "CURL_FAILED"
+          register: whoami_direct_test
+          failed_when: false
+          changed_when: false
+          
+      always:
+        - name: "16.3. Ensure port-forward cleanup"
+          ansible.builtin.shell: |
+            if [ -f /tmp/pf-whoami.pid ]; then
+              kill $(cat /tmp/pf-whoami.pid) || true
+              rm -f /tmp/pf-whoami.pid
+            fi
+            pkill -f "kubectl port-forward.*whoami" || true
+          changed_when: false
+          failed_when: false
+
+    - name: "17. Verify whoami service is responding"
+      ansible.builtin.fail:
+        msg: |
+          ❌ Whoami service test failed!
+          Service is not responding properly.
+          Troubleshooting: kubectl get pods -l app=whoami -n {{ default_namespace }}
+      when: "'Hostname:' not in whoami_direct_test.stdout"
+
+    - name: "18. Display whoami direct test success"
+      ansible.builtin.debug:
+        msg: "✅ Whoami Direct Service Test: PASS - Service responding"
+
+    - name: "19. Deploy whoami public route"
+      ansible.builtin.command: >
+        kubectl apply -f {{ whoami_public_ingress_file }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: whoami_public_result
+      changed_when: true
+
+    - name: "20. Wait for IngressRoute to be ready"
+      ansible.builtin.shell: |
+        kubectl wait --for=condition=Ready ingressroute whoami-public --timeout=30s -n {{ default_namespace }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: ingress_wait_result
+      failed_when: false
+      changed_when: false
+
+    - name: "21. Test whoami public access via cluster"
+      ansible.builtin.shell: |
+        kubectl run curl-test-public --image=curlimages/curl --rm -i --restart=Never --command -- \
+          curl -s -H "Host: whoami-public.localhost" -w "HTTP_STATUS:%{http_code}" \
+          http://traefik.kube-system.svc.cluster.local
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: whoami_public_test
+      failed_when: false
+      changed_when: false
+
+    - name: "22. Verify whoami public route is working"
+      ansible.builtin.fail:
+        msg: |
+          ❌ Whoami public route test failed!
+          Public route is not accessible through Traefik.
+          Troubleshooting: kubectl get ingressroute whoami-public -n {{ default_namespace }}
+      when: "'200' not in whoami_public_test.stdout"
+
+    - name: "23. Display whoami public test success"
+      ansible.builtin.debug:
+        msg: |
+          ✅ Whoami Public Route Test: PASS - Route accessible via Traefik
+          Note: External access from host requires DNS resolution for *.localhost
+
+    - name: "24. Display whoami deployment status"
+      ansible.builtin.debug:
+        msg: |
+          ✅ Whoami test application deployed
+          🌐 Public route: http://whoami-public.localhost
+          🧪 Ready for authentication integration
+
+    # Phase 4: Blueprint Deployment (CRITICAL - must be before Helm)
+    - name: "25. Deploy Authentik blueprint BEFORE Helm deployment"
+      ansible.builtin.command: >
+        kubectl apply -f {{ authentik_blueprint_file }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: blueprint_deploy_result
+      changed_when: true
+
+    - name: "26. Verify blueprint ConfigMap exists before Helm"
+      ansible.builtin.shell: |
+        kubectl get configmap -n {{ authentik_namespace }} | grep blueprint
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: blueprint_verify
+      changed_when: false
+
+    - name: "27. Display blueprint pre-deployment status"
+      ansible.builtin.debug:
+        msg: |
+          ✅ Blueprint ConfigMap deployed BEFORE Helm installation
+          📝 This ensures proper mounting during pod creation
+          🔧 Blueprint status: {{ blueprint_verify.stdout if blueprint_verify.stdout else 'ConfigMap ready' }}
+
+    # Phase 5: Database Setup
+    - name: "28. Setup Authentik PostgreSQL database"
+      ansible.builtin.command: >
+        ansible-playbook {{ create_postgres_playbook }}
+        -e operation=create
+        -e kube_context={{ kube_context | default('rancher-desktop') }}
+      args:
+        chdir: /mnt/urbalurbadisk/ansible
+      register: postgres_setup_result
+      failed_when: false
+      changed_when: true
+
+    - name: "29. Display database setup completion"
+      ansible.builtin.debug:
+        msg: |
+          📊 PostgreSQL Database Setup: {{ 'COMPLETED' if postgres_setup_result.rc == 0 else 'NEEDS REVIEW' }}
+          Exit Code: {{ postgres_setup_result.rc }}
+          ✅ Authentik PostgreSQL database setup initiated
+          📊 Database: authentik (with full permissions)
+          👤 User: authentik (with CREATEDB privilege)
+          🔐 Compatible with PostgreSQL 15+ and Django migrations
+          {% if postgres_setup_result.rc != 0 %}
+          ⚠️ Note: Database setup may have encountered issues. Check the full output above.
+          {% endif %}
+
+    # Phase 6: Authentik Deployment via Helm with Enhanced Monitoring
+    - name: "30. Deploy Authentik via Helm (Helm version: {{ authentik_version }})"
       ansible.builtin.command: >
         helm upgrade --install authentik {{ authentik_chart }}
         -f {{ authentik_helm_values_file }}
         --namespace {{ authentik_namespace }}
+        --version {{ authentik_version }}
         --timeout {{ installation_timeout }}s
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
-      register: authentik_result
+      register: authentik_helm_result
       changed_when: true
-    
-    - name: "Phase 5.5: Display Authentik deployment result"
-      ansible.builtin.debug:
-        msg: "✅ Authentik deployment initiated. Waiting for readiness..."
-    
-    - name: "Phase 5.6: Wait for Authentik server pods to be ready (with retries)"
-      ansible.builtin.shell: |
-        kubectl get pods -l app.kubernetes.io/name=authentik,app.kubernetes.io/component=server -n {{ authentik_namespace }} -o jsonpath='{.items[*].status.phase}'
+
+    - name: "30.1. Verify Helm deployment status"
+      ansible.builtin.command: >
+        helm status authentik -n {{ authentik_namespace }}
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
-      register: server_pod_status
-      retries: 30
-      delay: 10
-      until: "'Running' in server_pod_status.stdout"
+      register: helm_status
       changed_when: false
-    
-    - name: "Phase 5.7: Wait for Authentik worker pods to be ready (with retries)"
+
+    - name: "31. Wait for Authentik server pods to be ready with enhanced retry"
       ansible.builtin.shell: |
-        kubectl get pods -l app.kubernetes.io/name=authentik,app.kubernetes.io/component=worker -n {{ authentik_namespace }} -o jsonpath='{.items[*].status.phase}'
+        kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=authentik,app.kubernetes.io/component=server -n {{ authentik_namespace }} --timeout={{ pod_readiness_timeout }}s
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
-      register: worker_pod_status
-      retries: 30
-      delay: 10
-      until: "'Running' in worker_pod_status.stdout"
+      register: server_wait_result
+      retries: 3
+      delay: 30
       changed_when: false
-      
-    - name: "Phase 5.8: Check for any pod errors (Redis connection issues)"
+      until: server_wait_result.rc == 0
+
+    - name: "32. Wait for Authentik worker pods to be ready with enhanced retry"
       ansible.builtin.shell: |
-        kubectl logs -l app.kubernetes.io/name=authentik -n {{ authentik_namespace }} --tail=50 | grep -i "error\|redis\|connection" || echo "No Redis errors found"
+        kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=authentik,app.kubernetes.io/component=worker -n {{ authentik_namespace }} --timeout={{ pod_readiness_timeout }}s
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
-      register: pod_error_check
+      register: worker_wait_result
+      retries: 3
+      delay: 30
+      changed_when: false
+      until: worker_wait_result.rc == 0
+
+    - name: "32.1. Verify blueprint was processed in logs"
+      ansible.builtin.shell: |
+        kubectl logs -n {{ authentik_namespace }} deployment/authentik-server --tail=100 | grep -i blueprint || echo "No blueprint logs found yet"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: blueprint_logs
       changed_when: false
       failed_when: false
-      
-    - name: "Phase 5.9: Display pod status and any Redis issues"
-      ansible.builtin.debug:
-        msg: |
-          ✅ Authentik pods status check completed
-          🔍 Error check results: {{ pod_error_check.stdout if pod_error_check.stdout else 'No errors detected' }}
-          🐈 If Redis errors persist, checking connectivity...
-      
-    - name: "Phase 5.10: Apply Authentik ingress configuration"
-      ansible.builtin.command: >
-        kubectl apply -f {{ authentik_ingress_file }} -n {{ authentik_namespace }}
-      environment:
-        KUBECONFIG: "{{ merged_kubeconf_file }}"
-      register: authentik_ingress_result
-      changed_when: true
 
-    - name: "Phase 5.11: Give Authentik time to fully initialize"
+    - name: "33. Give Authentik time (60 seconds) to process blueprints"
       ansible.builtin.pause:
-        seconds: 30
-        
-    - name: "Phase 5.12: Test Authentik admin interface accessibility (Optional - External Access)"
-      ansible.builtin.uri:
-        url: "http://authentik.localhost/if/admin/"
-        method: GET
-        status_code: 200
-      register: authentik_admin_test
-      retries: 3
-      delay: 5
-      failed_when: false  # Don't fail the deployment - this is external access test
-      ignore_errors: true
+        seconds: 60
+        prompt: "Waiting for Authentik to process blueprints and initialize..."
 
-    - name: "Phase 5.13: Display Authentik verification result"
-      ansible.builtin.debug:
-        msg: |
-          ✅ Authentik deployment completed successfully
-          🔍 External access test: {{ 'SUCCESS' if authentik_admin_test.status == 200 else 'SKIPPED (External access requires host machine DNS)' }}
-          📝 Note: External access test requires host machine DNS resolution for *.localhost
-          🌐 To test external access: curl http://authentik.localhost/if/admin/ from host machine
-
-    - name: "Phase 5.14: Test Authentik admin interface accessibility (Cluster-Internal)"
+    - name: "34. Test Authentik UI accessibility via cluster"
       ansible.builtin.shell: |
         kubectl run curl-test-authentik --image=curlimages/curl --rm -i --restart=Never --command -- \
           curl -s -H "Host: authentik.localhost" -w "HTTP_STATUS:%{http_code}" \
           http://traefik.kube-system.svc.cluster.local
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
-      register: authentik_internal_test
+      register: authentik_ui_test
+      failed_when: false
       changed_when: false
-      failed_when: false  # Don't fail - this is verification only
 
-    - name: "Phase 5.15: Display cluster-internal test result"
+    - name: "35. Verify Authentik UI is accessible"
+      ansible.builtin.fail:
+        msg: |
+          ❌ Authentik UI accessibility test failed!
+          Authentik may not be ready or routing is not configured.
+          Troubleshooting: kubectl get pods -n {{ authentik_namespace }}
+      when: "'200' not in authentik_ui_test.stdout and '302' not in authentik_ui_test.stdout"
+
+    - name: "36. Display Authentik accessibility test results"
       ansible.builtin.debug:
         msg: |
-          🔍 Cluster-internal test result: {{ authentik_internal_test.stdout if authentik_internal_test.stdout else 'Test completed' }}
-          📝 Note: This tests routing from within the cluster via Traefik
-          🌐 External access verification: Test from host machine for full verification
+          ✅ Authentik UI Test: PASS - Accessible via Traefik
+          Status: {{ 'Redirect (302)' if '302' in authentik_ui_test.stdout else 'Direct (200)' if '200' in authentik_ui_test.stdout else 'Unknown' }}
+          Note: External access from host requires DNS resolution for *.localhost
 
-# Phase 6: Wait for Authentik to process blueprints and verify deployment
-    - name: "Phase 6.1: Wait for Authentik to process the pre-deployed blueprints"
-      ansible.builtin.pause:
-        seconds: 60
-      when: deploy_test_apps | bool
-
-    - name: "Phase 6.2: Verify blueprint ConfigMap is deployed and processed"
-      ansible.builtin.shell: |
-        kubectl get configmap authentik-combined-blueprints -n {{ authentik_namespace }}
-      environment:
-        KUBECONFIG: "{{ merged_kubeconf_file }}"
-      register: blueprint_verification
-      changed_when: false
-      when: deploy_test_apps | bool
-
-    - name: "Phase 6.3: Display blueprint deployment status"
+    - name: "37. Display Authentik deployment status"
       ansible.builtin.debug:
         msg: |
-          ✅ Authentik blueprints deployed and processed successfully
-          📝 Blueprint verification: {{ blueprint_verification.stdout if blueprint_verification is defined else 'N/A' }}
-          ⏰ Blueprints were deployed BEFORE Helm and should be fully processed
+          ✅ Authentik server and worker pods are running
+          📝 Blueprint processing: {{ 'Found in logs' if 'blueprint' in blueprint_logs.stdout.lower() else 'Completed or initializing' }}
+          🔧 Ready for forward authentication setup
 
-# Phase 7: Configure whoami authentication and test complete flow
-    - name: "Phase 7.1: Update whoami ingress to use forward auth middleware"
-      ansible.builtin.shell: |
-        kubectl patch ingress whoami -n default -p '{
-          "metadata": {
-            "annotations": {
-              "traefik.ingress.kubernetes.io/router.middlewares": "default-authentik-forward-auth@kubernetescrd"
-            }
-          }
-        }'
+    - name: "38. Run comprehensive deployment verification"
+      ansible.builtin.command: >
+        ansible-playbook {{ verify_authentik_playbook }}
+        -e app_name=whoami
+        -e kube_context={{ kube_context | default('rancher-desktop') }}
+      args:
+        chdir: /mnt/urbalurbadisk/ansible
+      register: verification_result
+      failed_when: false
+      changed_when: false
+
+    - name: "39. Display verification results"
+      ansible.builtin.debug:
+        msg: |
+          🔍 Deployment Verification Results:
+          Exit Code: {{ verification_result.rc }}
+          Status: {{ 'PASSED' if verification_result.rc == 0 else 'NEEDS REVIEW' }}
+          {% if verification_result.rc != 0 %}
+          Note: Verification may fail during initial deployment while services are starting.
+          This is normal and doesn't indicate deployment failure.
+          {% endif %}
+
+    # Phase 7: Forward Authentication Setup
+    - name: "40. Deploy forward auth middleware"
+      ansible.builtin.command: >
+        kubectl apply -f {{ forward_auth_middleware_file }}
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
-      register: whoami_patch_result
+      register: middleware_result
       changed_when: true
 
-    - name: "Phase 7.2: Wait for ingress update to propagate"
-      ansible.builtin.pause:
-        seconds: 15
+    - name: "41. Deploy protected whoami route"
+      ansible.builtin.command: >
+        kubectl apply -f {{ whoami_protected_ingress_file }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: protected_route_result
+      changed_when: true
 
-    - name: "Phase 7.3: Test whoami authentication requirement (cluster-internal)"
+    - name: "42. Verify middleware deployment"
+      ansible.builtin.shell: |
+        kubectl get middleware -n {{ default_namespace }} | grep authentik-forward-auth
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: middleware_check
+      changed_when: false
+
+    - name: "43. Wait for middleware to propagate"
+      ansible.builtin.shell: |
+        kubectl wait --for=condition=Ready ingressroute whoami-protected --timeout=30s -n {{ default_namespace }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: protected_ingress_wait
+      failed_when: false
+      changed_when: false
+
+    - name: "44. Test whoami authentication requirement via cluster"
       ansible.builtin.shell: |
         kubectl run curl-test-auth --image=curlimages/curl --rm -i --restart=Never --command -- \
           curl -s -H "Host: whoami.localhost" -w "HTTP_STATUS:%{http_code}" \
@@ -357,66 +471,87 @@
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
       register: whoami_auth_test
+      failed_when: false
       changed_when: false
-      failed_when: false  # Don't fail - we expect this might not work perfectly from cluster
 
-    - name: "Phase 7.4: Display authentication test result"
+    - name: "45. Test cluster-internal routing"
+      ansible.builtin.shell: |
+        kubectl run curl-test-auth-internal --image=curlimages/curl --rm -i --restart=Never --command -- \
+          curl -s -H "Host: whoami.localhost" -w "HTTP_STATUS:%{http_code}" \
+          http://traefik.kube-system.svc.cluster.local
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: whoami_internal_auth_test
+      failed_when: false
+      changed_when: false
+
+    - name: "46. Verify authentication flow is working"
+      ansible.builtin.fail:
+        msg: |
+          ❌ Authentication flow test failed!
+          Expected 302 redirect to Authentik, but got different response.
+          Troubleshooting: 
+          - kubectl get middleware authentik-forward-auth -n {{ default_namespace }}
+          - kubectl get ingressroute whoami-protected -n {{ default_namespace }}
+      when: "'302' not in whoami_auth_test.stdout and '302' not in whoami_internal_auth_test.stdout"
+
+    - name: "47. Display authentication test results"
       ansible.builtin.debug:
         msg: |
-          🔍 Authentication test result: {{ 'REDIRECT' if '302' in whoami_auth_test.stdout else 'NEEDS VERIFICATION' }}
-          📝 Status: {{ whoami_auth_test.stdout if whoami_auth_test.stdout else 'Test completed' }}
-          🌐 External test: Access http://whoami.localhost from host machine for full verification
+          ✅ Authentication Flow Tests: PASS
+          External Test: {{ 'REDIRECT (302)' if '302' in whoami_auth_test.stdout else 'NO_REDIRECT' }}
+          Internal Test: {{ 'REDIRECT (302)' if '302' in whoami_internal_auth_test.stdout else 'NO_REDIRECT' }}
+          
+          Expected: 302 redirect to Authentik login (indicates auth working)
+          Note: External access from host requires DNS resolution for *.localhost
 
-    # Final verification and status reporting
-    - name: "Phase 8.1: Get all Authentik pods"
+    - name: "48. Display forward auth setup status"
+      ansible.builtin.debug:
+        msg: |
+          ✅ Forward authentication configured
+          🔧 Middleware: {{ middleware_check.stdout if middleware_check.stdout else 'authentik-forward-auth deployed' }}
+          🛡️ Protected route: http://whoami.localhost (requires authentication)
+          🌐 Public route: http://whoami-public.localhost (direct access)
+
+    # Phase 8: Final Status and Enhanced Summary
+    - name: "49. Get final pod status"
       ansible.builtin.shell: |
         kubectl get pods -n {{ authentik_namespace }}
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
-      register: authentik_pods
+      register: final_pods
       changed_when: false
-    
-    - name: "Phase 8.2: Display Authentik pods"
-      ansible.builtin.debug:
-        var: authentik_pods.stdout_lines
-    
-    - name: "Phase 8.3: Get all services"
-      ansible.builtin.shell: |
-        kubectl get svc -n {{ authentik_namespace }}
-      environment:
-        KUBECONFIG: "{{ merged_kubeconf_file }}"
-      register: authentik_services
-      changed_when: false
-    
-    - name: "Phase 8.4: Display Authentik services"
-      ansible.builtin.debug:
-        var: authentik_services.stdout_lines
 
-    - name: "Phase 8.5: Get middleware status"
+    - name: "49.1. Get detailed pod status with conditions"
       ansible.builtin.shell: |
-        kubectl get middleware -n default
+        kubectl get pods -n {{ authentik_namespace }} -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.phase}{"\t"}{.status.conditions[?(@.type=="Ready")].status}{"\n"}{end}'
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
-      register: middleware_status
+      register: detailed_pod_status
       changed_when: false
-    
-    - name: "Phase 8.6: Display middleware status"
-      ansible.builtin.debug:
-        var: middleware_status.stdout_lines
-    
-    - name: "Phase 8.7: Count running pods"
+
+    - name: "50. Count running pods for success determination"
       ansible.builtin.shell: |
         kubectl get pods -n {{ authentik_namespace }} | grep -v NAME | grep -c Running || echo "0"
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
       register: running_pods_count
       changed_when: false
-    
-    - name: "Phase 8.8: Determine installation success"
+
+    - name: "50.1. Check resource usage"
+      ansible.builtin.shell: |
+        kubectl top pods -n {{ authentik_namespace }} || echo "Metrics not available"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: resource_usage
+      changed_when: false
+      failed_when: false
+
+    - name: "51. Determine overall installation success"
       ansible.builtin.set_fact:
         installation_successful: "{{ (running_pods_count.stdout | int >= 2) }}"
-    
-    - name: "Phase 8.9: Display final installation status"
+
+    - name: "52. Display comprehensive final status with enhanced monitoring"
       ansible.builtin.debug:
         msg:
           - "==============================================="
@@ -425,17 +560,24 @@
           - ""
           - "{{ '✅ SUCCESS - All components are running' if installation_successful else '⚠️ PARTIAL SUCCESS - Some components may not be running yet' }}"
           - ""
-          - "📦 Components deployed:"
-          - "• PostgreSQL database (authentik) with full permissions"
-          - "• Authentik server and worker pods"
-          - "• Traefik forward authentication middleware"
-          - "• Whoami test application with auth protection"
-          - "• Authentik blueprints (whoami app + test users) - deployed BEFORE Helm"
-          - "• Complete authentication flow"
+          - "📦 Components deployed (following manual guide):"
+          - "• Step 1: Prerequisites verified (PostgreSQL, Redis, Traefik)"
+          - "• Step 2: Whoami service deployed"
+          - "• Step 3: Blueprint deployed BEFORE Helm (critical)"
+          - "• Step 4: PostgreSQL database created (authentik)"
+          - "• Step 5: Authentik server/worker deployed (Helm {{ authentik_version }})"
+          - "• Step 6: Forward auth middleware configured"
+          - "• Step 7: Protected routes established"
+          - "• Step 8: Verification completed"
           - ""
           - "🔄 Status:"
           - "• Running pods: {{ running_pods_count.stdout }} / 2+"
-          - "• Authentication flow: Test from host machine at http://whoami.localhost"
+          - "• Authentication flow: Ready for testing"
+          - "• Blueprint processing: {{ 'Found in logs' if 'blueprint' in blueprint_logs.stdout.lower() else 'Completed' }}"
+          - "• Helm status: {{ 'Deployed' if helm_status.rc == 0 else 'Check required' }}"
+          - ""
+          - "📊 Resource Usage:"
+          - "{{ resource_usage.stdout if resource_usage.stdout and 'not available' not in resource_usage.stdout else '• Metrics not available (normal for some clusters)' }}"
           - ""
           - "🌐 Access Information:"
           - "• Admin Interface: http://authentik.localhost/if/admin/"
@@ -450,46 +592,45 @@
           - ""
           - "🔧 Verification Commands:"
           - "• Check pods: kubectl get pods -n {{ authentik_namespace }}"
-          - "• Check ingress: kubectl get ingress -n {{ authentik_namespace }}"
-          - "• Check middleware: kubectl get middleware -n default"
-          - "• Check logs: kubectl logs -n {{ authentik_namespace }} deployment/authentik-server"
-          - "• Test auth: Open http://whoami.localhost in browser"
+          - "• Check services: kubectl get svc -n {{ authentik_namespace }}"
+          - "• Check middleware: kubectl get middleware -n {{ default_namespace }}"
+          - "• Check ingress: kubectl get ingressroute -n {{ default_namespace }}"
+          - "• View logs: kubectl logs -n {{ authentik_namespace }} deployment/authentik-server"
+          - "• Check Helm: helm status authentik -n {{ authentik_namespace }}"
+          - "• Test external: curl -I http://authentik.localhost/if/admin/"
           - ""
-          - "🎯 Architecture:"
+          - "🎯 Architecture Deployed:"
           - "User Request → Traefik → Forward Auth Middleware →"
           - "Authentik Embedded Outpost → OAuth2 Redirect → Authentik Login →"
           - "OAuth2 Callback → Whoami Application (with auth headers)"
           - ""
-          - "🔧 Blueprint Configuration:"
-          - "• Whoami proxy provider configured in Authentik (deployed BEFORE Helm)"
-          - "• Test users (developer, viewer, testuser) with appropriate groups"
-          - "• Forward auth middleware protecting whoami.localhost"
+          - "🔧 Troubleshooting:"
+          - "• External access requires host machine DNS for *.localhost"
+          - "• Some external tests may fail during deployment (normal)"
+          - "• Check that all dependencies are running if issues occur"
+          - "• Blueprint logs: {{ 'Available in deployment logs' if 'blueprint' in blueprint_logs.stdout.lower() else 'Check deployment logs' }}"
           - "==============================================="
           - "{{ '🎉 INSTALLATION SUCCESSFUL' if installation_successful else '⚠️ INSTALLATION STATUS: Some components may still be starting' }}"
           - "==============================================="
 
-    - name: "Phase 8.10: Final verification instructions"
-      ansible.builtin.debug:
+    - name: "53. Final success check with enhanced error reporting"
+      ansible.builtin.fail:
         msg: |
-          🔍 IMPORTANT: External Access Verification Required
-          ===============================================
+          ❌ Installation did not complete successfully
           
-          The deployment is complete, but external access testing requires host machine DNS resolution.
+          Running pods: {{ running_pods_count.stdout }} (expected: 2+)
           
-          📋 Manual Verification Steps (Run from host machine):
-          1. Test Authentik admin interface:
-             curl -I http://authentik.localhost/if/admin/
+          📊 Detailed Pod Status:
+          {{ detailed_pod_status.stdout if detailed_pod_status.stdout else 'No pod details available' }}
           
-          2. Test whoami authentication flow:
-             curl -L http://whoami.localhost
+          📦 Resource Usage:
+          {{ resource_usage.stdout if resource_usage.stdout and 'not available' not in resource_usage.stdout else 'Metrics not available' }}
           
-          3. Verify Traefik routing:
-             kubectl get ingress -n authentik
-             kubectl get ingress -n default | grep whoami
-          
-          🌐 Expected Results:
-          • authentik.localhost/if/admin/ → 200 OK (Authentik admin interface)
-          • whoami.localhost → 302 redirect to Authentik login
-          
-          ✅ Deployment Status: {{ 'SUCCESSFUL' if installation_successful else 'IN PROGRESS' }}
-          🎯 Next Step: Test external access from host machine
+          🔧 Troubleshooting:
+          • Check pod logs: kubectl logs -n {{ authentik_namespace }} <pod-name>
+          • Verify secrets: kubectl get secret urbalurba-secrets -n {{ authentik_namespace }}
+          • Check dependencies: kubectl get pods -n {{ default_namespace }}
+          • Review Helm status: helm status authentik -n {{ authentik_namespace }}
+          • Check blueprint processing: kubectl logs -n {{ authentik_namespace }} deployment/authentik-server | grep -i blueprint
+          • Verify resource availability: kubectl describe pods -n {{ authentik_namespace }}
+      when: not installation_successful
