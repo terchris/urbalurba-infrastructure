@@ -1,10 +1,32 @@
 # file: /mnt/urbalurbadisk/manifests/090-gravitee-ingress.yaml
-# description: Updated ingress configuration for Gravitee APIM 4.8.4
+# description: Separate ingress configuration for Gravitee APIM components
 #
-# CHANGES FROM ORIGINAL:
-# - Updated SSL redirect annotation to use default behavior
-# - Added ingress class specification for better compatibility
-# - Enhanced annotations for 4.8.4 compatibility
+# Purpose: Define routing rules for all Gravitee APIM components through Traefik
+# This file creates path-based routing for all Gravitee components under /apim/* path
+# It should be applied after Gravitee services are deployed
+#
+# IMPORTANT PATH CONFIGURATION:
+# - All Gravitee components are configured to run under the '/apim' path prefix
+# - These paths MUST match the BASE_HREF and other path settings in 090-gravitee-config.yaml
+# - Path mapping:
+#   - /apim/management → Management API
+#   - /apim/portal → Portal API
+#   - /apim/gateway → Gateway API
+#   - /apim/console(/.*) → Management UI (with path rewriting)
+#   - /apim/portal-ui → Portal UI
+#
+# HOSTNAME CONFIGURATION:
+# - No hostnames are hardcoded, allowing flexibility with Tailscale funnel
+# - This configuration will work with any hostname that resolves to your Traefik ingress
+# - Routing is based entirely on paths, not hostnames
+#
+# Traffic flow:
+# Tailscale funnel → Traefik → Gravitee services based on path
+#
+# Usage:
+# This file should be applied after Gravitee services are deployed,
+# using the Ansible playbook (090-setup-gravitee.yml) or direct kubectl command:
+# kubectl apply -f 090-gravitee-ingress.yaml
 
 ---
 # Management API Ingress (handles management API endpoints)
@@ -15,8 +37,6 @@ metadata:
   annotations:
     traefik.ingress.kubernetes.io/priority: "1000"
     traefik.ingress.kubernetes.io/router.entrypoints: "web,websecure"
-    # Updated for 4.8.4 - use default SSL redirect behavior
-    nginx.ingress.kubernetes.io/ssl-redirect: "default"
 spec:
   ingressClassName: traefik
   rules:
@@ -38,7 +58,6 @@ metadata:
   annotations:
     traefik.ingress.kubernetes.io/priority: "1000"
     traefik.ingress.kubernetes.io/router.entrypoints: "web,websecure"
-    nginx.ingress.kubernetes.io/ssl-redirect: "default"
 spec:
   ingressClassName: traefik
   rules:
@@ -60,7 +79,6 @@ metadata:
   annotations:
     traefik.ingress.kubernetes.io/priority: "1000"
     traefik.ingress.kubernetes.io/router.entrypoints: "web,websecure"
-    nginx.ingress.kubernetes.io/ssl-redirect: "default"
 spec:
   ingressClassName: traefik
   rules:
@@ -82,7 +100,6 @@ metadata:
   annotations:
     traefik.ingress.kubernetes.io/priority: "1000"
     traefik.ingress.kubernetes.io/router.entrypoints: "web,websecure"
-    nginx.ingress.kubernetes.io/ssl-redirect: "default"
 spec:
   ingressClassName: traefik
   rules:
@@ -104,7 +121,6 @@ metadata:
   annotations:
     traefik.ingress.kubernetes.io/priority: "1000"
     traefik.ingress.kubernetes.io/router.entrypoints: "web,websecure"
-    nginx.ingress.kubernetes.io/ssl-redirect: "default"
     # Path rewriting required for console UI
     traefik.ingress.kubernetes.io/rewrite-target: "/$1"
 spec:

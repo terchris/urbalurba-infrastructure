@@ -35,7 +35,7 @@
 
     - name: 3. Print playbook description
       ansible.builtin.debug:
-        msg: "Setting up Gravitee APIM on Kubernetes context: {{ kube_context }}"
+        msg: "Setting up Gravitee APIM 4.8.4 on Kubernetes context: {{ kube_context }}"
     
     - name: 4a. Check if urbalurba-secrets exists
       ansible.builtin.command: kubectl get secret urbalurba-secrets -n {{ gravitee_namespace }}
@@ -188,15 +188,27 @@
       ansible.builtin.command: helm repo update
       changed_when: false
       
-    # We'll just proceed with the installation attempt directly
-    - name: 18. Prepare for Gravitee installation
+    - name: 18a. Verify Gravitee Helm chart version 4.8.4 is available
+      ansible.builtin.shell: |
+        helm search repo graviteeio/apim --version 4.8.4
+      register: chart_version_check
+      changed_when: false
+      failed_when: chart_version_check.rc != 0
+
+    - name: 18b. Display available chart version
       ansible.builtin.debug:
-        msg: "Proceeding with Gravitee APIM installation or update..."
+        var: chart_version_check.stdout_lines
+      
+    # We'll just proceed with the installation attempt directly
+    - name: 18c. Prepare for Gravitee APIM 4.8.4 installation
+      ansible.builtin.debug:
+        msg: "Proceeding with Gravitee APIM 4.8.4 installation or update..."
 
     # Deploy Gravitee APIM (or upgrade if it exists)
-    - name: 19. Deploy Gravitee APIM using Helm with enhanced connectivity settings
+    - name: 19. Deploy Gravitee APIM 4.8.4 using Helm
       ansible.builtin.command: >
         helm upgrade --install {{ gravitee_release_name }} graviteeio/apim
+        --version 4.8.4
         -f {{ gravitee_config_file }}
         --namespace {{ gravitee_namespace }}
         --timeout 10m
@@ -273,6 +285,26 @@
       register: running_pods_count
       changed_when: false
       ignore_errors: true
+      
+    # Verify correct image versions are deployed
+    - name: 21d. Verify correct image versions are deployed
+      ansible.builtin.shell: |
+        kubectl get pods -n {{ gravitee_namespace }} -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.containers[*].image}{"\n"}{end}' | grep gravitee
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: deployed_images
+      changed_when: false
+      ignore_errors: true
+      
+    - name: 21e. Display deployed image versions
+      ansible.builtin.debug:
+        var: deployed_images.stdout_lines
+      when: deployed_images.stdout is defined
+      
+    - name: 21f. Verify 4.8.4 images are used
+      ansible.builtin.fail:
+        msg: "Not all containers are using 4.8.4 images. Check deployment."
+      when: deployed_images.stdout is defined and "4.8.4" not in deployed_images.stdout
       
     # Get any Gravitee API pod name
     - name: 22a. Get Gravitee API pod name
@@ -365,14 +397,14 @@
     - name: 29. Display installation success status
       ansible.builtin.debug:
         msg: 
-          - "Gravitee APIM services installation status: {{ 'Successful' if services_setup_successful else 'FAILED' }}"
+          - "Gravitee APIM 4.8.4 services installation status: {{ 'Successful' if services_setup_successful else 'FAILED' }}"
           - "Gravitee APIM ingress setup status: {{ 'Successful' if ingress_setup_successful else 'FAILED' }}"
         
     # Display warning if installation was not successful
     - name: 30. Display warning if installation failed
       ansible.builtin.debug:
         msg: |
-          WARNING: The Gravitee APIM installation appears to have FAILED!
+          WARNING: The Gravitee APIM 4.8.4 installation appears to have FAILED!
           
           Troubleshooting steps:
           1. Check Helm release status: helm status {{ gravitee_release_name }} -n {{ gravitee_namespace }}
@@ -408,7 +440,8 @@
     - name: 33. Display final status
       ansible.builtin.debug:
         msg:
-          - "Gravitee APIM setup {{ 'completed successfully' if services_setup_successful and ingress_setup_successful else 'FAILED' }} in the {{ gravitee_namespace }} namespace."
+          - "Gravitee APIM 4.8.4 setup {{ 'completed successfully' if services_setup_successful and ingress_setup_successful else 'FAILED' }} in the {{ gravitee_namespace }} namespace."
+          - "Version: 4.8.4 (released August 14, 2025)"
           - "Default admin credentials: admin / adminadmin"
           - "Running pods found: {{ running_pods_count.stdout|default('0') }}"
           - ""

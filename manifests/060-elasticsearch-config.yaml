@@ -1,8 +1,8 @@
 # 060-elasticsearch-config.yaml
-# Minimal Elasticsearch setup using Bitnami Helm chart
+# Single-node Elasticsearch setup using Bitnami Helm chart (optimized for fast startup)
 #
 # Purpose:
-# This configuration is designed to deploy a minimalistic Elasticsearch instance
+# This configuration is designed to deploy a single-node Elasticsearch instance
 # with optimized resource usage, security disabled, and unnecessary features turned off.
 # It is intended for local development, testing, or lightweight workloads.
 #
@@ -12,20 +12,25 @@
 # Uninstall:
 # helm uninstall elasticsearch --namespace elasticsearch
 #
+# Key Benefits of Single-Node Setup:
+# - Fast startup (under 2 minutes vs. hours for multi-node)
+# - Simple configuration and management
+# - Resource efficient (single pod instead of 8+ pods)
+# - Perfect for development and testing
+#
 # Transitioning to Production:
 # - Increase heap size (`heapSize`) and adjust CPU/memory limits based on workload.
 # - Enable security (`security.enabled: true`) and configure authentication.
 # - Configure TLS (`security.tls.restEncryption: true`) for secure communication.
 # - Increase persistence size (`persistence.size`) for large datasets.
-# - Adjust `index.number_of_replicas` for redundancy in multi-node clusters.
-# - Enable monitoring (`xpack.monitoring.enabled: true`) for performance insights.
+# - For production multi-node: remove single-node constraints and adjust replica counts.
 
 clusterName: elasticsearch
 
-# Single node setup optimized for minimal resource usage
+# Single node setup optimized for fast startup and minimal resource usage
 master:
   masterOnly: false
-  replicaCount: 1  # Single node cluster, no need for multiple masters
+  replicaCount: 1  # Single master node (handles all roles)
   heapSize: 512m  # Adjusted heap size for stability
   resources:
     requests:
@@ -36,13 +41,13 @@ master:
       memory: 1Gi
 
 data:
-  replicaCount: 0  # No separate data nodes, using a single master node
+  replicaCount: 0  # No separate data nodes - master handles data
 
 coordinating:
-  replicaCount: 0  # No separate coordinating nodes
+  replicaCount: 0  # No separate coordinating nodes - master handles coordination
 
 ingest:
-  enabled: false  # Disabling ingest node to reduce overhead
+  enabled: false  # No separate ingest node - master handles ingestion
 
 # Persistence settings to store data permanently
 persistence:

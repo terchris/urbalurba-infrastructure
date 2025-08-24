@@ -1,5 +1,5 @@
 # file: /mnt/urbalurbadisk/manifests/090-gravitee-config.yaml
-# description: Updated for Gravitee APIM 4.8.4 compatibility
+# description: for now hardcoded values unti lwe get it working
 #
 # Global settings
 global:
@@ -22,28 +22,18 @@ es:
   security:
     enabled: false
 
-# API Management API configuration  
+# API configuration
 api:
   enabled: true
   replicaCount: 1
   autoscaling:
     enabled: false
-  
-  # Specify 4.8.4 image explicitly
-  image:
-    repository: graviteeio/apim-management-api
-    tag: 4.8.4-debian
-    pullPolicy: Always
-  
-  # Updated configuration structure for 4.8.4
-  http:
-    management:
-      entrypoint: /apim/management
-    portal:
-      entrypoint: /apim/portal
-    
-  # Additional environment variables for path configuration
+  # Use environment variables for consistent path configuration
   env:
+    - name: gravitee_management_entrypoint
+      value: /apim/management
+    - name: gravitee_portal_entrypoint
+      value: /apim/portal
     - name: console_ui_url
       value: /apim/console
     - name: console_api_url
@@ -57,40 +47,16 @@ gateway:
   replicaCount: 1
   autoscaling:
     enabled: false
-    
-  # Specify 4.8.4 image explicitly
-  image:
-    repository: graviteeio/apim-gateway
-    tag: 4.8.4-debian
-    pullPolicy: Always
-    
-  # Updated SSL/trust configuration for 4.8.4
-  http:
-    api:
-      entrypoint: /apim/gateway
-  
-  # SSL trust configuration (4.8.4 breaking change)
-  management:
-    http:
-      trustAll: false  # Changed from trustall to trustAll
-      
   env:
     - name: gravitee_http_api_entrypoint
       value: /apim/gateway
 
-# Management UI configuration
+# UI configuration
 ui:
   enabled: true
   replicaCount: 1
   autoscaling:
     enabled: false
-    
-  # Specify 4.8.4 image explicitly  
-  image:
-    repository: graviteeio/apim-management-ui
-    tag: 4.8.4
-    pullPolicy: Always
-    
   # Set the base paths correctly for UI
   env:
     - name: BASE_HREF
@@ -104,13 +70,6 @@ portal:
   replicaCount: 1
   autoscaling:
     enabled: false
-    
-  # Specify 4.8.4 image explicitly
-  image:
-    repository: graviteeio/apim-portal-ui
-    tag: 4.8.4
-    pullPolicy: Always
-    
   # Set the base paths correctly for Portal UI
   env:
     - name: BASE_HREF
@@ -123,7 +82,3 @@ ratelimit:
   type: mongodb
   mongodb:
     uri: mongodb://gravitee_user:SecretPassword1@mongodb.default.svc.cluster.local:27017/graviteedb?authSource=admin
-
-# Installation type configuration (4.2+ requirement)
-installation:
-  type: standalone

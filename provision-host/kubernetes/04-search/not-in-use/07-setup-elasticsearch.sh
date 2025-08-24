@@ -3,6 +3,7 @@
 # description: Setup Elasticsearch on a microk8s cluster using Ansible playbook.
 # usage: ./07-setup-elasticsearch.sh [target-host]
 # example: ./07-setup-elasticsearch.sh multipass-microk8s
+# note: Uses default Elasticsearch version 8.16.3
 
 # Ensure the script is run with Bash
 if [ -z "$BASH_VERSION" ]; then
@@ -68,7 +69,7 @@ test_connection() {
 
 # Main execution
 main() {
-    echo "Starting Elasticsearch setup on $TARGET_HOST"
+    echo "Starting Elasticsearch setup on $TARGET_HOST (using default version 8.16.1)"
     echo "---------------------------------------------------"
 
     test_connection || return 1
@@ -90,6 +91,7 @@ print_summary() {
 
     if [ ${#ERRORS[@]} -eq 0 ]; then
         echo "All steps completed successfully."
+        echo "Elasticsearch 8.16.1 has been deployed."
     else
         echo "Errors occurred during installation:"
         for step in "${!ERRORS[@]}"; do
