@@ -1,6 +1,12 @@
 # file: /mnt/urbalurbadisk/manifests/090-gravitee-config.yaml
-# description: Updated for Gravitee APIM 4.8.4 compatibility
+# description: Updated for Gravitee APIM 4.8.4 with proper UI constants configuration
 #
+# HOSTNAME STRATEGY:
+# - api.localhost → API Gateway (for developers)
+# - portal.localhost → Developer Portal  
+# - gravitee.localhost → Management Console (for admins)
+# - gravitee-api.localhost → Management API (for admins)
+
 # Global settings
 global:
   cluster: gravitee
@@ -35,21 +41,24 @@ api:
     tag: 4.8.4-debian
     pullPolicy: Always
   
-  # Updated configuration structure for 4.8.4
-  http:
+  # Configure ingress with proper hostname
+  ingress:
     management:
-      entrypoint: /apim/management
+      enabled: true
+      path: /
+      pathType: Prefix
+      hosts:
+        - gravitee-api.localhost
+      annotations:
+        kubernetes.io/ingress.class: "traefik"
     portal:
-      entrypoint: /apim/portal
-    
-  # Additional environment variables for path configuration
-  env:
-    - name: console_ui_url
-      value: /apim/console
-    - name: console_api_url
-      value: /apim/management
-    - name: portal_ui_url
-      value: /apim/portal-ui
+      enabled: true
+      path: /
+      pathType: Prefix  
+      hosts:
+        - gravitee-api.localhost
+      annotations:
+        kubernetes.io/ingress.class: "traefik"
 
 # Gateway configuration
 gateway:
@@ -64,19 +73,15 @@ gateway:
     tag: 4.8.4-debian
     pullPolicy: Always
     
-  # Updated SSL/trust configuration for 4.8.4
-  http:
-    api:
-      entrypoint: /apim/gateway
-  
-  # SSL trust configuration (4.8.4 breaking change)
-  management:
-    http:
-      trustAll: false  # Changed from trustall to trustAll
-      
-  env:
-    - name: gravitee_http_api_entrypoint
-      value: /apim/gateway
+  # Configure ingress for API access
+  ingress:
+    enabled: true
+    path: /
+    pathType: Prefix
+    hosts:
+      - api.localhost
+    annotations:
+      kubernetes.io/ingress.class: "traefik"
 
 # Management UI configuration
 ui:
@@ -91,12 +96,24 @@ ui:
     tag: 4.8.4
     pullPolicy: Always
     
-  # Set the base paths correctly for UI
-  env:
-    - name: BASE_HREF
-      value: /apim/console/
-    - name: MGMT_API_URL
-      value: /apim/management/organizations/DEFAULT/environments/DEFAULT/
+  # Configure ingress for admin console
+  ingress:
+    enabled: true
+    path: /
+    pathType: Prefix
+    hosts:
+      - gravitee.localhost
+    annotations:
+      kubernetes.io/ingress.class: "traefik"
+  
+  # Configure constants.json for proper API URLs
+  constants: |
+    {
+      "baseURL": "http://gravitee-api.localhost/management",
+      "basePortalURL": "http://gravitee-api.localhost/portal", 
+      "production": false,
+      "defaultPortal": "classic"
+    }
 
 # Portal UI configuration
 portal:
@@ -111,12 +128,21 @@ portal:
     tag: 4.8.4
     pullPolicy: Always
     
-  # Set the base paths correctly for Portal UI
-  env:
-    - name: BASE_HREF
-      value: /apim/portal-ui/
-    - name: PORTAL_API_URL
-      value: /apim/portal/environments/DEFAULT
+  # Configure ingress for developer portal
+  ingress:
+    enabled: true
+    path: /
+    pathType: Prefix
+    hosts:
+      - portal.localhost
+    annotations:
+      kubernetes.io/ingress.class: "traefik"
+  
+  # Configure constants.json for proper API URLs
+  constants: |
+    {
+      "portalURL": "http://gravitee-api.localhost/portal"
+    }
 
 # Rate limit configuration
 ratelimit:

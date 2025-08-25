@@ -13,7 +13,7 @@
     elasticsearch_password_secret: "urbalurba-secrets"
     elasticsearch_password_key: "ELASTICSEARCH_PASSWORD"
     gravitee_config_file: "{{ manifests_folder }}/090-gravitee-config.yaml"
-    gravitee_ingress_file: "{{ manifests_folder }}/090-gravitee-ingress.yaml" # New ingress file
+    gravitee_ingress_file: "{{ manifests_folder }}/091-gravitee-ingress.yaml" # New ingress file
     gravitee_pod_readiness_timeout: 300
     gravitee_release_name: "gravitee-apim"
     gravitee_namespace: "default"  # Set to default namespace

@@ -1,0 +1,115 @@
+# file: /mnt/urbalurbadisk/manifests/091-gravitee-ingress.yaml
+# description: Simple hostname-based ingress for Gravitee APIM 4.8.4
+#
+# HOSTNAME STRATEGY (Simple Host-Based Routing):
+# - api.localhost → API Gateway (gravitee-apim-gateway:82)
+# - portal.localhost → Developer Portal (gravitee-apim-portal:8003)  
+# - gravitee.localhost → Management Console (gravitee-apim-ui:8002)
+# - gravitee-api.localhost → Management API (gravitee-apim-api:83)
+#
+# DESIGN PRINCIPLES:
+# - Follows same pattern as whoami-public.localhost (proven working)
+# - Uses traefik.io/v1alpha1 API (cluster standard)
+# - Simple Host() matching (no complex path routing)
+# - No middleware needed (services handle their own paths)
+# - No conflicts with existing nginx catch-all (priority: 1)
+
+---
+# =============================================================================
+# DEVELOPER DOMAIN - API Gateway 
+# =============================================================================
+
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: gravitee-api-gateway
+  namespace: default
+  labels:
+    app: gravitee-apim
+    component: api-gateway
+    domain: developer
+    protection: none
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`api.localhost`)
+      kind: Rule
+      services:
+        - name: gravitee-apim-gateway
+          port: 82
+
+---
+# =============================================================================
+# DEVELOPER DOMAIN - Portal UI
+# =============================================================================
+
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: gravitee-developer-portal
+  namespace: default
+  labels:
+    app: gravitee-apim
+    component: developer-portal
+    domain: developer
+    protection: none
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`portal.localhost`)
+      kind: Rule
+      services:
+        - name: gravitee-apim-portal
+          port: 8003
+
+---
+# =============================================================================
+# ADMIN DOMAIN - Management Console
+# =============================================================================
+
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: gravitee-admin-console
+  namespace: default
+  labels:
+    app: gravitee-apim
+    component: admin-console
+    domain: admin
+    protection: none
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`gravitee.localhost`)
+      kind: Rule
+      services:
+        - name: gravitee-apim-ui
+          port: 8002
+
+---
+# =============================================================================
+# ADMIN DOMAIN - Management API
+# =============================================================================
+
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: gravitee-admin-api
+  namespace: default
+  labels:
+    app: gravitee-apim
+    component: admin-api
+    domain: admin
+    protection: none
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`gravitee-api.localhost`)
+      kind: Rule
+      services:
+        - name: gravitee-apim-api
+          port: 83
