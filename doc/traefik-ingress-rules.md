@@ -142,19 +142,24 @@ spec:
 
 ## 🌐 **Routing Patterns**
 
-### **1. Simple Host-Based Routing** (Recommended)
+### **1. HostRegexp Pattern Routing** (Recommended - For Multi-Domain Support)
 ```yaml
-# File: manifests/071-whoami-public-ingressroute.yaml
+# Recommended pattern for all services - enables multi-domain access
 spec:
   routes:
-    - match: Host(`whoami-public.localhost`)
+    - match: HostRegexp(`myapp\..+`)
       kind: Rule
       services:
-        - name: whoami
+        - name: myapp-service
           port: 80
 ```
 
-**Best For**: Simple services, reliable routing, easy debugging
+**Best For**: All services - enables unified internal/external access and future domain support
+**Benefits**: 
+- ✅ Works on `.localhost` (internal development)
+- ✅ Works on `.urbalurba.no` (external demo)
+- ✅ Works on any future domains automatically
+- ✅ No need to update IngressRoute when adding new domains
 
 ### **2. Path-Based Routing**
 ```yaml
@@ -181,6 +186,189 @@ spec:
 ```
 
 **Best For**: Advanced routing needs, but can cause debugging issues
+
+### **4. HostRegexp Pattern Routing** (Advanced - For Unified Internal/External Access)
+```yaml
+# File: manifests/078-whoami-protected-ingressroute.yaml
+spec:
+  routes:
+    - match: HostRegexp(`whoami\..+`)
+      kind: Rule
+      services:
+        - name: whoami
+          port: 80
+      middlewares:
+        - name: authentik-forward-auth
+          namespace: default
+```
+
+**Best For**: Services that need to work on both internal (.localhost) and external (.urbalurba.no) domains
+**Pattern Explanation**: `whoami\..+` matches any domain starting with `whoami.`
+- ✅ `whoami.localhost` (internal development)
+- ✅ `whoami.urbalurba.no` (external demo via Cloudflare tunnel)
+- ✅ `whoami.example.com` (any future domain)
+
+**Benefits**:
+- **Unified Routing**: Single IngressRoute handles multiple domains
+- **Future-Proof**: Automatically supports new domains without configuration changes
+- **Cloudflare Ready**: External access via Cloudflare tunnel without duplicating rules
+- **Seamless Switching**: Easy transition between development and demo modes
+
+## 🔐 **Authentication with Authentik**
+
+### **Overview**
+This cluster supports **optional authentication** using **Authentik** as the identity provider. Services can be configured as public (no auth) or protected (requires login). Protected services use Traefik middleware (`authentik-forward-auth`) that forwards authentication requests to Authentik before serving content.
+
+### **Authentication Flow**
+```mermaid
+sequenceDiagram
+    participant User
+    participant Traefik
+    participant Middleware
+    participant Authentik
+    participant Service
+
+    User->>Traefik: 1. Visit protected service
+    Note over User,Traefik: e.g., http://whoami.localhost
+    
+    Traefik->>Middleware: 2. Intercept request
+    Note over Traefik,Middleware: authentik-forward-auth middleware
+    
+    alt Unauthenticated
+        Middleware->>Authentik: 3. Check authentication
+        Authentik->>Middleware: 4. Not authenticated
+        Middleware->>Traefik: 5. Redirect to login
+        Traefik->>User: 6. Redirect to Authentik login page
+        Note over User,Authentik: User logs in via Authentik UI
+        
+        User->>Authentik: 7. Submit credentials
+        Authentik->>User: 8. Authentication successful
+        User->>Traefik: 9. Return to original service
+    else Authenticated
+        Middleware->>Authentik: 3. Check authentication
+        Authentik->>Middleware: 4. User authenticated
+        Middleware->>Traefik: 5. Add auth headers
+        Traefik->>Service: 6. Forward request with headers
+        Service->>Traefik: 7. Service response
+        Traefik->>User: 8. Return service content
+    end
+```
+
+**Step-by-Step Process**:
+1. **Unauthenticated Request**: User visits protected service
+2. **Traefik Intercepts**: Middleware catches the request
+3. **Redirect to Authentik**: User is sent to login page
+4. **User Authentication**: User logs in via Authentik
+5. **Return to Service**: After successful auth, user is redirected back
+6. **Service Access**: Service receives authentication headers
+
+### **Required Components**
+1. **Authentik Deployment**: `manifests/075-authentik-complete-hardcoded.yaml`
+2. **Forward Auth Middleware**: `manifests/077-authentik-forward-auth-middleware.yaml`
+3. **Protected IngressRoute**: Example below
+
+### **Example: Protected Service with HostRegexp**
+```yaml
+# File: manifests/078-whoami-protected-ingressroute.yaml
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: whoami-protected
+  namespace: default
+  labels:
+    app: whoami
+    type: protected
+    routing: unified
+    protection: authentik-forward-auth
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: HostRegexp(`whoami\..+`)
+      kind: Rule
+      services:
+        - name: whoami
+          port: 80
+      middlewares:
+        - name: authentik-forward-auth
+          namespace: default
+```
+
+**Key Elements**:
+- **HostRegexp Pattern**: `whoami\..+` for unified internal/external routing
+- **Middleware Reference**: `authentik-forward-auth` in default namespace
+- **Labels**: `type: protected` and `routing: unified` for clarity
+
+### **Authentication Headers**
+When properly configured, the following headers are passed to your service:
+```yaml
+# Headers available in your application
+- X-Forwarded-User          # Username
+- X-Forwarded-Email         # User email
+- X-Forwarded-Groups        # User groups/roles
+- X-Forwarded-Name          # Full name
+- X-Forwarded-Preferred-Username  # Preferred username
+- X-Forwarded-User-Id       # User ID
+```
+
+### **UI Configuration Prerequisites**
+Before deploying protected services, complete these steps in Authentik UI:
+
+1. **Create Application**: 
+   - Name: `whoami`, Slug: `whoami`
+   - Type: `Proxy`
+
+2. **Create Proxy Provider**:
+   - Name: `whoami-provider`
+   - Mode: `Forward auth (single application)`
+   - External Host: `https://whoami.urbalurba.no`
+
+3. **Link Provider to Application**:
+   - Edit whoami application
+   - Assign whoami-provider
+
+4. **Configure Outpost**:
+   - Edit "authentik Embedded Outpost"
+   - Add whoami application
+
+### **Testing Authentication**
+```bash
+# Test unauthenticated access (should redirect to login)
+curl -L http://whoami.localhost
+
+# Test authenticated access (browser required)
+open http://whoami.localhost
+
+# Compare with public route (no auth required)
+curl http://whoami-public.localhost
+```
+
+### **Public vs Protected Routes**
+```yaml
+# Public Route (No Authentication)
+# File: manifests/071-whoami-public-ingressroute.yaml
+spec:
+  routes:
+    - match: HostRegexp(`whoami-public\..+`)
+      services:
+        - name: whoami
+          port: 80
+      # No middlewares = public access
+
+# Protected Route (With Authentication)
+# File: manifests/078-whoami-protected-ingressroute.yaml
+spec:
+  routes:
+    - match: HostRegexp(`whoami\..+`)
+      services:
+        - name: whoami
+          port: 80
+      middlewares:
+        - name: authentik-forward-auth  # Authentication required
+          namespace: default
+```
+
+**Pattern**: Use `whoami-public\..+` for public access and `whoami\..+` for protected access to the same service.
 
 ## 📁 **Working Examples**
 
@@ -221,9 +409,10 @@ spec:
 **Priority**: 1 (lowest - checked last)  
 **Pattern**: `PathPrefix(/)` - matches everything
 
-### **Example 2: Whoami Public Service**
+### **Example 2: Whoami Public Service (Working File)**
 ```yaml
 # File: manifests/071-whoami-public-ingressroute.yaml
+# This is the ACTUAL working file with HostRegexp pattern
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
@@ -231,22 +420,23 @@ metadata:
   namespace: default
   labels:
     app: whoami
-    component: public-routing
-    protection: none
+    type: public
+    routing: unified
 spec:
   entryPoints:
     - web
   routes:
-    - match: Host(`whoami-public.localhost`)
+    - match: HostRegexp(`whoami-public\..+`)
       kind: Rule
       services:
         - name: whoami
           port: 80
 ```
 
-**Purpose**: Simple host-based routing  
+**Purpose**: Unified internal/external routing with HostRegexp  
 **Priority**: None specified (defaults to higher than catch-all)  
-**Pattern**: `Host(whoami-public.localhost)` - simple and reliable
+**Pattern**: `HostRegexp(whoami-public\..+)` - matches whoami-public.localhost, whoami-public.urbalurba.no, etc.
+**Status**: ✅ This is the ACTUAL working file in your cluster
 
 ## 🚫 **Common Mistakes to Avoid**
 
@@ -335,13 +525,18 @@ kubectl get pods -l app=<app-label>
 
 ## 📝 **Best Practices**
 
-### **1. Use Simple Host-Based Routing**
+### **1. Use HostRegexp for All Services** (Recommended)
 ```yaml
-# ✅ RECOMMENDED
-match: Host(`myapp.localhost`)
+# ✅ RECOMMENDED - For all services to enable multi-domain support
+match: HostRegexp(`myapp\..+`)
 
-# ❌ AVOID
-match: Host(`myapp.localhost`) && PathPrefix(`/api`) && Header(`X-API-Key`)
+# Pattern Examples:
+# - myapp.localhost (internal development)
+# - myapp.urbalurba.no (external demo)
+# - myapp.example.com (future domains)
+
+# ❌ AVOID - Limited to single domain
+match: Host(`myapp.localhost`)
 ```
 
 ### **2. Set Appropriate Priorities**
@@ -369,11 +564,11 @@ metadata:
 
 ### **4. Test Before Production**
 ```yaml
-# Test with simple routing first
-match: Host(`test.localhost`)
+# Test with HostRegexp routing first
+match: HostRegexp(`test\..+`)
 
 # Then add complexity if needed
-match: Host(`test.localhost`) && PathPrefix(`/api`)
+match: HostRegexp(`test\..+`) && PathPrefix(`/api`)
 ```
 
 ## 🔄 **Migration from Standard Ingress**
@@ -437,10 +632,12 @@ spec:
 
 ### **Key Points**:
 1. **Use `traefik.io/v1alpha1`** - this is the current working version in Traefik 3.3.6
-2. **Prefer simple `Host()` matching** over complex path routing
-3. **Set appropriate priorities** (1 = lowest, 100+ = highest)
-4. **Test services directly** before troubleshooting ingress
-5. **Follow the working examples** in the manifests folder
+2. **Prefer `HostRegexp()` patterns** for all services to enable multi-domain support
+3. **Use `HostRegexp()` for unified internal/external access** - single rule handles multiple domains
+4. **Set appropriate priorities** (1 = lowest, 100+ = highest)
+5. **Test services directly** before troubleshooting ingress
+6. **Follow the working examples** in the manifests folder
+7. **Implement authentication** using `authentik-forward-auth` middleware for protected services
 
 ### **Traefik Version Information**:
 - **Current Version**: Traefik 3.3.6 (Rancher Desktop)
@@ -450,8 +647,10 @@ spec:
 
 ### **Remember**:
 - **Traefik IngressRoute CRDs** are the cluster standard
-- **Simple routing** is more reliable than complex routing
+- **HostRegexp patterns** are preferred for all services to enable multi-domain support
+- **Unified routing** across internal and external domains
 - **Priority system** determines route matching order
+- **Authentication middleware** protects services when needed
 - **Test incrementally** to avoid debugging complexity
 
-This approach ensures consistent, maintainable ingress configuration across the cluster.
+This approach ensures consistent, maintainable ingress configuration across the cluster with support for both development and production environments.

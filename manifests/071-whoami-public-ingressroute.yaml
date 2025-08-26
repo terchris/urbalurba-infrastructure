@@ -1,9 +1,16 @@
 # File: manifests/071-whoami-public-ingressroute.yaml
 #
 # Description:
-# Unprotected IngressRoute for whoami service testing
+# Unprotected IngressRoute for whoami service with unified routing support
 # Provides public access to whoami service without authentication
+# Automatically handles both internal (.localhost) and external (.urbalurba.no) domains
 # Used for testing basic routing functionality before adding authentication
+#
+# HostRegexp Routing:
+# This IngressRoute uses HostRegexp('whoami-public\..+') to automatically handle:
+# - whoami-public.localhost (internal development access)
+# - whoami-public.urbalurba.no (external demo access via Cloudflare tunnel)
+# - Any future domains (future-proof routing)
 #
 # Usage:
 # kubectl apply -f 071-whoami-public-ingressroute.yaml
@@ -12,19 +19,28 @@
 # - 070-whoami-service-and-deployment.yaml (whoami service must exist)
 #
 # Testing:
-# curl http://whoami-public.localhost
-# Should return whoami output without any authentication requirements
+# Internal: curl http://whoami-public.localhost
+# External: curl https://whoami-public.urbalurba.no
+# Both should return whoami output without any authentication requirements
 #
 # Integration:
-# - Routes whoami-public.localhost to whoami service
+# - Routes both internal and external domains to whoami service automatically
 # - No middleware applied - direct routing
 # - Used to verify basic Traefik routing before adding authentication complexity
-# - Complements protected route (077-whoami-protected-ingressroute.yaml)
+# - Complements protected route (078-whoami-protected-ingressroute.yaml)
+# - Enables seamless switching between development and demo modes
 #
 # Cluster Standards Compliance:
 # - Uses traefik.io/v1alpha1 API version
 # - IngressRoute CRD (not standard Kubernetes Ingress)
 # - Follows established cluster ingress standards
+# - Implements HostRegexp pattern for unified routing
+#
+# HostRegexp Pattern Explanation:
+# - 'whoami-public\..+' matches any domain that starts with 'whoami-public.'
+# - Examples: whoami-public.localhost, whoami-public.urbalurba.no, whoami-public.example.com
+# - The '\.' escapes the literal dot, '+' matches one or more characters
+# - This enables automatic external access without duplicating IngressRoute rules
 
 ---
 apiVersion: traefik.io/v1alpha1
@@ -34,13 +50,13 @@ metadata:
   namespace: default
   labels:
     app: whoami
-    component: public-routing
-    protection: none
+    type: public
+    routing: unified
 spec:
   entryPoints:
     - web
   routes:
-    - match: Host(`whoami-public.localhost`)
+    - match: HostRegexp(`whoami-public\..+`)
       kind: Rule
       services:
         - name: whoami
