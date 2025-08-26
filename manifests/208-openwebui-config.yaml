@@ -31,6 +31,9 @@
 nameOverride: ""
 namespaceOverride: "ai"
 
+# Override Helm chart defaults to ensure our configuration takes precedence
+fullnameOverride: "open-webui"
+
 # External services configuration
 ollama:
   enabled: false  # Using external Ollama instances
@@ -121,69 +124,58 @@ extraEnvVars:
   - name: ENABLE_ADMIN_EXPORT
     value: "true"
 
-  # OAuth2/OIDC Configuration for Authentik Integration
-  # Enables dual authentication: username/password + Authentik OAuth
-  # Users can choose between traditional login or "Continue with authentik"
-  # All OAuth configuration is now centralized in urbalurba-secrets secret
-  - name: OAUTH_CLIENT_ID
-    valueFrom:
-      secretKeyRef:
-        name: urbalurba-secrets
-        key: OPENWEBUI_OAUTH_CLIENT_ID
-        
-  - name: OAUTH_CLIENT_SECRET
-    valueFrom:
-      secretKeyRef:
-        name: urbalurba-secrets
-        key: OPENWEBUI_OAUTH_CLIENT_SECRET
-        
-  # Provider name displayed on the OAuth login button
+  # OAuth2/OIDC Configuration - Following official OpenWebUI documentation
+  # This ensures proper OAuth provider recognition and browser compatibility
+  
+  # Enable OAuth authentication
+  - name: OAUTH_ENABLED
+    value: "true"
+    
+  # OAuth provider configuration
   - name: OAUTH_PROVIDER_NAME
-    valueFrom:
-      secretKeyRef:
-        name: urbalurba-secrets
-        key: OPENWEBUI_OAUTH_PROVIDER_NAME
+    value: "Authentik"
     
-  # OIDC discovery endpoint - includes application slug from Authentik
-  # This tells Open WebUI where to find Authentik's OIDC configuration
-  # Using external service that points to authentik.localhost
+  # OAuth client credentials
+  - name: OAUTH_CLIENT_ID
+    value: "1c37QuM0qm0g2BzdLbhppVwmUwUUrhmB83e9inEe"
+    
+  - name: OAUTH_CLIENT_SECRET
+    value: "BngAuX1zthtYnyAxPePAwyTqDxfVSq09IDRUTAonRcogYmhnfj39eBk709nKF4ej1OT7OMiJWVYIrwOrdizTFiyQxapQUEpDziPNucs5yxIciEx21PkK82IgURILL06h"
+    
+  # OAuth scopes and settings
+  - name: OAUTH_SCOPES
+    value: "openid email profile"
+    
+  # OAuth debugging - set to DEBUG for detailed OAuth flow logging
+  - name: OAUTH_LOG_LEVEL
+    value: "DEBUG"
+    
+  # OAuth endpoints - using external hostnames for browser compatibility
+  # These override the endpoints discovered from OPENID_PROVIDER_URL
+  - name: OAUTH_AUTHORIZATION_URL
+    value: "http://authentik.localhost/application/o/openwebui-dev/authorize/"
+    
+  - name: OAUTH_TOKEN_URL
+    value: "http://authentik.localhost/application/o/openwebui-dev/token/"
+    
+  - name: OAUTH_USERINFO_URL
+    value: "http://authentik.localhost/application/o/openwebui-dev/userinfo/"
+    
+  # OIDC provider URL - using external hostname for discovery
   - name: OPENID_PROVIDER_URL
-    valueFrom:
-      secretKeyRef:
-        name: urbalurba-secrets
-        key: OPENWEBUI_OPENID_PROVIDER_URL
+    value: "http://authentik.localhost/application/o/openwebui-dev/.well-known/openid-configuration"
     
-  # Callback URL where Authentik redirects users after successful authentication
-  # Must match the redirect URI configured in your Authentik OAuth application
+  # Redirect URI for OAuth callback - using external hostname for browser
   - name: OPENID_REDIRECT_URI
-    valueFrom:
-      secretKeyRef:
-        name: urbalurba-secrets
-        key: OPENWEBUI_OPENID_REDIRECT_URI
+    value: "http://openwebui.localhost/oauth/oidc/callback"
     
   # Allow new users to register via OAuth (set to "false" to restrict to existing users)
   - name: ENABLE_OAUTH_SIGNUP
-    valueFrom:
-      secretKeyRef:
-        name: urbalurba-secrets
-        key: OPENWEBUI_ENABLE_OAUTH_SIGNUP
+    value: "true"
     
   # Merge OAuth accounts by email address for better user experience
   - name: OAUTH_MERGE_ACCOUNTS_BY_EMAIL
-    valueFrom:
-      secretKeyRef:
-        name: urbalurba-secrets
-        key: OPENWEBUI_OAUTH_MERGE_ACCOUNTS_BY_EMAIL
-    
-  # OAuth scopes to request from Authentik
-  # openid: Required for OIDC compliance
-  # email: Required for user identification and account merging
-  # profile: Optional, provides additional user profile information
-  - name: OAUTH_SCOPES
-    valueFrom:
-      secretKeyRef:
-        name: urbalurba-secrets
-        key: OPENWEBUI_OAUTH_SCOPES
+    value: "true"
 
 # Application logging configuration
 logging:
