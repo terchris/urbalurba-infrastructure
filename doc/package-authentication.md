@@ -20,7 +20,7 @@ The Authentication package is a comprehensive self-hosted identity and access ma
 On your host computer, run the following command to install the Authentication package:
 
 ```bash
-./scripts/packages/authentication.sh
+./scripts/packages/auth.sh
 ```
 
 The script will install the Authentication package and start the Authentik frontend. You can then access the Authentik admin interface at [http://authentik.localhost/if/admin/](http://authentik.localhost/if/admin/).
@@ -478,6 +478,99 @@ Traditional enterprise applications can use SAML for SSO integration:
       Location="http://myapp.localhost/saml/acs"/>
   </md:SPSSODescriptor>
 </md:EntityDescriptor>
+```
+
+## Authentik Working Mechanism
+
+### How Authentik Works After Cluster Reset
+
+#### **Post-Reset Initialization Process**
+
+After a cluster reset, Authentik goes through a specific initialization sequence:
+
+1. **Helm Deployment**
+   - Authentik server and worker pods start
+   - Database connections established
+   - Basic configuration loaded
+
+2. **Blueprint Processing**
+   - Blueprint discovery task enqueued
+   - Applications and providers created automatically
+   - Outpost configuration stored in database
+
+3. **Outpost Initialization**
+   - **Configuration**: Outpost settings are correct by default
+   - **Runtime State**: But outpost process is not fully activated
+   - **Status**: Configuration exists but not being applied
+
+4. **Activation Trigger**
+   - **Admin Interface Access**: Logging into `http://authentik.localhost`
+   - **Application Viewing**: Viewing any application in the admin interface
+   - **Result**: Outpost process "wakes up" and applies configuration
+
+#### **Why Admin Interface Access Triggers Activation**
+
+The Authentik admin interface access serves as a **configuration activation trigger**:
+
+- **Database Connection**: Establishes full database connectivity
+- **Configuration Loading**: Forces outpost to read its configuration
+- **Process Initialization**: Completes outpost process initialization
+- **Runtime Activation**: Applies configuration to running process
+
+#### **Outpost Configuration States**
+
+```yaml
+# State 1: After Cluster Reset (Inactive)
+Configuration: ✅ Correct (authentik_host_browser: "")
+Runtime: ❌ Not applied (generates 0.0.0.0:9000 URLs)
+
+# State 2: After Admin Interface Access (Active)
+Configuration: ✅ Correct (authentik_host_browser: "")
+Runtime: ✅ Applied (generates correct URLs)
+
+# State 3: After Manual Configuration (Active)
+Configuration: ✅ Custom settings
+Runtime: ✅ Applied (generates custom URLs)
+```
+
+#### **Dynamic Host Detection Mechanism**
+
+When `authentik_host_browser` is empty (the default):
+
+1. **Outpost detects incoming domain** from the request
+2. **Generates redirect URLs** using the same domain
+3. **Automatically adapts** to both `.localhost` and `.urbalurba.no`
+4. **No manual configuration** needed for multi-domain support
+
+#### **Configuration Persistence**
+
+- **Outpost settings** are stored in the database
+- **Survive pod restarts** and cluster resets
+- **Blueprint recreates** applications and providers
+- **But outpost configuration** needs activation trigger
+
+#### **Best Practices for Cluster Resets**
+
+1. **Deploy all manifests first**
+2. **Wait for blueprint processing** (check logs for completion)
+3. **Access admin interface** to trigger outpost activation
+4. **Test authentication flow** to verify everything works
+5. **No manual configuration changes** needed
+
+#### **Troubleshooting Flow**
+
+```mermaid
+graph TD
+    A[Cluster Reset] --> B[Deploy Manifests]
+    B --> C[Wait for Blueprint]
+    C --> D[Access Admin Interface]
+    D --> E{Outpost Working?}
+    E -->|Yes| F[✅ Success]
+    E -->|No| G[Pod Restart]
+    G --> H{Outpost Working?}
+    H -->|Yes| I[✅ Success]
+    H -->|No| J[Manual Configuration]
+    J --> K[✅ Success]
 ```
 
 ## Developer Workflow

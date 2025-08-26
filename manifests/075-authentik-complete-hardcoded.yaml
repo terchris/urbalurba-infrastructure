@@ -44,6 +44,12 @@
 # - New task engine (Dramatiq replaces Celery)
 # - Task metrics now exposed by worker, not server
 # - Some environment variables renamed/removed
+#
+# 🚨 IMPORTANT: After cluster reset, you MUST log into the admin interface
+# at http://authentik.localhost to activate the outpost configuration.
+# This triggers the outpost to apply its settings and enables authentication.
+# See doc/package-authentication.md for detailed troubleshooting information.
+# if you dont log in to the admin UI it simply dont work. No need to do anything. just log in and click Applications -> Applications
 
 ---
 authentik:
@@ -78,9 +84,6 @@ global:
       value: "SecretPassword1"
     # Internal cluster URL (used by outpost → server communication)
     - name: AUTHENTIK_HOST
-      value: "http://authentik.localhost"
-    # External browser URL (redirects users back here)
-    - name: AUTHENTIK_HOST_BROWSER
       value: "http://authentik.localhost"
     # Allow HTTP (⚠️ dev only — don't use in production)
     - name: AUTHENTIK_INSECURE
