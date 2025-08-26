@@ -9,14 +9,24 @@
 # - Persistent storage via existing PVC.
 # - Custom resource requests/limits for stability and performance.
 # - Ingress is disabled here (handled separately in a separate manifest).
+# - OAuth2/OIDC authentication via Authentik for dual authentication support (centralized in urbalurba-secrets).
 #
 # Usage:
 #   helm upgrade --install open-webui open-webui/open-webui -n ai -f manifests/208-openwebui-config.yaml
 #
 # Prerequisites:
-# - The 'urbalurba-secrets' secret must exist in the 'ai' namespace with DATABASE_URL key
+# - The 'urbalurba-secrets' secret must exist in the 'ai' namespace with required keys:
+#   * DATABASE_URL: PostgreSQL connection string with pgvector support
+#   * OPENWEBUI_OAUTH_CLIENT_ID: Authentik OAuth client ID
+#   * OPENWEBUI_OAUTH_CLIENT_SECRET: Authentik OAuth client secret
+#   * OPENWEBUI_OAUTH_PROVIDER_NAME: OAuth provider name (set to "Authentik")
+#   * OPENWEBUI_OPENID_PROVIDER_URL: Authentik OIDC discovery endpoint
+#   * OPENWEBUI_OPENID_REDIRECT_URI: OAuth callback URL
+#   * OPENWEBUI_ENABLE_OAUTH_SIGNUP: Enable new user registration via OAuth
+#   * OPENWEBUI_OAUTH_SCOPES: OAuth scopes to request
 # - PersistentVolumeClaim 'openwebui-data' must exist in the 'ai' namespace.
 # - Tika and Ollama should be deployed separately if not using the chart's built-in options.
+# - Authentik OAuth application must be configured with matching redirect URI.
 
 nameOverride: ""
 namespaceOverride: "ai"
@@ -110,6 +120,70 @@ extraEnvVars:
     value: "false"
   - name: ENABLE_ADMIN_EXPORT
     value: "true"
+
+  # OAuth2/OIDC Configuration for Authentik Integration
+  # Enables dual authentication: username/password + Authentik OAuth
+  # Users can choose between traditional login or "Continue with authentik"
+  # All OAuth configuration is now centralized in urbalurba-secrets secret
+  - name: OAUTH_CLIENT_ID
+    valueFrom:
+      secretKeyRef:
+        name: urbalurba-secrets
+        key: OPENWEBUI_OAUTH_CLIENT_ID
+        
+  - name: OAUTH_CLIENT_SECRET
+    valueFrom:
+      secretKeyRef:
+        name: urbalurba-secrets
+        key: OPENWEBUI_OAUTH_CLIENT_SECRET
+        
+  # Provider name displayed on the OAuth login button
+  - name: OAUTH_PROVIDER_NAME
+    valueFrom:
+      secretKeyRef:
+        name: urbalurba-secrets
+        key: OPENWEBUI_OAUTH_PROVIDER_NAME
+    
+  # OIDC discovery endpoint - includes application slug from Authentik
+  # This tells Open WebUI where to find Authentik's OIDC configuration
+  # Using external service that points to authentik.localhost
+  - name: OPENID_PROVIDER_URL
+    valueFrom:
+      secretKeyRef:
+        name: urbalurba-secrets
+        key: OPENWEBUI_OPENID_PROVIDER_URL
+    
+  # Callback URL where Authentik redirects users after successful authentication
+  # Must match the redirect URI configured in your Authentik OAuth application
+  - name: OPENID_REDIRECT_URI
+    valueFrom:
+      secretKeyRef:
+        name: urbalurba-secrets
+        key: OPENWEBUI_OPENID_REDIRECT_URI
+    
+  # Allow new users to register via OAuth (set to "false" to restrict to existing users)
+  - name: ENABLE_OAUTH_SIGNUP
+    valueFrom:
+      secretKeyRef:
+        name: urbalurba-secrets
+        key: OPENWEBUI_ENABLE_OAUTH_SIGNUP
+    
+  # Merge OAuth accounts by email address for better user experience
+  - name: OAUTH_MERGE_ACCOUNTS_BY_EMAIL
+    valueFrom:
+      secretKeyRef:
+        name: urbalurba-secrets
+        key: OPENWEBUI_OAUTH_MERGE_ACCOUNTS_BY_EMAIL
+    
+  # OAuth scopes to request from Authentik
+  # openid: Required for OIDC compliance
+  # email: Required for user identification and account merging
+  # profile: Optional, provides additional user profile information
+  - name: OAUTH_SCOPES
+    valueFrom:
+      secretKeyRef:
+        name: urbalurba-secrets
+        key: OPENWEBUI_OAUTH_SCOPES
 
 # Application logging configuration
 logging:

@@ -23,3 +23,4 @@ echo "Starting Authentication environment setup (target_host=$TARGET_HOST, deplo
 docker exec -it provision-host bash -c "/mnt/urbalurbadisk/provision-host/kubernetes/12-auth/not-in-use/01-setup-authentik.sh $TARGET_HOST $DEPLOY_TEST_APPS"
 
 echo "Setup completed. Access Authentik at http://authentik.localhost or via port-forwarding."
+
