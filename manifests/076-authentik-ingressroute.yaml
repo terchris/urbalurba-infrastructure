@@ -1,0 +1,72 @@
+# File: manifests/076-authentik-ingressroute.yaml
+#
+# Description:
+# Traefik IngressRoute for Authentik server using unified routing with HostRegexp pattern.
+# Provides consistent access to Authentik authentication service across multiple domains.
+# Follows cluster standards for IngressRoute configuration and multi-domain support.
+#
+# HostRegexp Routing:
+# This IngressRoute uses HostRegexp('authentik\..+') to automatically handle:
+# - authentik.localhost (internal development access)
+# - authentik.urbalurba.no (external demo access via Cloudflare tunnel)
+# - Any future domains (future-proof routing)
+#
+# Usage:
+# kubectl apply -f 076-authentik-ingressroute.yaml
+#
+# Dependencies:
+# - 075-authentik-complete-hardcoded.yaml (Authentik Helm deployment with ingress disabled)
+# - Authentik service must exist in authentik namespace
+#
+# Testing:
+# Internal: curl http://authentik.localhost
+# External: curl https://authentik.urbalurba.no
+# Both should return Authentik login page or authentication flow
+#
+# Integration:
+# - Routes both internal and external domains to authentik-server service automatically
+# - Replaces Helm-managed standard Kubernetes Ingress with Traefik IngressRoute
+# - Enables CoreDNS resolution for *.localhost domains in pod contexts
+# - Supports OAuth discovery endpoints for OpenWebUI integration
+# - Complements OAuth forward authentication middleware
+#
+# Cluster Standards Compliance:
+# - Uses traefik.io/v1alpha1 API version (current working version in Traefik 3.3.6)
+# - IngressRoute CRD following established cluster standards
+# - HostRegexp pattern for unified routing as per doc/traefik-ingress-rules.md
+# - Descriptive labels matching cluster conventions
+#
+# HostRegexp Pattern Explanation:
+# - 'authentik\..+' matches any domain that starts with 'authentik.'
+# - Examples: authentik.localhost, authentik.urbalurba.no, authentik.example.com
+# - The '\.' escapes the literal dot, '.+' matches one or more characters
+# - Enables automatic external access without duplicating IngressRoute rules
+#
+# OAuth Integration:
+# - Provides consistent hostname (authentik.localhost) for OAuth discovery
+# - Works in both browser context (via Traefik) and pod context (via CoreDNS)
+# - Enables OpenWebUI OAuth integration with single hostname configuration
+# - Supports .well-known/openid-configuration endpoint discovery
+
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: authentik-server
+  namespace: authentik
+  labels:
+    app: authentik
+    component: server
+    type: public
+    routing: unified
+    app.kubernetes.io/name: authentik
+    app.kubernetes.io/component: server
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: HostRegexp(`authentik\..+`)
+      kind: Rule
+      services:
+        - name: authentik-server
+          port: 80

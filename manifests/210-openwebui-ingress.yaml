@@ -1,82 +1,80 @@
-# 210-openwebui-ingress.yaml
+# File: manifests/210-openwebui-ingress.yaml
 #
 # Description:
-# Ingress configuration for OpenWebUI using Traefik with proper priority handling.
-# This configuration ensures OpenWebUI gets specific hostname routing while allowing
-# a default nginx service to handle all other undefined hostnames.
+# Traefik IngressRoute for OpenWebUI using unified routing with HostRegexp pattern.
+# Provides consistent access to OpenWebUI application across multiple domains.
+# Follows cluster standards for IngressRoute configuration and multi-domain support.
+# Replaces previous standard Kubernetes Ingress with Traefik IngressRoute CRD.
 #
-# Architecture:
-# - openwebui.localhost → OpenWebUI service (specific host rule)
-# - *.localhost (any other hostname) → nginx default service (wildcard rule)
-#
-# Priority Explanation:
-# Traefik evaluates ingress rules by priority. Without explicit priority, ingress rules
-# are evaluated in arbitrary order, which can cause conflicts when multiple ingresses
-# use overlapping host patterns.
-#
-# In this setup:
-# 1. nginx-root-ingress (default namespace) has host: "*" (catches all traffic)
-# 2. open-webui ingress (ai namespace) has host: "openwebui.localhost" (specific)
-#
-# Problem: Traefik might evaluate the wildcard "*" rule before the specific host rule,
-# causing openwebui.localhost to be handled by nginx instead of OpenWebUI.
-#
-# Solution: Use traefik.ingress.kubernetes.io/priority annotation to ensure
-# specific host rules are evaluated before wildcard rules.
-#
-# Priority Values:
-# - Higher numbers = Higher priority (evaluated first)
-# - Default priority = 0
-# - Recommended: specific hosts = 100+, wildcards = 0-10
-#
-# Service Port Configuration:
-# - OpenWebUI service exposes port 80 (service level)
-# - Service forwards port 80 → pod port 8080 (pod level)
-# - Ingress should point to service port 80, NOT pod port 8080
+# HostRegexp Routing:
+# This IngressRoute uses HostRegexp('openwebui\..+') to automatically handle:
+# - openwebui.localhost (internal development access)
+# - openwebui.urbalurba.no (external demo access via Cloudflare tunnel)
+# - Any future domains (future-proof routing)
 #
 # Usage:
-#   kubectl apply -f 210-openwebui-ingress.yaml
+# kubectl apply -f 210-openwebui-ingress.yaml
 #
-# Verification:
-#   kubectl describe ingress open-webui -n ai
-#   curl -H "Host: openwebui.localhost" http://192.168.64.2
-#   curl -H "Host: undefined.localhost" http://192.168.64.2  # Should go to nginx
+# Dependencies:
+# - 208-openwebui-config.yaml (OpenWebUI Helm deployment)
+# - open-webui service must exist in ai namespace
+# - Authentik authentication system for OAuth integration
 #
+# Testing:
+# Internal: curl http://openwebui.localhost
+# External: curl https://openwebui.urbalurba.no
+# Both should return OpenWebUI interface (with OAuth redirect if not authenticated)
+#
+# Integration:
+# - Routes both internal and external domains to open-webui service automatically
+# - Supports OAuth integration with Authentik via consistent hostname resolution
+# - Enables CoreDNS resolution for *.localhost domains in pod contexts
+# - Works with OAuth callback URI: http://openwebui.localhost/oauth/oidc/callback
+# - No priority configuration needed (IngressRoute handles routing differently than Ingress)
+#
+# Cluster Standards Compliance:
+# - Uses traefik.io/v1alpha1 API version (current working version in Traefik 3.3.6)
+# - IngressRoute CRD following established cluster standards per doc/traefik-ingress-rules.md
+# - HostRegexp pattern for unified routing (recommended approach)
+# - Descriptive labels matching cluster conventions
+# - Service port 80 reference (not pod port 8080)
+#
+# HostRegexp Pattern Explanation:
+# - 'openwebui\..+' matches any domain that starts with 'openwebui.'
+# - Examples: openwebui.localhost, openwebui.urbalurba.no, openwebui.example.com
+# - The '\.' escapes the literal dot, '.+' matches one or more characters
+# - Enables automatic external access without duplicating IngressRoute rules
+#
+# OAuth Integration Benefits:
+# - Consistent hostname (openwebui.localhost) for OAuth callback configuration
+# - Works in both browser context (via Traefik) and pod context (via CoreDNS)
+# - Supports OAuth discovery and authentication flow with Authentik
+# - Single configuration works for all access patterns
+#
+# Migration Notes:
+# - Converted from standard Kubernetes Ingress to Traefik IngressRoute
+# - Removed priority annotation (not needed for IngressRoute)
+# - Removed SSL redirect annotation (managed at IngressRoute level)
+# - Updated to use HostRegexp for multi-domain support
+# - Maintains same service routing (open-webui:80)
 
-apiVersion: networking.k8s.io/v1
-kind: Ingress
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
 metadata:
   name: open-webui
   namespace: ai
-  annotations:
-    # Disable SSL redirect (optional, for development)
-    traefik.ingress.kubernetes.io/ssl-redirect: "false"
-    
-    # CRITICAL: Set high priority to ensure this specific host rule
-    # is evaluated BEFORE the wildcard nginx ingress rule
-    # Higher number = higher priority (evaluated first)
-    traefik.ingress.kubernetes.io/priority: "100"
-    
-    # Optional: Add custom headers for debugging
-    # traefik.ingress.kubernetes.io/request-modifier: "AddHeader"
-    
   labels:
     app: open-webui
     component: ingress
+    type: public
+    routing: unified
 spec:
-  # Use Traefik ingress controller
-  ingressClassName: traefik
-  
-  rules:
-    - host: "openwebui.localhost"
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: open-webui
-                port:
-                  # IMPORTANT: Use service port 80, NOT pod port 8080
-                  # The service handles the port mapping: 80 → 8080
-                  number: 80
+  entryPoints:
+    - web
+  routes:
+    - match: HostRegexp(`openwebui\..+`)
+      kind: Rule
+      services:
+        - name: open-webui
+          port: 80

@@ -43,6 +43,7 @@
     whoami_public_ingress_file: "{{ manifests_folder }}/071-whoami-public-ingressroute.yaml"
     authentik_blueprint_file: "{{ manifests_folder }}/073-authentik-whoami-blueprint.yaml"
     authentik_helm_values_file: "{{ manifests_folder }}/075-authentik-complete-hardcoded.yaml"
+    authentik_ingressroute_file: "{{ manifests_folder }}/076-authentik-ingressroute.yaml"
     forward_auth_middleware_file: "{{ manifests_folder }}/077-authentik-forward-auth-middleware.yaml"
     whoami_protected_ingress_file: "{{ manifests_folder }}/078-whoami-protected-ingressroute.yaml"
 
@@ -405,9 +406,55 @@
         msg: |
           ✅ Authentik server and worker pods are running
           📝 Blueprint processing: {{ 'Found in logs' if 'blueprint' in blueprint_logs.stdout.lower() else 'Completed or initializing' }}
-          🔧 Ready for forward authentication setup
+          🔧 Ready for IngressRoute deployment and forward authentication setup
 
-    - name: "38. Run comprehensive deployment verification"
+    # Phase 6.1: Deploy Authentik IngressRoute (CRITICAL - required for access)
+    - name: "38. Deploy Authentik IngressRoute for *.localhost routing"
+      ansible.builtin.command: >
+        kubectl apply -f {{ authentik_ingressroute_file }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: authentik_ingressroute_result
+      changed_when: true
+
+    - name: "39. Wait for Authentik IngressRoute to be ready"
+      ansible.builtin.shell: |
+        kubectl wait --for=condition=Ready ingressroute authentik-server --timeout=60s -n {{ authentik_namespace }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: authentik_ingressroute_wait
+      failed_when: false
+      changed_when: false
+
+    - name: "40. Test Authentik access via new IngressRoute"
+      ansible.builtin.shell: |
+        kubectl run curl-test-authentik-ingressroute --image=curlimages/curl --rm -i --restart=Never --command -- \
+          curl -s -H "Host: authentik.localhost" -w "HTTP_STATUS:%{http_code}" \
+          http://traefik.kube-system.svc.cluster.local
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: authentik_ingressroute_test
+      failed_when: false
+      changed_when: false
+
+    - name: "41. Verify Authentik IngressRoute is working"
+      ansible.builtin.fail:
+        msg: |
+          ❌ Authentik IngressRoute test failed!
+          Expected HTTP 200 or 302, but got different response.
+          Troubleshooting: kubectl get ingressroute authentik-server -n {{ authentik_namespace }}
+      when: "'200' not in authentik_ingressroute_test.stdout and '302' not in authentik_ingressroute_test.stdout"
+
+    - name: "42. Display Authentik IngressRoute deployment status"
+      ansible.builtin.debug:
+        msg: |
+          ✅ Authentik IngressRoute deployed successfully
+          🌐 Pattern: HostRegexp(`authentik\\..+`) for multi-domain support
+          🔗 Access: http://authentik.localhost (external) + internal service discovery
+          📊 Status: {{ 'SUCCESS (200/302)' if '200' in authentik_ingressroute_test.stdout or '302' in authentik_ingressroute_test.stdout else 'NEEDS_REVIEW' }}
+          🚀 Ready for OAuth integration and CoreDNS resolution
+
+    - name: "43. Run comprehensive deployment verification"
       ansible.builtin.command: >
         ansible-playbook {{ verify_authentik_playbook }}
         -e app_name=whoami
@@ -418,7 +465,7 @@
       failed_when: false
       changed_when: false
 
-    - name: "39. Display verification results"
+    - name: "44. Display verification results"
       ansible.builtin.debug:
         msg: |
           🔍 Deployment Verification Results:
@@ -430,7 +477,7 @@
           {% endif %}
 
     # Phase 7: Forward Authentication Setup
-    - name: "40. Deploy forward auth middleware"
+    - name: "45. Deploy forward auth middleware"
       ansible.builtin.command: >
         kubectl apply -f {{ forward_auth_middleware_file }}
       environment:
@@ -438,7 +485,7 @@
       register: middleware_result
       changed_when: true
 
-    - name: "41. Deploy protected whoami route"
+    - name: "46. Deploy protected whoami route"
       ansible.builtin.command: >
         kubectl apply -f {{ whoami_protected_ingress_file }}
       environment:
@@ -446,7 +493,7 @@
       register: protected_route_result
       changed_when: true
 
-    - name: "42. Verify middleware deployment"
+    - name: "47. Verify middleware deployment"
       ansible.builtin.shell: |
         kubectl get middleware -n {{ default_namespace }} | grep authentik-forward-auth
       environment:
@@ -454,7 +501,7 @@
       register: middleware_check
       changed_when: false
 
-    - name: "43. Wait for middleware to propagate"
+    - name: "48. Wait for middleware to propagate"
       ansible.builtin.shell: |
         kubectl wait --for=condition=Ready ingressroute whoami-protected --timeout=30s -n {{ default_namespace }}
       environment:
@@ -463,7 +510,7 @@
       failed_when: false
       changed_when: false
 
-    - name: "44. Test whoami authentication requirement via cluster"
+    - name: "49. Test whoami authentication requirement via cluster"
       ansible.builtin.shell: |
         kubectl run curl-test-auth --image=curlimages/curl --rm -i --restart=Never --command -- \
           curl -s -H "Host: whoami.localhost" -w "HTTP_STATUS:%{http_code}" \
@@ -474,7 +521,7 @@
       failed_when: false
       changed_when: false
 
-    - name: "45. Test cluster-internal routing"
+    - name: "50. Test cluster-internal routing"
       ansible.builtin.shell: |
         kubectl run curl-test-auth-internal --image=curlimages/curl --rm -i --restart=Never --command -- \
           curl -s -H "Host: whoami.localhost" -w "HTTP_STATUS:%{http_code}" \
@@ -485,7 +532,7 @@
       failed_when: false
       changed_when: false
 
-    - name: "46. Verify authentication flow is working"
+    - name: "51. Verify authentication flow is working"
       ansible.builtin.fail:
         msg: |
           ❌ Authentication flow test failed!
@@ -495,7 +542,7 @@
           - kubectl get ingressroute whoami-protected -n {{ default_namespace }}
       when: "'302' not in whoami_auth_test.stdout and '302' not in whoami_internal_auth_test.stdout"
 
-    - name: "47. Display authentication test results"
+    - name: "52. Display authentication test results"
       ansible.builtin.debug:
         msg: |
           ✅ Authentication Flow Tests: PASS
@@ -505,7 +552,7 @@
           Expected: 302 redirect to Authentik login (indicates auth working)
           Note: External access from host requires DNS resolution for *.localhost
 
-    - name: "48. Display forward auth setup status"
+    - name: "53. Display forward auth setup status"
       ansible.builtin.debug:
         msg: |
           ✅ Forward authentication configured
@@ -514,7 +561,7 @@
           🌐 Public route: http://whoami-public.localhost (direct access)
 
     # Phase 8: Final Status and Enhanced Summary
-    - name: "49. Get final pod status"
+    - name: "54. Get final pod status"
       ansible.builtin.shell: |
         kubectl get pods -n {{ authentik_namespace }}
       environment:
@@ -522,7 +569,7 @@
       register: final_pods
       changed_when: false
 
-    - name: "49.1. Get detailed pod status with conditions"
+    - name: "54.1. Get detailed pod status with conditions"
       ansible.builtin.shell: |
         kubectl get pods -n {{ authentik_namespace }} -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.phase}{"\t"}{.status.conditions[?(@.type=="Ready")].status}{"\n"}{end}'
       environment:
@@ -530,7 +577,7 @@
       register: detailed_pod_status
       changed_when: false
 
-    - name: "50. Count running pods for success determination"
+    - name: "55. Count running pods for success determination"
       ansible.builtin.shell: |
         kubectl get pods -n {{ authentik_namespace }} | grep -v NAME | grep -c Running || echo "0"
       environment:
@@ -538,7 +585,7 @@
       register: running_pods_count
       changed_when: false
 
-    - name: "50.1. Check resource usage"
+    - name: "55.1. Check resource usage"
       ansible.builtin.shell: |
         kubectl top pods -n {{ authentik_namespace }} || echo "Metrics not available"
       environment:
@@ -547,11 +594,11 @@
       changed_when: false
       failed_when: false
 
-    - name: "51. Determine overall installation success"
+    - name: "56. Determine overall installation success"
       ansible.builtin.set_fact:
         installation_successful: "{{ (running_pods_count.stdout | int >= 2) }}"
 
-    - name: "52. Display comprehensive final status with enhanced monitoring"
+    - name: "57. Display comprehensive final status with enhanced monitoring"
       ansible.builtin.debug:
         msg:
           - "==============================================="
@@ -566,13 +613,15 @@
           - "• Step 3: Blueprint deployed BEFORE Helm (critical)"
           - "• Step 4: PostgreSQL database created (authentik)"
           - "• Step 5: Authentik server/worker deployed (Helm {{ authentik_version }})"
-          - "• Step 6: Forward auth middleware configured"
-          - "• Step 7: Protected routes established"
-          - "• Step 8: Verification completed"
+          - "• Step 6: Authentik IngressRoute deployed (CRITICAL for access)"
+          - "• Step 7: Forward auth middleware configured"
+          - "• Step 8: Protected routes established"
+          - "• Step 9: Verification completed"
           - ""
           - "🔄 Status:"
           - "• Running pods: {{ running_pods_count.stdout }} / 2+"
           - "• Authentication flow: Ready for testing"
+          - "• IngressRoute: {{ 'Deployed with HostRegexp' if authentik_ingressroute_result is succeeded else 'Check deployment' }}"
           - "• Blueprint processing: {{ 'Found in logs' if 'blueprint' in blueprint_logs.stdout.lower() else 'Completed' }}"
           - "• Helm status: {{ 'Deployed' if helm_status.rc == 0 else 'Check required' }}"
           - ""
@@ -593,16 +642,18 @@
           - "🔧 Verification Commands:"
           - "• Check pods: kubectl get pods -n {{ authentik_namespace }}"
           - "• Check services: kubectl get svc -n {{ authentik_namespace }}"
+          - "• Check IngressRoute: kubectl get ingressroute -n {{ authentik_namespace }}"
           - "• Check middleware: kubectl get middleware -n {{ default_namespace }}"
-          - "• Check ingress: kubectl get ingressroute -n {{ default_namespace }}"
+          - "• Check protected ingress: kubectl get ingressroute -n {{ default_namespace }}"
           - "• View logs: kubectl logs -n {{ authentik_namespace }} deployment/authentik-server"
           - "• Check Helm: helm status authentik -n {{ authentik_namespace }}"
           - "• Test external: curl -I http://authentik.localhost/if/admin/"
           - ""
-          - "🎯 Architecture Deployed:"
-          - "User Request → Traefik → Forward Auth Middleware →"
-          - "Authentik Embedded Outpost → OAuth2 Redirect → Authentik Login →"
-          - "OAuth2 Callback → Whoami Application (with auth headers)"
+          - "🎯 OAuth Ready Architecture:"
+          - "• HostRegexp IngressRoute: authentik\\..+ pattern deployed"
+          - "• Multi-domain support: .localhost, .urbalurba.no, future domains"
+          - "• CoreDNS ready: Same hostnames work in browser and pod contexts"
+          - "• OAuth discovery: http://authentik.localhost/.well-known/openid-configuration"
           - ""
           - "🔧 Troubleshooting:"
           - "• External access requires host machine DNS for *.localhost"
@@ -610,10 +661,10 @@
           - "• Check that all dependencies are running if issues occur"
           - "• Blueprint logs: {{ 'Available in deployment logs' if 'blueprint' in blueprint_logs.stdout.lower() else 'Check deployment logs' }}"
           - "==============================================="
-          - "{{ '🎉 INSTALLATION SUCCESSFUL' if installation_successful else '⚠️ INSTALLATION STATUS: Some components may still be starting' }}"
+          - "{{ '🎉 INSTALLATION SUCCESSFUL - OAuth Integration Ready!' if installation_successful else '⚠️ INSTALLATION STATUS: Some components may still be starting' }}"
           - "==============================================="
 
-    - name: "53. Final success check with enhanced error reporting"
+    - name: "58. Final success check with enhanced error reporting"
       ansible.builtin.fail:
         msg: |
           ❌ Installation did not complete successfully

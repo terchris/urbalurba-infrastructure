@@ -4,10 +4,16 @@
 # Helm values file for deploying Authentik 2025.8.0 in the 'authentik' namespace with:
 # - External PostgreSQL and Redis (running in 'default' namespace)
 # - Automatic bootstrap admin account
-# - Traefik ingress for external access
+# - External Traefik IngressRoute for access (managed separately)
 # - Embedded outpost for forward authentication
 # - Blueprint system enabled for automated configuration
 # - Worker metrics enabled for Prometheus monitoring (2025.8+ feature)
+#
+# Ingress Configuration:
+# - Built-in Helm ingress is DISABLED (server.ingress.enabled: false)
+# - Ingress is managed by separate IngressRoute: 076-authentik-ingressroute.yaml
+# - Uses HostRegexp pattern for unified internal/external routing
+# - Enables CoreDNS resolution for OAuth integration with OpenWebUI
 #
 # Usage:
 # helm repo add authentik https://charts.goauthentik.io
@@ -97,12 +103,14 @@ blueprints:
     - "whoami-forward-auth-blueprint"
 
 # Authentik server ingress configuration
+# NOTE: Ingress is now managed by separate IngressRoute (076-authentik-ingressroute.yaml)
+# This provides HostRegexp support for unified internal/external routing
 server:
   ingress:
-    enabled: true
-    ingressClassName: traefik
-    hosts:
-      - authentik.localhost
+    enabled: false  # Disabled - using separate IngressRoute for better control
+    # ingressClassName: traefik  # Not needed when disabled
+    # hosts:                     # Managed by IngressRoute with HostRegexp
+    #   - authentik.localhost    # Pattern: authentik\..+ for multi-domain support
 
 # Worker enabled with metrics for Prometheus monitoring (2025.8+ feature)
 worker:
