@@ -44,42 +44,16 @@ Urbalurba Infrastructure provides a complete datacenter environment on your lapt
 - **Development containers** - Consistent dev environments
 - **Infrastructure as Code** - Declarative configuration management via Kubernetes manifests
 
+## 🧠 How It Works
+
+Urbalurba runs a local Kubernetes cluster (via Rancher Desktop) and deploys services using declarative manifests. The provision-host container is the central management environment that applies manifests, runs provisioning scripts, and provides the full toolchain for day‑to‑day operations.
+
+- Read the full overview in [How It Works](doc/HOW_IT_WORKS.md)
+- Learn more about the management environment in [Provision Host Documentation](doc/provision-host-readme.md)
+
 ## 🚀 Getting Started
 
-### Quick Installation
-
-Run this single command to set up everything:
-
-```bash
-curl -L https://raw.githubusercontent.com/terchris/urbalurba-infrastructure/main/install-urbalurba.sh -o install-urbalurba.sh && chmod +x install-urbalurba.sh && ./install-urbalurba.sh
-```
-
-**Prerequisites:**
-- macOS 10.15+ (Windows support coming soon)
-- 8GB+ free disk space
-- Remove Docker Desktop if installed (conflicts with Rancher Desktop)
-
-### What the Installer Does
-
-1. **Sets up prerequisites** - Homebrew, Xcode tools, checks Docker Desktop conflicts
-2. **Installs Rancher Desktop** - Kubernetes + Docker with optimal configuration
-3. **Installs k9s** - Terminal-based Kubernetes UI for cluster management
-4. **Downloads Urbalurba** - Latest infrastructure packages and configurations
-5. **Deploys manifests** - Applies Kubernetes manifests to set up all services
-6. **Creates provision-host** - Management container with all tools needed
-
-### Installation Options
-
-```bash
-# Interactive (asks permission at each step)
-./install-urbalurba.sh
-
-# Automatic (no prompts)
-./install-urbalurba.sh --auto
-
-# Preview only (show what would be installed)
-./install-urbalurba.sh --commands
-```
+See the [Installation Guide](doc/INSTALL.md) for prerequisites, the one-line installer, and options for interactive, automatic, and preview modes.
 
 ## 🎯 Use Cases
 
