@@ -155,18 +155,30 @@ if ! docker ps | grep -q provision-host; then
     STATUS+=("Internal DNS deployment: Failed (container not running)")
     ERROR=1
 else
+    # Clean up any previous failed jobs first
+    docker exec provision-host bash -c "kubectl delete job coredns-patch-internal-dns -n kube-system --ignore-not-found=true" || true
+    
     # Deploy the internal DNS configuration in the container
     if docker exec provision-host bash -c "cd /mnt/urbalurbadisk/manifests && kubectl apply -f 005-internal-dns.yaml"; then
         echo "✅ Internal DNS configuration deployed successfully"
-        echo "⏳ Waiting for CoreDNS to restart and apply changes..."
+        echo "⏳ Waiting for CoreDNS patch job to complete..."
         
-        # Wait for the CoreDNS patch job to complete
+        # Wait for the CoreDNS patch job to complete with better error handling
         if docker exec provision-host bash -c "kubectl wait --for=condition=complete job/coredns-patch-internal-dns -n kube-system --timeout=300s"; then
             echo "✅ CoreDNS internal DNS configuration applied successfully"
             STATUS+=("Internal DNS deployment: OK")
         else
-            echo "⚠️ CoreDNS patch job may still be running or failed, but continuing..."
-            STATUS+=("Internal DNS deployment: Partial (CoreDNS patch in progress)")
+            echo "⚠️ CoreDNS patch job timed out or failed, checking status..."
+            # Check if the job actually succeeded despite timeout
+            if docker exec provision-host bash -c "kubectl get job coredns-patch-internal-dns -n kube-system -o jsonpath='{.status.conditions[?(@.type==\"Complete\")].status}' | grep -q True"; then
+                echo "✅ CoreDNS patch job actually completed successfully"
+                STATUS+=("Internal DNS deployment: OK (completed after timeout)")
+            else
+                echo "❌ CoreDNS patch job failed - checking logs..."
+                docker exec provision-host bash -c "kubectl logs job/coredns-patch-internal-dns -n kube-system --tail=10" || true
+                echo "⚠️ Continuing despite patch job issues - CoreDNS may still work"
+                STATUS+=("Internal DNS deployment: Partial (job issues but continuing)")
+            fi
         fi
     else
         echo "❌ Failed to deploy internal DNS configuration"

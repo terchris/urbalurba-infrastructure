@@ -226,7 +226,7 @@ rules:
   verbs: ["get", "patch", "update"]
 - apiGroups: ["apps"]
   resources: ["deployments"]
-  verbs: ["get", "patch", "update"]
+  verbs: ["get", "patch", "update", "list", "watch"]
 - apiGroups: ["apps"]
   resources: ["deployments/status"]
   verbs: ["get"]
@@ -250,21 +250,3 @@ roleRef:
   name: coredns-patcher
   apiGroup: rbac.authorization.k8s.io
 
----
-# Optional: ServiceMonitor for monitoring CoreDNS metrics
-apiVersion: monitoring.coreos.com/v1
-kind: ServiceMonitor
-metadata:
-  name: coredns-internal-dns
-  namespace: kube-system
-  labels:
-    app: coredns
-    purpose: internal-dns-monitoring
-spec:
-  selector:
-    matchLabels:
-      k8s-app: kube-dns
-  endpoints:
-  - port: metrics
-    interval: 30s
-    path: /metrics
