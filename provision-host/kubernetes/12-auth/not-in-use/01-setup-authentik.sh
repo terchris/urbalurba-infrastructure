@@ -6,12 +6,16 @@
 # - Cache: Redis for background tasks and caching
 # - Middleware: Traefik forward auth middleware configuration
 # - Test app: Whoami application for verification
+# - OpenWebUI OAuth2/OIDC integration with hardcoded configuration
+# - Test users and department groups for authentication testing
 #
 # Architecture:
 # - Authentik server and worker pods with PostgreSQL backend
 # - Traefik forward authentication middleware
 # - Embedded outpost for forward auth integration
 # - Whoami test application for verification
+# - OpenWebUI OAuth2/OIDC application and provider
+# - Test users (it1, it2, ok1, ok2) with department groups
 # - Complete authentication flow with redirect handling
 #
 # All services are set up in the namespace named: authentik and requires you to set secrets needed for the services to work.
@@ -112,6 +116,9 @@ print_summary() {
         echo "- Redis cache integration"
         echo "- Traefik forward authentication middleware"
         echo "- Whoami test application with authentication"
+        echo "- OpenWebUI OAuth2/OIDC application and provider"
+        echo "- Test users and department groups (it1, it2, ok1, ok2)"
+        echo "- Three blueprints: whoami, openwebui, users-groups"
         echo "- Complete authentication flow"
         echo ""
         
@@ -140,11 +147,23 @@ print_summary() {
         echo "  Default Login: admin@urbalurba.local"
         echo "  Default Password: SecretPassword1"
         echo ""
+        echo "👥 Test Users (Password: Password123):"
+        echo "  it1@urbalurba.no (IT Bruker 1) - Group: Øk.Adm IT"
+        echo "  it2@urbalurba.no (IT Bruker 2) - Group: Øk.Adm IT"
+        echo "  ok1@urbalurba.no (Økonomi Bruker 1) - Group: Øk.Adm"
+        echo "  ok2@urbalurba.no (Økonomi Bruker 2) - Group: Øk.Adm"
+        echo ""
         echo "🧪 Test Authentication:"
         echo "  1. Visit: http://whoami.localhost"
         echo "  2. Should redirect to: http://authentik.localhost/if/flow/..."
         echo "  3. Login with admin credentials"
         echo "  4. Should redirect back to whoami with authentication headers"
+        echo ""
+        echo "🤖 OpenWebUI OAuth2/OIDC Integration:"
+        echo "  Application: openwebui-dev"
+        echo "  Provider: openwebui-dev-provider"
+        echo "  Callback URL: http://openwebui.localhost/oauth/oidc/callback"
+        echo "  Client ID: 1c37QuM0qm0g2BzdLbhppVwmUwUUrhmB83e9inEe"
         echo ""
         echo "🔍 Important Notes:"
         echo "  • External access tests may fail during deployment (this is normal)"
@@ -155,13 +174,21 @@ print_summary() {
         echo "  Check pods: kubectl get pods -n authentik"
         echo "  Check ingress: kubectl get ingress -n authentik"
         echo "  Check middleware: kubectl get middleware -n default"
+        echo "  Check blueprints: kubectl get configmap -n authentik | grep blueprint"
+        echo "  Check applications: kubectl exec -n authentik deployment/authentik-server -- python manage.py shell -c \"from authentik.core.models import Application; print([app.name for app in Application.objects.all()])\""
+        echo "  Check users: kubectl exec -n authentik deployment/authentik-server -- python manage.py shell -c \"from authentik.core.models import User; print([user.username for user in User.objects.all()])\""
         echo "  Check logs: kubectl logs -n authentik deployment/authentik-server"
         echo "  Test external access: curl -I http://authentik.localhost/if/admin/"
         echo ""
         echo "🎯 Architecture:"
         echo "  User Request → Traefik → Forward Auth Middleware →"
         echo "  Authentik Embedded Outpost → OAuth2 Redirect → Authentik Login →"
-        echo "  OAuth2 Callback → Whoami Application (with auth headers)"
+        echo "  OAuth2 Callback → Application (whoami/OpenWebUI with auth headers)"
+        echo ""
+        echo "📋 Deployed Blueprints:"
+        echo "  • whoami-forward-auth-blueprint (whoami application)"
+        echo "  • openwebui-authentik-blueprint (OpenWebUI OAuth2/OIDC)"
+        echo "  • users-groups-test-blueprint (test users and groups)"
     else
         echo "Errors occurred during installation:"
         for step in "${!ERRORS[@]}"; do
@@ -171,6 +198,7 @@ print_summary() {
         echo "Troubleshooting tips:"
         echo "  - Check if the 'authentik' namespace exists: kubectl get ns authentik"
         echo "  - Check if pods are running: kubectl get pods -n authentik"
+        echo "  - Check blueprints: kubectl get configmap -n authentik | grep blueprint"
         echo "  - Check PostgreSQL: kubectl get pods -n default | grep postgres"
         echo "  - Check Redis: kubectl get pods -n default | grep redis"
         echo "  - Check Traefik: kubectl get pods -A | grep traefik"
@@ -178,6 +206,8 @@ print_summary() {
         echo "  - Check Helm releases: helm list -n authentik"
         echo "  - Make sure the 'urbalurba-secrets' secret exists and has all required keys"
         echo "  - Verify dependencies: PostgreSQL, Redis, and Traefik must be running"
+        echo "  - Check blueprint processing: kubectl logs -n authentik deployment/authentik-server | grep -i blueprint"
+        echo "  - Verify applications: kubectl exec -n authentik deployment/authentik-server -- python manage.py shell -c \"from authentik.core.models import Application; print([app.name for app in Application.objects.all()])\""
     fi
 }
 

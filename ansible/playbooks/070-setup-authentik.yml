@@ -42,6 +42,8 @@
     whoami_service_file: "{{ manifests_folder }}/070-whoami-service-and-deployment.yaml"
     whoami_public_ingress_file: "{{ manifests_folder }}/071-whoami-public-ingressroute.yaml"
     authentik_blueprint_file: "{{ manifests_folder }}/073-authentik-whoami-blueprint.yaml"
+    openwebui_blueprint_file: "{{ manifests_folder }}/074-authentik-openwebui-blueprint-hardcoded.yaml"
+    users_groups_blueprint_file: "{{ manifests_folder }}/074-authentik-users-groups-blueprint.yaml"
     authentik_helm_values_file: "{{ manifests_folder }}/075-authentik-complete-hardcoded.yaml"
     authentik_ingressroute_file: "{{ manifests_folder }}/076-authentik-ingressroute.yaml"
     forward_auth_middleware_file: "{{ manifests_folder }}/077-authentik-forward-auth-middleware.yaml"
@@ -293,6 +295,41 @@
           📝 This ensures proper mounting during pod creation
           🔧 Blueprint status: {{ blueprint_verify.stdout if blueprint_verify.stdout else 'ConfigMap ready' }}
 
+    - name: "27.1. Deploy OpenWebUI OAuth2/OIDC blueprint"
+      ansible.builtin.command: >
+        kubectl apply -f {{ openwebui_blueprint_file }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: openwebui_blueprint_result
+      changed_when: true
+
+    - name: "27.2. Deploy Users and Groups blueprint"
+      ansible.builtin.command: >
+        kubectl apply -f {{ users_groups_blueprint_file }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: users_groups_blueprint_result
+      changed_when: true
+
+    - name: "27.3. Verify all blueprints are deployed"
+      ansible.builtin.shell: |
+        kubectl get configmap -n {{ authentik_namespace }} | grep blueprint
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: all_blueprints_verify
+      changed_when: false
+
+    - name: "27.4. Display all blueprints deployment status"
+      ansible.builtin.debug:
+        msg: |
+          ✅ All Blueprint ConfigMaps deployed BEFORE Helm installation
+          📝 Blueprints deployed:
+          • whoami-forward-auth-blueprint (whoami application)
+          • openwebui-authentik-blueprint (OpenWebUI OAuth2/OIDC)
+          • users-groups-test-blueprint (test users and groups)
+          🔧 Total blueprints: {{ all_blueprints_verify.stdout_lines | length if all_blueprints_verify.stdout_lines else '3' }}
+          📋 Blueprint status: {{ all_blueprints_verify.stdout if all_blueprints_verify.stdout else 'All ConfigMaps ready' }}
+
     # Phase 5: Database Setup
     - name: "28. Setup Authentik PostgreSQL database"
       ansible.builtin.command: >
@@ -361,12 +398,21 @@
       changed_when: false
       until: worker_wait_result.rc == 0
 
-    - name: "32.1. Verify blueprint was processed in logs"
+    - name: "32.1. Verify blueprints were processed in logs"
       ansible.builtin.shell: |
-        kubectl logs -n {{ authentik_namespace }} deployment/authentik-server --tail=100 | grep -i blueprint || echo "No blueprint logs found yet"
+        kubectl logs -n {{ authentik_namespace }} deployment/authentik-server --tail=200 | grep -i blueprint || echo "No blueprint logs found yet"
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
       register: blueprint_logs
+      changed_when: false
+      failed_when: false
+
+    - name: "32.2. Check for specific blueprint processing in logs"
+      ansible.builtin.shell: |
+        kubectl logs -n {{ authentik_namespace }} deployment/authentik-server --tail=200 | grep -E "(openwebui|users-groups|whoami)" || echo "No specific blueprint logs found yet"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: specific_blueprint_logs
       changed_when: false
       failed_when: false
 
@@ -406,6 +452,7 @@
         msg: |
           ✅ Authentik server and worker pods are running
           📝 Blueprint processing: {{ 'Found in logs' if 'blueprint' in blueprint_logs.stdout.lower() else 'Completed or initializing' }}
+          📋 Specific blueprints: {{ 'Found references' if specific_blueprint_logs.stdout and 'No specific blueprint logs found yet' not in specific_blueprint_logs.stdout else 'Processing or completed' }}
           🔧 Ready for IngressRoute deployment and forward authentication setup
 
     # Phase 6.1: Deploy Authentik IngressRoute (CRITICAL - required for access)
@@ -610,7 +657,10 @@
           - "📦 Components deployed (following manual guide):"
           - "• Step 1: Prerequisites verified (PostgreSQL, Redis, Traefik)"
           - "• Step 2: Whoami service deployed"
-          - "• Step 3: Blueprint deployed BEFORE Helm (critical)"
+          - "• Step 3: Blueprints deployed BEFORE Helm (critical)"
+          - "  - whoami-forward-auth-blueprint (whoami application)"
+          - "  - openwebui-authentik-blueprint (OpenWebUI OAuth2/OIDC)"
+          - "  - users-groups-test-blueprint (test users and groups)"
           - "• Step 4: PostgreSQL database created (authentik)"
           - "• Step 5: Authentik server/worker deployed (Helm {{ authentik_version }})"
           - "• Step 6: Authentik IngressRoute deployed (CRITICAL for access)"
@@ -623,6 +673,7 @@
           - "• Authentication flow: Ready for testing"
           - "• IngressRoute: {{ 'Deployed with HostRegexp' if authentik_ingressroute_result is succeeded else 'Check deployment' }}"
           - "• Blueprint processing: {{ 'Found in logs' if 'blueprint' in blueprint_logs.stdout.lower() else 'Completed' }}"
+          - "• Specific blueprints: {{ 'Found references' if specific_blueprint_logs.stdout and 'No specific blueprint logs found yet' not in specific_blueprint_logs.stdout else 'Processing or completed' }}"
           - "• Helm status: {{ 'Deployed' if helm_status.rc == 0 else 'Check required' }}"
           - ""
           - "📊 Resource Usage:"
@@ -638,6 +689,18 @@
           - "2. Should redirect to: http://authentik.localhost/if/flow/..."
           - "3. Login with admin credentials above"
           - "4. Should redirect back to whoami with authentication headers"
+          - ""
+          - "👥 Test Users Available (Password: Password123):"
+          - "• it1@urbalurba.no (IT Bruker 1) - Group: Øk.Adm IT"
+          - "• it2@urbalurba.no (IT Bruker 2) - Group: Øk.Adm IT"
+          - "• ok1@urbalurba.no (Økonomi Bruker 1) - Group: Øk.Adm"
+          - "• ok2@urbalurba.no (Økonomi Bruker 2) - Group: Øk.Adm"
+          - ""
+          - "🤖 OpenWebUI OAuth2/OIDC Integration:"
+          - "• Application: openwebui-dev"
+          - "• Provider: openwebui-dev-provider"
+          - "• Callback URL: http://openwebui.localhost/oauth/oidc/callback"
+          - "• Client ID: 1c37QuM0qm0g2BzdLbhppVwmUwUUrhmB83e9inEe"
           - ""
           - "🔧 Verification Commands:"
           - "• Check pods: kubectl get pods -n {{ authentik_namespace }}"
@@ -660,6 +723,8 @@
           - "• Some external tests may fail during deployment (normal)"
           - "• Check that all dependencies are running if issues occur"
           - "• Blueprint logs: {{ 'Available in deployment logs' if 'blueprint' in blueprint_logs.stdout.lower() else 'Check deployment logs' }}"
+          - "• Check applications: kubectl exec -n {{ authentik_namespace }} deployment/authentik-server -- python manage.py shell -c \"from authentik.core.models import Application; print([app.name for app in Application.objects.all()])\""
+          - "• Check users: kubectl exec -n {{ authentik_namespace }} deployment/authentik-server -- python manage.py shell -c \"from authentik.core.models import User; print([user.username for user in User.objects.all()])\""
           - "==============================================="
           - "{{ '🎉 INSTALLATION SUCCESSFUL - OAuth Integration Ready!' if installation_successful else '⚠️ INSTALLATION STATUS: Some components may still be starting' }}"
           - "==============================================="

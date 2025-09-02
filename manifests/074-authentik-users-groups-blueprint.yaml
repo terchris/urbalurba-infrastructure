@@ -1,0 +1,163 @@
+# File: manifests/074-authentik-users-groups-blueprint.yaml
+#
+# Description:
+# Authentik blueprint for creating basic test users and groups for OpenWebUI integration
+# Creates department-based groups and test users with minimal attributes
+# Phase 1: Simple setup for initial testing - Phase 2 will expand with full Okta-style attributes
+#
+# GROUPS TABLE:
+# | Group Name  | Superuser | Attributes                                                        | Purpose                    |
+# |-------------|-----------|-------------------------------------------------------------------|----------------------------|
+# | Øk.Adm IT   | false     | department: "Øk.Adm IT", type: "department_group", env: "test"   | IT department users        |
+# | Øk.Adm      | false     | department: "Øk.Adm", type: "department_group", env: "test"      | Finance department users   |
+#
+# USERS TABLE:
+# | Username | Email              | Name               | Password    | Active | Groups       | Custom Attributes                                          |
+# |----------|--------------------|--------------------|-------------|--------|--------------|-----------------------------------------------------------|
+# | it1      | it1@urbalurba.no   | IT Bruker 1        | Password123 | true   | ["Øk.Adm IT"] | department: "Øk.Adm IT", isEmployee: true, env: "test"   |
+# | it2      | it2@urbalurba.no   | IT Bruker 2        | Password123 | true   | ["Øk.Adm IT"] | department: "Øk.Adm IT", isEmployee: true, env: "test"   |
+# | ok1      | ok1@urbalurba.no   | Økonomi Bruker 1   | Password123 | true   | ["Øk.Adm"]    | department: "Øk.Adm", isEmployee: true, env: "test"      |
+# | ok2      | ok2@urbalurba.no   | Økonomi Bruker 2   | Password123 | true   | ["Øk.Adm"]    | department: "Øk.Adm", isEmployee: true, env: "test"      |
+#
+# Usage:
+#   kubectl apply -f 074-authentik-users-groups-blueprint.yaml
+#
+# Prerequisites:
+# - Authentik namespace must exist
+# - This blueprint will be automatically discovered and applied when Authentik starts
+#
+# This blueprint replaces these manual UI steps:
+# 1. Create Group "Øk.Adm IT" 
+# 2. Create Group "Øk.Adm"
+# 3. Create Users it1, it2, ok1, ok2 with passwords
+# 4. Assign it1/it2 to "Øk.Adm IT" group
+# 5. Assign ok1/ok2 to "Øk.Adm" group  
+# 6. Set custom attributes on all users and groups
+#
+# Security Note: 
+# This is for TEST ENVIRONMENT ONLY - all users share the same password "Password123"
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: users-groups-test-blueprint
+  namespace: authentik
+  labels:
+    app.kubernetes.io/name: authentik
+    app.kubernetes.io/component: blueprint
+    blueprints.goauthentik.io/instantiate: "true"
+data:
+  users-groups-test-setup.yaml: |
+    # yaml-language-server: $schema=https://goauthentik.io/blueprints/schema.json
+    version: 1
+    metadata:
+      name: "Test Users and Groups - Phase 1 Minimal Setup"
+      labels:
+        blueprints.goauthentik.io/instantiate: "true"
+    
+    context: {}
+    
+    entries:
+      # ================================================================
+      # GROUPS - Create department-based groups first
+      # ================================================================
+      
+      # IT Department Group
+      - model: authentik_core.group
+        state: present
+        identifiers:
+          name: "Øk.Adm IT"
+        attrs:
+          name: "Øk.Adm IT"
+          is_superuser: false
+          attributes:
+            department: "Øk.Adm IT"
+            type: "department_group"
+            environment: "test"
+            
+      # Finance/Economy Department Group  
+      - model: authentik_core.group
+        state: present
+        identifiers:
+          name: "Øk.Adm"
+        attrs:
+          name: "Øk.Adm"
+          is_superuser: false
+          attributes:
+            department: "Øk.Adm"
+            type: "department_group"
+            environment: "test"
+            
+      # ================================================================
+      # USERS - Create users and assign to groups
+      # ================================================================
+      
+      # IT Department Users
+      - model: authentik_core.user
+        state: present
+        identifiers:
+          username: "it1"
+        attrs:
+          username: "it1"
+          name: "IT Bruker 1"
+          email: "it1@urbalurba.no"
+          password: "Password123"
+          is_active: true
+          attributes:
+            department: "Øk.Adm IT"
+            isEmployee: true
+            environment: "test"
+          groups:
+            - !Find [authentik_core.group, [name, "Øk.Adm IT"]]
+            
+      - model: authentik_core.user
+        state: present
+        identifiers:
+          username: "it2"
+        attrs:
+          username: "it2"
+          name: "IT Bruker 2"
+          email: "it2@urbalurba.no"
+          password: "Password123"
+          is_active: true
+          attributes:
+            department: "Øk.Adm IT"
+            isEmployee: true
+            environment: "test"
+          groups:
+            - !Find [authentik_core.group, [name, "Øk.Adm IT"]]
+            
+      # Finance Department Users
+      - model: authentik_core.user
+        state: present
+        identifiers:
+          username: "ok1"
+        attrs:
+          username: "ok1"
+          name: "Økonomi Bruker 1"
+          email: "ok1@urbalurba.no"
+          password: "Password123"
+          is_active: true
+          attributes:
+            department: "Øk.Adm"
+            isEmployee: true
+            environment: "test"
+          groups:
+            - !Find [authentik_core.group, [name, "Øk.Adm"]]
+            
+      - model: authentik_core.user
+        state: present
+        identifiers:
+          username: "ok2"
+        attrs:
+          username: "ok2"
+          name: "Økonomi Bruker 2"
+          email: "ok2@urbalurba.no"
+          password: "Password123"
+          is_active: true
+          attributes:
+            department: "Øk.Adm"
+            isEmployee: true
+            environment: "test"
+          groups:
+            - !Find [authentik_core.group, [name, "Øk.Adm"]]

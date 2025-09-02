@@ -1,11 +1,14 @@
 #!/bin/bash
 # filename: 01-remove-authentik.sh
-# description: Remove Authentik authentication system completely including database and test applications
+# description: Remove Authentik authentication system completely including database, applications, and blueprints
 # 
 # What this script removes:
 # - Authentik Helm release and all associated resources
 # - Authentik PostgreSQL database and user
+# - All Authentik blueprints (whoami, openwebui, users-groups)
 # - Whoami test application and ingress
+# - OpenWebUI OAuth2/OIDC application and provider
+# - Test users (it1, it2, ok1, ok2) and department groups
 # - All Traefik middleware for authentication
 # - All configuration and persistent data
 #
@@ -98,14 +101,21 @@ confirm_removal() {
     echo "   • All authentication flows and providers"
     echo "   • Authentik admin interface and data"
     echo ""
+    echo "📋 AUTHENTIK BLUEPRINTS:"
+    echo "   • whoami-forward-auth-blueprint (whoami application)"
+    echo "   • openwebui-authentik-blueprint (OpenWebUI OAuth2/OIDC)"
+    echo "   • users-groups-test-blueprint (test users and groups)"
+    echo ""
     echo "🗄️  AUTHENTIK DATABASE:"
     echo "   • THE FULL AUTHENTIK DATABASE WILL BE DELETED"
     echo "   • Authentik database user and all permissions"
     echo "   • ALL stored authentication data and history"
+    echo "   • Test users (it1, it2, ok1, ok2) and department groups"
     echo ""
     echo "🧪 TEST APPLICATIONS:"
     echo "   • Whoami test application and service"
     echo "   • Whoami ingress configuration"
+    echo "   • OpenWebUI OAuth2/OIDC application and provider"
     echo "   • Authentication middleware (Traefik)"
     echo ""
     echo "🔒 AUTHENTICATION SYSTEM:"
@@ -150,10 +160,20 @@ check_current_state() {
     
     # Database check removed (was causing operation=check error)
     
+    # Check blueprints
+    echo ""
+    echo "📋 Checking Authentik blueprints:"
+    kubectl get configmap -n authentik | grep blueprint 2>/dev/null || echo "   No blueprint ConfigMaps found"
+    
     # Check whoami
     echo ""
     echo "🧪 Checking whoami test application:"
     kubectl get pods -l app=whoami -n default 2>/dev/null || echo "   No whoami pods found"
+    
+    # Check applications (if Authentik is running)
+    echo ""
+    echo "🔍 Checking Authentik applications:"
+    kubectl exec -n authentik deployment/authentik-server -- python manage.py shell -c "from authentik.core.models import Application; print([app.name for app in Application.objects.all()])" 2>/dev/null || echo "   Authentik not running or no applications found"
     
     echo ""
     echo "✅ Current state check completed"
@@ -189,6 +209,18 @@ main() {
     kubectl delete middleware --all -n authentik --ignore-not-found=true 2>/dev/null
     # Note: We keep the namespace and urbalurba-secrets for future use
     add_status "Authentik Resources Cleanup" "OK"
+    
+    echo ""
+    echo "Step 1.1: Removing Authentik blueprints..."
+    echo "------------------------------------------"
+    
+    # Remove specific blueprints
+    echo "🗑️  Removing Authentik blueprint ConfigMaps..."
+    kubectl delete configmap whoami-forward-auth-blueprint -n authentik --ignore-not-found=true 2>/dev/null
+    kubectl delete configmap openwebui-authentik-blueprint -n authentik --ignore-not-found=true 2>/dev/null
+    kubectl delete configmap users-groups-test-blueprint -n authentik --ignore-not-found=true 2>/dev/null
+    local blueprint_result=$?
+    check_command_success "Blueprint ConfigMaps Removal" $blueprint_result
     
     echo ""
     echo "Step 2: Removing whoami test application..."
@@ -245,6 +277,15 @@ main() {
         add_error "Helm Release Verification" "$remaining_releases releases still exist"
     fi
     
+    # Check blueprints
+    local remaining_blueprints=$(kubectl get configmap -n authentik | grep blueprint 2>/dev/null | wc -l)
+    if [ "$remaining_blueprints" -eq 0 ]; then
+        add_status "Blueprint Removal Verification" "OK"
+    else
+        add_status "Blueprint Removal Verification" "Warning"
+        add_error "Blueprint Removal Verification" "$remaining_blueprints blueprint ConfigMaps still exist"
+    fi
+    
     print_summary
     
     # Return 0 if no critical errors, 1 otherwise
@@ -275,7 +316,10 @@ print_summary() {
         echo "   • Authentik Helm release: ✅ Uninstalled"
         echo "   • Authentik PostgreSQL database: ✅ Deleted"
         echo "   • Authentik database user: ✅ Removed"
+        echo "   • Authentik blueprints (3 ConfigMaps): ✅ Deleted"
         echo "   • Whoami test application: ✅ Removed"
+        echo "   • OpenWebUI OAuth2/OIDC application: ✅ Removed"
+        echo "   • Test users and department groups: ✅ Deleted"
         echo "   • Traefik forward auth middleware: ✅ Deleted"
         echo "   • All authentication configuration: ✅ Cleared"
         echo ""
@@ -287,7 +331,9 @@ print_summary() {
         echo "✅ VERIFICATION:"
         echo "   • No Authentik pods running"
         echo "   • No Helm releases remaining"
+        echo "   • No blueprint ConfigMaps remaining"
         echo "   • Database and user completely removed"
+        echo "   • All applications and users deleted"
         echo "   • Authentication system fully disabled"
         echo ""
         echo "🎉 AUTHENTIK COMPLETELY REMOVED!"
@@ -313,11 +359,15 @@ print_summary() {
         echo "Check remaining resources:"
         echo "  kubectl get all -n authentik"
         echo "  helm list -n authentik"
+        echo "  kubectl get configmap -n authentik | grep blueprint"
         echo "  kubectl get middleware -n default | grep authentik"
         echo ""
         echo "Force cleanup commands:"
         echo "  kubectl delete namespace authentik --force --grace-period=0"
         echo "  kubectl delete middleware authentik-forward-auth -n default --force"
+        echo "  kubectl delete configmap whoami-forward-auth-blueprint -n authentik --force"
+        echo "  kubectl delete configmap openwebui-authentik-blueprint -n authentik --force"
+        echo "  kubectl delete configmap users-groups-test-blueprint -n authentik --force"
         echo ""
         echo "Database cleanup:"
         echo "  cd /mnt/urbalurbadisk/ansible"

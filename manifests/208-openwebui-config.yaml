@@ -1,4 +1,4 @@
-# 208-openwebui-config.yaml
+# File: manifests/208-openwebui-config.yaml
 #
 # Description:
 # Helm values file for deploying Open WebUI with the official Helm chart.
@@ -27,6 +27,12 @@
 # - PersistentVolumeClaim 'openwebui-data' must exist in the 'ai' namespace.
 # - Tika and Ollama should be deployed separately if not using the chart's built-in options.
 # - Authentik OAuth application must be configured with matching redirect URI.
+
+
+# note that the default image contains ollama and is 5.07GB
+# there is a slim variant that is 3.95GB and does not contain ollama
+# but the slim variant is missing files so that it fails during deployment
+
 
 nameOverride: ""
 namespaceOverride: "ai"
@@ -66,7 +72,7 @@ persistence:
   existingClaim: "openwebui-data"
   accessModes:
     - ReadWriteOnce
-  size: 2Gi
+  size: 20Gi
 
 # Resource management
 resources:
@@ -90,11 +96,84 @@ extraEnvVars:
   - name: DEFAULT_MODELS
     value: "qwen3:0.6b"
 
-  # Authentication
+  # Authentication and User Management
   - name: WEBUI_AUTH
     value: "true"
   - name: DEFAULT_USER_ROLE
     value: "user"
+    
+  # Default User Permissions - automatically applied to all users with 'user' role
+  # Workspace Permissions
+  - name: USER_PERMISSIONS_WORKSPACE_MODELS_ACCESS
+    value: "true"    # ← This fixes OAuth users not seeing models!
+  - name: USER_PERMISSIONS_WORKSPACE_KNOWLEDGE_ACCESS
+    value: "true"
+  - name: USER_PERMISSIONS_WORKSPACE_PROMPTS_ACCESS
+    value: "true"
+  - name: USER_PERMISSIONS_WORKSPACE_TOOLS_ACCESS
+    value: "false"   # Security: Don't allow arbitrary code upload
+    
+  # Sharing Permissions (keep restrictive for now)
+  - name: USER_PERMISSIONS_SHARING_MODELS_PUBLIC
+    value: "false"
+  - name: USER_PERMISSIONS_SHARING_KNOWLEDGE_PUBLIC
+    value: "false"
+  - name: USER_PERMISSIONS_SHARING_PROMPTS_PUBLIC
+    value: "false"
+  - name: USER_PERMISSIONS_SHARING_TOOLS_PUBLIC
+    value: "false"
+    
+  # Chat Permissions (good user experience)
+  - name: USER_PERMISSIONS_CHAT_FILE_UPLOAD
+    value: "true"
+  - name: USER_PERMISSIONS_CHAT_CONTROLS
+    value: "true"
+  - name: USER_PERMISSIONS_CHAT_VALVES
+    value: "true"
+  - name: USER_PERMISSIONS_CHAT_SYSTEM_PROMPT
+    value: "true"
+  - name: USER_PERMISSIONS_CHAT_PARAMS
+    value: "true"
+  - name: USER_PERMISSIONS_CHAT_EDIT
+    value: "true"
+  - name: USER_PERMISSIONS_CHAT_DELETE
+    value: "true"
+  - name: USER_PERMISSIONS_CHAT_DELETE_MESSAGES
+    value: "true"
+  - name: USER_PERMISSIONS_CHAT_CONTINUE_RESPONSE
+    value: "true"
+  - name: USER_PERMISSIONS_CHAT_REGENERATE_RESPONSE
+    value: "true"
+  - name: USER_PERMISSIONS_CHAT_RATE_RESPONSE
+    value: "true"
+  - name: USER_PERMISSIONS_CHAT_SHARE
+    value: "false"   # Keep private for now
+  - name: USER_PERMISSIONS_CHAT_EXPORT
+    value: "false"   # Keep private for now
+  - name: USER_PERMISSIONS_CHAT_STT
+    value: "true"
+  - name: USER_PERMISSIONS_CHAT_TTS
+    value: "true"
+  - name: USER_PERMISSIONS_CHAT_CALL
+    value: "false"   # Requires HTTPS setup
+  - name: USER_PERMISSIONS_CHAT_MULTIPLE_MODELS
+    value: "true"
+  - name: USER_PERMISSIONS_CHAT_TEMPORARY
+    value: "true"
+  - name: USER_PERMISSIONS_CHAT_ENFORCE_TEMPORARY
+    value: "false"
+    
+  # Features Permissions
+  - name: USER_PERMISSIONS_FEATURES_DIRECT_TOOL_SERVERS
+    value: "false"   # Advanced feature
+  - name: USER_PERMISSIONS_FEATURES_WEB_SEARCH
+    value: "true"    # Enable web search for users
+  - name: USER_PERMISSIONS_FEATURES_IMAGE_GENERATION
+    value: "true"    # Enable image generation
+  - name: USER_PERMISSIONS_FEATURES_CODE_INTERPRETER
+    value: "false"   # Optional advanced feature
+  - name: USER_PERMISSIONS_FEATURES_NOTES
+    value: "true"
 
   # Document processing with Tika
   - name: CONTENT_EXTRACTION_ENGINE
@@ -116,7 +195,7 @@ extraEnvVars:
   - name: ENABLE_RAG_LOCAL_WEB_FETCH
     value: "true"
   - name: ENABLE_WEB_SEARCH
-    value: "false"
+    value: "true"    # Enable web search functionality
   - name: ENABLE_IMAGE_GENERATION
     value: "true"
   - name: ENABLE_COMMUNITY_SHARING
@@ -127,55 +206,61 @@ extraEnvVars:
   # OAuth2/OIDC Configuration - Following official OpenWebUI documentation
   # This ensures proper OAuth provider recognition and browser compatibility
   
-  # Enable OAuth authentication
-  - name: OAUTH_ENABLED
-    value: "true"
     
-  # OAuth provider configuration
+  # OAuth provider configuration - reading from main secrets
   - name: OAUTH_PROVIDER_NAME
-    value: "Authentik"
+    valueFrom:
+      secretKeyRef:
+        name: urbalurba-secrets
+        key: OPENWEBUI_OAUTH_PROVIDER_NAME
     
-  # OAuth client credentials
+  # OAuth client credentials - reading from main urbalurba-secrets
   - name: OAUTH_CLIENT_ID
-    value: "1c37QuM0qm0g2BzdLbhppVwmUwUUrhmB83e9inEe"
+    valueFrom:
+      secretKeyRef:
+        name: urbalurba-secrets
+        key: OPENWEBUI_OAUTH_CLIENT_ID
     
   - name: OAUTH_CLIENT_SECRET
-    value: "BngAuX1zthtYnyAxPePAwyTqDxfVSq09IDRUTAonRcogYmhnfj39eBk709nKF4ej1OT7OMiJWVYIrwOrdizTFiyQxapQUEpDziPNucs5yxIciEx21PkK82IgURILL06h"
+    valueFrom:
+      secretKeyRef:
+        name: urbalurba-secrets
+        key: OPENWEBUI_OAUTH_CLIENT_SECRET
     
-  # OAuth scopes and settings
+  # OAuth scopes and settings - reading from main secrets
   - name: OAUTH_SCOPES
-    value: "openid email profile"
+    valueFrom:
+      secretKeyRef:
+        name: urbalurba-secrets
+        key: OPENWEBUI_OAUTH_SCOPES
     
-  # OAuth debugging - set to DEBUG for detailed OAuth flow logging
-  - name: OAUTH_LOG_LEVEL
-    value: "DEBUG"
-    
-  # OAuth endpoints - using external hostnames for browser compatibility
-  # These override the endpoints discovered from OPENID_PROVIDER_URL
-  - name: OAUTH_AUTHORIZATION_URL
-    value: "http://authentik.localhost/application/o/openwebui-dev/authorize/"
-    
-  - name: OAUTH_TOKEN_URL
-    value: "http://authentik.localhost/application/o/openwebui-dev/token/"
-    
-  - name: OAUTH_USERINFO_URL
-    value: "http://authentik.localhost/application/o/openwebui-dev/userinfo/"
-    
-  # OIDC provider URL - using external hostname for discovery
+  # OIDC provider URL - reading from main secrets (enables auto-discovery)
   - name: OPENID_PROVIDER_URL
-    value: "http://authentik.localhost/application/o/openwebui-dev/.well-known/openid-configuration"
+    valueFrom:
+      secretKeyRef:
+        name: urbalurba-secrets
+        key: OPENWEBUI_OPENID_PROVIDER_URL
     
-  # Redirect URI for OAuth callback - using external hostname for browser
+  # Redirect URI for OAuth callback - reading from main secrets
   - name: OPENID_REDIRECT_URI
-    value: "http://openwebui.localhost/oauth/oidc/callback"
+    valueFrom:
+      secretKeyRef:
+        name: urbalurba-secrets
+        key: OPENWEBUI_OPENID_REDIRECT_URI
     
-  # Allow new users to register via OAuth (set to "false" to restrict to existing users)
+  # Enable OAuth features - reading from main secrets
   - name: ENABLE_OAUTH_SIGNUP
-    value: "true"
+    valueFrom:
+      secretKeyRef:
+        name: urbalurba-secrets
+        key: OPENWEBUI_ENABLE_OAUTH_SIGNUP
     
-  # Merge OAuth accounts by email address for better user experience
+  # Merge OAuth accounts by email - reading from main secrets
   - name: OAUTH_MERGE_ACCOUNTS_BY_EMAIL
-    value: "true"
+    valueFrom:
+      secretKeyRef:
+        name: urbalurba-secrets
+        key: OPENWEBUI_OAUTH_MERGE_ACCOUNTS_BY_EMAIL
 
 # Application logging configuration
 logging:
@@ -189,3 +274,9 @@ logging:
 # Networking (Ingress disabled - managed separately)
 ingress:
   enabled: false
+
+
+# these variables are not valid and are moved here before I delete them
+#  # Enable OAuth authentication
+#  - name: OAUTH_ENABLED
+#    value: "true"

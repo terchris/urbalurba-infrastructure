@@ -145,6 +145,36 @@ else
     fi
 fi
 
+# Deploy internal DNS configuration for OAuth integration
+echo "==========------------------> Step 4.3: Deploying internal DNS configuration"
+echo "Setting up CoreDNS rewrite rules for *.localhost hostname resolution..."
+
+# Check if the container is running
+if ! docker ps | grep -q provision-host; then
+    echo "Error: provision-host container is not running"
+    STATUS+=("Internal DNS deployment: Failed (container not running)")
+    ERROR=1
+else
+    # Deploy the internal DNS configuration in the container
+    if docker exec provision-host bash -c "cd /mnt/urbalurbadisk/manifests && kubectl apply -f 005-internal-dns.yaml"; then
+        echo "✅ Internal DNS configuration deployed successfully"
+        echo "⏳ Waiting for CoreDNS to restart and apply changes..."
+        
+        # Wait for the CoreDNS patch job to complete
+        if docker exec provision-host bash -c "kubectl wait --for=condition=complete job/coredns-patch-internal-dns -n kube-system --timeout=300s"; then
+            echo "✅ CoreDNS internal DNS configuration applied successfully"
+            STATUS+=("Internal DNS deployment: OK")
+        else
+            echo "⚠️ CoreDNS patch job may still be running or failed, but continuing..."
+            STATUS+=("Internal DNS deployment: Partial (CoreDNS patch in progress)")
+        fi
+    else
+        echo "❌ Failed to deploy internal DNS configuration"
+        STATUS+=("Internal DNS deployment: Failed")
+        ERROR=1
+    fi
+fi
+
 echo "==========------------------> Step 5: Install local kubeconfig - SKIPPED (using Rancher Desktop config)"
 STATUS+=("Step 5 - Install kubeconfig: Skipped (using Rancher Desktop config)")
 

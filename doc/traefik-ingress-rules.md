@@ -3,7 +3,7 @@
 **File**: `doc/traefik-ingress-rules.md`  
 **Purpose**: Explain how ingress is configured in this Kubernetes cluster using Traefik  
 **Target Audience**: Developers, DevOps engineers, and anyone working with cluster ingress  
-**Last Updated**: August 25, 2025  
+**Last Updated**: September 01, 2025  
 
 ## 📋 **Overview**
 
@@ -38,6 +38,62 @@ This cluster uses the **localhost feature** for seamless development:
 - ✅ **Instant Access**: New services immediately accessible
 - ✅ **Consistent**: Same pattern for all developers
 - ✅ **Clean**: No local machine pollution
+
+### **Internal DNS Resolution for Pod-to-Pod Communication**:
+While the localhost routing works perfectly for browser access, **pods within the cluster need different DNS resolution** to communicate with services using the same hostnames.
+
+**The Challenge**:
+- **Browser Context**: `authentik.localhost` → `127.0.0.1` → Traefik → Service ✅
+- **Pod Context**: `authentik.localhost` → `127.0.0.1` → ❌ **Unreachable from inside pods**
+- **OAuth Integration**: OpenWebUI pods need to call `authentik.localhost` for authentication discovery
+- **Service Communication**: Internal APIs need consistent hostname resolution
+
+**The Solution - CoreDNS Rewrite Rules**:
+This cluster implements **internal DNS resolution** using CoreDNS rewrite rules that map `*.localhost` hostnames to internal service FQDNs:
+
+```yaml
+# CoreDNS Configuration (manifests/005-internal-dns.yaml)
+rewrite name authentik.localhost authentik-server.authentik.svc.cluster.local
+rewrite name openwebui.localhost open-webui.ai.svc.cluster.local
+```
+
+**Dual-Context Architecture**:
+```
+# External/Browser Access:
+Browser → authentik.localhost → 127.0.0.1 → Traefik → authentik-server.authentik
+
+# Internal/Pod Access:
+Pod → authentik.localhost → CoreDNS → 10.43.x.x (ClusterIP) → authentik-server.authentik
+```
+
+**Key Benefits**:
+- ✅ **Same Hostnames**: Applications use identical URLs in all contexts
+- ✅ **OAuth Integration**: Enables OpenWebUI ↔ Authentik authentication
+- ✅ **Service Discovery**: Internal APIs accessible via consistent hostnames
+- ✅ **Zero App Changes**: No configuration differences between internal/external
+- ✅ **Automatic Resolution**: Pods automatically resolve `*.localhost` to service IPs
+
+**Implementation Details**:
+- **File**: `manifests/005-internal-dns.yaml` (deployed early in cluster setup)
+- **Method**: Patches existing CoreDNS ConfigMap with rewrite rules
+- **Scope**: All pods cluster-wide get the internal DNS resolution
+- **Verification**: `kubectl exec -it <pod> -- getent hosts authentik.localhost`
+
+**Critical for These Use Cases**:
+- 🔐 **OAuth Authentication**: OpenWebUI → Authentik integration
+- 🌐 **API Communication**: Service-to-service internal calls
+- 📊 **Monitoring**: Services calling other services for metrics/health
+- 🔄 **Webhooks**: Internal callback URLs using consistent hostnames
+
+**DNS Resolution Flow**:
+```
+Pod Request → CoreDNS → Rewrite Rule Applied → Service ClusterIP → Target Service
+
+Example:
+authentik.localhost → authentik-server.authentik.svc.cluster.local → 10.43.119.98 → Authentik Service
+```
+
+This **dual-context DNS resolution** ensures that the same hostname works seamlessly in both browser and pod contexts, enabling complex integrations like OAuth while maintaining the simplicity of the localhost development pattern.
 
 ### **Authentication in the Cluster**:
 This cluster supports **optional authentication** using **Authentik** as the identity provider. Services can be configured as public (no auth) or protected (requires login). Protected services use Traefik middleware (`authentik-forward-auth`) that forwards authentication requests to Authentik before serving content. See `manifests/075-authentik-complete-hardcoded.yaml`, `manifests/077-authentik-forward-auth-middleware.yaml`, and `manifests/078-whoami-protected-ingressroute.yaml` for implementation examples.
@@ -523,6 +579,21 @@ kubectl get endpoints <service-name>
 kubectl get pods -l app=<app-label>
 ```
 
+### **Debug Internal DNS Resolution**:
+```bash
+# Test DNS resolution from pod
+kubectl exec -it <pod-name> -- getent hosts authentik.localhost
+
+# Verify CoreDNS configuration
+kubectl get configmap coredns -n kube-system -o yaml
+
+# Check CoreDNS logs
+kubectl logs -n kube-system -l k8s-app=kube-dns -f
+
+# Test service connectivity from pod
+kubectl exec -it <pod-name> -- python -c "import socket; print(socket.gethostbyname('authentik.localhost'))"
+```
+
 ## 📝 **Best Practices**
 
 ### **1. Use HostRegexp for All Services** (Recommended)
@@ -620,6 +691,7 @@ spec:
 - [Traefik Routing Rules](https://doc.traefik.io/traefik/routing/routers/)
 
 ### **Cluster-Specific Files**:
+- **Internal DNS**: `manifests/005-internal-dns.yaml`
 - **Nginx Catch-All**: `manifests/020-nginx-root-ingress.yaml`
 - **Whoami Public**: `manifests/071-whoami-public-ingressroute.yaml`
 - **Gravitee Examples**: `manifests/091-gravitee-ingress.yaml`
@@ -632,12 +704,13 @@ spec:
 
 ### **Key Points**:
 1. **Use `traefik.io/v1alpha1`** - this is the current working version in Traefik 3.3.6
-2. **Prefer `HostRegexp()` patterns** for all services to enable multi-domain support
-3. **Use `HostRegexp()` for unified internal/external access** - single rule handles multiple domains
-4. **Set appropriate priorities** (1 = lowest, 100+ = highest)
-5. **Test services directly** before troubleshooting ingress
-6. **Follow the working examples** in the manifests folder
-7. **Implement authentication** using `authentik-forward-auth` middleware for protected services
+2. **Deploy internal DNS early** - `manifests/005-internal-dns.yaml` enables pod-to-pod communication
+3. **Prefer `HostRegexp()` patterns** for all services to enable multi-domain support
+4. **Use `HostRegexp()` for unified internal/external access** - single rule handles multiple domains
+5. **Set appropriate priorities** (1 = lowest, 100+ = highest)
+6. **Test services directly** before troubleshooting ingress
+7. **Follow the working examples** in the manifests folder
+8. **Implement authentication** using `authentik-forward-auth` middleware for protected services
 
 ### **Traefik Version Information**:
 - **Current Version**: Traefik 3.3.6 (Rancher Desktop)
@@ -646,11 +719,13 @@ spec:
 - **Cluster Status**: Using the latest stable API version available
 
 ### **Remember**:
+- **Internal DNS resolution** is required for OAuth and service-to-service communication
 - **Traefik IngressRoute CRDs** are the cluster standard
 - **HostRegexp patterns** are preferred for all services to enable multi-domain support
+- **Dual-context DNS** enables same hostnames in browser and pod contexts
 - **Unified routing** across internal and external domains
 - **Priority system** determines route matching order
 - **Authentication middleware** protects services when needed
 - **Test incrementally** to avoid debugging complexity
 
-This approach ensures consistent, maintainable ingress configuration across the cluster with support for both development and production environments.
+This approach ensures consistent, maintainable ingress configuration across the cluster with support for both development and production environments, while enabling complex internal service communication patterns like OAuth integration.
