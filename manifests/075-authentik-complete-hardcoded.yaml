@@ -100,9 +100,12 @@ blueprints:
   # List of ConfigMaps containing blueprints
   # Only keys ending with .yaml will be discovered and applied
   configMaps:
-    - "whoami-forward-auth-blueprint"
-    - "openwebui-authentik-blueprint"
-    - "users-groups-test-blueprint"    # this is a test blueprint to test the users and groups feature
+    - "system-core-whoami-blueprint" # this is the core system blueprint used to verify that the authentication is working
+    - "test-users-groups-blueprint" # test users and groups blueprint
+    - "openwebui-blueprint" # openwebui blueprint
+    - "app-slot1-blueprint" # app slot 1 blueprint
+
+    
 
 # Authentik server ingress configuration
 # NOTE: Ingress is now managed by separate IngressRoute (076-authentik-ingressroute.yaml)

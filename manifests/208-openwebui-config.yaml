@@ -9,7 +9,10 @@
 # - Persistent storage via existing PVC.
 # - Custom resource requests/limits for stability and performance.
 # - Ingress is disabled here (handled separately in a separate manifest).
-# - OAuth2/OIDC authentication via Authentik for dual authentication support (centralized in urbalurba-secrets).
+# - OAuth2/OIDC authentication via Authentik with automatic group synchronization (centralized in urbalurba-secrets).
+# - Automatic user group management: Users are assigned to OpenWebUI groups based on their Authentik group membership.
+# - Just-in-Time (JIT) group creation: Groups from Authentik are automatically created in OpenWebUI if they don't exist.
+# - Role-based access control: Users can be assigned roles (admin/user) based on their Authentik group membership.
 #
 # Usage:
 #   helm upgrade --install open-webui open-webui/open-webui -n ai -f manifests/208-openwebui-config.yaml
@@ -23,10 +26,12 @@
 #   * OPENWEBUI_OPENID_PROVIDER_URL: Authentik OIDC discovery endpoint
 #   * OPENWEBUI_OPENID_REDIRECT_URI: OAuth callback URL
 #   * OPENWEBUI_ENABLE_OAUTH_SIGNUP: Enable new user registration via OAuth
-#   * OPENWEBUI_OAUTH_SCOPES: OAuth scopes to request
+#   * OPENWEBUI_OAUTH_SCOPES: OAuth scopes to request (should include "openid email profile groups")
 # - PersistentVolumeClaim 'openwebui-data' must exist in the 'ai' namespace.
 # - Tika and Ollama should be deployed separately if not using the chart's built-in options.
 # - Authentik OAuth application must be configured with matching redirect URI.
+# - For group management: Authentik must be configured to send group information in OAuth tokens.
+#   This requires additional property mappings (see 074-authentik-openwebui-group-mappings.yaml).
 
 
 # note that the default image contains ollama and is 5.07GB
@@ -233,6 +238,24 @@ extraEnvVars:
       secretKeyRef:
         name: urbalurba-secrets
         key: OPENWEBUI_OAUTH_SCOPES
+
+  # OAuth Group Management - CRITICAL FOR ACCESS CONTROL
+  # Enables automatic group synchronization from Authentik to OpenWebUI
+  - name: ENABLE_OAUTH_GROUP_MANAGEMENT
+    value: "true"    # Sync user groups from Authentik claims on each login
+    
+  - name: ENABLE_OAUTH_GROUP_CREATION
+    value: "true"    # Auto-create OpenWebUI groups from Authentik groups (JIT)
+    
+  - name: OAUTH_GROUP_CLAIM
+    value: "groups"  # The claim in Authentik tokens containing group memberships
+    
+  # Optional: Role-based access control
+  - name: ENABLE_OAUTH_ROLE_MANAGEMENT
+    value: "true"    # Enable role assignment from OAuth claims
+    
+  - name: OAUTH_ROLES_CLAIM
+    value: "roles"   # The claim containing role information
     
   # OIDC provider URL - reading from main secrets (enables auto-discovery)
   - name: OPENID_PROVIDER_URL

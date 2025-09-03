@@ -1,18 +1,28 @@
-# File: manifests/074-authentik-openwebui-blueprint-hardcoded.yaml
+# File: manifests/073-authentik-2-openwebui-blueprint.yaml
 #
 # Description:
-# Authentik blueprint that automates the configuration of OpenWebUI OAuth2/OIDC application
-# CORRECTED VERSION - Based on working manual configuration export
-# Creates OAuth2 provider and application for OpenWebUI authentication via Authentik
+# Authentik blueprint that automates the complete configuration of OpenWebUI OAuth2/OIDC integration
+# INCLUDES: OAuth2 provider setup, application configuration, AND group/role mappings for access control
+# Creates OAuth2 provider, application, and property mappings for OpenWebUI authentication via Authentik
+# 
+# This ConfigMap contains TWO blueprint files:
+# 1. openwebui-oauth2-oidc.yaml - OAuth2/OIDC provider and application setup for OpenWebUI authentication
+# 2. openwebui-group-mappings.yaml - Property mappings for groups and roles claims
+#
+# Dependencies:
+# - This blueprint is SELF-CONTAINED and creates its own "HQ" and "Distrikt" groups
+# - For meaningful authentication, deploy manifests/073-authentik-1-test-users-groups-blueprint.yaml first
+# - The test users blueprint creates the actual users that will authenticate via OpenWebUI
+# - Can be deployed independently, but groups will be empty without test users
 #
 # Usage:
-#   kubectl apply -f manifests/074-authentik-openwebui-blueprint-hardcoded.yaml
+#   kubectl apply -f manifests/073-authentik-2-openwebui-blueprint.yaml
 #
 # Prerequisites:
 # - In the authentik helm values you must have the following:
 # - blueprints:
 #   configMaps:
-#     - "openwebui-authentik-blueprint"
+#     - "openwebui-blueprint"
 #
 # This is how to set up manually in Authentik UI:
 # Before deploying this secret, configure in Authentik UI (authentik.localhost):
@@ -41,14 +51,14 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: openwebui-authentik-blueprint
+  name: openwebui-blueprint
   namespace: authentik
   labels:
     app.kubernetes.io/name: authentik
     app.kubernetes.io/component: blueprint
     blueprints.goauthentik.io/instantiate: "true"
 data:
-  openwebui.yaml: |
+  openwebui-oauth2-oidc.yaml: |
     # yaml-language-server: $schema=https://goauthentik.io/blueprints/schema.json
     version: 1
     metadata:
@@ -90,6 +100,8 @@ data:
             - !Find [authentik_providers_oauth2.scopemapping, [name, "authentik default OAuth Mapping: OpenID 'openid'"]]
             - !Find [authentik_providers_oauth2.scopemapping, [name, "authentik default OAuth Mapping: OpenID 'email'"]]
             - !Find [authentik_providers_oauth2.scopemapping, [name, "authentik default OAuth Mapping: OpenID 'profile'"]]
+            - !Find [authentik_providers_oauth2.scopemapping, [name, "OpenWebUI Groups Mapping"]]
+            - !Find [authentik_providers_oauth2.scopemapping, [name, "OpenWebUI Roles Mapping"]]
           
       # Create the application and link it to the provider
       - model: authentik_core.application
@@ -103,3 +115,82 @@ data:
           meta_launch_url: ""
           policy_engine_mode: any
           provider: !Find [authentik_providers_oauth2.oauth2provider, [name, openwebui-dev-provider]]
+
+  openwebui-group-mappings.yaml: |
+    # yaml-language-server: $schema=https://goauthentik.io/blueprints/schema.json
+    version: 1
+    metadata:
+      name: "OpenWebUI Group Claims Mappings"
+      labels:
+        blueprints.goauthentik.io/instantiate: "true"
+    
+    context: {}
+    
+    entries:
+      # ================================================================
+      # GROUPS - Create organizational groups first (self-contained)
+      # ================================================================
+      
+      # HQ Group (Nasjonalkontoret)
+      - model: authentik_core.group
+        state: present
+        identifiers:
+          name: "HQ"
+        attrs:
+          name: "HQ"
+          is_superuser: false
+          attributes:
+            type: "org_group"
+            scope: "hq"
+            
+      # Distrikt Group (District offices)
+      - model: authentik_core.group
+        state: present
+        identifiers:
+          name: "Distrikt"
+        attrs:
+          name: "Distrikt"
+          is_superuser: false
+          attributes:
+            type: "org_group"
+            scope: "district"
+            
+      # ================================================================
+      # PROPERTY MAPPINGS - Create scope mappings for groups and roles
+      # ================================================================
+      # Create property mapping to include groups in tokens
+      - model: authentik_providers_oauth2.scopemapping
+        state: present
+        identifiers:
+          name: "OpenWebUI Groups Mapping"
+        attrs:
+          name: "OpenWebUI Groups Mapping"
+          scope_name: "groups"
+          description: "OpenWebUI groups scope mapping"
+          expression: |
+            return {
+              "groups": [group.name for group in user.ak_groups.all()],
+            }
+            
+      # Create property mapping for roles (optional - for role-based access)
+      - model: authentik_providers_oauth2.scopemapping
+        state: present
+        identifiers:
+          name: "OpenWebUI Roles Mapping"
+        attrs:
+          name: "OpenWebUI Roles Mapping"
+          scope_name: "roles"
+          description: "OpenWebUI roles scope mapping"
+          expression: |
+            roles = []
+            # Map groups to roles - customize this logic as needed
+            user_groups = [group.name for group in user.ak_groups.all()]
+            
+            if "Øk.Adm IT" in user_groups:
+                roles.append("admin")  # IT users get admin role
+            else:
+                roles.append("user")   # Other users get user role
+                
+            return {
+              "roles": roles,
+            }

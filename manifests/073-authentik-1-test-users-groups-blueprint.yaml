@@ -1,0 +1,726 @@
+# File: manifests/073-authentik-1-test-users-groups-blueprint.yaml
+#
+# Description:
+# Complete Authentik blueprint for creating Red Cross test users with full Okta field compatibility
+# Creates 11 test users with all Okta fields and organizational relationships
+# Based on the complete user specification in package-authentication-testusers.md
+#
+# GROUPS TABLE:
+# | Group Name  | Superuser | Attributes                                                        | Purpose                    |
+# |-------------|-----------|-------------------------------------------------------------------|----------------------------|
+# | HQ          | false     | type: "org_group", scope: "hq"                                   | HQ users (Nasjonalkontoret)|
+# | Distrikt    | false     | type: "org_group", scope: "district"                            | District users (Distrikt)  |
+#
+# USERS TABLE:
+# | Username | Email | Name | Department | Group | Custom Attributes (All Okta Fields) |
+# |----------|-------|------|------------|-------|-------------------------------------|
+# | ok1      | ok1@urbalurba.no | Ola Nordmann | Økonomi og administrasjon | HQ | All 40+ Okta fields |
+# | re1      | re1@urbalurba.no | Kari Hansen | Regnskap og rapportering | HQ | All 40+ Okta fields |
+# | it1      | it1@urbalurba.no | Erik Larsen | IT | HQ | All 40+ Okta fields |
+# | hr1      | hr1@urbalurba.no | Anna Olsen | HR | HQ | All 40+ Okta fields |
+# | ko1      | ko1@urbalurba.no | Lars Andersen | Kommunikasjon | HQ | All 40+ Okta fields |
+# | in1      | in1@urbalurba.no | Maria Johansen | Inntekter | HQ | All 40+ Okta fields |
+# | sr1      | sr1@urbalurba.no | Thomas Pedersen | Søk og redning | HQ | All 40+ Okta fields |
+# | ip1      | ip1@urbalurba.no | Ingrid Svendsen | Technical Unit | HQ | All 40+ Okta fields |
+# | di1      | di1@urbalurba.no | Per Kristiansen | Digital innovasjon | HQ | All 40+ Okta fields |
+# | dist1    | dist1@urbalurba.no | Bjørn Nilsen | Buskerud RK | Distrikt | All 40+ Okta fields |
+# | dist2    | dist2@urbalurba.no | Solveig Berg | Hordaland RK | Distrikt | All 40+ Okta fields |
+#
+# Usage:
+#   kubectl apply -f manifests/073-authentik-1-test-users-groups-blueprint.yaml
+#
+# Prerequisites:
+# - Authentik namespace must exist
+# - This blueprint will be automatically discovered and applied when Authentik starts
+# - Must be referenced in Helm values under blueprints.configMaps
+#
+# This blueprint replaces these manual UI steps:
+# 1. Create Group "HQ" 
+# 2. Create Group "Distrikt"
+# 3. Create Users ok1, re1, it1, hr1, ko1, in1, sr1, ip1, di1, dist1, dist2 with passwords
+# 4. Assign HQ users to "HQ" group
+# 5. Assign district users to "Distrikt" group  
+# 6. Set all custom attributes on all users (40+ fields per user)
+#
+# Security Note: 
+# This is for TEST ENVIRONMENT ONLY - all users share the same password "Password123"
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-users-groups-blueprint
+  namespace: authentik
+  labels:
+    app.kubernetes.io/name: authentik
+    app.kubernetes.io/component: blueprint
+    blueprints.goauthentik.io/instantiate: "true"
+data:
+  users-groups-test-setup.yaml: |
+    # yaml-language-server: $schema=https://goauthentik.io/blueprints/schema.json
+    version: 1
+    metadata:
+      name: "Complete Okta-Compatible Test Users - Red Cross Development Environment"
+      labels:
+        blueprints.goauthentik.io/instantiate: "true"
+    
+    context: {}
+    
+    entries:
+      # ================================================================
+      # GROUPS - Create organizational groups first
+      # ================================================================
+      
+      # HQ Group (Nasjonalkontoret)
+      - model: authentik_core.group
+        state: present
+        identifiers:
+          name: "HQ"
+        attrs:
+          name: "HQ"
+          is_superuser: false
+          attributes:
+            type: "org_group"
+            scope: "hq"
+            
+      # Distrikt Group (District offices)
+      - model: authentik_core.group
+        state: present
+        identifiers:
+          name: "Distrikt"
+        attrs:
+          name: "Distrikt"
+          is_superuser: false
+          attributes:
+            type: "org_group"
+            scope: "district"
+            
+      # ================================================================
+      # USERS - Create users with complete Okta field mappings
+      # ================================================================
+      
+      # User 1: ok1 - Økonomi og administrasjon (Manager)
+      - model: authentik_core.user
+        state: present
+        identifiers:
+          username: "ok1"
+        attrs:
+          username: "ok1"
+          name: "Ola Nordmann"
+          email: "ok1@urbalurba.no"
+          password: "Password123"
+          is_active: true
+          attributes:
+            department: "Økonomi og administrasjon"
+            vi_department: "Økonomi og administrasjon"
+            vi_departmentID: "N750"
+            vi_unitname: "Økonomi og administrasjon"
+            vi_unitID: "#5421000#N750#N750#"
+            costCenter: "N750"
+            vi_Locale: "Oslo"
+            vi_StateProvince: "Nasjonalkontoret"
+            vi_position: "Økonomi- og administrasjonsmedarbeider"
+            vi_employeeform: "1 Fast ansatt"
+            employeeNumber: "25001"
+            samAccountName: "105010OK1"
+            managerId: "105010MGR1"
+            manager: "manager1@urbalurba.no"
+            ManagerdisplayName: "Manager Person"
+            isEmployee: "true"
+            isVolunteer: "false"
+            u_start_date: "01/01/2020"
+            u_end_date: ""
+            mobilePhone: "+4790012345"
+            secondEmail: "ola.nordmann@example.no"
+            bankid_birthdate: "80-01-15"
+            bankid_nnin_altsub: "15018012345"
+            bankid_altsub: "Pass"
+            bankid_verification_timestamp: "2020-01-01T09:00:00"
+            bankid_user_verified: "true"
+            bankid_sub: "12345678-1234-1234-1234-123456789012"
+            bankid_firstname: "Ola"
+            bankid_lastname: "Nordmann"
+            AgressoDomainUser: "Z94\\105010OK1"
+            RelationNumber: "105010OK1"
+            Azure_lastNonInteractiveSignInDateTime: "2024-01-15T08:30:00Z"
+            ServiceNowManagerIdExternalID: "d1b50bf41ba56690825da711604bcbf2"
+            extensionAttribute7: "5207a9ec-a6bf-ec11-8117-001dd8b74416"
+            u_crm_guid: "bb0a469d-905c-ef11-bfe3-0022489bed2b"
+            streetAddress: "Storgata 1"
+            city: "Oslo"
+            zipCode: "0155"
+            state: "Nasjonalkontoret"
+            deliveryOffice: "RK Hovedkontor"
+            division: "105010-001 - RK Hovedkontor"
+            title: "Økonomi- og administrasjonsmedarbeider"
+          groups:
+            - !Find [authentik_core.group, [name, "HQ"]]
+            
+      # User 2: re1 - Regnskap og rapportering
+      - model: authentik_core.user
+        state: present
+        identifiers:
+          username: "re1"
+        attrs:
+          username: "re1"
+          name: "Kari Hansen"
+          email: "re1@urbalurba.no"
+          password: "Password123"
+          is_active: true
+          attributes:
+            department: "Økonomi og administrasjon"
+            vi_department: "Regnskap og rapportering"
+            vi_departmentID: "N760"
+            vi_unitname: "Regnskap og rapportering"
+            vi_unitID: "#5421000#N760#N760#"
+            costCenter: "N760"
+            vi_Locale: "Oslo"
+            vi_StateProvince: "Nasjonalkontoret"
+            vi_position: "Regnskapsmedarbeider"
+            vi_employeeform: "1 Fast ansatt"
+            employeeNumber: "25002"
+            samAccountName: "105010RE1"
+            managerId: "105010OK1"
+            manager: "ola.nordmann@urbalurba.no"
+            ManagerdisplayName: "Ola Nordmann"
+            isEmployee: "true"
+            isVolunteer: "false"
+            u_start_date: "01/02/2020"
+            u_end_date: ""
+            mobilePhone: "+4790012346"
+            secondEmail: "kari.hansen@example.no"
+            bankid_birthdate: "85-03-22"
+            bankid_nnin_altsub: "22038512345"
+            bankid_altsub: "Pass"
+            bankid_verification_timestamp: "2020-02-01T09:00:00"
+            bankid_user_verified: "true"
+            bankid_sub: "12345678-1234-1234-1234-123456789013"
+            bankid_firstname: "Kari"
+            bankid_lastname: "Hansen"
+            AgressoDomainUser: "Z94\\105010RE1"
+            RelationNumber: "105010RE1"
+            Azure_lastNonInteractiveSignInDateTime: "2024-01-15T08:30:00Z"
+            ServiceNowManagerIdExternalID: "d1b50bf41ba56690825da711604bcbf3"
+            extensionAttribute7: "5207a9ec-a6bf-ec11-8117-001dd8b74417"
+            u_crm_guid: "bb0a469d-905c-ef11-bfe3-0022489bed2c"
+            streetAddress: "Storgata 2"
+            city: "Oslo"
+            zipCode: "0155"
+            state: "Nasjonalkontoret"
+            deliveryOffice: "RK Hovedkontor"
+            division: "105010-001 - RK Hovedkontor"
+            title: "Regnskapsmedarbeider"
+          groups:
+            - !Find [authentik_core.group, [name, "HQ"]]
+            
+      # User 3: it1 - IT
+      - model: authentik_core.user
+        state: present
+        identifiers:
+          username: "it1"
+        attrs:
+          username: "it1"
+          name: "Erik Larsen"
+          email: "it1@urbalurba.no"
+          password: "Password123"
+          is_active: true
+          attributes:
+            department: "Økonomi og administrasjon"
+            vi_department: "IT"
+            vi_departmentID: "N770"
+            vi_unitname: "IT"
+            vi_unitID: "#5421000#N770#N770#"
+            costCenter: "N770"
+            vi_Locale: "Oslo"
+            vi_StateProvince: "Nasjonalkontoret"
+            vi_position: "IT Specialist"
+            vi_employeeform: "1 Fast ansatt"
+            employeeNumber: "25003"
+            samAccountName: "105010IT1"
+            managerId: "105010OK1"
+            manager: "ola.nordmann@urbalurba.no"
+            ManagerdisplayName: "Ola Nordmann"
+            isEmployee: "true"
+            isVolunteer: "false"
+            u_start_date: "01/03/2020"
+            u_end_date: ""
+            mobilePhone: "+4790012347"
+            secondEmail: "erik.larsen@example.no"
+            bankid_birthdate: "82-07-10"
+            bankid_nnin_altsub: "10078212345"
+            bankid_altsub: "Pass"
+            bankid_verification_timestamp: "2020-03-01T09:00:00"
+            bankid_user_verified: "true"
+            bankid_sub: "12345678-1234-1234-1234-123456789014"
+            bankid_firstname: "Erik"
+            bankid_lastname: "Larsen"
+            AgressoDomainUser: "Z94\\105010IT1"
+            RelationNumber: "105010IT1"
+            Azure_lastNonInteractiveSignInDateTime: "2024-01-15T08:30:00Z"
+            ServiceNowManagerIdExternalID: "d1b50bf41ba56690825da711604bcbf4"
+            extensionAttribute7: "5207a9ec-a6bf-ec11-8117-001dd8b74418"
+            u_crm_guid: "bb0a469d-905c-ef11-bfe3-0022489bed2d"
+            streetAddress: "Storgata 3"
+            city: "Oslo"
+            zipCode: "0155"
+            state: "Nasjonalkontoret"
+            deliveryOffice: "RK Hovedkontor"
+            division: "105010-001 - RK Hovedkontor"
+            title: "IT Specialist"
+          groups:
+            - !Find [authentik_core.group, [name, "HQ"]]
+            
+      # User 4: hr1 - HR
+      - model: authentik_core.user
+        state: present
+        identifiers:
+          username: "hr1"
+        attrs:
+          username: "hr1"
+          name: "Anna Olsen"
+          email: "hr1@urbalurba.no"
+          password: "Password123"
+          is_active: true
+          attributes:
+            department: "HR og organisasjonsutvikling"
+            vi_department: "HR"
+            vi_departmentID: "N780"
+            vi_unitname: "HR"
+            vi_unitID: "#5421000#N780#N780#"
+            costCenter: "N780"
+            vi_Locale: "Oslo"
+            vi_StateProvince: "Nasjonalkontoret"
+            vi_position: "HR Medarbeider"
+            vi_employeeform: "1 Fast ansatt"
+            employeeNumber: "25004"
+            samAccountName: "105010HR1"
+            managerId: "105010OK1"
+            manager: "ola.nordmann@urbalurba.no"
+            ManagerdisplayName: "Ola Nordmann"
+            isEmployee: "true"
+            isVolunteer: "false"
+            u_start_date: "01/04/2020"
+            u_end_date: ""
+            mobilePhone: "+4790012348"
+            secondEmail: "anna.olsen@example.no"
+            bankid_birthdate: "88-11-05"
+            bankid_nnin_altsub: "05118812345"
+            bankid_altsub: "Pass"
+            bankid_verification_timestamp: "2020-04-01T09:00:00"
+            bankid_user_verified: "true"
+            bankid_sub: "12345678-1234-1234-1234-123456789015"
+            bankid_firstname: "Anna"
+            bankid_lastname: "Olsen"
+            AgressoDomainUser: "Z94\\105010HR1"
+            RelationNumber: "105010HR1"
+            Azure_lastNonInteractiveSignInDateTime: "2024-01-15T08:30:00Z"
+            ServiceNowManagerIdExternalID: "d1b50bf41ba56690825da711604bcbf5"
+            extensionAttribute7: "5207a9ec-a6bf-ec11-8117-001dd8b74419"
+            u_crm_guid: "bb0a469d-905c-ef11-bfe3-0022489bed2e"
+            streetAddress: "Storgata 4"
+            city: "Oslo"
+            zipCode: "0155"
+            state: "Nasjonalkontoret"
+            deliveryOffice: "RK Hovedkontor"
+            division: "105010-001 - RK Hovedkontor"
+            title: "HR Medarbeider"
+          groups:
+            - !Find [authentik_core.group, [name, "HQ"]]
+            
+      # User 5: ko1 - Kommunikasjon
+      - model: authentik_core.user
+        state: present
+        identifiers:
+          username: "ko1"
+        attrs:
+          username: "ko1"
+          name: "Lars Andersen"
+          email: "ko1@urbalurba.no"
+          password: "Password123"
+          is_active: true
+          attributes:
+            department: "Kommunikasjon og samfunn"
+            vi_department: "Kommunikasjon"
+            vi_departmentID: "N790"
+            vi_unitname: "Kommunikasjon"
+            vi_unitID: "#5421000#N790#N790#"
+            costCenter: "N790"
+            vi_Locale: "Oslo"
+            vi_StateProvince: "Nasjonalkontoret"
+            vi_position: "Kommunikasjonsmedarbeider"
+            vi_employeeform: "1 Fast ansatt"
+            employeeNumber: "25005"
+            samAccountName: "105010KO1"
+            managerId: "105010OK1"
+            manager: "ola.nordmann@urbalurba.no"
+            ManagerdisplayName: "Ola Nordmann"
+            isEmployee: "true"
+            isVolunteer: "false"
+            u_start_date: "01/05/2020"
+            u_end_date: ""
+            mobilePhone: "+4790012349"
+            secondEmail: "lars.andersen@example.no"
+            bankid_birthdate: "79-09-18"
+            bankid_nnin_altsub: "18097912345"
+            bankid_altsub: "Pass"
+            bankid_verification_timestamp: "2020-05-01T09:00:00"
+            bankid_user_verified: "true"
+            bankid_sub: "12345678-1234-1234-1234-123456789016"
+            bankid_firstname: "Lars"
+            bankid_lastname: "Andersen"
+            AgressoDomainUser: "Z94\\105010KO1"
+            RelationNumber: "105010KO1"
+            Azure_lastNonInteractiveSignInDateTime: "2024-01-15T08:30:00Z"
+            ServiceNowManagerIdExternalID: "d1b50bf41ba56690825da711604bcbf6"
+            extensionAttribute7: "5207a9ec-a6bf-ec11-8117-001dd8b74420"
+            u_crm_guid: "bb0a469d-905c-ef11-bfe3-0022489bed2f"
+            streetAddress: "Storgata 5"
+            city: "Oslo"
+            zipCode: "0155"
+            state: "Nasjonalkontoret"
+            deliveryOffice: "RK Hovedkontor"
+            division: "105010-001 - RK Hovedkontor"
+            title: "Kommunikasjonsmedarbeider"
+          groups:
+            - !Find [authentik_core.group, [name, "HQ"]]
+            
+      # User 6: in1 - Inntekter
+      - model: authentik_core.user
+        state: present
+        identifiers:
+          username: "in1"
+        attrs:
+          username: "in1"
+          name: "Maria Johansen"
+          email: "in1@urbalurba.no"
+          password: "Password123"
+          is_active: true
+          attributes:
+            department: "Inntekter"
+            vi_department: "Inntekter"
+            vi_departmentID: "N800"
+            vi_unitname: "Inntekter"
+            vi_unitID: "#5421000#N800#N800#"
+            costCenter: "N800"
+            vi_Locale: "Oslo"
+            vi_StateProvince: "Nasjonalkontoret"
+            vi_position: "Inntektsmedarbeider"
+            vi_employeeform: "1 Fast ansatt"
+            employeeNumber: "25006"
+            samAccountName: "105010IN1"
+            managerId: "105010OK1"
+            manager: "ola.nordmann@urbalurba.no"
+            ManagerdisplayName: "Ola Nordmann"
+            isEmployee: "true"
+            isVolunteer: "false"
+            u_start_date: "01/06/2020"
+            u_end_date: ""
+            mobilePhone: "+4790012350"
+            secondEmail: "maria.johansen@example.no"
+            bankid_birthdate: "83-12-03"
+            bankid_nnin_altsub: "03128312345"
+            bankid_altsub: "Pass"
+            bankid_verification_timestamp: "2020-06-01T09:00:00"
+            bankid_user_verified: "true"
+            bankid_sub: "12345678-1234-1234-1234-123456789017"
+            bankid_firstname: "Maria"
+            bankid_lastname: "Johansen"
+            AgressoDomainUser: "Z94\\105010IN1"
+            RelationNumber: "105010IN1"
+            Azure_lastNonInteractiveSignInDateTime: "2024-01-15T08:30:00Z"
+            ServiceNowManagerIdExternalID: "d1b50bf41ba56690825da711604bcbf7"
+            extensionAttribute7: "5207a9ec-a6bf-ec11-8117-001dd8b74421"
+            u_crm_guid: "bb0a469d-905c-ef11-bfe3-0022489bed30"
+            streetAddress: "Storgata 6"
+            city: "Oslo"
+            zipCode: "0155"
+            state: "Nasjonalkontoret"
+            deliveryOffice: "RK Hovedkontor"
+            division: "105010-001 - RK Hovedkontor"
+            title: "Inntektsmedarbeider"
+          groups:
+            - !Find [authentik_core.group, [name, "HQ"]]
+            
+      # User 7: sr1 - Søk og redning
+      - model: authentik_core.user
+        state: present
+        identifiers:
+          username: "sr1"
+        attrs:
+          username: "sr1"
+          name: "Thomas Pedersen"
+          email: "sr1@urbalurba.no"
+          password: "Password123"
+          is_active: true
+          attributes:
+            department: "Nasjonale programmer og beredskap"
+            vi_department: "Søk og redning"
+            vi_departmentID: "N810"
+            vi_unitname: "Søk og redning"
+            vi_unitID: "#5421000#N810#N810#"
+            costCenter: "N810"
+            vi_Locale: "Oslo"
+            vi_StateProvince: "Nasjonalkontoret"
+            vi_position: "Beredskapsmedarbeider"
+            vi_employeeform: "1 Fast ansatt"
+            employeeNumber: "25007"
+            samAccountName: "105010SR1"
+            managerId: "105010OK1"
+            manager: "ola.nordmann@urbalurba.no"
+            ManagerdisplayName: "Ola Nordmann"
+            isEmployee: "true"
+            isVolunteer: "false"
+            u_start_date: "01/07/2020"
+            u_end_date: ""
+            mobilePhone: "+4790012351"
+            secondEmail: "thomas.pedersen@example.no"
+            bankid_birthdate: "81-04-14"
+            bankid_nnin_altsub: "14048112345"
+            bankid_altsub: "Pass"
+            bankid_verification_timestamp: "2020-07-01T09:00:00"
+            bankid_user_verified: "true"
+            bankid_sub: "12345678-1234-1234-1234-123456789018"
+            bankid_firstname: "Thomas"
+            bankid_lastname: "Pedersen"
+            AgressoDomainUser: "Z94\\105010SR1"
+            RelationNumber: "105010SR1"
+            Azure_lastNonInteractiveSignInDateTime: "2024-01-15T08:30:00Z"
+            ServiceNowManagerIdExternalID: "d1b50bf41ba56690825da711604bcbf8"
+            extensionAttribute7: "5207a9ec-a6bf-ec11-8117-001dd8b74422"
+            u_crm_guid: "bb0a469d-905c-ef11-bfe3-0022489bed31"
+            streetAddress: "Storgata 7"
+            city: "Oslo"
+            zipCode: "0155"
+            state: "Nasjonalkontoret"
+            deliveryOffice: "RK Hovedkontor"
+            division: "105010-001 - RK Hovedkontor"
+            title: "Beredskapsmedarbeider"
+          groups:
+            - !Find [authentik_core.group, [name, "HQ"]]
+            
+      # User 8: ip1 - Technical Unit
+      - model: authentik_core.user
+        state: present
+        identifiers:
+          username: "ip1"
+        attrs:
+          username: "ip1"
+          name: "Ingrid Svendsen"
+          email: "ip1@urbalurba.no"
+          password: "Password123"
+          is_active: true
+          attributes:
+            department: "Internasjonale programmer og beredskap"
+            vi_department: "Technical Unit"
+            vi_departmentID: "N820"
+            vi_unitname: "Technical Unit"
+            vi_unitID: "#5421000#N820#N820#"
+            costCenter: "N820"
+            vi_Locale: "Oslo"
+            vi_StateProvince: "Nasjonalkontoret"
+            vi_position: "Teknisk rådgiver"
+            vi_employeeform: "1 Fast ansatt"
+            employeeNumber: "25008"
+            samAccountName: "105010IP1"
+            managerId: "105010OK1"
+            manager: "ola.nordmann@urbalurba.no"
+            ManagerdisplayName: "Ola Nordmann"
+            isEmployee: "true"
+            isVolunteer: "false"
+            u_start_date: "01/08/2020"
+            u_end_date: ""
+            mobilePhone: "+4790012352"
+            secondEmail: "ingrid.svendsen@example.no"
+            bankid_birthdate: "86-06-27"
+            bankid_nnin_altsub: "27068612345"
+            bankid_altsub: "Pass"
+            bankid_verification_timestamp: "2020-08-01T09:00:00"
+            bankid_user_verified: "true"
+            bankid_sub: "12345678-1234-1234-1234-123456789019"
+            bankid_firstname: "Ingrid"
+            bankid_lastname: "Svendsen"
+            AgressoDomainUser: "Z94\\105010IP1"
+            RelationNumber: "105010IP1"
+            Azure_lastNonInteractiveSignInDateTime: "2024-01-15T08:30:00Z"
+            ServiceNowManagerIdExternalID: "d1b50bf41ba56690825da711604bcbf9"
+            extensionAttribute7: "5207a9ec-a6bf-ec11-8117-001dd8b74423"
+            u_crm_guid: "bb0a469d-905c-ef11-bfe3-0022489bed32"
+            streetAddress: "Storgata 8"
+            city: "Oslo"
+            zipCode: "0155"
+            state: "Nasjonalkontoret"
+            deliveryOffice: "RK Hovedkontor"
+            division: "105010-001 - RK Hovedkontor"
+            title: "Teknisk rådgiver"
+          groups:
+            - !Find [authentik_core.group, [name, "HQ"]]
+            
+      # User 9: di1 - Digital innovasjon
+      - model: authentik_core.user
+        state: present
+        identifiers:
+          username: "di1"
+        attrs:
+          username: "di1"
+          name: "Per Kristiansen"
+          email: "di1@urbalurba.no"
+          password: "Password123"
+          is_active: true
+          attributes:
+            department: "Økonomi og administrasjon"
+            vi_department: "Digital innovasjon"
+            vi_departmentID: "N830"
+            vi_unitname: "Digital innovasjon"
+            vi_unitID: "#5421000#N830#N830#"
+            costCenter: "N830"
+            vi_Locale: "Oslo"
+            vi_StateProvince: "Nasjonalkontoret"
+            vi_position: "Digital innovasjonsrådgiver"
+            vi_employeeform: "1 Fast ansatt"
+            employeeNumber: "25009"
+            samAccountName: "105010DI1"
+            managerId: "105010OK1"
+            manager: "ola.nordmann@urbalurba.no"
+            ManagerdisplayName: "Ola Nordmann"
+            isEmployee: "true"
+            isVolunteer: "false"
+            u_start_date: "01/09/2020"
+            u_end_date: ""
+            mobilePhone: "+4790012353"
+            secondEmail: "per.kristiansen@example.no"
+            bankid_birthdate: "84-02-11"
+            bankid_nnin_altsub: "11028412345"
+            bankid_altsub: "Pass"
+            bankid_verification_timestamp: "2020-09-01T09:00:00"
+            bankid_user_verified: "true"
+            bankid_sub: "12345678-1234-1234-1234-123456789020"
+            bankid_firstname: "Per"
+            bankid_lastname: "Kristiansen"
+            AgressoDomainUser: "Z94\\105010DI1"
+            RelationNumber: "105010DI1"
+            Azure_lastNonInteractiveSignInDateTime: "2024-01-15T08:30:00Z"
+            ServiceNowManagerIdExternalID: "d1b50bf41ba56690825da711604bcbfa"
+            extensionAttribute7: "5207a9ec-a6bf-ec11-8117-001dd8b74424"
+            u_crm_guid: "bb0a469d-905c-ef11-bfe3-0022489bed33"
+            streetAddress: "Storgata 9"
+            city: "Oslo"
+            zipCode: "0155"
+            state: "Nasjonalkontoret"
+            deliveryOffice: "RK Hovedkontor"
+            division: "105010-001 - RK Hovedkontor"
+            title: "Digital innovasjonsrådgiver"
+          groups:
+            - !Find [authentik_core.group, [name, "HQ"]]
+            
+      # User 10: dist1 - Buskerud RK (District)
+      - model: authentik_core.user
+        state: present
+        identifiers:
+          username: "dist1"
+        attrs:
+          username: "dist1"
+          name: "Bjørn Nilsen"
+          email: "dist1@urbalurba.no"
+          password: "Password123"
+          is_active: true
+          attributes:
+            department: "Distriktskontor"
+            vi_department: "Buskerud RK"
+            vi_departmentID: "D006"
+            vi_unitname: "Buskerud RK"
+            vi_unitID: "#5421000#D006#D006#"
+            costCenter: "D006"
+            vi_Locale: "Drammen"
+            vi_StateProvince: "Distrikt"
+            vi_position: "Distriktsmedarbeider"
+            vi_employeeform: "1 Fast ansatt"
+            employeeNumber: "25010"
+            samAccountName: "105010DIST1"
+            managerId: "105010OK1"
+            manager: "ola.nordmann@urbalurba.no"
+            ManagerdisplayName: "Ola Nordmann"
+            isEmployee: "true"
+            isVolunteer: "false"
+            u_start_date: "01/10/2020"
+            u_end_date: ""
+            mobilePhone: "+4790012354"
+            secondEmail: "bjorn.nilsen@example.no"
+            bankid_birthdate: "87-08-25"
+            bankid_nnin_altsub: "25088712345"
+            bankid_altsub: "Pass"
+            bankid_verification_timestamp: "2020-10-01T09:00:00"
+            bankid_user_verified: "true"
+            bankid_sub: "12345678-1234-1234-1234-123456789021"
+            bankid_firstname: "Bjørn"
+            bankid_lastname: "Nilsen"
+            AgressoDomainUser: "Z94\\105010DIST1"
+            RelationNumber: "105010DIST1"
+            Azure_lastNonInteractiveSignInDateTime: "2024-01-15T08:30:00Z"
+            ServiceNowManagerIdExternalID: "d1b50bf41ba56690825da711604bcbfb"
+            extensionAttribute7: "5207a9ec-a6bf-ec11-8117-001dd8b74425"
+            u_crm_guid: "bb0a469d-905c-ef11-bfe3-0022489bed34"
+            streetAddress: "Drammensveien 1"
+            city: "Drammen"
+            zipCode: "3015"
+            state: "Distrikt"
+            deliveryOffice: "Buskerud RK"
+            division: "105010-002 - Buskerud RK"
+            title: "Distriktsmedarbeider"
+          groups:
+            - !Find [authentik_core.group, [name, "Distrikt"]]
+            
+      # User 11: dist2 - Hordaland RK (District)
+      - model: authentik_core.user
+        state: present
+        identifiers:
+          username: "dist2"
+        attrs:
+          username: "dist2"
+          name: "Solveig Berg"
+          email: "dist2@urbalurba.no"
+          password: "Password123"
+          is_active: true
+          attributes:
+            department: "Distriktskontor"
+            vi_department: "Hordaland RK"
+            vi_departmentID: "D010"
+            vi_unitname: "Hordaland RK"
+            vi_unitID: "#5421000#D010#D010#"
+            costCenter: "D010"
+            vi_Locale: "Bergen"
+            vi_StateProvince: "Distrikt"
+            vi_position: "Distriktsmedarbeider"
+            vi_employeeform: "1 Fast ansatt"
+            employeeNumber: "25011"
+            samAccountName: "105010DIST2"
+            managerId: "105010OK1"
+            manager: "ola.nordmann@urbalurba.no"
+            ManagerdisplayName: "Ola Nordmann"
+            isEmployee: "true"
+            isVolunteer: "false"
+            u_start_date: "01/11/2020"
+            u_end_date: ""
+            mobilePhone: "+4790012355"
+            secondEmail: "solveig.berg@example.no"
+            bankid_birthdate: "89-01-08"
+            bankid_nnin_altsub: "08018912345"
+            bankid_altsub: "Pass"
+            bankid_verification_timestamp: "2020-11-01T09:00:00"
+            bankid_user_verified: "true"
+            bankid_sub: "12345678-1234-1234-1234-123456789022"
+            bankid_firstname: "Solveig"
+            bankid_lastname: "Berg"
+            AgressoDomainUser: "Z94\\105010DIST2"
+            RelationNumber: "105010DIST2"
+            Azure_lastNonInteractiveSignInDateTime: "2024-01-15T08:30:00Z"
+            ServiceNowManagerIdExternalID: "d1b50bf41ba56690825da711604bcbfc"
+            extensionAttribute7: "5207a9ec-a6bf-ec11-8117-001dd8b74426"
+            u_crm_guid: "bb0a469d-905c-ef11-bfe3-0022489bed35"
+            streetAddress: "Bryggen 1"
+            city: "Bergen"
+            zipCode: "5003"
+            state: "Distrikt"
+            deliveryOffice: "Hordaland RK"
+            division: "105010-003 - Hordaland RK"
+            title: "Distriktsmedarbeider"
+          groups:
+            - !Find [authentik_core.group, [name, "Distrikt"]]

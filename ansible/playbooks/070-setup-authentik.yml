@@ -41,9 +41,10 @@
     # Manifest files (following manual deployment guide order)
     whoami_service_file: "{{ manifests_folder }}/070-whoami-service-and-deployment.yaml"
     whoami_public_ingress_file: "{{ manifests_folder }}/071-whoami-public-ingressroute.yaml"
-    authentik_blueprint_file: "{{ manifests_folder }}/073-authentik-whoami-blueprint.yaml"
-    openwebui_blueprint_file: "{{ manifests_folder }}/074-authentik-openwebui-blueprint-hardcoded.yaml"
-    users_groups_blueprint_file: "{{ manifests_folder }}/074-authentik-users-groups-blueprint.yaml"
+    system_core_whoami_blueprint_file: "{{ manifests_folder }}/072-authentik-system-core-whoami-blueprint.yaml"
+    test_users_groups_blueprint_file: "{{ manifests_folder }}/073-authentik-1-test-users-groups-blueprint.yaml"
+    openwebui_blueprint_file: "{{ manifests_folder }}/073-authentik-2-openwebui-blueprint.yaml"
+    app_slot1_blueprint_file: "{{ manifests_folder }}/073-authentik-3-app-slot1-blueprint.yaml"
     authentik_helm_values_file: "{{ manifests_folder }}/075-authentik-complete-hardcoded.yaml"
     authentik_ingressroute_file: "{{ manifests_folder }}/076-authentik-ingressroute.yaml"
     forward_auth_middleware_file: "{{ manifests_folder }}/077-authentik-forward-auth-middleware.yaml"
@@ -272,12 +273,12 @@
           🧪 Ready for authentication integration
 
     # Phase 4: Blueprint Deployment (CRITICAL - must be before Helm)
-    - name: "25. Deploy Authentik blueprint BEFORE Helm deployment"
+    - name: "25. Deploy system core whoami blueprint BEFORE Helm deployment"
       ansible.builtin.command: >
-        kubectl apply -f {{ authentik_blueprint_file }}
+        kubectl apply -f {{ system_core_whoami_blueprint_file }}
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
-      register: blueprint_deploy_result
+      register: system_core_blueprint_deploy_result
       changed_when: true
 
     - name: "26. Verify blueprint ConfigMap exists before Helm"
@@ -295,7 +296,15 @@
           📝 This ensures proper mounting during pod creation
           🔧 Blueprint status: {{ blueprint_verify.stdout if blueprint_verify.stdout else 'ConfigMap ready' }}
 
-    - name: "27.1. Deploy OpenWebUI OAuth2/OIDC blueprint"
+    - name: "27.1. Deploy test users and groups blueprint"
+      ansible.builtin.command: >
+        kubectl apply -f {{ test_users_groups_blueprint_file }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: test_users_groups_blueprint_result
+      changed_when: true
+
+    - name: "27.2. Deploy OpenWebUI OAuth2/OIDC blueprint"
       ansible.builtin.command: >
         kubectl apply -f {{ openwebui_blueprint_file }}
       environment:
@@ -303,15 +312,15 @@
       register: openwebui_blueprint_result
       changed_when: true
 
-    - name: "27.2. Deploy Users and Groups blueprint"
+    - name: "27.3. Deploy app slot 1 blueprint"
       ansible.builtin.command: >
-        kubectl apply -f {{ users_groups_blueprint_file }}
+        kubectl apply -f {{ app_slot1_blueprint_file }}
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
-      register: users_groups_blueprint_result
+      register: app_slot1_blueprint_result
       changed_when: true
 
-    - name: "27.3. Verify all blueprints are deployed"
+    - name: "27.4. Verify all blueprints are deployed"
       ansible.builtin.shell: |
         kubectl get configmap -n {{ authentik_namespace }} | grep blueprint
       environment:
@@ -319,15 +328,16 @@
       register: all_blueprints_verify
       changed_when: false
 
-    - name: "27.4. Display all blueprints deployment status"
+    - name: "27.5. Display all blueprints deployment status"
       ansible.builtin.debug:
         msg: |
           ✅ All Blueprint ConfigMaps deployed BEFORE Helm installation
           📝 Blueprints deployed:
-          • whoami-forward-auth-blueprint (whoami application)
-          • openwebui-authentik-blueprint (OpenWebUI OAuth2/OIDC)
-          • users-groups-test-blueprint (test users and groups)
-          🔧 Total blueprints: {{ all_blueprints_verify.stdout_lines | length if all_blueprints_verify.stdout_lines else '3' }}
+          • system-core-whoami-blueprint (core system + whoami application)
+          • test-users-groups-blueprint (test users and groups)
+          • openwebui-blueprint (OpenWebUI OAuth2/OIDC)
+          • app-slot1-blueprint (expansion slot for future apps)
+          🔧 Total blueprints: {{ all_blueprints_verify.stdout_lines | length if all_blueprints_verify.stdout_lines else '4' }}
           📋 Blueprint status: {{ all_blueprints_verify.stdout if all_blueprints_verify.stdout else 'All ConfigMaps ready' }}
 
     # Phase 5: Database Setup
@@ -658,9 +668,10 @@
           - "• Step 1: Prerequisites verified (PostgreSQL, Redis, Traefik)"
           - "• Step 2: Whoami service deployed"
           - "• Step 3: Blueprints deployed BEFORE Helm (critical)"
-          - "  - whoami-forward-auth-blueprint (whoami application)"
-          - "  - openwebui-authentik-blueprint (OpenWebUI OAuth2/OIDC)"
-          - "  - users-groups-test-blueprint (test users and groups)"
+          - "  - system-core-whoami-blueprint (core system + whoami application)"
+          - "  - test-users-groups-blueprint (test users and groups)"
+          - "  - openwebui-blueprint (OpenWebUI OAuth2/OIDC)"
+          - "  - app-slot1-blueprint (expansion slot for future apps)"
           - "• Step 4: PostgreSQL database created (authentik)"
           - "• Step 5: Authentik server/worker deployed (Helm {{ authentik_version }})"
           - "• Step 6: Authentik IngressRoute deployed (CRITICAL for access)"

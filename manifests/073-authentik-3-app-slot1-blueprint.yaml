@@ -1,0 +1,189 @@
+# File: manifests/073-authentik-3-app-slot1-blueprint.yaml
+#
+# Description:
+# APPLICATION EXPANSION SLOT 1: Generic blueprint template for unknown future applications
+# This ConfigMap is initially empty (contains only README) - ready for developers to populate
+#
+# 🎯 WHY EMPTY SLOTS EXIST:
+# Authentik requires ALL blueprint ConfigMaps to be listed in the Helm chart when it starts:
+# 
+# blueprints:
+#   configMaps:
+#     - "system-core-whoami-blueprint"     # Known system
+#     - "apps-slot-1-blueprint"            # THIS FILE - must exist at startup
+#     - "apps-slot-2-blueprint"            # Future slot
+#
+# THE PROBLEM: We can't predict what applications developers will add later!
+# 
+# THE SOLUTION: Pre-allocated empty slots that can be populated without editing Helm config
+# - Slot exists in Helm chart ✅ (Authentik knows about it at startup)
+# - Slot starts with README only ✅ (Authentik ignores non-.yaml files)  
+# - Developers add .yaml files later ✅ (no restart needed)
+# - No ConfigMap name changes ✅ (Helm chart stays unchanged)
+#
+# This avoids the chicken-and-egg problem of needing to restart Authentik every time
+# someone wants to add a new application for authentication.
+#
+# Usage:
+#   kubectl apply -f manifests/073-authentik-3-app-slot1-blueprint.yaml
+#
+# Referenced in Helm config as:
+# blueprints:
+#   configMaps:
+#     - "app-slot1-blueprint"
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-slot1-blueprint
+  namespace: authentik
+  labels:
+    app.kubernetes.io/name: authentik
+    app.kubernetes.io/component: blueprint
+    blueprints.goauthentik.io/instantiate: "true"
+    blueprint-type: "expansion-slot"
+    slot-number: "1"
+    slot-status: "available"
+data:
+  README.md: |
+    # Application Expansion Slot 1
+    
+    ## Status: AVAILABLE
+    
+    ## Why This Slot Exists
+    
+    Authentik requires all blueprint ConfigMaps to be pre-declared in the Helm chart when it starts. We can't predict what applications developers will add later, so we pre-allocate empty slots that can be populated later **without needing to restart Authentik or edit the Helm configuration**.
+    
+    ### The Problem
+    Without slots, adding a new app requires:
+    1. ❌ Create new ConfigMap file 
+    2. ❌ Edit Helm chart to add ConfigMap name
+    3. ❌ Restart Authentik (`helm upgrade`)
+    4. ❌ Wait for restart and hope nothing breaks
+    
+    ### The Solution (This Slot)
+    With expansion slots:
+    1. ✅ Edit this existing ConfigMap file
+    2. ✅ Add your .yaml blueprint files to the `data:` section
+    3. ✅ Apply ConfigMap (`kubectl apply`)
+    4. ✅ Changes picked up automatically - no restart needed
+    
+    ## How to Use This Slot
+    
+    1. **Edit this file**: `manifests/073-authentik-3-app-slot1-blueprint.yaml`
+    2. **Add your blueprint files** to the `data:` section (alongside this README.md)
+    3. **Apply the ConfigMap**: `kubectl apply -f manifests/073-authentik-3-app-slot1-blueprint.yaml`
+    4. **Update this README** to reflect what you've added
+    
+    ## Example Applications
+    
+    This slot can be used for:
+    - Grafana with OIDC authentication
+    - ArgoCD with OAuth2 integration  
+    - Any application requiring Authentik authentication
+    - Testing new authentication configurations
+    
+    ## Configuration Examples
+    
+    ### OAuth2/OIDC Application (e.g., Grafana)
+    
+    Add a file like `grafana-oauth.yaml` to the `data:` section:
+    
+    ```yaml
+    grafana-oauth.yaml: |
+      version: 1
+      metadata:
+        name: "Grafana OAuth2 Setup"
+        labels:
+          blueprints.goauthentik.io/instantiate: "true"
+      entries:
+        - model: authentik_providers_oauth2.oauth2provider
+          state: present
+          identifiers:
+            name: grafana-provider
+          attrs:
+            name: grafana-provider
+            client_type: confidential
+            client_id: YOUR-GRAFANA-CLIENT-ID
+            client_secret: YOUR-GRAFANA-CLIENT-SECRET
+            redirect_uris:
+              - matching_mode: strict
+                url: http://grafana.localhost/login/generic_oauth
+            authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+            property_mappings:
+              - !Find [authentik_providers_oauth2.scopemapping, [name, "authentik default OAuth Mapping: OpenID 'openid'"]]
+              - !Find [authentik_providers_oauth2.scopemapping, [name, "authentik default OAuth Mapping: OpenID 'email'"]]
+              - !Find [authentik_providers_oauth2.scopemapping, [name, "authentik default OAuth Mapping: OpenID 'profile'"]]
+        
+        - model: authentik_core.application
+          state: present
+          identifiers:
+            slug: grafana
+          attrs:
+            name: grafana
+            slug: grafana
+            meta_launch_url: "http://grafana.localhost"
+            policy_engine_mode: any
+            provider: !Find [authentik_providers_oauth2.oauth2provider, [name, grafana-provider]]
+    ```
+    
+    ### Proxy Forward Authentication (e.g., Internal Service)
+    
+    Add a file like `myapp-proxy.yaml` to the `data:` section:
+    
+    ```yaml
+    myapp-proxy.yaml: |
+      version: 1
+      metadata:
+        name: "My App Proxy Forward Auth"
+        labels:
+          blueprints.goauthentik.io/instantiate: "true"
+      entries:
+        - model: authentik_providers_proxy.proxyprovider
+          state: present
+          identifiers:
+            name: "myapp-provider"
+          attrs:
+            name: "myapp-provider"
+            mode: "forward_single"
+            external_host: "http://myapp.localhost"
+            authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+        
+        - model: authentik_core.application
+          state: present
+          identifiers:
+            slug: "myapp"
+          attrs:
+            name: "myapp"
+            slug: "myapp"
+            meta_launch_url: "http://myapp.localhost"
+            policy_engine_mode: "any"
+            provider: !Find [authentik_providers_proxy.proxyprovider, [name, myapp-provider]]
+        
+        - model: authentik_outposts.outpost
+          state: present
+          identifiers:
+            name: "authentik Embedded Outpost"
+          attrs:
+            name: "authentik Embedded Outpost"
+            type: "proxy"
+            providers:
+              - !Find [authentik_providers_proxy.proxyprovider, [name, myapp-provider]]
+    ```
+    
+    ## Safety Notes
+    
+    - ✅ **Safe to modify**: This slot won't affect core system functionality
+    - ✅ **No restart required**: Authentik picks up changes automatically
+    - ✅ **Non-.yaml files ignored**: This README.md is ignored by Authentik
+    - ✅ **Validation**: Authentik validates blueprint syntax before applying
+    
+    ## Current Usage
+    
+    - **Reserved for**: None (slot available)
+    - **Contains**: Only this README.md
+    - **Status**: Ready for your application
+    
+    ---
+    
+    **Update this README when you populate the slot!**
