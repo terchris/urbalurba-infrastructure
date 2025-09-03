@@ -186,8 +186,8 @@ data:
             # Map groups to roles - customize this logic as needed
             user_groups = [group.name for group in user.ak_groups.all()]
             
-            if "Øk.Adm IT" in user_groups:
-                roles.append("admin")  # IT users get admin role
+            if "HQ" in user_groups:
+                roles.append("admin")  # HQ users get admin role
             else:
                 roles.append("user")   # Other users get user role
                 
