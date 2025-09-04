@@ -96,7 +96,7 @@ authentik.localhost → authentik-server.authentik.svc.cluster.local → 10.43.1
 This **dual-context DNS resolution** ensures that the same hostname works seamlessly in both browser and pod contexts, enabling complex integrations like OAuth while maintaining the simplicity of the localhost development pattern.
 
 ### **Authentication in the Cluster**:
-This cluster supports **optional authentication** using **Authentik** as the identity provider. Services can be configured as public (no auth) or protected (requires login). Protected services use Traefik middleware (`authentik-forward-auth`) that forwards authentication requests to Authentik before serving content. See `manifests/075-authentik-complete-hardcoded.yaml`, `manifests/077-authentik-forward-auth-middleware.yaml`, and `manifests/078-whoami-protected-ingressroute.yaml` for implementation examples.
+This cluster supports **optional authentication** using **Authentik** as the identity provider. Services can be configured as public (no auth) or protected (requires login). Protected services use Traefik middleware (`authentik-forward-auth`) that forwards authentication requests to Authentik before serving content. See `manifests/075-authentik-config.yaml`, `manifests/077-authentik-forward-auth-middleware.yaml`, and `manifests/078-whoami-protected-ingressroute.yaml` for implementation examples.
 
 ### **External Traffic Access**:
 For external access beyond localhost, this cluster supports **Cloudflare Tunnels** and **Tailscale Funnel** to securely route external traffic to Traefik. External domains can be configured to route through Cloudflare (with WAF/DDoS protection) or directly via Tailscale Funnel, while maintaining the same Traefik ingress rules. See `doc/networking-external-cloudflare-readme.md`, `doc/networking-external-cloudflare-tailscale-readme.md`, and `doc/networking-readme.md` for setup details.
@@ -319,7 +319,7 @@ sequenceDiagram
 6. **Service Access**: Service receives authentication headers
 
 ### **Required Components**
-1. **Authentik Deployment**: `manifests/075-authentik-complete-hardcoded.yaml`
+1. **Authentik Deployment**: `manifests/075-authentik-config.yaml`
 2. **Forward Auth Middleware**: `manifests/077-authentik-forward-auth-middleware.yaml`
 3. **Protected IngressRoute**: Example below
 

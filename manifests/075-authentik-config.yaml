@@ -1,4 +1,4 @@
-# File: manifests/075-authentik-complete-hardcoded.yaml
+# File: manifests/075-authentik-config.yaml
 #
 # Description:
 # Helm values file for deploying Authentik 2025.8.0 in the 'authentik' namespace with:
@@ -8,6 +8,8 @@
 # - Embedded outpost for forward authentication
 # - Blueprint system enabled for automated configuration
 # - Worker metrics enabled for Prometheus monitoring (2025.8+ feature)
+# - ALL HARDCODED VALUES REPLACED WITH KUBERNETES SECRETS
+# - Uses valueFrom.secretKeyRef to reference urbalurba-secrets in authentik namespace
 #
 # Ingress Configuration:
 # - Built-in Helm ingress is DISABLED (server.ingress.enabled: false)
@@ -18,13 +20,22 @@
 # Usage:
 # helm repo add authentik https://charts.goauthentik.io
 # helm repo update
-# helm install authentik authentik/authentik -f 075-authentik-complete-hardcoded.yaml -n authentik
+# helm install authentik authentik/authentik -f 075-authentik-config.yaml -n authentik
+#
+# Prerequisites:
+# - urbalurba-secrets secret must exist in authentik namespace with required keys:
+#   * AUTHENTIK_SECRET_KEY: Secret key for session encryption
+#   * AUTHENTIK_POSTGRESQL__PASSWORD: PostgreSQL password
+#   * AUTHENTIK_REDIS__PASSWORD: Redis password
+#   * AUTHENTIK_BOOTSTRAP_EMAIL: Bootstrap admin email
+#   * AUTHENTIK_BOOTSTRAP_PASSWORD: Bootstrap admin password
 #
 # Dependencies:
 # - PostgreSQL service running in default namespace
 # - Redis service running in default namespace
 # - Authentik database and user created in PostgreSQL
 # - 073-authentik-whoami-blueprint.yaml MUST be applied FIRST
+# - urbalurba-secrets secret must exist in authentik namespace
 #
 # Database Setup:
 # Run this command to create the required database:
@@ -34,9 +45,6 @@
 # curl -I http://authentik.localhost
 # Should return HTTP 302 redirect to authentication flow
 #
-# Login Credentials:
-# Email: admin@urbalurba.local
-# Password: SecretPassword1
 #
 # Integration:
 # - Creates embedded outpost service for forward authentication
@@ -44,12 +52,6 @@
 # - UI accessible at: http://authentik.localhost
 # - Blueprint system enabled for automated configuration
 # - Worker metrics exposed for Prometheus monitoring
-#
-# ⚠️ 2025.8 Breaking Changes:
-# - Redis dependency removed for background tasks
-# - New task engine (Dramatiq replaces Celery)
-# - Task metrics now exposed by worker, not server
-# - Some environment variables renamed/removed
 #
 # 🚨 IMPORTANT: After cluster reset, you MUST log into the admin interface
 # at http://authentik.localhost to activate the outpost configuration.
@@ -60,7 +62,8 @@
 ---
 authentik:
   # CRITICAL: Secret key for session encryption and security (must be 50+ chars)
-  secret_key: "DuoCca6w0D7bMpfOhDZkQlKJ0fRMc+yEypgLilE754jMX2OoEffb3TzWzHqJ8880viR3UcWe6Zxgh6LL"
+  # Now loaded from Kubernetes secret via environment variable
+  secret_key: "${AUTHENTIK_SECRET_KEY}"
 
   # Debugging and error reporting
   error_reporting:
@@ -72,28 +75,54 @@ authentik:
     name: authentik
     user: authentik
     port: 5432
-    password: "SecretPassword1"
+    # Password now loaded from Kubernetes secret via environment variable
+    password: "${AUTHENTIK_POSTGRESQL__PASSWORD}"
 
   # External Redis configuration (still needed for caching, not background tasks)
   redis:
     host: "redis-master.default.svc.cluster.local"
     port: 6379
-    password: "SecretPassword1"
+    # Password now loaded from Kubernetes secret via environment variable
+    password: "${AUTHENTIK_REDIS__PASSWORD}"
 
 # CRITICAL: Environment variables for Authentik + outpost communication
 global:
   env:
     # Bootstrap admin account (only used on *first startup*)
     - name: AUTHENTIK_BOOTSTRAP_EMAIL
-      value: "admin@urbalurba.local"
+      valueFrom:
+        secretKeyRef:
+          name: urbalurba-secrets
+          key: AUTHENTIK_BOOTSTRAP_EMAIL
     - name: AUTHENTIK_BOOTSTRAP_PASSWORD
-      value: "SecretPassword1"
+      valueFrom:
+        secretKeyRef:
+          name: urbalurba-secrets
+          key: AUTHENTIK_BOOTSTRAP_PASSWORD
     # Internal cluster URL (used by outpost → server communication)
     - name: AUTHENTIK_HOST
       value: "http://authentik.localhost"
     # Allow HTTP (⚠️ dev only — don't use in production)
     - name: AUTHENTIK_INSECURE
       value: "true"
+    # Secret key for session encryption and security
+    - name: AUTHENTIK_SECRET_KEY
+      valueFrom:
+        secretKeyRef:
+          name: urbalurba-secrets
+          key: AUTHENTIK_SECRET_KEY
+    # PostgreSQL password
+    - name: AUTHENTIK_POSTGRESQL__PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: urbalurba-secrets
+          key: AUTHENTIK_POSTGRESQL__PASSWORD
+    # Redis password
+    - name: AUTHENTIK_REDIS__PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: urbalurba-secrets
+          key: AUTHENTIK_REDIS__PASSWORD
 
 # Blueprint system configuration
 blueprints:

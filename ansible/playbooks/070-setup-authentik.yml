@@ -45,7 +45,7 @@
     test_users_groups_blueprint_file: "{{ manifests_folder }}/073-authentik-1-test-users-groups-blueprint.yaml"
     openwebui_blueprint_file: "{{ manifests_folder }}/073-authentik-2-openwebui-blueprint.yaml"
     app_slot1_blueprint_file: "{{ manifests_folder }}/073-authentik-3-app-slot1-blueprint.yaml"
-    authentik_helm_values_file: "{{ manifests_folder }}/075-authentik-complete-hardcoded.yaml"
+    authentik_helm_values_file: "{{ manifests_folder }}/075-authentik-config.yaml"
     authentik_ingressroute_file: "{{ manifests_folder }}/076-authentik-ingressroute.yaml"
     forward_auth_middleware_file: "{{ manifests_folder }}/077-authentik-forward-auth-middleware.yaml"
     whoami_protected_ingress_file: "{{ manifests_folder }}/078-whoami-protected-ingressroute.yaml"
@@ -304,7 +304,38 @@
       register: test_users_groups_blueprint_result
       changed_when: true
 
-    - name: "27.2. Deploy OpenWebUI OAuth2/OIDC blueprint"
+    - name: "27.2. Get OAuth credentials from secrets"
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Secret
+        name: urbalurba-secrets
+        namespace: ai
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: oauth_secrets
+
+    - name: "27.2.1. Extract OAuth credentials from secret data"
+      ansible.builtin.set_fact:
+        openwebui_oauth_client_id: "{{ oauth_secrets.resources[0].data.OPENWEBUI_OAUTH_CLIENT_ID | b64decode }}"
+        openwebui_oauth_client_secret: "{{ oauth_secrets.resources[0].data.OPENWEBUI_OAUTH_CLIENT_SECRET | b64decode }}"
+        openwebui_oauth_redirect_uri: "{{ oauth_secrets.resources[0].data.OPENWEBUI_OPENID_REDIRECT_URI | b64decode }}"
+      when: oauth_secrets.resources[0].data is defined
+
+    - name: "27.2.1.1. Extract OAuth credentials from secret stringData (fallback)"
+      ansible.builtin.set_fact:
+        openwebui_oauth_client_id: "{{ oauth_secrets.resources[0].stringData.OPENWEBUI_OAUTH_CLIENT_ID }}"
+        openwebui_oauth_client_secret: "{{ oauth_secrets.resources[0].stringData.OPENWEBUI_OAUTH_CLIENT_SECRET }}"
+        openwebui_oauth_redirect_uri: "{{ oauth_secrets.resources[0].stringData.OPENWEBUI_OPENID_REDIRECT_URI }}"
+      when: oauth_secrets.resources[0].stringData is defined
+
+    - name: "27.2.2. Generate OpenWebUI blueprint from template and secrets"
+      ansible.builtin.template:
+        src: "{{ manifests_folder }}/073-authentik-2-openwebui-blueprint.yaml.j2"
+        dest: "{{ openwebui_blueprint_file }}"
+        mode: '0644'
+      register: openwebui_blueprint_generation
+      changed_when: true
+
+    - name: "27.2.3. Deploy generated OpenWebUI OAuth2/OIDC blueprint"
       ansible.builtin.command: >
         kubectl apply -f {{ openwebui_blueprint_file }}
       environment:

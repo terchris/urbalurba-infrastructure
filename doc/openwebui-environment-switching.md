@@ -207,7 +207,7 @@ kubectl get pvc -n ai -l environment=development
 
 ### **Related Cluster Documentation**
 - **Traefik Ingress Rules**: `doc/traefik-ingress-rules.md`
-- **Authentik Setup**: `manifests/075-authentik-complete-hardcoded.yaml`
+- **Authentik Setup**: `manifests/075-authentik-config.yaml`
 - **Infrastructure Overview**: `doc/infrastructure-readme.md`
 
 ## 🎯 **Summary**

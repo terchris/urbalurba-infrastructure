@@ -22,7 +22,7 @@
 #
 # Dependencies:
 # - 070-whoami-service-and-deployment.yaml (whoami service must exist)
-# - 075-authentik-complete-hardcoded.yaml (Authentik must be deployed and running)
+# - 075-authentik-config.yaml (Authentik must be deployed and running)
 # - 077-authentik-forward-auth-middleware.yaml (middleware must be defined)
 # - Authentik UI configuration must be completed (see UI Configuration section)
 #

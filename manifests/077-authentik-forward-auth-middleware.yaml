@@ -10,7 +10,7 @@
 # kubectl apply -f 077-authentik-forward-auth-middleware.yaml
 #
 # Dependencies:
-# - 075-authentik-complete-hardcoded.yaml (Authentik must be deployed and running)
+# - 075-authentik-config.yaml (Authentik must be deployed and running)
 # - Authentik outpost service must be available
 # - Authentik UI configuration must be completed (application, provider, outpost assignment)
 #

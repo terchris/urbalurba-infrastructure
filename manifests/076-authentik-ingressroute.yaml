@@ -15,7 +15,7 @@
 # kubectl apply -f 076-authentik-ingressroute.yaml
 #
 # Dependencies:
-# - 075-authentik-complete-hardcoded.yaml (Authentik Helm deployment with ingress disabled)
+# - 075-authentik-config.yaml (Authentik Helm deployment with ingress disabled)
 # - Authentik service must exist in authentik namespace
 #
 # Testing:
