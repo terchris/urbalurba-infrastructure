@@ -46,32 +46,41 @@ namespaceOverride: "ai"
 fullnameOverride: "open-webui"
 
 # External services configuration
+# Using external Ollama instances instead of helm-managed deployment
 ollama:
   enabled: false  # Using external Ollama instances
 
+# Multiple Ollama endpoints for load balancing and redundancy
+# Add/remove URLs based on your available Ollama instances
 ollamaUrls:
   - "http://ollama:11434"                  # In-cluster Ollama
   - "http://host.lima.internal:11434"      # Host Ollama (adjust for your environment)
 
+# Pipelines - Extends OpenWebUI functionality with custom processing chains
+# Currently enabled for enhanced document processing and model integrations
 pipelines:
   enabled: true
 
+# Apache Tika - Document extraction and processing server
+# Currently using external deployment for better resource control
 tika:
   enabled: false  # Using external Tika deployment
 
+# WebSocket Configuration - IMPORTANT FOR PRODUCTION SCALING
+# Currently disabled for single-instance deployment
 websocket:
-  enabled: false
+  enabled: false    # Single-pod deployment, no Redis needed
+  redis:
+    enabled: false  # Don't deploy chart's Redis, use existing cluster Redis
 
-redis-cluster:
-  enabled: false
 
-# Database configuration - using pre-constructed DATABASE_URL from secret
+
+# Database configuration - External PostgreSQL with pgvector for production
+# Using secrets-based connection for security and flexibility
 databaseUrl: ""
 
-postgresql:
-  enabled: false  # Using external PostgreSQL
-
-# Storage configuration
+# Storage configuration - Persistent data storage for user files and models
+# Using existing PVC for better resource control and data persistence
 persistence:
   enabled: true
   existingClaim: "openwebui-data"
@@ -79,7 +88,9 @@ persistence:
     - ReadWriteOnce
   size: 20Gi
 
-# Resource management
+# Resource management - CPU and memory limits for stable operation
+# Adjust based on your cluster capacity and expected user load
+# Settings here are for minimal deployment.
 resources:
   requests:
     memory: 1.5Gi
@@ -88,7 +99,8 @@ resources:
     memory: 3Gi
     cpu: 1500m
 
-# Environment variables
+# Environment variables - Core OpenWebUI configuration via extraEnvVars
+# Using secrets for sensitive values and direct values for non-sensitive config
 extraEnvVars:
   # Database connection - use pre-constructed DATABASE_URL from secret
   - name: DATABASE_URL
@@ -97,88 +109,28 @@ extraEnvVars:
         name: urbalurba-secrets
         key: DATABASE_URL
 
-  # Model configuration
+  # Model that is selected for the user the first time they log in - the model is running in separate pod 
   - name: DEFAULT_MODELS
     value: "qwen3:0.6b"
 
   # Authentication and User Management
-  - name: WEBUI_AUTH
-    value: "true"
   - name: DEFAULT_USER_ROLE
-    value: "user"
+    value: "user"    # Default: "pending" - auto-activate new users. If pending the admin needs to approve the user.
     
-  # Default User Permissions - automatically applied to all users with 'user' role
-  # Workspace Permissions
+  # Essential User Permissions - CRITICAL non-defaults for OAuth users
   - name: USER_PERMISSIONS_WORKSPACE_MODELS_ACCESS
-    value: "true"    # ← This fixes OAuth users not seeing models!
+    value: "true"    # Default: False - CRITICAL: OAuth users need this to see models!
   - name: USER_PERMISSIONS_WORKSPACE_KNOWLEDGE_ACCESS
-    value: "true"
+    value: "true"    # Default: False - Allow access to knowledge bases
   - name: USER_PERMISSIONS_WORKSPACE_PROMPTS_ACCESS
-    value: "true"
-  - name: USER_PERMISSIONS_WORKSPACE_TOOLS_ACCESS
-    value: "false"   # Security: Don't allow arbitrary code upload
+    value: "true"    # Default: False - Allow access to saved prompts
     
-  # Sharing Permissions (keep restrictive for now)
-  - name: USER_PERMISSIONS_SHARING_MODELS_PUBLIC
-    value: "false"
-  - name: USER_PERMISSIONS_SHARING_KNOWLEDGE_PUBLIC
-    value: "false"
-  - name: USER_PERMISSIONS_SHARING_PROMPTS_PUBLIC
-    value: "false"
-  - name: USER_PERMISSIONS_SHARING_TOOLS_PUBLIC
-    value: "false"
-    
-  # Chat Permissions (good user experience)
-  - name: USER_PERMISSIONS_CHAT_FILE_UPLOAD
-    value: "true"
-  - name: USER_PERMISSIONS_CHAT_CONTROLS
-    value: "true"
-  - name: USER_PERMISSIONS_CHAT_VALVES
-    value: "true"
-  - name: USER_PERMISSIONS_CHAT_SYSTEM_PROMPT
-    value: "true"
-  - name: USER_PERMISSIONS_CHAT_PARAMS
-    value: "true"
-  - name: USER_PERMISSIONS_CHAT_EDIT
-    value: "true"
-  - name: USER_PERMISSIONS_CHAT_DELETE
-    value: "true"
-  - name: USER_PERMISSIONS_CHAT_DELETE_MESSAGES
-    value: "true"
-  - name: USER_PERMISSIONS_CHAT_CONTINUE_RESPONSE
-    value: "true"
-  - name: USER_PERMISSIONS_CHAT_REGENERATE_RESPONSE
-    value: "true"
-  - name: USER_PERMISSIONS_CHAT_RATE_RESPONSE
-    value: "true"
-  - name: USER_PERMISSIONS_CHAT_SHARE
-    value: "false"   # Keep private for now
-  - name: USER_PERMISSIONS_CHAT_EXPORT
-    value: "false"   # Keep private for now
-  - name: USER_PERMISSIONS_CHAT_STT
-    value: "true"
-  - name: USER_PERMISSIONS_CHAT_TTS
-    value: "true"
+  # Security-conscious settings (non-defaults)
   - name: USER_PERMISSIONS_CHAT_CALL
-    value: "false"   # Requires HTTPS setup
-  - name: USER_PERMISSIONS_CHAT_MULTIPLE_MODELS
-    value: "true"
-  - name: USER_PERMISSIONS_CHAT_TEMPORARY
-    value: "true"
-  - name: USER_PERMISSIONS_CHAT_ENFORCE_TEMPORARY
-    value: "false"
-    
-  # Features Permissions
-  - name: USER_PERMISSIONS_FEATURES_DIRECT_TOOL_SERVERS
-    value: "false"   # Advanced feature
-  - name: USER_PERMISSIONS_FEATURES_WEB_SEARCH
-    value: "true"    # Enable web search for users
-  - name: USER_PERMISSIONS_FEATURES_IMAGE_GENERATION
-    value: "true"    # Enable image generation
+    value: "false"   # Default: True - Disable calls (requires HTTPS)
   - name: USER_PERMISSIONS_FEATURES_CODE_INTERPRETER
-    value: "false"   # Optional advanced feature
-  - name: USER_PERMISSIONS_FEATURES_NOTES
-    value: "true"
+    value: "false"   # Default: True - Disable code interpreter for security
+
 
   # Document processing with Tika
   - name: CONTENT_EXTRACTION_ENGINE
@@ -190,23 +142,21 @@ extraEnvVars:
   - name: VECTOR_DB
     value: "pgvector"
   - name: PGVECTOR_COLLECTION_NAME
-    value: "openwebui_documents"
+    value: "openwebui_documents" # not sure if this one is needed.
 
   # Embedding configuration
   - name: RAG_EMBEDDING_MODEL
-    value: "all-MiniLM-L6-v2"
+    value: "all-MiniLM-L6-v2" # the default embedding model. Changing to a smarter one can give better RAG results.
 
-  # Additional features (verified Open WebUI environment variables)
+  # Feature enablement (non-defaults)
   - name: ENABLE_RAG_LOCAL_WEB_FETCH
-    value: "true"
+    value: "true"    # Default: False - Enable local web fetching for RAG
   - name: ENABLE_WEB_SEARCH
-    value: "true"    # Enable web search functionality
+    value: "true"    # Default: False - Enable web search functionality
   - name: ENABLE_IMAGE_GENERATION
-    value: "true"
+    value: "true"    # Default: False - Enable image generation
   - name: ENABLE_COMMUNITY_SHARING
-    value: "false"
-  - name: ENABLE_ADMIN_EXPORT
-    value: "true"
+    value: "false"   # Default: True - Disable community sharing for privacy
 
   # OAuth2/OIDC Configuration - Following official OpenWebUI documentation
   # This ensures proper OAuth provider recognition and browser compatibility
@@ -285,7 +235,80 @@ extraEnvVars:
         name: urbalurba-secrets
         key: OPENWEBUI_OAUTH_MERGE_ACCOUNTS_BY_EMAIL
 
-# Application logging configuration
+  # ============================================================================
+  # Variables with default values (commented out to reduce configuration noise)
+  # Uncomment and modify only if you need to change from the documented defaults
+  # ============================================================================
+  
+  # Authentication (defaults)
+  #- name: WEBUI_AUTH
+  #  value: "true"                    # Default: True - Enable authentication
+  
+  # Admin permissions (defaults)
+  #- name: ENABLE_ADMIN_EXPORT
+  #  value: "true"                    # Default: True - Allow admin data export
+  
+  # Chat Controls (defaults - all True)
+  #- name: USER_PERMISSIONS_CHAT_CONTROLS
+  #  value: "true"                    # Default: True - Show chat controls button
+  #- name: USER_PERMISSIONS_CHAT_VALVES
+  #  value: "true"                    # Default: True - Show valves in controls
+  #- name: USER_PERMISSIONS_CHAT_SYSTEM_PROMPT
+  #  value: "true"                    # Default: True - Allow system prompt editing
+  #- name: USER_PERMISSIONS_CHAT_PARAMS
+  #  value: "true"                    # Default: True - Show advanced parameters
+  
+  # Basic Chat Permissions (defaults - all True)
+  #- name: USER_PERMISSIONS_CHAT_FILE_UPLOAD
+  #  value: "true"                    # Default: True - Allow file uploads in chat
+  #- name: USER_PERMISSIONS_CHAT_DELETE
+  #  value: "true"                    # Default: True - Allow chat deletion
+  #- name: USER_PERMISSIONS_CHAT_EDIT
+  #  value: "true"                    # Default: True - Allow message editing
+  #- name: USER_PERMISSIONS_CHAT_DELETE_MESSAGE
+  #  value: "true"                    # Default: True - Allow individual message deletion
+  #- name: USER_PERMISSIONS_CHAT_CONTINUE_RESPONSE
+  #  value: "true"                    # Default: True - Allow response continuation
+  #- name: USER_PERMISSIONS_CHAT_REGENERATE_RESPONSE
+  #  value: "true"                    # Default: True - Allow response regeneration
+  #- name: USER_PERMISSIONS_CHAT_RATE_RESPONSE
+  #  value: "true"                    # Default: True - Allow response rating
+  #- name: USER_PERMISSIONS_CHAT_STT
+  #  value: "true"                    # Default: True - Allow speech-to-text
+  #- name: USER_PERMISSIONS_CHAT_TTS
+  #  value: "true"                    # Default: True - Allow text-to-speech
+  #- name: USER_PERMISSIONS_CHAT_MULTIPLE_MODELS
+  #  value: "true"                    # Default: True - Allow multiple models in chat
+  #- name: USER_PERMISSIONS_CHAT_TEMPORARY
+  #  value: "true"                    # Default: True - Allow temporary chats
+  #- name: USER_PERMISSIONS_CHAT_TEMPORARY_ENFORCED
+  #  value: "false"                   # Default: False - Don't force temporary chats
+  
+  # Workspace Permissions (defaults - all False except tools)
+  #- name: USER_PERMISSIONS_WORKSPACE_TOOLS_ACCESS
+  #  value: "false"                   # Default: False - No tools access
+  
+  # Sharing Permissions (defaults - all False)
+  #- name: USER_PERMISSIONS_WORKSPACE_MODELS_ALLOW_PUBLIC_SHARING
+  #  value: "false"                   # Default: False - No public model sharing
+  #- name: USER_PERMISSIONS_WORKSPACE_KNOWLEDGE_ALLOW_PUBLIC_SHARING
+  #  value: "false"                   # Default: False - No public knowledge sharing
+  #- name: USER_PERMISSIONS_WORKSPACE_PROMPTS_ALLOW_PUBLIC_SHARING
+  #  value: "false"                   # Default: False - No public prompt sharing
+  #- name: USER_PERMISSIONS_WORKSPACE_TOOLS_ALLOW_PUBLIC_SHARING
+  #  value: "false"                   # Default: False - No public tools sharing
+  
+  # Feature Permissions (mixed defaults)
+  #- name: USER_PERMISSIONS_FEATURES_DIRECT_TOOL_SERVERS
+  #  value: "false"                   # Default: False - No direct tool server access
+  #- name: USER_PERMISSIONS_FEATURES_WEB_SEARCH
+  #  value: "true"                    # Default: True - Allow web search
+  #- name: USER_PERMISSIONS_FEATURES_IMAGE_GENERATION
+  #  value: "true"                    # Default: True - Allow image generation
+
+
+# Application logging configuration - Component-level logging for debugging
+# Set to "debug" for troubleshooting or "error" for production quiet mode
 logging:
   level: "info"
   components:
@@ -294,12 +317,8 @@ logging:
     models: "info"
     ollama: "info"
 
-# Networking (Ingress disabled - managed separately)
+# Networking - Ingress configuration for external access
+# Currently disabled and managed separately for better SSL/TLS control
 ingress:
   enabled: false
 
-
-# these variables are not valid and are moved here before I delete them
-#  # Enable OAuth authentication
-#  - name: OAUTH_ENABLED
-#    value: "true"
