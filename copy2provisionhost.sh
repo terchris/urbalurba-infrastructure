@@ -31,6 +31,13 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+# copy hosts folder to the provision-host container
+docker cp hosts/. provision-host:/mnt/urbalurbadisk/hosts
+if [ $? -ne 0 ]; then
+    echo "Error copying hosts folder to provision-host container"
+    exit 1
+fi
+
 # write sucess message
 echo "Successfully copied files to provision-host container"
 # exit with success

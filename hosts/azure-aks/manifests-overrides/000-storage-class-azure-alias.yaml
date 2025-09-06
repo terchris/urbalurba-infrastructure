@@ -1,0 +1,44 @@
+# File: 000-storage-class-azure-alias.yaml
+# Description: Creates storage class aliases to ensure storage compatibility between local and AKS deployments
+#
+# TODO: we should stop using the name microk8s-hostpath and local-path But this requires changing manifests that reference them. So for now we just create the same.
+# Purpose:
+# - Creates a storage class named 'microk8s-hostpath' that points to Azure Disk provisioner
+# - Enables manifests that expect microk8s storage class to work on AKS without modification
+# - Must be applied before any other manifests that use storage
+#
+# Usage:
+# kubectl apply -f hosts/azure-aks/manifests-overrides/000-storage-class-azure-alias.yaml
+# Verify: kubectl get storageclasses microk8s-hostpath
+#
+# Note: This manifest should be applied after AKS cluster creation and before service deployment
+
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: microk8s-hostpath
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "false"
+provisioner: disk.csi.azure.com
+parameters:
+  skuName: Standard_LRS
+  cachingmode: ReadOnly
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+---
+# Additional storage class for any manifests that reference local-path
+# (like unity-catalog - though it should be updated to use microk8s-hostpath instead)
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: local-path
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "false"
+provisioner: disk.csi.azure.com
+parameters:
+  skuName: Standard_LRS
+  cachingmode: ReadOnly
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true

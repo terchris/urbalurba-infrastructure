@@ -1,0 +1,84 @@
+# File: 003-traefik-config.yaml  
+# Description: Helm values configuration for Traefik ingress controller
+#
+# Purpose:
+# - Configures Traefik similar to Rancher Desktop setup for consistency
+# - Uses LoadBalancer service type for Azure AKS external access
+# - Enables Kubernetes Ingress provider and published service
+# - Sets up dual-stack IP family policy
+#
+# Usage:
+# helm install traefik traefik/traefik -f manifests/003-traefik-config.yaml --namespace kube-system
+#
+# Based on Rancher Desktop Traefik configuration with AKS-specific adjustments
+
+# Deployment configuration
+deployment:
+  podAnnotations:
+    prometheus.io/port: "8082"
+    prometheus.io/scrape: "true"
+
+# Global settings
+global:
+  systemDefaultRegistry: ""
+
+# Image configuration (using official Traefik image for AKS)
+image:
+  repository: traefik
+  tag: v3.3.2
+
+# High priority for system components
+priorityClassName: system-cluster-critical
+
+# Provider configuration
+providers:
+  kubernetesIngress:
+    publishedService:
+      enabled: true
+
+# Service configuration
+service:
+  type: LoadBalancer
+  ipFamilyPolicy: PreferDualStack
+
+# Port configuration - use non-privileged ports internally
+ports:
+  web:
+    port: 8000
+    protocol: TCP
+  websecure:
+    port: 8443
+    protocol: TCP
+    tls:
+      enabled: true
+
+# Resource limits for AKS
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 1000m
+    memory: 512Mi
+
+# Tolerations for scheduling flexibility (adapted for AKS)
+tolerations:
+- key: CriticalAddonsOnly
+  operator: Exists
+- effect: NoSchedule
+  key: node-role.kubernetes.io/control-plane
+  operator: Exists
+- effect: NoSchedule  
+  key: node-role.kubernetes.io/master
+  operator: Exists
+
+# Additional configuration for better debugging
+globalArguments:
+- "--global.checknewversion=false"
+- "--global.sendanonymoususage=false"
+- "--log.level=INFO"
+
+# Enable dashboard for debugging (optional)
+ingressRoute:
+  dashboard:
+    enabled: false  # Set to true if you want the dashboard exposed

@@ -71,38 +71,53 @@ run_playbook() {
     fi
 }
 
-# Test Ansible connection
+# Test Kubernetes connection
 test_connection() {
-    echo "Testing connection to $TARGET_HOST..."
-    cd "$ANSIBLE_DIR" || return 1
-    local output
-    output=$(ansible "$TARGET_HOST" -m ping 2>&1)
-    echo "$output"
-    if echo "$output" | grep -q "UNREACHABLE"; then
+    echo "Testing connection to Kubernetes context $TARGET_HOST..."
+    
+    # Check if context exists
+    if ! kubectl config get-contexts "$TARGET_HOST" &>/dev/null; then
         add_status "Test connection" "Fail"
-        add_error "Test connection" "Ansible unreachable: $output"
+        add_error "Test connection" "Context $TARGET_HOST not found in kubeconfig"
+        echo "Available contexts:"
+        kubectl config get-contexts
         return 1
     fi
-    if echo "$output" | grep -q "FAILED"; then
+    
+    # Switch to context and check nodes
+    kubectl config use-context "$TARGET_HOST" >/dev/null 2>&1
+    if kubectl get nodes &>/dev/null; then
+        local node_count=$(kubectl get nodes --no-headers 2>/dev/null | wc -l)
+        add_status "Test connection" "OK"
+        echo "Successfully connected to $TARGET_HOST (${node_count} nodes)"
+        kubectl get nodes
+        return 0
+    else
         add_status "Test connection" "Fail"
-        add_error "Test connection" "Ansible failed: $output"
+        add_error "Test connection" "Cannot reach Kubernetes API for context $TARGET_HOST"
         return 1
     fi
-    check_command_success "Test connection"
-    return $?
 }
 
 # Verify Kubernetes context
 verify_context() {
     echo "Verifying Kubernetes context..."
-    CONTEXTS=$(kubectl --kubeconfig=$MERGED_KUBECONF_FILE config get-contexts -o name)
-    if echo "$CONTEXTS" | grep -q "$TARGET_HOST"; then
-        kubectl --kubeconfig=$MERGED_KUBECONF_FILE config use-context $TARGET_HOST
-        check_command_success "Setting context to cluster: $TARGET_HOST"
+    # Use the current kubeconfig (already set by test_connection)
+    if kubectl config current-context | grep -q "$TARGET_HOST"; then
+        add_status "Verify context" "OK"
+        echo "Current context is $TARGET_HOST"
+        return 0
     else
-        add_status "Verify context" "Fail"
-        add_error "Verify context" "Context $TARGET_HOST not found"
-        return 1
+        # Try to switch to the context
+        if kubectl config use-context "$TARGET_HOST" >/dev/null 2>&1; then
+            add_status "Verify context" "OK"
+            echo "Switched to context $TARGET_HOST"
+            return 0
+        else
+            add_status "Verify context" "Fail"
+            add_error "Verify context" "Could not switch to context $TARGET_HOST"
+            return 1
+        fi
     fi
 }
 

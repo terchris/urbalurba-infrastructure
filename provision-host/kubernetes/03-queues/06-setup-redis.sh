@@ -59,11 +59,31 @@ run_playbook() {
     check_command_success "$step"
 }
 
-# Test Ansible connection
+# Test Kubernetes connection
 test_connection() {
-    echo "Testing connection to $TARGET_HOST..."
-    cd $ANSIBLE_DIR && ansible $TARGET_HOST -m ping
-    check_command_success "Test connection"
+    echo "Testing connection to Kubernetes context $TARGET_HOST..."
+    
+    # Check if context exists
+    if ! kubectl config get-contexts "$TARGET_HOST" &>/dev/null; then
+        add_status "Test connection" "Fail"
+        add_error "Test connection" "Context $TARGET_HOST not found in kubeconfig"
+        echo "Available contexts:"
+        kubectl config get-contexts
+        return 1
+    fi
+    
+    # Switch to context and check nodes
+    kubectl config use-context "$TARGET_HOST" >/dev/null 2>&1
+    if kubectl get nodes &>/dev/null; then
+        local node_count=$(kubectl get nodes --no-headers 2>/dev/null | wc -l)
+        echo "Successfully connected to $TARGET_HOST (${node_count} nodes)"
+        check_command_success "Test connection"
+        return 0
+    else
+        add_status "Test connection" "Fail"
+        add_error "Test connection" "Cannot reach Kubernetes API for context $TARGET_HOST"
+        return 1
+    fi
 }
 
 # Main execution
