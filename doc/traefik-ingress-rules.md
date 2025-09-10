@@ -99,7 +99,7 @@ This **dual-context DNS resolution** ensures that the same hostname works seamle
 This cluster supports **optional authentication** using **Authentik** as the identity provider. Services can be configured as public (no auth) or protected (requires login). Protected services use Traefik middleware (`authentik-forward-auth`) that forwards authentication requests to Authentik before serving content. See `manifests/075-authentik-config.yaml`, `manifests/077-authentik-forward-auth-middleware.yaml`, and `manifests/078-whoami-protected-ingressroute.yaml` for implementation examples.
 
 ### **External Traffic Access**:
-For external access beyond localhost, this cluster supports **Cloudflare Tunnels** and **Tailscale Funnel** to securely route external traffic to Traefik. External domains can be configured to route through Cloudflare (with WAF/DDoS protection) or directly via Tailscale Funnel, while maintaining the same Traefik ingress rules. See `doc/networking-external-cloudflare-readme.md`, `doc/networking-external-cloudflare-tailscale-readme.md`, and `doc/networking-readme.md` for setup details.
+For external access beyond localhost, this cluster supports **Cloudflare Tunnels** and **Tailscale Funnel** to securely route external traffic to Traefik. External domains can be configured to route through Cloudflare (with WAF/DDoS protection) or directly via Tailscale Funnel, while maintaining the same Traefik ingress rules. See `doc/networking-cloudflare-setup.md`, `doc/networking-tailscale-setup.md`, and `doc/networking-readme.md` for setup details.
 
 ### **Why Traefik IngressRoute CRDs?**
 - **More Features**: Path rewriting, header manipulation, middleware

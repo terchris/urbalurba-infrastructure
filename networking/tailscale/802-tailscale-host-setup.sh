@@ -1,11 +1,12 @@
 #!/bin/bash
-# filename: net1-setup-tailscale.sh
+# filename: 802-tailscale-host-setup.sh
 # description: Configures Tailscale for the provision-host container
+# moved from: net1-setup-tailscale.sh (September 8, 2025)
 # 
 # This script sets up the persistent storage for Tailscale, 
 # starts the daemon, and authenticates using keys from Kubernetes secrets.
 #
-# Usage: ./net1-setup-tailscale.sh
+# Usage: ./802-tailscale-host-setup.sh
 
 # Source the Tailscale library
 # Using realpath with dirname to handle the script being run from any location

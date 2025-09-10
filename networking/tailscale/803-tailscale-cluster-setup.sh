@@ -1,5 +1,6 @@
 #!/bin/bash
-# filename: net2-setup-tailscale-cluster.sh
+# filename: 803-tailscale-cluster-setup.sh
+# moved from: net2-setup-tailscale-cluster.sh (September 8, 2025)
 # description: Sets up the base Tailscale infrastructure for the entire Kubernetes cluster
 # 
 # This script is the first step in setting up Tailscale for your Kubernetes cluster.
@@ -11,8 +12,8 @@
 # - Valid kubeconfig file
 # - Tailscale API credentials in urbalurba-secrets
 #
-# Usage: ./net2-setup-tailscale-cluster.sh [cluster-hostname] [optional:kubeconfig-path]
-# example: ./net2-setup-tailscale-cluster.sh rancher-traefik /mnt/urbalurbadisk/kubeconfig/kubeconf-all
+# Usage: ./803-tailscale-cluster-setup.sh [cluster-hostname] [optional:kubeconfig-path]
+# example: ./803-tailscale-cluster-setup.sh rancher-traefik /mnt/urbalurbadisk/kubeconfig/kubeconf-all
 #
 # If no cluster-hostname is provided, the script will use TAILSCALE_CLUSTER_HOSTNAME
 # from the urbalurba-secrets Kubernetes secret.
@@ -37,7 +38,7 @@ declare -A ERRORS
 
 # Variables
 ANSIBLE_DIR="/mnt/urbalurbadisk/ansible"
-PLAYBOOK_PATH_SETUP_TAILSCALE="$ANSIBLE_DIR/playbooks/net2-setup-tailscale-cluster.yml"
+PLAYBOOK_PATH_SETUP_TAILSCALE="$ANSIBLE_DIR/playbooks/803-setup-tailscale-cluster.yml"
 ANSIBLE_EXTRA_VARS="-e hide_sensitive_info=true" # Add option to hide sensitive info
 
 # Command line parameters

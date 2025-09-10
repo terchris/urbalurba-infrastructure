@@ -1,5 +1,6 @@
 ---
-# file: playbooks/net2-expose-tailscale-service.yml
+# file: playbooks/801-expose-tailscale-service.yml
+# moved from: net2-expose-tailscale-service.yml (September 8, 2025)
 # Description: Set up Tailscale funnel host for a specific Kubernetes service
 #
 # This playbook:
@@ -9,7 +10,7 @@
 # 4. Sets up a Traefik ingress rule to route traffic to the service
 #
 # Usage:
-#   ansible-playbook playbooks/net2-expose-tailscale-service.yml 
+#   ansible-playbook playbooks/801-expose-tailscale-service.yml 
 #     -e service_name=SERVICE 
 #     -e hostname=HOST 
 #     -e namespace=NAMESPACE 
@@ -25,7 +26,7 @@
 #   tailnet: Tailscale tailnet name (defaults to dog-pence)
 #
 # Related playbooks:
-# - net2-setup-tailscale-cluster.yml: Must be run first to set up base infrastructure
+# - 803-setup-tailscale-cluster.yml: Must be run first to set up base infrastructure
 
 - name: Set up Tailscale funnel host for a Kubernetes service
   hosts: localhost
@@ -103,7 +104,7 @@
 
     - name: "11 Generate Tailscale tunnel ingress manifest"
       ansible.builtin.template:
-        src: "{{ manifests_folder }}/net2-tailscale-host-tunnel.yaml"
+        src: "{{ manifests_folder }}/801-tailscale-service-tunnel.yaml.j2"
         dest: "{{ temp_dir.path }}/{{ hostname }}-tailscale-tunnel.yaml"
       vars:
         hostname: "{{ hostname }}"
@@ -117,7 +118,7 @@
 
     - name: "13 Generate Traefik service ingress manifest"
       ansible.builtin.template:
-        src: "{{ manifests_folder }}/net2-tailscale-host-ingress.yaml"
+        src: "{{ manifests_folder }}/802-tailscale-service-ingress.yaml.j2"
         dest: "{{ temp_dir.path }}/{{ hostname }}-traefik-ingress.yaml"
       vars:
         hostname: "{{ hostname }}"

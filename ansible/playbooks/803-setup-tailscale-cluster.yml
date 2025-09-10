@@ -1,5 +1,6 @@
 ---
-# file: playbooks/net2-setup-tailscale-cluster.yml
+# file: playbooks/803-setup-tailscale-cluster.yml
+# moved from: net2-setup-tailscale-cluster.yml (September 8, 2025)
 # Description: Set up base Tailscale infrastructure for Kubernetes cluster
 #
 # This playbook:
@@ -9,7 +10,7 @@
 # 4. Handles cluster-wide Tailscale setup
 #
 # Usage:
-#   ansible-playbook playbooks/net2-setup-tailscale-cluster.yml 
+#   ansible-playbook playbooks/803-setup-tailscale-cluster.yml 
 #     -e TAILSCALE_CLUSTER_HOSTNAME="rancher-traefik" 
 #     -e kubeconfig_path="/path/to/kubeconfig"
 #
@@ -21,7 +22,7 @@
 #   hide_sensitive_info: Whether to hide sensitive information in output (defaults to false)
 #
 # Related playbooks:
-# - net2-expose-tailscale-service.yml: Used to expose individual services after this base setup
+# - 801-expose-tailscale-service.yml: Used to expose individual services after this base setup
 
 - name: Set up Tailscale ingress for Kubernetes cluster
   hosts: localhost
@@ -29,8 +30,8 @@
   vars:
     manifests_folder: "/mnt/urbalurbadisk/manifests"
     kubeconfig_path: "{{ kubeconfig_path | default('/mnt/urbalurbadisk/kubeconfig/kubeconf-all') }}"
-    operator_config: "010-tailscale-operator-config.yaml"
-    ingress_manifest: "011-tailscale-traefik-ingress.yaml"
+    operator_config: "800-tailscale-operator-config.yaml"
+    ingress_manifest: "803-tailscale-cluster-ingress.yaml.j2"
     traefik_nginx_ingress: "012-traefik-nginx-ingress.yaml"  # New variable for Nginx ingress
     TAILSCALE_CLUSTER_HOSTNAME: "{{ TAILSCALE_CLUSTER_HOSTNAME | default('rancher-traefik') }}"
     api_base_url: "https://api.tailscale.com/api/v2"

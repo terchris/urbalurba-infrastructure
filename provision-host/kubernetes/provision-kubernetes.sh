@@ -14,7 +14,7 @@
 # example scripts are 04-cloud-setup-log-monitor.sh and 07-setup-elasticsearch.sh
 
 # the script takes one parameter which is the target-host.
-# If no parameter is provided, the default target-host is "multipass-microk8s"
+# If no parameter is provided, the default target-host is the current kubectl context
 # target-host is sent as parameter to all scripts in the folder(s).
 
 # Example of how to run the script:
@@ -26,8 +26,19 @@ RUN_IN_DIR="/mnt/urbalurbadisk/provision-host/kubernetes"
 declare -A STATUS
 declare -A ERRORS
 
-# Get target-host from command line argument or use default
-TARGET_HOST="${1:-multipass-microk8s}"
+# Get target-host from command line argument or use current kubectl context
+if [ -n "$1" ]; then
+    TARGET_HOST="$1"
+else
+    # Get current kubectl context as default
+    CURRENT_CONTEXT=$(kubectl config current-context 2>/dev/null)
+    if [ -n "$CURRENT_CONTEXT" ]; then
+        TARGET_HOST="$CURRENT_CONTEXT"
+    else
+        # Fallback if no current context
+        TARGET_HOST="multipass-microk8s"
+    fi
+fi
 
 # Function that changes to and ensures the script is run from the correct directory
 ensure_correct_directory() {

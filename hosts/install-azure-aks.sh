@@ -67,6 +67,7 @@ check_environment() {
     fi
 }
 
+
 # Main installation flow
 main() {
     print_section "AZURE AKS INSTALLATION FOR URBALURBA INFRASTRUCTURE"

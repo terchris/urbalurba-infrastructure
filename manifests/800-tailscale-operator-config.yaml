@@ -1,7 +1,8 @@
-# 010-tailscale-operator-config.yaml
+# 800-tailscale-operator-config.yaml
 # Installs Tailscale Kubernetes Operator with ingress functionality
+# Moved from: 010-tailscale-operator-config.yaml (September 8, 2025)
 # Usage: 
-# installing: helm install tailscale-operator tailscale/tailscale-operator -n tailscale --create-namespace -f 010-tailscale-ingress.yaml \
+# installing: helm install tailscale-operator tailscale/tailscale-operator -n tailscale --create-namespace -f 800-tailscale-operator-config.yaml \
 #             --set-string oauth.clientId=$TAILSCALE_CLIENTID --set-string oauth.clientSecret=$TAILSCALE_CLIENTSECRET
 # uninstalling: helm uninstall tailscale-operator -n tailscale
 #

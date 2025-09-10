@@ -8,7 +8,7 @@
 # - Other networking utilities
 #
 # Note: Tailscale is only installed here, not configured or started.
-# Configuration happens later via net1-setup-tailscale.sh
+# Configuration happens later via tailscale/802-tailscale-host-setup.sh
 
 # Initialize associative arrays for status and errors
 declare -A STATUS

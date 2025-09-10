@@ -38,6 +38,13 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+# copy networking folder to the provision-host container
+docker cp networking/. provision-host:/mnt/urbalurbadisk/networking
+if [ $? -ne 0 ]; then
+    echo "Error copying networking folder to provision-host container"
+    exit 1
+fi
+
 # write sucess message
 echo "Successfully copied files to provision-host container"
 # exit with success

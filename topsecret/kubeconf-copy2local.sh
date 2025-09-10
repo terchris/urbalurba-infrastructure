@@ -1,5 +1,5 @@
 #!/bin/bash
-# filename: kubeconf-copy2local
+# filename: topsecret/kubeconf-copy2local.sh
 # Script to copy the kubeconfig file from the multipass provision-host VM
 # to the local topsecret/kubernetes folder and then to the .kube folder, and set the KUBECONFIG environment variable
 

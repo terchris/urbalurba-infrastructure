@@ -1,0 +1,150 @@
+---
+# file: playbooks/821-deploy-network-cloudflare-tunnel.yml
+# Description: This playbook deploys a Cloudflare tunnel connector pod to a Kubernetes cluster.
+# It uses credentials created by the 820-setup-network-cloudflare-tunnel.yml playbook.
+#
+# Prerequisites:
+# - Run 820-cloudflare-tunnel-setup.sh first to create tunnel and store credentials
+# - cloudflared-credentials secret must exist in the cluster
+#
+# Usage:
+# ansible-playbook 821-deploy-network-cloudflare-tunnel.yml
+# 
+# The domain is automatically extracted from the existing cloudflared-credentials secret.
+# If no secret exists, the playbook will fail with instructions to run setup first.
+
+- name: Check required variables
+  hosts: localhost
+  gather_facts: false
+  collections:
+    - kubernetes.core
+  vars:
+    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+  tasks:
+    - name: Check if cloudflared-credentials secret exists
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ merged_kubeconf_file }}"
+        kind: Secret
+        name: cloudflared-credentials
+        namespace: default
+      register: credentials_secret
+
+    - name: Fail if credentials secret doesn't exist
+      fail:
+        msg: "cloudflared-credentials secret not found. Run 820-cloudflare-tunnel-setup.sh <domain> first."
+      when: not credentials_secret.resources
+
+    - name: Extract domain from secret metadata if not provided as parameter
+      set_fact:
+        domain: "{{ credentials_secret.resources[0].metadata.labels['cloudflare.tunnel/domain'] }}"
+      when: domain is not defined
+
+    - name: Ensure domain is available
+      fail:
+        msg: "No domain found in secret metadata. Run 820-cloudflare-tunnel-setup.sh <domain> to recreate the tunnel."
+      when: domain is not defined or domain == ""
+
+- name: Deploy Cloudflare Tunnel to Kubernetes
+  hosts: localhost
+  gather_facts: false
+  collections:
+    - kubernetes.core
+  vars:
+    tunnel_name: "cloudflare-tunnel"
+    domain: "{{ domain }}"
+    full_tunnel_name: "cloudflare-tunnel"
+    manifests_folder: "/mnt/urbalurbadisk/manifests"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    cloudflare_kubernetes_template_file: "{{ manifests_folder }}/820-cloudflare-tunnel-base.yaml.j2"
+
+  tasks:
+    - name: 1. Get cloudflared-credentials secret for tunnel ID extraction
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ merged_kubeconf_file }}"
+        kind: Secret
+        name: cloudflared-credentials
+        namespace: default
+      register: credentials_secret
+
+    - name: 2. Extract tunnel ID from credentials secret
+      set_fact:
+        tunnel_id: "{{ (credentials_secret.resources[0].data['cloudflare-tunnel.json'] | b64decode | from_json).TunnelID }}"
+
+    - name: 3. Display tunnel information
+      debug:
+        msg:
+          - "Using existing credentials secret: cloudflared-credentials"
+          - "Tunnel ID: {{ tunnel_id }}"
+          - "Domain: {{ domain }} (wildcard: *.{{ domain }})"
+
+    - name: 4. Generate Cloudflare tunnel manifest from template
+      template:
+        src: "{{ cloudflare_kubernetes_template_file }}"
+        dest: "{{ manifests_folder }}/cloudflare-tunnel-manifest.yaml"
+
+    - name: 5. Display generated manifest
+      debug:
+        msg: "Generated manifest: {{ manifests_folder }}/cloudflare-tunnel-manifest.yaml"
+
+    - name: 6. Apply Cloudflare tunnel deployment
+      kubernetes.core.k8s:
+        kubeconfig: "{{ merged_kubeconf_file }}"
+        src: "{{ manifests_folder }}/cloudflare-tunnel-manifest.yaml"
+        state: present
+
+    - name: 7. Wait for Cloudflare tunnel pod to be ready
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ merged_kubeconf_file }}"
+        kind: Pod
+        namespace: default
+        label_selectors:
+          - app=cloudflared
+      register: cloudflared_pod
+      until: 
+        - cloudflared_pod.resources is defined
+        - cloudflared_pod.resources | length > 0
+        - cloudflared_pod.resources[0].status.phase == 'Running'
+      retries: 20
+      delay: 10
+
+    - name: 8. Display deployment status
+      debug:
+        msg:
+          - "✅ Cloudflare tunnel deployed successfully!"
+          - "Pod status: {{ cloudflared_pod.resources[0].status.phase }}"
+          - "Pod name: {{ cloudflared_pod.resources[0].metadata.name }}"
+          - "Tunnel routes *.{{ domain }} → http://traefik.kube-system.svc.cluster.local:80"
+
+    - name: 9. Wait for tunnel to be fully operational
+      pause:
+        seconds: 10
+        prompt: "Waiting for tunnel connections to stabilize..."
+
+    - name: 10. Test tunnel connectivity via Cloudflare
+      uri:
+        url: "https://test.{{ domain }}"
+        method: GET
+        status_code: 200
+        validate_certs: true
+        timeout: 30
+      register: tunnel_test
+      retries: 15
+      delay: 10
+      until: tunnel_test.status == 200
+
+    - name: 11. Display tunnel test results
+      debug:
+        msg:
+          - "🌐 Tunnel connectivity test:"
+          - "URL tested: https://test.{{ domain }}"
+          - "Response status: {{ tunnel_test.status }}"
+          - "✅ Tunnel is working correctly - nginx catch-all responded"
+
+    - name: 12. Final deployment summary
+      debug:
+        msg:
+          - "🎉 Cloudflare tunnel deployment complete!"
+          - "You can now access your services at:"
+          - "  https://{{ domain }} (if root domain is configured)"
+          - "  https://*.{{ domain }} (any subdomain)"
+          - "Test with: curl https://test.{{ domain }}"

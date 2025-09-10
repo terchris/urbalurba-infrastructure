@@ -165,25 +165,25 @@ echo "==========------------------> Step 4: Setting up Tailscale for secure netw
 echo "Starting and configuring Tailscale..."
 
 # Modified section for Tailscale setup to handle potential failures gracefully
-if docker exec provision-host bash -c "cd /mnt/urbalurbadisk/networking && ./net1-setup-tailscale.sh"; then
+if docker exec provision-host bash -c "cd /mnt/urbalurbadisk/networking && ./tailscale/802-tailscale-host-setup.sh"; then
     echo "Setting up Tailscale completed successfully"
     
     # Verify Tailscale connectivity only if setup was successful
     echo "Verifying Tailscale connectivity..."
-    if docker exec provision-host bash -c "cd /mnt/urbalurbadisk/networking && ./net1-check-tailscale.sh"; then
+    if docker exec provision-host bash -c "cd /mnt/urbalurbadisk/networking && ./tailscale/utils/tailscale-check.sh"; then
         echo "Tailscale connectivity verified successfully"
     else
         echo "Warning: Tailscale connectivity check failed, but continuing with installation"
         echo "You may not have full Tailscale functionality. You can set it up later by:"
         echo "1. Updating your Kubernetes secrets with valid Tailscale credentials"
-        echo "2. Running: docker exec provision-host bash -c \"cd /mnt/urbalurbadisk/networking && ./net1-setup-tailscale.sh\""
+        echo "2. Running: docker exec provision-host bash -c \"cd /mnt/urbalurbadisk/networking && ./tailscale/802-tailscale-host-setup.sh\""
     fi
 else
     echo "Notice: Tailscale setup was skipped or encountered an issue, but continuing with installation"
     echo "This is normal if you're using template/placeholder Tailscale values in your secrets"
     echo "To enable Tailscale later:"
     echo "1. Update your Kubernetes secrets with valid Tailscale credentials"
-    echo "2. Run: docker exec provision-host bash -c \"cd /mnt/urbalurbadisk/networking && ./net1-setup-tailscale.sh\""
+    echo "2. Run: docker exec provision-host bash -c \"cd /mnt/urbalurbadisk/networking && ./tailscale/802-tailscale-host-setup.sh\""
 fi
 
 echo "----------------------> Start the installation of kubernetes systems <----------------------"
@@ -217,7 +217,7 @@ if [ "$TAILSCALE_IP" != "Not configured" ]; then
 else
     echo "Tailscale networking is not configured. You can set it up later by:"
     echo "1. Updating your Kubernetes secrets with valid Tailscale credentials"
-    echo "2. Running: docker exec provision-host bash -c \"cd /mnt/urbalurbadisk/networking && ./net1-setup-tailscale.sh\""
+    echo "2. Running: docker exec provision-host bash -c \"cd /mnt/urbalurbadisk/networking && ./tailscale/802-tailscale-host-setup.sh\""
 fi
 echo "."
 echo "====================  E N D  O F  I N S T A L L A T I O N  ===================="

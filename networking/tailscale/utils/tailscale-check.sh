@@ -1,11 +1,12 @@
 #!/bin/bash
-# filename: net1-check-tailscale.sh
+# filename: tailscale-check.sh
+# moved from: net1-check-tailscale.sh (September 8, 2025)
 # description: Checks Tailscale connectivity for the provision-host container
 # 
 # This script verifies that Tailscale is properly configured and connected,
 # displaying current status and attempting recovery if needed.
 #
-# Usage: ./net1-check-tailscale.sh
+# Usage: ./tailscale-check.sh
 
 # Global variable to track if jq is installed
 JQ_INSTALLED="false"
@@ -134,7 +135,7 @@ get_tailscale_status() {
 suggest_recovery() {
     log "Suggesting recovery steps:"
     log "1. Run 'sudo tailscaled --state=/var/lib/tailscale/tailscaled.state --socket=/var/run/tailscale/tailscaled.sock > /dev/null 2>&1 &' to start the daemon"
-    log "2. Run '/mnt/urbalurbadisk/networking/net1-setup-tailscale.sh' to authenticate"
+    log "2. Run '/mnt/urbalurbadisk/networking/tailscale/802-tailscale-host-setup.sh' to authenticate"
     log "3. Run 'sudo journalctl -u tailscaled' to check system logs if available"
 }
 
@@ -210,7 +211,7 @@ main() {
     # Step 3: Check if Tailscale is authenticated
     if ! check_authentication; then
         log "ERROR: Tailscale is not authenticated"
-        log "Run '/mnt/urbalurbadisk/networking/net1-setup-tailscale.sh' to authenticate"
+        log "Run '/mnt/urbalurbadisk/networking/tailscale/802-tailscale-host-setup.sh' to authenticate"
         exit 1
     fi
     

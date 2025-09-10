@@ -13,7 +13,7 @@ CLUSTER_NAME="azure-aks"
 LOCATION="westeurope"
 
 # Node configuration
-NODE_COUNT=2
+NODE_COUNT=1
 NODE_SIZE="Standard_B2ms"
 
 # Additional configuration (adapted from azure-microk8s)

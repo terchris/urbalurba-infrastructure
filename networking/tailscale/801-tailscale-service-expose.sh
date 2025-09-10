@@ -1,17 +1,18 @@
 #!/bin/bash
-# filename: net2-expose-tailscale-service.sh
+# filename: 801-tailscale-service-expose.sh
+# moved from: net2-expose-tailscale-service.sh (September 8, 2025)
 # description: Exposes individual Kubernetes services through Tailscale
 # 
 # This script is used to expose individual Kubernetes services through Tailscale.
-# It must be run AFTER net2-setup-tailscale-cluster.sh has been executed to set up
+# It must be run AFTER 803-tailscale-cluster-setup.sh has been executed to set up
 # the base Tailscale infrastructure.
 #
 # Prerequisites:
-# - net2-setup-tailscale-cluster.sh must have been run successfully
+# - 803-tailscale-cluster-setup.sh must have been run successfully
 # - Tailscale operator must be installed and running
 # - Kubernetes service to expose must exist
 #
-# Usage: ./net2-expose-tailscale-service.sh <service-name> [options]
+# Usage: ./801-tailscale-service-expose.sh <service-name> [options]
 #
 # Arguments:
 #   <service-name>              Name of the Kubernetes service to expose
@@ -25,13 +26,13 @@
 #   --help                      Show this help message
 #
 # Examples:
-#   ./net2-expose-tailscale-service.sh open-webui
-#   ./net2-expose-tailscale-service.sh pgadmin --hostname admin
-#   ./net2-expose-tailscale-service.sh gravitee-apim-gateway --namespace gravitee
-#   ./net2-expose-tailscale-service.sh --remove openwebui
+#   ./801-tailscale-service-expose.sh open-webui
+#   ./801-tailscale-service-expose.sh pgadmin --hostname admin
+#   ./801-tailscale-service-expose.sh gravitee-apim-gateway --namespace gravitee
+#   ./801-tailscale-service-expose.sh --remove openwebui
 #
 # Related scripts:
-# - net2-setup-tailscale-cluster.sh: Must be run first to set up base infrastructure
+# - 803-tailscale-cluster-setup.sh: Must be run first to set up base infrastructure
 #
 # Exit codes:
 # 0 - Success
@@ -46,7 +47,7 @@ set -e
 # Default values
 KUBECONFIG_PATH="/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
 ANSIBLE_DIR="/mnt/urbalurbadisk/ansible"
-PLAYBOOK="playbooks/net2-expose-tailscale-service.yml"
+PLAYBOOK="playbooks/801-expose-tailscale-service.yml"
 NAMESPACE="default"
 TAILNET="dog-pence"
 HOSTNAME=""

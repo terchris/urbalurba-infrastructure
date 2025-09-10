@@ -65,10 +65,10 @@ Playbooks are organized by their purpose and numbered for execution order:
 - `200-setup-open-webui.yml`: Open WebUI setup
 
 ### 6. Network Configuration (7xx)
-- `750-setup-network-cloudflare-tunnel.yml`: Cloudflare tunnel setup
-- `751-deploy-network-cloudflare-tunnel.yml`: Cloudflare tunnel deployment
-- `net2-setup-tailscale-cluster.yml`: Tailscale cluster setup
-- `net2-expose-tailscale-service.yml`: Tailscale service exposure
+- `820-setup-network-cloudflare-tunnel.yml`: Cloudflare tunnel setup
+- `821-deploy-network-cloudflare-tunnel.yml`: Cloudflare tunnel deployment
+- `803-setup-tailscale-cluster.yml`: Tailscale cluster setup
+- `801-expose-tailscale-service.yml`: Tailscale service exposure
 
 ### 7. ArgoCD Management (22x)
 - `220-setup-argocd.yml`: ArgoCD setup
