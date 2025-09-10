@@ -85,7 +85,7 @@ else
 fi
 
 # Add parameter values to STATUS
-STATUS+=("TUNNEL_NAME= $TUNNEL_NAME (fixed)")
+STATUS+=("TUNNEL_NAME= $TUNNEL_NAME")
 STATUS+=("DOMAIN= $DOMAIN") 
 STATUS+=("TARGET_HOST= $TARGET_HOST")
 
