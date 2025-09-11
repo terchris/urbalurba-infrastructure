@@ -9,10 +9,11 @@
 # - Tailscale operator deployed via 802-tailscale-tunnel-deploy.sh
 # - Target service must exist in the cluster
 #
-# Usage: ./803-tailscale-tunnel-addhost.sh <service-name> [namespace] [port]
+# Usage: ./803-tailscale-tunnel-addhost.sh <service-name> [namespace] [port] [hostname]
 # Example: ./803-tailscale-tunnel-addhost.sh whoami
 # Example: ./803-tailscale-tunnel-addhost.sh whoami default 80
 # Example: ./803-tailscale-tunnel-addhost.sh openwebui default 8080
+# Example: ./803-tailscale-tunnel-addhost.sh authentik-server authentik 80 authentik
 #
 # Result:
 # - Creates Tailscale ingress for the service
@@ -35,15 +36,17 @@ PLAYBOOK_PATH="/mnt/urbalurbadisk/ansible/playbooks/803-tailscale-tunnel-addhost
 SERVICE_NAME="$1"
 NAMESPACE="${2:-default}"
 SERVICE_PORT="${3:-80}"
+HOSTNAME="${4:-$SERVICE_NAME}"
 
 # Validate arguments
 if [ -z "$SERVICE_NAME" ]; then
-    echo "Usage: $0 <service-name> [namespace] [port]"
+    echo "Usage: $0 <service-name> [namespace] [port] [hostname]"
     echo ""
     echo "Examples:"
     echo "  $0 whoami"
     echo "  $0 whoami default 80"
     echo "  $0 openwebui default 8080"
+    echo "  $0 authentik-server authentik 80 authentik"
     echo ""
     echo "Note: Most services work with default namespace and port 80"
     echo "The Tailscale ingress handles HTTP/HTTPS automatically"
@@ -112,8 +115,9 @@ STATUS+=("SERVICE_PORT: $SERVICE_PORT")
 echo "Adding Tailscale ingress for service: $SERVICE_NAME"
 echo "Namespace: $NAMESPACE"
 echo "Port: $SERVICE_PORT"
+echo "Hostname: $HOSTNAME"
 echo "Domain: $TAILSCALE_DOMAIN"
-echo "Will be accessible at: https://$SERVICE_NAME.$TAILSCALE_DOMAIN"
+echo "Will be accessible at: https://$HOSTNAME.$TAILSCALE_DOMAIN"
 echo ""
 
 # Execute the Ansible playbook
@@ -122,6 +126,7 @@ cd /mnt/urbalurbadisk/ansible && ansible-playbook $PLAYBOOK_PATH \
     -e SERVICE_NAME="$SERVICE_NAME" \
     -e NAMESPACE="$NAMESPACE" \
     -e SERVICE_PORT="$SERVICE_PORT" \
+    -e HOSTNAME="$HOSTNAME" \
     -e TAILSCALE_DOMAIN="$TAILSCALE_DOMAIN"
 check_command_success "Create Tailscale ingress"
 
@@ -139,10 +144,10 @@ else
     echo ""
     echo "✅ TAILSCALE INGRESS CREATED SUCCESSFULLY"
     echo "Service '$SERVICE_NAME' is now accessible at:"
-    echo "  https://$SERVICE_NAME.$TAILSCALE_DOMAIN"
+    echo "  https://$HOSTNAME.$TAILSCALE_DOMAIN"
     echo ""
     echo "Note: It may take 1-2 minutes for the DNS to become available"
-    echo "Test with: curl https://$SERVICE_NAME.$TAILSCALE_DOMAIN"
+    echo "Test with: curl https://$HOSTNAME.$TAILSCALE_DOMAIN"
 fi
 
 echo "-----------------------------------------------------------"

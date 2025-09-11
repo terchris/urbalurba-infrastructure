@@ -1,5 +1,5 @@
 #!/bin/bash
-# filename: 804-tailscale-tunnel-delete.sh
+# filename: 805-tailscale-tunnel-delete.sh
 # description: Complete cleanup of Tailscale infrastructure (mirrors Cloudflare 822 pattern)
 # 
 # This script provides comprehensive cleanup of all Tailscale infrastructure:
@@ -15,8 +15,8 @@
 # - Valid kubeconfig file
 # - Optional: Tailscale API credentials for automatic device cleanup
 #
-# Usage: ./804-tailscale-tunnel-delete.sh [kubeconfig-path]
-# Example: ./804-tailscale-tunnel-delete.sh /mnt/urbalurbadisk/kubeconfig/kubeconf-all
+# Usage: ./805-tailscale-tunnel-delete.sh [kubeconfig-path]
+# Example: ./805-tailscale-tunnel-delete.sh /mnt/urbalurbadisk/kubeconfig/kubeconf-all
 #
 # What gets deleted:
 # - Tailscale cluster ingress (traefik-ingress in kube-system namespace)

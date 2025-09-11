@@ -58,13 +58,15 @@ Before starting, ensure you have:
 
 ## 📋 Script Overview
 
-Three scripts manage the complete Tailscale setup (mirrors Cloudflare pattern):
+Five scripts manage the complete Tailscale setup:
 
 | Script | Purpose | When to Use | Parameters |
 |--------|---------|-------------|------------|
 | `801-tailscale-tunnel-setup.sh` | Sets up Tailscale on provision-host | First time setup | None |
 | `802-tailscale-tunnel-deploy.sh` | Deploys operator to cluster | After host setup | `[cluster-hostname]` |
-| `804-tailscale-tunnel-delete.sh` | Removes everything | Clean up / start over | None |
+| `803-tailscale-tunnel-addhost.sh` | Add individual service ingress | After operator deployed | `<service> [namespace] [port] [hostname]` |
+| `804-tailscale-tunnel-deletehost.sh` | Remove individual service ingress | When removing a service | `<hostname>` |
+| `805-tailscale-tunnel-delete.sh` | Removes everything | Clean up / start over | None |
 
 ## 🚀 Quick Start Guide
 
@@ -214,7 +216,28 @@ cd /mnt/urbalurbadisk
 2. **Individual ingresses**: Create separate Tailscale devices for each service
 3. **External DNS**: Use CNAME records with your own domain provider
 
-### Step 10: Test Public Internet Access
+### Step 10: Add Individual Services (Workaround for No Wildcard Support)
+
+Since Tailscale doesn't support wildcard DNS, you can create individual public URLs for each service:
+
+```bash
+# Add a service with default settings (hostname = service name)
+./networking/tailscale/803-tailscale-tunnel-addhost.sh whoami
+
+# Add a service with custom hostname for cleaner URLs
+./networking/tailscale/803-tailscale-tunnel-addhost.sh authentik-server authentik 80 authentik
+
+# Remove a service
+./networking/tailscale/804-tailscale-tunnel-deletehost.sh whoami
+```
+
+Each service gets:
+- Its own Tailscale pod (resource overhead)
+- Its own public URL (e.g., https://whoami.dog-pence.ts.net)
+- Routing through Traefik to maintain existing patterns
+- Public internet access via Funnel
+
+### Step 11: Test Public Internet Access
 ```bash
 # Your cluster is now publicly accessible from anywhere on the internet:
 curl https://k8s.dog-pence.ts.net
@@ -238,8 +261,8 @@ curl https://k8s.dog-pence.ts.net
 
 To completely remove Tailscale and start over:
 ```bash
-# Delete everything (mirrors Cloudflare 822 pattern)
-./networking/tailscale/804-tailscale-tunnel-delete.sh
+# Delete everything
+./networking/tailscale/805-tailscale-tunnel-delete.sh
 ```
 
 **What gets deleted:**

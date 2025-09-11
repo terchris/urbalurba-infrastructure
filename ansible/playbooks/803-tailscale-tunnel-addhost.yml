@@ -29,7 +29,8 @@
     ingress_namespace: "kube-system"
     service_port_int: "{{ SERVICE_PORT | default(80) | int }}"
     TAILSCALE_DOMAIN: "{{ TAILSCALE_DOMAIN | default('') }}"
-    ingress_name: "{{ SERVICE_NAME }}-tailscale"
+    HOSTNAME: "{{ HOSTNAME | default(SERVICE_NAME) }}"
+    ingress_name: "{{ HOSTNAME | default(SERVICE_NAME) }}-tailscale"
     
   tasks:
     - name: "01 Validate required parameters"
@@ -109,27 +110,21 @@
             annotations:
               tailscale.com/funnel: "true"
               tailscale.com/tags: "tag:k8s-operator"
-              tailscale.com/hostname: "{{ SERVICE_NAME }}"
+              tailscale.com/hostname: "{{ HOSTNAME }}"
               tailscale.com/expose-metrics: "true"
             labels:
               created-by: "tailscale-tunnel-addhost"
               service-name: "{{ SERVICE_NAME }}"
           spec:
             ingressClassName: tailscale
+            defaultBackend:
+              service:
+                name: "traefik"
+                port:
+                  number: 80
             tls:
               - hosts:
-                  - "{{ SERVICE_NAME }}"
-            rules:
-              - host: "{{ SERVICE_NAME }}.{{ TAILSCALE_DOMAIN }}"
-                http:
-                  paths:
-                    - path: /
-                      pathType: Prefix
-                      backend:
-                        service:
-                          name: "traefik"
-                          port:
-                            number: 80
+                  - "{{ HOSTNAME }}"
         kubeconfig: "{{ kubeconfig_file }}"
         state: present
 
@@ -173,7 +168,7 @@
           - "Port: {{ SERVICE_PORT }}"
           - "Ingress: {{ ingress_name }}"
           - "Hostname: {{ ingress_hostname | default('Pending...') }}"
-          - "URL: https://{{ SERVICE_NAME }}.{{ TAILSCALE_DOMAIN }}"
+          - "URL: https://{{ HOSTNAME }}.{{ TAILSCALE_DOMAIN }}"
           - ""
           - "⏱️  Note: DNS propagation may take 1-2 minutes"
 
@@ -184,7 +179,7 @@
 
     - name: "16 Test service connectivity"
       ansible.builtin.uri:
-        url: "https://{{ SERVICE_NAME }}.{{ TAILSCALE_DOMAIN }}"
+        url: "https://{{ HOSTNAME }}.{{ TAILSCALE_DOMAIN }}"
         method: GET
         status_code: [200, 301, 302, 404]  # Accept various response codes
         validate_certs: false
@@ -199,7 +194,7 @@
       ansible.builtin.debug:
         msg:
           - "🌐 Connectivity test results:"
-          - "URL: https://{{ SERVICE_NAME }}.{{ TAILSCALE_DOMAIN }}"
+          - "URL: https://{{ HOSTNAME }}.{{ TAILSCALE_DOMAIN }}"
           - "Status: {{ connectivity_test.status | default('Failed to connect') }}"
           - "{% if connectivity_test.status is defined %}✅ Service is accessible via Tailscale Funnel!{% else %}❌ Service not yet accessible (may need more time for DNS){% endif %}"
 

@@ -182,22 +182,45 @@
       become: yes
       failed_when: false
 
-    - name: "28 Disconnect from Tailscale"
+    - name: "28 Disconnect from Tailscale (logout)"
       ansible.builtin.shell:
         cmd: "tailscale logout"
       become: yes
       failed_when: false
+      ignore_errors: yes
 
-    - name: "29 Stop tailscaled daemon"
+    - name: "29 Force disconnect with down command"
+      ansible.builtin.shell:
+        cmd: "tailscale down"
+      become: yes
+      failed_when: false
+      ignore_errors: yes
+
+    - name: "30 Stop tailscaled daemon"
       ansible.builtin.shell:
         cmd: "pkill -f tailscaled"
       become: yes
       failed_when: false
+      ignore_errors: yes
 
-    - name: "30 Display completion message"
+    - name: "31 Clean up Tailscale state"
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /var/lib/tailscale
+        - /var/run/tailscale
+      become: yes
+      failed_when: false
+      ignore_errors: yes
+
+    - name: "32 Display completion message"
       ansible.builtin.debug:
         msg:
-          - "🎉 Complete Tailscale setup and test completed successfully!"
+          - "🎉 Tailscale setup completed successfully!"
+          - "✅ Tailscale installed and tested"
+          - "✅ Provision-host disconnected from Tailscale (cleanup completed)"
+          - ""
           - "🔗 Next steps:"
-          - "   1. Run: ./networking/tailscale/802-tailscale-tunnel-deploy.sh k8s"
-          - "   2. This will deploy the Tailscale operator for permanent access"
+          - "   1. Run: ./networking/tailscale/802-tailscale-tunnel-deploy.sh"
+          - "   2. This will deploy the Tailscale operator to Kubernetes for cluster access"
