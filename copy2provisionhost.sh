@@ -45,6 +45,31 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+# backup existing kubernetes-secrets.yml file inside provision-host container
+echo "Creating backup of existing kubernetes-secrets.yml file..."
+if docker exec provision-host test -f /mnt/urbalurbadisk/topsecret/kubernetes/kubernetes-secrets.yml 2>/dev/null; then
+  # Create backup inside the container using sudo to avoid permission issues
+  BACKUP_RESULT=$(docker exec provision-host bash -c "
+    BACKUP_FILE=\"/mnt/urbalurbadisk/topsecret/kubernetes/kubernetes-secrets.yml.backup.\$(date +%Y%m%d_%H%M%S)\"
+    if sudo cp /mnt/urbalurbadisk/topsecret/kubernetes/kubernetes-secrets.yml \"\$BACKUP_FILE\" 2>/dev/null; then
+      sudo chown \$(whoami):\$(whoami) \"\$BACKUP_FILE\" 2>/dev/null || true
+      echo 'Backup created successfully inside container'
+    else
+      echo 'Backup failed - permission denied even with sudo'
+    fi
+  ")
+  echo "$BACKUP_RESULT"
+else
+  echo "No existing file to backup"
+fi
+
+# copy topsecret folder to the provision-host container
+docker cp topsecret/. provision-host:/mnt/urbalurbadisk/topsecret
+if [ $? -ne 0 ]; then
+    echo "Error copying topsecret folder to provision-host container"
+    exit 1
+fi
+
 # write sucess message
 echo "Successfully copied files to provision-host container"
 # exit with success

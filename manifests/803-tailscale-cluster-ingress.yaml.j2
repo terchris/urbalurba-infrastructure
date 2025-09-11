@@ -14,8 +14,10 @@ metadata:
   namespace: kube-system
   annotations:
     tailscale.com/funnel: "true"  # Enables public internet access via Tailscale Funnel
-    tailscale.com/tags: "tag:k8s"  # Explicitly define tags
+    tailscale.com/tags: "tag:k8s-operator"  # Explicitly define tags
     tailscale.com/expose-metrics: "true"  # Expose metrics for monitoring
+    tailscale.com/hostname: "{{ TAILSCALE_CLUSTER_HOSTNAME }}"  # Explicit hostname
+    tailscale.com/experimental-forward-cluster-traffic-via-ingress: "true"  # Enable wildcard routing
 spec:
   ingressClassName: tailscale
   defaultBackend:

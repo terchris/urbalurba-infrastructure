@@ -1,32 +1,44 @@
-# Tailscale Funnel Setup Guide
+# Tailscale Tunnel Setup Guide
 
-**Purpose**: Quick internet access with automatic .ts.net domains  
-**Audience**: Users wanting fast, secure internet connectivity  
-**Time Required**: 15-30 minutes  
-**Prerequisites**: Working cluster on .localhost domains
+IMPORTANT:
+Found out that tailscale does not support wildchard routing. eg *.k8s.dog-pence.ts.net so that 
+jalla.k8s.dog-pence.ts.net and balla.k8s.dog-pence.ts.net is routed to the tunnel.
+This is a big setback and i spent a full day trying to solve it until i found this url https://github.com/tailscale/tailscale/issues/1196
+
+So the rest of the file here only works for routing https://k8s.dog-pence.ts.net to the cluster.
+
+
+
+
+**Purpose**: Wildcard internet access with automatic .ts.net domains  
+**Audience**: Users wanting secure, invite-based internet connectivity  
+**Time Required**: 10-15 minutes  
+**Prerequisites**: Working cluster with Traefik ingress
 
 ## 🚀 Quick Summary
 
-Transform your local cluster from `http://service.localhost` to `https://service.your-device.ts.net` in minutes. No domain purchase needed, automatic HTTPS, invite-based access control.
+Transform your local cluster from `http://service.localhost` to `https://k8s.dog-pence.ts.net` with public internet access. Tailscale provides automatic HTTPS, zero-config networking, and public Funnel capability.
 
-## 🏗️ How Tailscale Funnel Works
+## 🏗️ How Tailscale Tunnel Works
 
 ### Architecture Overview
 
-Tailscale Funnel creates a secure tunnel from the internet directly to your services without requiring public IP addresses or opening firewall ports. Here's how traffic flows:
+Tailscale creates a secure mesh network with public internet access. All `k8s.dog-pence.ts.net` traffic routes to your cluster where Traefik handles internal routing:
 
-```mermaid
-graph LR
-  A[External User] -->|HTTPS Request| B[Tailscale Funnel]
-  B -->|Encrypted Tunnel| C[Your Device]
-  C -->|Local Connection| D[Kubernetes Cluster]
-  D -->|Traefik Routing| E[Your Services]
+```
+External User → https://k8s.dog-pence.ts.net
+    ↓
+Tailscale MagicDNS → k8s (cluster ingress device)  
+    ↓
+Kubernetes cluster → Traefik ingress
+    ↓  
+Default backend → nginx catch-all or service routing
 ```
 
 **Key Components:**
-1. **Tailscale Funnel** - Provides HTTPS endpoints on `.ts.net` domains
-2. **Your Device** - Runs Tailscale client and Kubernetes cluster  
-3. **Traefik** - Routes traffic to appropriate services based on HostRegexp patterns
+1. **Tailscale MagicDNS** - Provides automatic `k8s.dog-pence.ts.net` routing (single hostname only)
+2. **k8s device** - Tailscale ingress point for your cluster (named from TAILSCALE_CLUSTER_HOSTNAME)
+3. **Traefik** - Routes traffic based on HostRegexp patterns to services
 4. **Your Services** - whoami, openwebui, authentik, etc.
 
 **Security Benefits:**
@@ -38,570 +50,321 @@ graph LR
 ## ✅ Prerequisites
 
 Before starting, ensure you have:
-- [ ] Cluster running successfully on .localhost domains
-- [ ] Services accessible at `http://whoami.localhost`, `http://openwebui.localhost`, etc.
-- [ ] Rancher Desktop running your Kubernetes cluster
-- [ ] Internet connection for Tailscale signup
+- [ ] Kubernetes cluster running (Rancher Desktop or similar)
+- [ ] Traefik ingress controller deployed  
+- [ ] Services accessible locally (e.g., `http://whoami.localhost`)
+- [ ] Access to provision-host container
+- [ ] Valid Tailscale account and credentials
 
-## 📋 Step-by-Step Setup (15 minutes)
+## 📋 Script Overview
 
-### Step 1: Create Tailscale Account (5 minutes)
+Three scripts manage the complete Tailscale setup (mirrors Cloudflare pattern):
 
-1. **Visit** [tailscale.com](https://tailscale.com) and sign up with:
-   - Google account
-   - Microsoft account
-   - GitHub account
-   - Or email/password
+| Script | Purpose | When to Use | Parameters |
+|--------|---------|-------------|------------|
+| `801-tailscale-tunnel-setup.sh` | Sets up Tailscale on provision-host | First time setup | None |
+| `802-tailscale-tunnel-deploy.sh` | Deploys operator to cluster | After host setup | `[cluster-hostname]` |
+| `804-tailscale-tunnel-delete.sh` | Removes everything | Clean up / start over | None |
 
-2. **Create your tailnet** (your private network)
-   - Your tailnet name will be something like `provision-host.dog-pence.ts.net`
-   - This becomes part of your service URLs
+## 🚀 Quick Start Guide
 
-### Step 2: Install Tailscale on Your Machine (5 minutes)
+### Step 1: Create Tailscale Account
 
-**macOS**:
+1. Visit [tailscale.com](https://tailscale.com) and sign up
+2. Your tailnet will be created (e.g., `yourusername.github`) → **Note this as `TAILSCALE_TAILNET`**
+
+### Step 2: Configure Access Control Tags (Prepare for auth key)
+
+1. Go to [Tailscale Access Controls](https://login.tailscale.com/admin/acls)
+2. Click **"JSON editor"** (top right of the policy editor)
+3. **Replace the entire content with this clean configuration:**
+   ```json
+   {
+     "tagOwners": {
+       "tag:k8s-operator": ["autogroup:admin"]
+     },
+     "nodeAttrs": [
+       {
+         "target": ["tag:k8s-operator"],
+         "attr": ["funnel"]
+       }
+     ],
+     "acls": [
+       {"action": "accept", "src": ["*"], "dst": ["*:*"]}
+     ]
+   }
+   ```
+4. Click "Save"
+
+**What this does:**
+- `tagOwners`: Allows admins to assign `tag:k8s-operator` tags
+- `nodeAttrs`: Enables **Funnel** capability for devices with `tag:k8s-operator` (public internet access)
+- `acls`: Allows all devices to communicate with each other (simple setup)
+
+### Step 3: Create Auth Key (for provision-host authentication with Funnel)
+
+1. Go to [Auth Keys page](https://login.tailscale.com/admin/settings/keys)
+2. Click "Generate auth key" 
+3. **Description:** `urbalurba-k8s-funnel`
+4. **Reusable:** ✅ Check this box (allows multiple devices)
+5. **Expiration:** `90` days 
+6. **Ephemeral:** ❌ Leave unchecked (permanent infrastructure)
+7. **Tags:** Type `tag:k8s-operator` and click "Add tags" 
+   - The `tag:k8s-operator` is required for Funnel capability (public internet access)
+8. Click "Generate key"
+9. Copy the **auth key** → **This becomes `TAILSCALE_SECRET`**
+
+**Why tag:k8s-operator?** 
+- The ACL policy grants Funnel capability only to devices with `tag:k8s-operator`
+- This allows the device to expose services to the public internet
+- Without this tag, you'll only get internal tailnet connectivity
+
+### Step 4: Create OAuth Client (for cluster operations)
+
+1. Go to [OAuth clients page](https://login.tailscale.com/admin/settings/oauth) 
+2. Click "Generate OAuth client"
+3. **Description:** `urbalurba-k8s-oauth`
+4. **Select required scopes**
+   - **DNS:** Select **Write** (enable MagicDNS features if needed)
+   - **Devices → Core:** Select **Write** (create/delete cluster devices)
+     - **Tags (required for write scope):** Click "Add tags" and add `tag:k8s-operator`
+     - This allows the OAuth client to create devices with the k8s-operator tag
+   - **Auth keys:** Select **Write** ← **REQUIRED** (allows operator to create internal auth keys)
+     - **Tags (required for write scope):** Click "Add tags" and add `tag:k8s-operator`   
+   - **Feature Settings:** Select **Write** (enable HTTPS/Funnel features)
+   - Leave all other scopes **unselected** (principle of least privilege)
+5. Click "Generate client"
+6. Copy the **Client ID** → **This becomes `TAILSCALE_CLIENTID`**
+7. Copy the **Client Secret** → **This becomes `TAILSCALE_CLIENTSECRET`**
+   
+   ⚠️ **Important:** Save these values immediately - you can't view the secret again!
+
+**Why these scopes?**
+- **Auth keys (Write)**: **CRITICAL** - Allows Tailscale operator to create internal auth keys (without this you get 403 errors)
+- **Devices Core (Write)**: Allows Tailscale operator to create/delete cluster ingress devices
+- **DNS (Write)**: Enables MagicDNS configuration for wildcard routing
+- **Feature Settings (Write)**: Allows enabling HTTPS/Funnel for internet access
+
+### Step 5: Configure MagicDNS Domain
+
+1. Go to [Tailscale Admin Console → DNS](https://login.tailscale.com/admin/dns)
+2. Enable **MagicDNS** 
+3. Note your **MagicDNS domain** (e.g., `dog-pence.ts.net`) → **This becomes `TAILSCALE_DOMAIN`**
+
+### Step 6: Update Kubernetes Secrets
+
+Edit `topsecret/kubernetes/kubernetes-secrets.yml` with your values:
 ```bash
-brew install tailscale
+# Update these Tailscale variables with values from Steps 1-5:
+TAILSCALE_SECRET: tskey-auth-YOUR-AUTH-KEY           # From Step 3: Auth Key
+TAILSCALE_TAILNET: your-tailnet-name                # From Step 1: Your tailnet name
+TAILSCALE_DOMAIN: your-magic-dns-domain             # From Step 5: MagicDNS domain  
+TAILSCALE_CLUSTER_HOSTNAME: k8s                     # Becomes: *.k8s.[your-domain].ts.net
+TAILSCALE_CLIENTID: YOUR-OAUTH-CLIENT-ID            # From Step 4: OAuth Client ID
+TAILSCALE_CLIENTSECRET: tskey-client-YOUR-OAUTH-CLIENT-SECRET  # From Step 4: OAuth Client Secret
 ```
 
-**Windows**:
-- Download from [tailscale.com/download](https://tailscale.com/download)
-- Run installer as Administrator
+**Important: TAILSCALE_CLUSTER_HOSTNAME:**
+- This becomes the base hostname for ALL your cluster services
+- Example: If set to `k8s` and your domain is `dog-pence.ts.net`:
+  - `whoami.k8s.dog-pence.ts.net` → Routes to whoami service
+  - `grafana.k8s.dog-pence.ts.net` → Routes to Grafana
+  - `*.k8s.dog-pence.ts.net` → Routes to any service via Traefik
 
-**Linux (Ubuntu/Debian)**:
+### Step 7: Apply Secrets to Kubernetes
 ```bash
+# Apply updated secrets to cluster
+kubectl apply -f topsecret/kubernetes/kubernetes-secrets.yml
+
+# Verify secrets are applied
+kubectl get secret urbalurba-secrets -o yaml | grep TAILSCALE
+```
+
+### Step 8: Setup Tailscale on Provision-Host
+```bash
+# From your Mac host, copy scripts and access provision-host
+./copy2provisionhost.sh
+docker exec -it provision-host bash
+cd /mnt/urbalurbadisk
+
+# Setup Tailscale daemon and authenticate
+./networking/tailscale/801-tailscale-tunnel-setup.sh
+```
+
+### Step 9: Deploy Tailscale Operator to Cluster  
+```bash
+# Deploy operator (uses TAILSCALE_CLUSTER_HOSTNAME from secrets, or specify your own)
+./networking/tailscale/802-tailscale-tunnel-deploy.sh
+# Or override with custom hostname:
+# ./networking/tailscale/802-tailscale-tunnel-deploy.sh my-custom-name
+```
+
+## ⚠️ Important Limitation: No Wildcard DNS Support
+
+**Tailscale does not support wildcard DNS routing.** This means:
+
+- ✅ **Works**: `https://k8s.dog-pence.ts.net` (exact hostname)
+- ❌ **Does NOT work**: `https://whoami.k8s.dog-pence.ts.net` (subdomain)
+- ❌ **Does NOT work**: `https://SERVICE.k8s.dog-pence.ts.net` (wildcard pattern)
+
+**Reference**: [Tailscale GitHub Issue #1196](https://github.com/tailscale/tailscale/issues/1196) - This feature was requested but intentionally not implemented.
+
+**Workaround Options**:
+1. **Path-based routing**: Access services via `https://k8s.dog-pence.ts.net/SERVICE`
+2. **Individual ingresses**: Create separate Tailscale devices for each service
+3. **External DNS**: Use CNAME records with your own domain provider
+
+### Step 10: Test Public Internet Access
+```bash
+# Your cluster is now publicly accessible from anywhere on the internet:
+curl https://k8s.dog-pence.ts.net
+
+# ⚠️ IMPORTANT: Wildcard DNS does not work with Tailscale
+# URLs like https://whoami.k8s.dog-pence.ts.net will NOT work
+# See: https://github.com/tailscale/tailscale/issues/1196
+
+# For service access, you need to use:
+# - Path-based routing: https://k8s.dog-pence.ts.net/whoami
+# - Individual Tailscale ingresses (separate devices)
+# - External DNS with CNAME records
+
+# Test from any computer (not just tailnet members):
+# - Anyone can access https://k8s.dog-pence.ts.net from any browser
+# - No Tailscale client needed for visitors
+# - Full public internet exposure via Funnel
+```
+
+## 🗑️ Complete Cleanup
+
+To completely remove Tailscale and start over:
+```bash
+# Delete everything (mirrors Cloudflare 822 pattern)
+./networking/tailscale/804-tailscale-tunnel-delete.sh
+```
+
+**What gets deleted:**
+- All Tailscale ingresses and services
+- Tailscale operator from cluster  
+- Tailscale devices from your tailnet
+- Tailscale daemon on provision-host
+- Local configuration files
+
+## 🔧 Troubleshooting
+
+### Error: "requested tags [tag:k8s-operator] are invalid or not permitted"
+
+This error means your OAuth client doesn't have permission for `tag:k8s-operator`. To fix:
+
+1. Go to [OAuth clients page](https://login.tailscale.com/admin/settings/oauth)
+2. Edit your `urbalurba-k8s-oauth` client
+3. In **Devices → Core** scope, ensure `tag:k8s-operator` is added
+4. In **Auth keys** scope, ensure `tag:k8s-operator` is added
+5. Generate a new client secret (required after scope changes)
+6. Update `TAILSCALE_CLIENTSECRET` in your secrets file
+7. Apply with `kubectl apply -f topsecret/kubernetes/kubernetes-secrets.yml`
+8. Run the script again
+
+**Key Point:** The operator uses `tag:k8s-operator` for all devices, including itself and cluster ingress devices with Funnel capability.
+
+### Expired Tailscale Keys
+
+If you get authentication errors, create new keys at [Tailscale Admin Console](https://login.tailscale.com/admin/settings/keys):
+
+**Create OAuth Client:**
+1. Click "Generate auth key" → "OAuth client"
+2. Name: `urbalurba-k8s`  
+3. Scopes: `device:create`, `device:delete`, `device:read`
+4. Copy Client ID and Client Secret
+
+**Create Auth Key:**
+1. Click "Generate auth key" → "Auth key"
+2. Tags: `tag:provision-host` (optional)
+3. Expiry: 90 days
+4. Copy the auth key
+
+**Update secrets file:**
+```bash
+# Edit topsecret/kubernetes/kubernetes-secrets.yml
+TAILSCALE_SECRET: tskey-auth-YOUR-NEW-AUTH-KEY
+TAILSCALE_CLIENTID: YOUR-NEW-CLIENT-ID
+TAILSCALE_CLIENTSECRET: tskey-client-YOUR-NEW-CLIENT-SECRET
+
+# Apply to cluster
+kubectl apply -f topsecret/kubernetes/kubernetes-secrets.yml
+```
+
+### Script Execution Issues
+
+**Check Tailscale status in provision-host:**
+```bash
+# Access provision-host container
+docker exec -it provision-host bash
+
+# Check Tailscale daemon
+tailscale status
+
+# Check cluster operator
+kubectl get pods -n tailscale
+kubectl logs -n tailscale -l app=operator
+```
+
+**Check cluster connectivity:**
+```bash
+# From provision-host container
+kubectl get ingressroute -A
+kubectl describe ingress -n kube-system
+```
+
+### Tailscale Installation Issues
+
+Tailscale is pre-installed in the provision-host container. If missing:
+```bash
+# From provision-host container
 curl -fsSL https://tailscale.com/install.sh | sh
 ```
 
-### Step 3: Connect Your Machine (2 minutes)
+## 📚 Architecture Details
 
-1. **Login to Tailscale**:
-   ```bash
-   sudo tailscale up
-   ```
-
-2. **Follow the authentication URL** that appears
-3. **Confirm your device** appears in [Tailscale Admin Console](https://login.tailscale.com/admin/machines)
-
-### Step 4: Enable Funnel Feature (5 minutes)
-
-Tailscale Funnel requires **two-level authorization** for security:
-
-#### 4a. Tailnet-Level Authorization (First)
-
-1. **Attempt to enable Funnel** on your machine:
-   ```bash
-   sudo tailscale funnel on
-   ```
-
-2. **You'll get an authorization URL**:
-   ```
-   Funnel is not enabled on your tailnet.
-   To enable, visit:
-   https://login.tailscale.com/f/funnel?node=XXXXXXXX
-   ```
-
-3. **Visit the URL and authorize**:
-   - Sign in to your Tailscale account
-   - Click **"Enable Funnel"** to authorize this capability for your entire tailnet
-   - This modifies your tailnet policy file to include the Funnel feature
-
-#### 4b. Node-Level Authorization (Second)
-
-1. **Run the command again**:
-   ```bash
-   sudo tailscale funnel on
-   ```
-
-2. **You may see a second authorization**:
-   ```
-   Funnel is enabled, but the list of allowed nodes in the tailnet policy file 
-   does not include the one you are using. To give access to this node visit:
-   https://login.tailscale.com/f/funnel?node=XXXXXXXX
-   ```
-
-3. **Visit the second URL and authorize**:
-   - Click the node authorization URL
-   - Authorize this specific device to use Funnel
-   - This updates your tailnet policy to include this node
-
-**Why Two Levels?**
-- **Tailnet-level**: Enables the feature for your organization
-- **Node-level**: Controls which specific devices can expose services
-
-### Step 5: Expose Your Services (5 minutes)
-
-1. **Open terminal** where your cluster is running
-
-2. **For each service**, run the funnel command:
-   ```bash
-   # Expose whoami service (example)
-   tailscale funnel 80
-
-   # This creates: https://whoami.your-device.ts.net
-   ```
-
-3. **Test your service**:
-   ```bash
-   curl https://whoami.your-device.ts.net
-   ```
-
-## 🔧 Configuration Examples
-
-### Expose Multiple Services
-
-```bash
-# Terminal 1 - Expose whoami
-tailscale funnel --set-path /whoami 80
-
-# Terminal 2 - Expose openwebui  
-tailscale funnel --set-path /openwebui 80
-
-# Terminal 3 - Expose authentik
-tailscale funnel --set-path /authentik 80
+### Wildcard Routing Flow
+```
+1. External request: https://whoami.k8s.dog-pence.ts.net
+2. Tailscale MagicDNS resolves *.dog-pence.ts.net to k8s device
+3. k8s device forwards to Traefik in Kubernetes
+4. Traefik matches HostRegexp(`whoami\..+`) and routes to whoami service
 ```
 
-**Result**: All services available at:
-- `https://your-device.ts.net/whoami`
-- `https://your-device.ts.net/openwebui`
-- `https://your-device.ts.net/authentik`
+### Script Dependencies
+- **801** → **802** → **803** (sequential execution required)
+- **804** can be run anytime for cleanup
 
-### Individual Service Domains
+### Integration with Other Systems
+- Works alongside Cloudflare tunnels (different domains)
+- Leverages existing Traefik IngressRoute configurations
+- Uses HostRegexp patterns for automatic service discovery
 
-```bash
-# Create subdomain for each service
-tailscale funnel --hostname whoami.your-device.ts.net 80
-tailscale funnel --hostname openwebui.your-device.ts.net 80
-tailscale funnel --hostname authentik.your-device.ts.net 80
-```
+## ✅ Verification
 
-**Result**: Individual domains:
-- `https://whoami.your-device.ts.net`
-- `https://openwebui.your-device.ts.net`  
-- `https://authentik.your-device.ts.net`
-
----
-
-## 🚀 Advanced Setup: Kubernetes Operator (Production)
-
-For production deployments or advanced scenarios, use the Tailscale Kubernetes Operator instead of manual funnel commands.
-
-### When to Use the Operator
-
-✅ **Production deployments** requiring high availability  
-✅ **Multiple services** that need automatic management  
-✅ **Team environments** where manual setup isn't practical  
-✅ **Integration with CI/CD** pipelines  
-
-### Prerequisites for Operator Setup
-
-- [ ] Kubernetes cluster running (your current setup)
-- [ ] Helm package manager installed
-- [ ] Tailscale OAuth credentials (from [Tailscale Admin Console](https://login.tailscale.com/admin/settings/keys))
-
-### Step-by-Step Operator Installation
-
-#### 1. Create OAuth Credentials (5 minutes)
-
-1. **Go to** [Tailscale Admin Console → Settings → Keys](https://login.tailscale.com/admin/settings/keys)
-2. **Click** "Generate auth key" → "OAuth client"
-3. **Copy** the Client ID and Client Secret
-4. **Set scopes**: `device:create`, `device:delete`
-
-#### 2. Install Tailscale Operator (10 minutes)
+After setup, verify your cluster is accessible:
 
 ```bash
-# Create Tailscale namespace
-kubectl create namespace tailscale
+# Test main services via wildcard routing
+curl https://whoami.k8s.dog-pence.ts.net
+curl https://openwebui.k8s.dog-pence.ts.net
+curl https://authentik.k8s.dog-pence.ts.net
 
-# Add Tailscale Helm repository
-helm repo add tailscale https://pkgs.tailscale.com/helmcharts
-helm repo update
+# Check Tailscale device status
+tailscale status | grep k8s
 
-# Install operator with OAuth credentials
-helm install tailscale-operator tailscale/tailscale-operator \
-  --namespace tailscale \
-  --set-string oauth.clientId=YOUR_OAUTH_CLIENT_ID \
-  --set-string oauth.clientSecret=YOUR_OAUTH_CLIENT_SECRET
-```
-
-#### 3. Create Tailscale Ingress for Traefik (5 minutes)
-
-```yaml
-# Save as tailscale-traefik-ingress.yaml
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: traefik-tailscale-ingress
-  namespace: kube-system  # Same namespace as Traefik
-  annotations:
-    tailscale.com/funnel: "true"  # Enable internet access
-    tailscale.com/tags: "tag:k8s"  # Optional: tag for ACL policies
-spec:
-  ingressClassName: tailscale
-  defaultBackend:
-    service:
-      name: traefik
-      port:
-        number: 80
-  tls:
-    - hosts:
-        - rancher-traefik  # Will become rancher-traefik.your-tailnet.ts.net
-```
-
-```bash
-# Apply the ingress
-kubectl apply -f tailscale-traefik-ingress.yaml
-```
-
-#### 4. Verify Operator Setup
-
-```bash
-# Check operator status
+# Verify k8s device is online
 kubectl get pods -n tailscale
-
-# Check created Tailscale proxy
-kubectl get ingress -A | grep tailscale
-
-# Get the Tailscale URL
-kubectl describe ingress traefik-tailscale-ingress -n kube-system
 ```
 
-### Operator Benefits vs Manual Setup
-
-| Feature | Manual Funnel | Kubernetes Operator |
-|---------|---------------|-------------------|
-| **Setup Complexity** | Simple | Advanced |
-| **High Availability** | No | Yes |
-| **Automatic Management** | No | Yes |
-| **Multiple Services** | Manual each | Automatic |
-| **Production Ready** | Basic | Enterprise |
-| **Team Deployment** | Individual setup | Centralized |
-
-## ✅ Verification Steps
-
-### Test Your Setup
-
-1. **Check Funnel Status**:
-   ```bash
-   tailscale funnel status
-   ```
-
-2. **Test from External Network**:
-   - Use your phone's mobile data (not WiFi)
-   - Visit `https://whoami.your-device.ts.net`
-   - Should see the whoami response
-
-3. **Test Authentication** (if using Authentik):
-   - Visit `https://authentik.your-device.ts.net`
-   - Should see Authentik login page
-
-### Verify HostRegexp Routing
-
-Your existing manifests automatically work with Tailscale domains because they use HostRegexp patterns:
-
-```yaml
-# This pattern in your manifests:
-match: HostRegexp(`whoami\..+`)
-
-# Automatically handles:
-# - whoami.localhost (development)
-# - whoami.provision-host.dog-pence.ts.net (Tailscale)
-# - whoami.yourcompany.com (Cloudflare if added later)
-```
-
-## 🔒 Security & Access Control
-
-### Invite Team Members
-
-1. **In Tailscale Admin Console**:
-   - Go to **Users** → **Invite users**
-   - Send invitation email
-   - They get access to your .ts.net services automatically
-
-2. **Set Access Permissions**:
-   - Use ACL policies to control who can access what
-   - Services are only accessible to your tailnet members
-
-### Fine-Grained Control
-
-```json
-// Example ACL for team access
-{
-  "acls": [
-    {
-      "action": "accept",
-      "src": ["group:developers"],
-      "dst": ["your-device.ts.net:80,443"]
-    }
-  ]
-}
-```
-
-## ❓ Troubleshooting
-
-### Authorization Issues
-
-#### Two-Level Authorization Problems
-**Issue**: "handler does not exist" or "Funnel not working"  
-**Cause**: Incomplete authorization process  
-**Solution**:
-```bash
-# 1. Check current authorization status
-tailscale funnel status
-
-# 2. If no configuration, restart authorization
-sudo tailscale funnel on
-# Follow both authorization URLs completely
-
-# 3. Verify node is authorized
-tailscale status --peers=false --self=true
-```
-
-#### ACL Policy Issues
-**Issue**: "node not allowed to use funnel"  
-**Cause**: Node not in tailnet policy file  
-**Solution**:
-1. Go to [Tailscale Admin Console → Access Controls](https://login.tailscale.com/admin/acls)
-2. Verify your policy includes:
-```json
-{
-  "nodeAttrs": [
-    {
-      "target": ["autogroup:members"],
-      "attr": ["funnel"]
-    }
-  ]
-}
-```
-3. Ensure your node is listed under authorized nodes
-
-### Connection and Routing Issues
-
-#### Service Not Accessible Externally
-**Check 1 - Tailscale Connection**:
-```bash
-# Verify Tailscale connectivity
-tailscale status
-# Should show your device connected
-
-# Check funnel configuration
-sudo tailscale funnel status
-# Should show active tunnels
-```
-
-**Check 2 - Local Service Running**:
-```bash
-# Test local access first
-curl http://whoami.localhost
-curl http://openwebui.localhost
-
-# If these fail, your services aren't running locally
-kubectl get pods -A
-kubectl get svc -A
-```
-
-**Check 3 - HostRegexp Routing**:
-```bash
-# Verify Traefik routing
-kubectl get ingressroute -A
-
-# Check Traefik logs
-kubectl logs -n kube-system -l app.kubernetes.io/name=traefik
-```
-
-#### Certificate and SSL Issues
-**Issue**: "Certificate warnings" or "TLS errors"  
-**Cause**: Certificate propagation delay  
-**Solution**:
-```bash
-# Wait 10-15 minutes for certificate propagation
-# Test with --insecure flag temporarily
-curl --insecure https://whoami.your-device.ts.net
-
-# Check certificate status
-echo | openssl s_client -connect whoami.your-device.ts.net:443 -servername whoami.your-device.ts.net | openssl x509 -noout -dates
-```
-
-### Kubernetes Operator Issues
-
-#### Operator Pod Not Starting
-**Debug Commands**:
-```bash
-# Check operator status
-kubectl get pods -n tailscale
-
-# Check operator logs
-kubectl logs -n tailscale deployment/operator
-
-# Verify OAuth credentials
-kubectl get secrets -n tailscale
-kubectl describe secret tailscale-operator-oauth -n tailscale
-```
-
-#### Ingress Not Working
-**Debug Steps**:
-```bash
-# 1. Verify ingress resource
-kubectl describe ingress traefik-tailscale-ingress -n kube-system
-
-# 2. Check Tailscale proxy pod
-PROXY_POD=$(kubectl get pods -n tailscale -l tailscale.com/parent-resource-type=ingress -o name | head -1)
-kubectl logs -n tailscale $PROXY_POD
-
-# 3. Check funnel status inside proxy pod  
-kubectl exec -n tailscale $PROXY_POD -- tailscale funnel status
-
-# 4. Verify Traefik service
-kubectl describe svc traefik -n kube-system
-```
-
-### Authentication and Access Issues
-
-#### Authentik Integration Problems
-**Issue**: "Authentication loops" or "redirect errors"  
-**Cause**: OAuth callback URLs not configured for .ts.net domains  
-**Solution**:
-```bash
-# 1. Update Authentik OAuth application
-# Add your .ts.net URLs to redirect URIs:
-# https://authentik.your-device.ts.net/*
-# https://openwebui.your-device.ts.net/*
-
-# 2. Test with public service first
-curl https://whoami-public.your-device.ts.net
-
-# 3. Check Authentik logs
-kubectl logs -n authentik -l app.kubernetes.io/name=authentik
-```
-
-#### Service-Specific Access Problems
-**Debug Individual Services**:
-```bash
-# Test service accessibility pattern
-for service in whoami openwebui authentik; do
-    echo "Testing $service..."
-    curl -I https://$service.your-device.ts.net
-done
-
-# Check service endpoints
-kubectl get endpoints -A | grep -E "(whoami|openwebui|authentik)"
-```
-
-### Port and Network Issues
-
-#### Port Already in Use
-**Issue**: "Port 8000 is already in use"  
-**Solution**:
-```bash
-# Find process using the port
-sudo lsof -i :8000
-
-# Kill the process if needed
-sudo kill -9 $(sudo lsof -t -i:8000)
-
-# Or use different port
-tailscale funnel 8080  # Use port 8080 instead
-```
-
-#### Network Connectivity Problems
-**Debug Network Path**:
-```bash
-# 1. Test local cluster connectivity
-kubectl exec -it deployment/whoami -- wget -O- http://openwebui.default.svc.cluster.local
-
-# 2. Test Traefik routing from inside cluster
-kubectl run debug --image=curlimages/curl --rm -it -- curl http://traefik.kube-system.svc.cluster.local:80
-
-# 3. Test external connectivity
-curl -v https://your-device.your-tailnet.ts.net
-```
-
-### Advanced Debugging
-
-#### Comprehensive Status Check
-**Run this complete diagnostic**:
-```bash
-#!/bin/bash
-echo "=== Tailscale Status ==="
-tailscale status
-
-echo -e "\n=== Funnel Configuration ==="
-sudo tailscale funnel status
-
-echo -e "\n=== Kubernetes Services ==="
-kubectl get svc -A | grep -E "(traefik|whoami|openwebui|authentik)"
-
-echo -e "\n=== Kubernetes Pods ==="
-kubectl get pods -A | grep -E "(traefik|whoami|openwebui|authentik|tailscale)"
-
-echo -e "\n=== IngressRoutes ==="
-kubectl get ingressroute -A
-
-echo -e "\n=== Recent Traefik Logs ==="
-kubectl logs -n kube-system -l app.kubernetes.io/name=traefik --tail=10
-```
-
-#### Performance and Monitoring
-**Monitor Traffic Flow**:
-```bash
-# Monitor Tailscale traffic
-sudo tailscale status --json | jq '.Peer[] | select(.Online) | {HostName, LastSeen, TxBytes, RxBytes}'
-
-# Monitor Kubernetes ingress
-kubectl top pods -n kube-system | grep traefik
-
-# Check connection latency
-ping your-device.your-tailnet.ts.net
-```
-
-### Getting Help
-
-#### Information to Collect
-When seeking help, gather this information:
-```bash
-# System info
-tailscale version
-kubectl version --short
-docker version --format '{{.Server.Version}}'
-
-# Configuration
-tailscale status --json > tailscale-status.json
-kubectl get ingressroute -A -o yaml > ingressroutes.yaml
-kubectl get svc -A -o yaml > services.yaml
-
-# Logs
-kubectl logs -n kube-system -l app.kubernetes.io/name=traefik > traefik.log
-```
-
-#### Support Resources
-- 📚 [Tailscale Documentation](https://tailscale.com/kb/)
-- 💬 [Tailscale Community](https://tailscale.com/contact/support/)
-- 🐛 [GitHub Issues](https://github.com/tailscale/tailscale/issues)
-- 📖 [Kubernetes Operator Docs](https://tailscale.com/kb/1236/kubernetes-operator/)
-
-## 🔗 Next Steps
-
-### Add More Services
-- Any service with HostRegexp patterns automatically works
-- Use `tailscale funnel --hostname service.your-device.ts.net 80`
-
-### Add Custom Domain Later
-- [Cloudflare Setup Guide](networking-cloudflare-setup.md) - Keep Tailscale for team access
-- Both tunnels work simultaneously with your HostRegexp routing
-
-### Advanced Configuration
-- [Tailscale ACL Documentation](https://tailscale.com/kb/1018/acls/)
-- [Funnel Documentation](https://tailscale.com/kb/1223/tailscale-funnel/)
-
----
-
-## 📊 Benefits Achieved
-
-✅ **Internet Access**: Services available worldwide  
-✅ **Automatic HTTPS**: Built-in SSL certificates  
-✅ **Zero Configuration**: No DNS or firewall changes  
-✅ **Team Sharing**: Invite-based access control  
-✅ **Cost Effective**: No domain purchase required  
-
-Your cluster is now connected to the internet via Tailscale Funnel! Services are accessible securely to anyone you invite to your tailnet.
+## 🎉 Benefits Achieved
+
+✅ **Public Internet Access**: All services accessible via `*.dog-pence.ts.net` from anywhere  
+✅ **Automatic HTTPS**: Zero-configuration SSL certificates  
+✅ **Wildcard Routing**: Single ingress handles all services via Traefik  
+✅ **No Port Forwarding**: Works behind NAT/firewalls via Tailscale Funnel  
+✅ **Consistent Pattern**: Mirrors Cloudflare tunnel approach with public access
+
+Your cluster is now publicly accessible on the internet via Tailscale Funnel with wildcard routing!

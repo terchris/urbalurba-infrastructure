@@ -1,6 +1,6 @@
 # 800-tailscale-operator-config.yaml
 # Installs Tailscale Kubernetes Operator with ingress functionality
-# Moved from: 010-tailscale-operator-config.yaml (September 8, 2025)
+
 # Usage: 
 # installing: helm install tailscale-operator tailscale/tailscale-operator -n tailscale --create-namespace -f 800-tailscale-operator-config.yaml \
 #             --set-string oauth.clientId=$TAILSCALE_CLIENTID --set-string oauth.clientSecret=$TAILSCALE_CLIENTSECRET
@@ -25,13 +25,13 @@ operatorConfig:
 
 # Default tags for proxies - adjust according to your ACL policy
 proxyConfig:
-  defaultTags: "tag:k8s"    # Tag for proxy nodes
+  defaultTags: "tag:k8s-operator"    # Tag for proxy nodes
   # Configure TCP keepalive settings to improve connection stability
   tcpKeepaliveEnabled: true  # This is a boolean value
   tcpKeepaliveIdleSec: 60    # This is a numeric value
 
 # Note: To use this configuration, you must:
 # 1. Have appropriate tag definitions in your tailnet policy file
-# 2. Ensure nodeAttrs in your policy allow Funnel for tag:k8s
+# 2. Ensure nodeAttrs in your policy allow Funnel for tag:k8s-operator
 # 3. OAuth client credentials must be provided separately with --set flags
 # 4. Have created an OAuth client with the required scopes (Devices Core and Auth Keys write)
