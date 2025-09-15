@@ -70,6 +70,10 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+# Fix ownership of copied files to match container user (ansible)
+echo "Fixing file ownership in container..."
+docker exec -u root provision-host chown -R ansible:ansible /mnt/urbalurbadisk
+
 # write sucess message
 echo "Successfully copied files to provision-host container"
 # exit with success

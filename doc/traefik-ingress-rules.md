@@ -320,8 +320,54 @@ sequenceDiagram
 
 ### **Required Components**
 1. **Authentik Deployment**: `manifests/075-authentik-config.yaml`
-2. **Forward Auth Middleware**: `manifests/077-authentik-forward-auth-middleware.yaml`
-3. **Protected IngressRoute**: Example below
+2. **CSP Middleware**: `manifests/076-authentik-csp-middleware.yaml` (for external domain support)
+3. **Forward Auth Middleware**: `manifests/077-authentik-forward-auth-middleware.yaml`
+4. **Protected IngressRoute**: Example below
+
+### **CSP Middleware for External Domains**
+When using external domains (like `authentik.urbalurba.no` via Cloudflare tunnel), the authentication UI experiences **mixed content errors** because:
+- Page loads over HTTPS: `https://authentik.urbalurba.no`
+- But API calls use HTTP: `http://authentik.urbalurba.no/api/v3/...`
+- Browsers block HTTP requests from HTTPS pages
+
+The **CSP middleware** solves this by adding the `upgrade-insecure-requests` header:
+
+```yaml
+# File: manifests/076-authentik-csp-middleware.yaml
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: authentik-csp-upgrade
+  namespace: authentik
+spec:
+  headers:
+    customResponseHeaders:
+      Content-Security-Policy: "upgrade-insecure-requests"
+```
+
+**How it works**:
+- **HTTPS domains** (external): Get CSP header → Browser automatically upgrades HTTP API calls to HTTPS ✅
+- **HTTP domains** (.localhost): No CSP header → Works normally with HTTP ✅
+
+**Integration**: The CSP middleware is automatically applied to the Authentik IngressRoute:
+```yaml
+# File: manifests/076-authentik-ingressroute.yaml
+spec:
+  routes:
+    - match: HostRegexp(`authentik\..+`)
+      middlewares:
+        - name: authentik-csp-upgrade
+          namespace: authentik
+      services:
+        - name: authentik-server
+          port: 80
+```
+
+**Benefits**:
+- ✅ Enables external domain authentication (Cloudflare, Tailscale)
+- ✅ Preserves localhost development workflow
+- ✅ Uses browser-native mixed content resolution
+- ✅ No server-side configuration changes needed
 
 ### **Example: Protected Service with HostRegexp**
 ```yaml
@@ -694,6 +740,7 @@ spec:
 - **Internal DNS**: `manifests/005-internal-dns.yaml`
 - **Nginx Catch-All**: `manifests/020-nginx-root-ingress.yaml`
 - **Whoami Public**: `manifests/071-whoami-public-ingressroute.yaml`
+- **Authentik CSP Middleware**: `manifests/076-authentik-csp-middleware.yaml`
 - **Gravitee Examples**: `manifests/091-gravitee-ingress.yaml`
 
 ### **Related Documentation**:

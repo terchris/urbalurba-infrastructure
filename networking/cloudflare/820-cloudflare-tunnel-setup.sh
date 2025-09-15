@@ -22,8 +22,9 @@
 # - Run from inside provision-host container (not from Mac host)  
 # - Browser must be available for interactive authentication
 #
-# usage: ./820-cloudflare-tunnel-setup.sh <domain>
+# usage: ./820-cloudflare-tunnel-setup.sh <domain> [-f|--force]
 # example: ./820-cloudflare-tunnel-setup.sh urbalurba.no
+# example: ./820-cloudflare-tunnel-setup.sh urbalurba.no -f
 #
 # Result (only if tunnel doesn't exist):
 # - Tunnel "cloudflare-tunnel" created in Cloudflare
@@ -41,17 +42,54 @@ if [ -z "$BASH_VERSION" ]; then
     exit 1
 fi
 
-# Check if required parameters are provided
-if [ -z "$1" ]; then
-    echo "Usage: $0 <domain>"
+# Parse command line arguments
+FORCE_RECREATE=false
+DOMAIN=""
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -f|--force)
+            FORCE_RECREATE=true
+            shift
+            ;;
+        -*)
+            echo "Unknown option $1"
+            echo "Usage: $0 <domain> [-f|--force]"
+            echo "Example: $0 urbalurba.no"
+            echo "Example: $0 urbalurba.no -f"
+            echo ""
+            echo "Options:"
+            echo "  -f, --force    Force recreate tunnel even if credentials exist"
+            echo ""
+            echo "This will create a tunnel with wildcard routing: *.domain -> cluster"
+            exit 1
+            ;;
+        *)
+            if [ -z "$DOMAIN" ]; then
+                DOMAIN=$1
+            else
+                echo "Error: Multiple domains specified. Only one domain allowed."
+                exit 1
+            fi
+            shift
+            ;;
+    esac
+done
+
+# Check if domain is provided
+if [ -z "$DOMAIN" ]; then
+    echo "Usage: $0 <domain> [-f|--force]"
     echo "Example: $0 urbalurba.no"
+    echo "Example: $0 urbalurba.no -f"
+    echo ""
+    echo "Options:"
+    echo "  -f, --force    Force recreate tunnel even if credentials exist"
     echo ""
     echo "This will create a tunnel with wildcard routing: *.domain -> cluster"
     exit 1
 fi
 
 TUNNEL_NAME="cloudflare-tunnel"
-DOMAIN=$1
 
 # Variables
 PROVISION_HOST="provision-host"
@@ -77,8 +115,14 @@ check_command_success() {
 extract_and_store_credentials() {
     local credentials_file="/mnt/urbalurbadisk/cloudflare/${FULL_TUNNEL_NAME}.json"
     
+    # Debug: List files in cloudflare directory
+    echo "🔍 Debug: Files in cloudflare directory:"
+    ls -la /mnt/urbalurbadisk/cloudflare/ || echo "Could not list cloudflare directory"
+    
     if [ ! -f "$credentials_file" ]; then
         echo "❌ Error: Credentials file not found: $credentials_file"
+        echo "🔍 Available files in /mnt/urbalurbadisk/cloudflare/:"
+        ls -la /mnt/urbalurbadisk/cloudflare/ || echo "Could not list directory"
         STATUS+=("Extract Credentials: FAIL - File not found")
         return 1
     fi
@@ -94,8 +138,10 @@ extract_and_store_credentials() {
     
     echo "📝 Updating credentials in $SECRETS_FILE"
     
-    # Create a temporary file with the new secret
+    # Create a temporary file with the new secret in /tmp (writable location)
     local TEMP_SECRET="/tmp/cloudflare-secret-$$.yml"
+    local TEMP_SECRETS_FILE="/tmp/kubernetes-secrets-$$.yml"
+    
     cat << EOF > "$TEMP_SECRET"
 apiVersion: v1
 kind: Secret
@@ -113,19 +159,29 @@ EOF
     
     # Remove any existing cloudflared-credentials secret in default namespace, then add the new one
     echo "🔄 Removing old cloudflared-credentials if exists..."
-    yq eval-all 'select(.metadata.name != "cloudflared-credentials" or .metadata.namespace != "default")' "$SECRETS_FILE" > "${SECRETS_FILE}.tmp"
+    if ! yq eval-all 'select(.metadata.name != "cloudflared-credentials" or .metadata.namespace != "default")' "$SECRETS_FILE" > "$TEMP_SECRETS_FILE"; then
+        echo "❌ Error: Failed to process secrets file with yq"
+        STATUS+=("Extract Credentials: FAIL - yq processing error")
+        rm -f "$TEMP_SECRET" "$TEMP_SECRETS_FILE"
+        return 1
+    fi
     
     # Add the new secret
     echo "➕ Adding new cloudflared-credentials..."
-    if [ -s "${SECRETS_FILE}.tmp" ]; then
+    if [ -s "$TEMP_SECRETS_FILE" ]; then
         # File has content, append with separator
-        echo "---" >> "${SECRETS_FILE}.tmp"
+        echo "---" >> "$TEMP_SECRETS_FILE"
     fi
-    cat "$TEMP_SECRET" >> "${SECRETS_FILE}.tmp"
+    cat "$TEMP_SECRET" >> "$TEMP_SECRETS_FILE"
     
-    # Replace the original file
-    mv "${SECRETS_FILE}.tmp" "$SECRETS_FILE"
-    rm -f "$TEMP_SECRET"
+    # Replace the original file by writing directly to it
+    if ! cat "$TEMP_SECRETS_FILE" > "$SECRETS_FILE"; then
+        echo "❌ Error: Failed to update secrets file"
+        STATUS+=("Extract Credentials: FAIL - File update error")
+        rm -f "$TEMP_SECRET" "$TEMP_SECRETS_FILE"
+        return 1
+    fi
+    rm -f "$TEMP_SECRET" "$TEMP_SECRETS_FILE"
     
     echo "✅ Credentials stored in kubernetes-secrets.yml"
     
@@ -155,8 +211,8 @@ else
 fi
 
 # Ensure that the kubernetes-secrets.yml file exists
-if [ ! -f $KUBERNETES_SECRETS_FILE ]; then
-    echo "The file $KUBERNETES_SECRETS_FILE does not exist"
+if [ ! -f $SECRETS_FILE ]; then
+    echo "The file $SECRETS_FILE does not exist"
     STATUS+=("kubernetes-secrets.yml check: Fail")
     ERROR=1
 else
@@ -194,14 +250,28 @@ echo ""
 # Check if tunnel credentials already exist in the cluster
 echo "Checking if tunnel credentials already exist in cluster..."
 if kubectl --kubeconfig="$KUBECONFIG_PATH" get secret "$SECRET_NAME" -n default >/dev/null 2>&1; then
-    echo "✅ Tunnel credentials already exist in cluster: $SECRET_NAME"
-    echo "✅ Tunnel is already set up and ready to use"
-    STATUS+=("Tunnel Check: EXISTS - No setup needed")
+    if [ "$FORCE_RECREATE" = true ]; then
+        echo "🔄 Force recreate requested - deleting existing tunnel credentials..."
+        echo "🗑️  Deleting existing secret: $SECRET_NAME"
+        kubectl --kubeconfig="$KUBECONFIG_PATH" delete secret "$SECRET_NAME" -n default >/dev/null 2>&1
+        echo "🗑️  Deleting existing configmap: cloudflare-tunnel-config"
+        kubectl --kubeconfig="$KUBECONFIG_PATH" delete configmap cloudflare-tunnel-config -n default >/dev/null 2>&1
+        echo "🚀 Creating new tunnel and storing credentials..."
+        STATUS+=("Tunnel Check: FORCE RECREATE - Deleting existing and creating new tunnel")
+    else
+        echo "✅ Tunnel credentials already exist in cluster: $SECRET_NAME"
+        echo "✅ Tunnel is already set up and ready to use"
+        echo "💡 Use -f flag to force recreate: $0 $DOMAIN -f"
+        STATUS+=("Tunnel Check: EXISTS - No setup needed")
+    fi
 else
     echo "❌ Tunnel credentials not found in cluster"
     echo "🚀 Creating new tunnel and storing credentials..."
     STATUS+=("Tunnel Check: NOT EXISTS - Creating new tunnel")
-    
+fi
+
+# Only proceed with tunnel creation if credentials don't exist or force recreate is requested
+if [ "$FORCE_RECREATE" = true ] || ! kubectl --kubeconfig="$KUBECONFIG_PATH" get secret "$SECRET_NAME" -n default >/dev/null 2>&1; then
     echo "Using playbook: $PLAYBOOK_PATH_SETUP_CLOUDFLARETUNNEL"
     echo ""
     

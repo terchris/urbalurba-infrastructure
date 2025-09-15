@@ -99,9 +99,13 @@ global:
         secretKeyRef:
           name: urbalurba-secrets
           key: AUTHENTIK_BOOTSTRAP_PASSWORD
-    # Internal cluster URL (used by outpost → server communication)
+    # CRITICAL: Internal cluster URL for dual-domain support (localhost + external domains)
+    # This MUST use the internal service URL to enable dynamic domain detection
+    # When set to internal URL, Authentik detects the actual domain from X-Forwarded-Host header
+    # This allows both authentik.localhost (development) and authentik.urbalurba.no (production) to work
+    # DO NOT set this to a specific external domain - it will break other domains
     - name: AUTHENTIK_HOST
-      value: "http://authentik.localhost"
+      value: "http://authentik-server.authentik.svc.cluster.local"
     # Allow HTTP (⚠️ dev only — don't use in production)
     - name: AUTHENTIK_INSECURE
       value: "true"
@@ -123,6 +127,10 @@ global:
         secretKeyRef:
           name: urbalurba-secrets
           key: AUTHENTIK_REDIS__PASSWORD
+    # CSRF trusted origins for external domain access
+    # Allows admin UI access via both localhost and external domains
+    - name: AUTHENTIK_WEB__CSRF_TRUSTED_ORIGINS
+      value: "http://authentik.localhost,https://authentik.urbalurba.no"
 
 # Blueprint system configuration
 blueprints:

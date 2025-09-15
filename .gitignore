@@ -13,8 +13,14 @@ cloudflare-notes.md
 debugging
 
 /terchris
-CLAUDE.md
+
 
 troubleshooting/*.txt
 troubleshooting/output/*
+
+
+# AI stuff 
 .playwright-mcp
+WARP.md
+CLAUDE.md
+

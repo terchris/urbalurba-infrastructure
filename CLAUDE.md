@@ -120,12 +120,56 @@ The repository tracks infrastructure changes in the `main` branch. Current modif
 ### Authentik (070-079)
 - Blueprints define users, groups, and applications
 - Forward auth middleware for protecting services
+- CSP middleware (076-authentik-csp-middleware.yaml) enables external domain authentication
 - Test with whoami service (protected vs public endpoints)
+- Supports both localhost development and external domains (Cloudflare/Tailscale tunnels)
 
 ### Databases
 - PostgreSQL: Primary database, port 5432
 - MySQL: Alternative SQL database, port 3306
 - MongoDB: NoSQL option, port 27017
 - Redis: Cache and message broker, port 6379
+
+## Current Work: Domain-Agnostic Authentication Architecture
+
+**Status**: Testing cluster rebuild to validate complete dual-domain authentication setup
+
+### Recent Achievements
+- ✅ **CSP Middleware Solution**: Created `076-authentik-csp-middleware.yaml` that solves mixed content issues for external HTTPS domains
+- ✅ **Updated Authentik Configuration**: Modified `075-authentik-config.yaml` with internal cluster URL for dynamic domain detection  
+- ✅ **Enhanced Deployment**: Updated `ansible/playbooks/070-setup-authentik.yml` to include CSP middleware deployment
+- ✅ **Complete Documentation**: Updated `doc/traefik-ingress-rules.md` with CSP middleware explanation
+
+### Problem Partially Solved
+Authentication currently works for:
+- **Development**: `http://authentik.localhost` and `http://whoami.localhost` (protected) ✅
+- **External Authentik UI**: `https://authentik.urbalurba.no` (CSP middleware fixed mixed content) ✅ 
+- **External Protected Services**: `https://whoami.urbalurba.no` ❌ **Still requires manual OAuth provider config per domain**
+
+### Remaining Challenge
+Protected services on external domains require manual Authentik configuration:
+- Each domain needs separate OAuth application/provider in Authentik UI
+- External Host field only accepts one URL per provider
+- CSRF trusted origins must be manually updated in config files
+
+### Key Technical Components
+1. **Dynamic Host Detection**: `AUTHENTIK_HOST` set to internal cluster URL enables domain detection via X-Forwarded-Host
+2. **Mixed Content Resolution**: CSP `upgrade-insecure-requests` header automatically upgrades HTTP API calls to HTTPS on external domains
+3. **Unified Routing**: HostRegexp patterns (`authentik\..+`) handle multiple domains with single IngressRoute
+4. **Selective Protection**: Public services remain public, protected services use forward auth middleware
+
+### Testing Phase
+Currently validating the complete setup by rebuilding the cluster from scratch to ensure:
+- Ansible playbook includes all required components
+- Authentication works end-to-end for both localhost and external domains
+- No manual configuration steps are missing from automation
+
+### Domain Addition Limitation (Authentik Architecture)
+Adding new domains with protected services requires ~45 minutes of manual work:
+1. **Code changes**: Update CSRF trusted origins in `075-authentik-config.yaml` + redeploy
+2. **UI configuration**: Create separate OAuth provider per protected service in Authentik admin
+3. **Per-service setup**: Each protected service needs its own application/provider configuration
+
+**Root cause**: Authentik's External Host field only accepts one URL per provider - this is not a limitation of our cluster setup but of Authentik's design for proxy providers.
 
 Remember: Always prefer editing existing files over creating new ones, and avoid creating documentation unless explicitly requested.
