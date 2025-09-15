@@ -46,15 +46,26 @@ namespaceOverride: "ai"
 fullnameOverride: "open-webui"
 
 # External services configuration
-# Using external Ollama instances instead of helm-managed deployment
+# Using built-in Ollama as originally planned
 ollama:
-  enabled: false  # Using external Ollama instances
+  enabled: true   # Using built-in Ollama
+  # Use latest Ollama version (0.11.10) instead of default 0.11.4
+  image:
+    tag: "0.11.10"
+  # Reuse existing storage from the separate Ollama deployment
+  persistentVolume:
+    enabled: true
+    existingClaim: "ollama-models"  # Reuse 15Gi PVC
+  # Configure model to pull and run automatically
+  models:
+    pull:
+      - qwen3:0.6b
+    run:
+      - qwen3:0.6b
+  # Let Helm chart decide optimal resource limits
 
-# Multiple Ollama endpoints for load balancing and redundancy
-# Add/remove URLs based on your available Ollama instances
-ollamaUrls:
-  - "http://ollama:11434"                  # In-cluster Ollama
-  - "http://host.lima.internal:11434"      # Host Ollama (adjust for your environment)
+# Remove external Ollama URLs since we're using built-in
+# ollamaUrls: []
 
 # Pipelines - Extends OpenWebUI functionality with custom processing chains
 # Currently enabled for enhanced document processing and model integrations
@@ -88,16 +99,8 @@ persistence:
     - ReadWriteOnce
   size: 20Gi
 
-# Resource management - CPU and memory limits for stable operation
-# Adjust based on your cluster capacity and expected user load
-# Settings here are for minimal deployment.
-resources:
-  requests:
-    memory: 1.5Gi
-    cpu: 500m
-  limits:
-    memory: 3Gi
-    cpu: 1500m
+# Resource management - Let Helm chart use its defaults
+# resources: {}  # Using Helm chart defaults (empty = Kubernetes defaults)
 
 # Environment variables - Core OpenWebUI configuration via extraEnvVars
 # Using secrets for sensitive values and direct values for non-sensitive config
