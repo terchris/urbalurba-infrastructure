@@ -1,12 +1,12 @@
 ---
-# file: playbooks/803-tailscale-tunnel-addhost.yml
+# file: playbooks/802-tailscale-tunnel-addhost.yml
 # Description: Create a Tailscale ingress for a specific service
 #
 # This playbook creates a Tailscale ingress that exposes a service at:
 # https://SERVICE.dog-pence.ts.net with public internet access via Funnel
 #
 # Usage:
-#   ansible-playbook playbooks/803-tailscale-tunnel-addhost.yml \
+#   ansible-playbook playbooks/802-tailscale-tunnel-addhost.yml \
 #     -e SERVICE_NAME=whoami \
 #     -e TAILSCALE_DOMAIN=dog-pence.ts.net
 #
@@ -25,9 +25,7 @@
   vars:
     kubeconfig_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
     SERVICE_NAME: "{{ SERVICE_NAME | default('') }}"
-    NAMESPACE: "{{ NAMESPACE | default('default') }}"
     ingress_namespace: "kube-system"
-    service_port_int: "{{ SERVICE_PORT | default(80) | int }}"
     TAILSCALE_DOMAIN: "{{ TAILSCALE_DOMAIN | default('') }}"
     HOSTNAME: "{{ HOSTNAME | default(SERVICE_NAME) }}"
     ingress_name: "{{ HOSTNAME | default(SERVICE_NAME) }}-tailscale"
@@ -53,36 +51,61 @@
         msg: "Kubeconfig file not found at {{ kubeconfig_file }}"
       when: not kubeconfig_stat.stat.exists
 
-    - name: "04 Check if target service exists"
-      kubernetes.core.k8s_info:
-        kind: Service
-        name: "{{ SERVICE_NAME }}"
-        namespace: "{{ NAMESPACE }}"
-        kubeconfig: "{{ kubeconfig_file }}"
-      register: target_service
-
-    - name: "05 Fail if target service does not exist"
-      ansible.builtin.fail:
+    - name: "04 Skip service validation - Traefik handles routing"
+      ansible.builtin.debug:
         msg: |
-          Service '{{ SERVICE_NAME }}' not found in namespace '{{ NAMESPACE }}'.
-          Available services: {{ available_services | default('Run kubectl get svc -n ' + NAMESPACE) }}
-      when: target_service.resources | length == 0
+          ✅ Skipping service validation - Traefik will handle routing to {{ SERVICE_NAME }}
+          Creating Tailscale ingress for: {{ HOSTNAME }}.{{ TAILSCALE_DOMAIN }}
 
-    - name: "06 Check if Tailscale operator is running"
+    - name: "06 Skip operator check if SKIP_OPERATOR_CHECK is set"
+      ansible.builtin.set_fact:
+        tailscale_operator_found: true
+      when: SKIP_OPERATOR_CHECK is defined and SKIP_OPERATOR_CHECK == "true"
+
+    - name: "06a Check if Tailscale operator is running (try app=operator)"
       kubernetes.core.k8s_info:
         kind: Pod
         namespace: tailscale
         label_selectors:
           - "app=operator"
         kubeconfig: "{{ kubeconfig_file }}"
-      register: tailscale_operator
+      register: tailscale_operator_app
+      failed_when: false
+      when: SKIP_OPERATOR_CHECK is not defined or SKIP_OPERATOR_CHECK != "true"
+
+    - name: "06b Check if Tailscale operator is running (try app.kubernetes.io/name=tailscale-operator)"
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: tailscale
+        label_selectors:
+          - "app.kubernetes.io/name=tailscale-operator"
+        kubeconfig: "{{ kubeconfig_file }}"
+      register: tailscale_operator_helm
+      failed_when: false
+      when: SKIP_OPERATOR_CHECK is not defined or SKIP_OPERATOR_CHECK != "true"
+
+    - name: "06c Check if Tailscale operator is running (try field selector)"
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: tailscale
+        field_selectors:
+          - "status.phase=Running"
+        kubeconfig: "{{ kubeconfig_file }}"
+      register: tailscale_operator_pods
+      failed_when: false
+      when: SKIP_OPERATOR_CHECK is not defined or SKIP_OPERATOR_CHECK != "true"
+
+    - name: "06d Set operator found flag based on detection results"
+      ansible.builtin.set_fact:
+        tailscale_operator_found: "{{ (tailscale_operator_app.resources | length > 0) or (tailscale_operator_helm.resources | length > 0) or (tailscale_operator_pods.resources | selectattr('metadata.name', 'search', 'operator') | list | length > 0) }}"
+      when: SKIP_OPERATOR_CHECK is not defined or SKIP_OPERATOR_CHECK != "true"
 
     - name: "07 Fail if Tailscale operator is not running"
       ansible.builtin.fail:
         msg: |
           Tailscale operator not found in 'tailscale' namespace.
           Run ./802-tailscale-tunnel-deploy.sh first to deploy the operator.
-      when: tailscale_operator.resources | length == 0
+      when: not tailscale_operator_found
 
     - name: "08 Check if ingress already exists"
       kubernetes.core.k8s_info:
@@ -164,8 +187,6 @@
         msg:
           - "✅ Tailscale ingress created successfully!"
           - "Service: {{ SERVICE_NAME }}"
-          - "Namespace: {{ NAMESPACE }}"
-          - "Port: {{ SERVICE_PORT }}"
           - "Ingress: {{ ingress_name }}"
           - "Hostname: {{ ingress_hostname | default('Pending...') }}"
           - "URL: https://{{ HOSTNAME }}.{{ TAILSCALE_DOMAIN }}"

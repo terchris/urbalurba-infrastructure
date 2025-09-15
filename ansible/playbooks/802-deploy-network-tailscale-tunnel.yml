@@ -91,7 +91,11 @@
         wait: true
         kubeconfig: "{{ kubeconfig_file }}"
       register: helm_install_result
-      failed_when: false
+
+    - name: "09a Verify Helm installation was successful"
+      ansible.builtin.fail:
+        msg: "❌ Helm installation failed: {{ helm_install_result.msg | default('Unknown error') }}"
+      when: helm_install_result.failed | default(false)
 
     - name: "10 Wait for Tailscale operator pod to appear"
       kubernetes.core.k8s_info:
@@ -101,9 +105,18 @@
           - "app=operator"
         kubeconfig: "{{ kubeconfig_file }}"
       register: operator_pods
-      until: operator_pods.resources | length > 0
+      until: 
+        - operator_pods.resources | length > 0
+        - operator_pods.resources | map(attribute='status.phase') | list | select('in', ['Pending', 'Running']) | list | length > 0
       retries: 12
       delay: 5
+
+    - name: "10a Verify pods are not in error state"
+      ansible.builtin.fail:
+        msg: "❌ Tailscale operator pods are in error state: {{ operator_pods.resources | map(attribute='status.phase') | list | join(', ') }}"
+      when: 
+        - operator_pods.resources | length > 0
+        - operator_pods.resources | map(attribute='status.phase') | list | select('in', ['Failed', 'Error', 'CrashLoopBackOff']) | list | length > 0
       
     - name: "11 Wait for Tailscale operator to be ready"
       kubernetes.core.k8s_info:
@@ -113,10 +126,38 @@
           - "app=operator"
         kubeconfig: "{{ kubeconfig_file }}"
       register: operator_pods_status
-      until: operator_pods_status.resources | length > 0 and (operator_pods_status.resources | map(attribute='status.phase') | list | unique == ['Running'])
+      until: 
+        - operator_pods_status.resources | length > 0
+        - operator_pods_status.resources | map(attribute='status.phase') | list | unique == ['Running']
+        - operator_pods_status.resources | map(attribute='status.containerStatuses') | list | flatten | map(attribute='ready') | list | all
       retries: 12
       delay: 10
-      failed_when: false
+
+    - name: "11a Verify all pods are running and ready"
+      ansible.builtin.fail:
+        msg: "❌ Tailscale operator pods are not ready. Status: {{ operator_pods_status.resources | map(attribute='status.phase') | list | join(', ') }}"
+      when: 
+        - operator_pods_status.resources | length > 0
+        - operator_pods_status.resources | map(attribute='status.phase') | list | unique != ['Running']
+
+    - name: "12 Verify Tailscale operator is functional"
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Service
+        namespace: "{{ operator_namespace }}"
+        label_selectors:
+          - "app=operator"
+        kubeconfig: "{{ kubeconfig_file }}"
+      register: operator_services
+      failed_when: operator_services.resources | length == 0
+
+    - name: "12a Display operator verification success"
+      ansible.builtin.debug:
+        msg:
+          - "✅ Tailscale operator is running and functional!"
+          - "Pods: {{ operator_pods_status.resources | length }}"
+          - "Services: {{ operator_services.resources | length }}"
+          - "Status: {{ operator_pods_status.resources | map(attribute='status.phase') | list | join(', ') }}"
 
     - name: "11a Check operator pod logs when not ready"
       kubernetes.core.k8s_log:
@@ -136,7 +177,7 @@
           - "❌ Tailscale operator pod failed to start!"
           - "Pod name: {{ operator_pods.resources[0].metadata.name }}"
           - "Pod status: {{ operator_pods_status.resources[0].status.phase | default('Unknown') }}"
-          - "Pod conditions: {{ operator_pods_status.resources[0].status.conditions | default([]) | map(attribute='message') | list }}"
+          - "Pod conditions: {{ operator_pods_status.resources[0].status.conditions | default([]) | map(attribute='type') | list | join(', ') }}"
           - ""
           - "Recent pod logs:"
           - "{{ operator_logs.log | default('No logs available') }}"

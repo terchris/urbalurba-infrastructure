@@ -1,12 +1,12 @@
 #!/bin/bash
-# filename: 804-tailscale-tunnel-deletehost.sh
+# filename: 803-tailscale-tunnel-deletehost.sh
 # description: Remove a Tailscale ingress for a specific service
 #
 # This script removes a Tailscale ingress and cleans up the associated pod
 #
-# Usage: ./804-tailscale-tunnel-deletehost.sh <hostname>
-# Example: ./804-tailscale-tunnel-deletehost.sh whoami
-# Example: ./804-tailscale-tunnel-deletehost.sh authentik
+# Usage: ./803-tailscale-tunnel-deletehost.sh <hostname>
+# Example: ./803-tailscale-tunnel-deletehost.sh whoami
+# Example: ./803-tailscale-tunnel-deletehost.sh authentik
 #
 # Result:
 # - Deletes Tailscale ingress for the service

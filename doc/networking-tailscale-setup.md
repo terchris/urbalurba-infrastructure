@@ -1,44 +1,49 @@
 # Tailscale Tunnel Setup Guide
 
-IMPORTANT:
-Found out that tailscale does not support wildchard routing. eg *.k8s.dog-pence.ts.net so that 
-jalla.k8s.dog-pence.ts.net and balla.k8s.dog-pence.ts.net is routed to the tunnel.
-This is a big setback and i spent a full day trying to solve it until i found this url https://github.com/tailscale/tailscale/issues/1196
-
-So the rest of the file here only works for routing https://k8s.dog-pence.ts.net to the cluster.
-
-
-
-
-**Purpose**: Wildcard internet access with automatic .ts.net domains  
-**Audience**: Users wanting secure, invite-based internet connectivity  
-**Time Required**: 10-15 minutes  
+**Purpose**: Public internet access with automatic .ts.net domains
+**Audience**: Users wanting secure, public internet connectivity
+**Time Required**: 10-15 minutes
 **Prerequisites**: Working cluster with Traefik ingress
+
+## ⚠️ Critical Limitation: No Wildcard DNS Support
+
+**Tailscale does not support wildcard DNS routing.** This means patterns like `*.k8s.dog-pence.ts.net` will NOT work.
+
+**Reference**: [Tailscale GitHub Issue #1196](https://github.com/tailscale/tailscale/issues/1196)
+
+Throughout this document we use the tailscale domain `dog-pence.ts.net` as an example. You get your own domain in the form <something>`.ts.net` when signing up to Tailscale.
+
+### What This Means:
+- ❌ **Does NOT work**: `https://whoami.k8s.dog-pence.ts.net` (subdomain pattern)
+- ❌ **Does NOT work**: `https://*.k8s.dog-pence.ts.net` (wildcard routing)
+- ✅ **DOES work**: `https://whoami.dog-pence.ts.net` (individual service via 803 script)
+- ✅ **DOES work**: `https://authentik.dog-pence.ts.net` (each service gets its own URL)
+
+### The Solution: Individual Service Ingresses
+We use the `802-tailscale-tunnel-deploy.sh` script to create individual Tailscale ingresses for each service. Each service gets its own public URL directly on your tailscale domain.
 
 ## 🚀 Quick Summary
 
-Transform your local cluster from `http://service.localhost` to `https://k8s.dog-pence.ts.net` with public internet access. Tailscale provides automatic HTTPS, zero-config networking, and public Funnel capability.
+Transform your local cluster from `http://service.localhost` to public URLs like `https://whoami.dog-pence.ts.net` with automatic HTTPS. Each service gets its own public URL via individual Tailscale ingresses.
 
 ## 🏗️ How Tailscale Tunnel Works
 
 ### Architecture Overview
 
-Tailscale creates a secure mesh network with public internet access. All `k8s.dog-pence.ts.net` traffic routes to your cluster where Traefik handles internal routing:
+Due to Tailscale's lack of wildcard DNS support, each service requires its own Tailscale ingress:
 
 ```
-External User → https://k8s.dog-pence.ts.net
+External User → https://whoami.dog-pence.ts.net
     ↓
-Tailscale MagicDNS → k8s (cluster ingress device)  
+Tailscale MagicDNS → whoami-ingress (dedicated Tailscale pod)
     ↓
-Kubernetes cluster → Traefik ingress
-    ↓  
-Default backend → nginx catch-all or service routing
+Kubernetes Service → whoami pod
 ```
 
 **Key Components:**
-1. **Tailscale MagicDNS** - Provides automatic `k8s.dog-pence.ts.net` routing (single hostname only)
-2. **k8s device** - Tailscale ingress point for your cluster (named from TAILSCALE_CLUSTER_HOSTNAME)
-3. **Traefik** - Routes traffic based on HostRegexp patterns to services
+1. **Tailscale MagicDNS** - Provides automatic DNS for each service (e.g., `whoami.dog-pence.ts.net`)
+2. **Individual Ingresses** - Each service gets its own Tailscale pod/device
+3. **Direct Service Routing** - Traffic goes directly to each service
 4. **Your Services** - whoami, openwebui, authentik, etc.
 
 **Security Benefits:**
@@ -64,9 +69,9 @@ Five scripts manage the complete Tailscale setup:
 |--------|---------|-------------|------------|
 | `801-tailscale-tunnel-setup.sh` | Sets up Tailscale on provision-host | First time setup | None |
 | `802-tailscale-tunnel-deploy.sh` | Deploys operator to cluster | After host setup | `[cluster-hostname]` |
-| `803-tailscale-tunnel-addhost.sh` | Add individual service ingress | After operator deployed | `<service> [namespace] [port] [hostname]` |
-| `804-tailscale-tunnel-deletehost.sh` | Remove individual service ingress | When removing a service | `<hostname>` |
-| `805-tailscale-tunnel-delete.sh` | Removes everything | Clean up / start over | None |
+| `802-tailscale-tunnel-deploy.sh` | Add individual service ingress | After operator deployed | `<service> [hostname]` |
+| `803-tailscale-tunnel-deletehost.sh` | Remove individual service ingress | When removing a service | `<hostname>` |
+| `804-tailscale-tunnel-delete.sh` | Removes everything | Clean up / start over | None |
 
 ## 🚀 Quick Start Guide
 
@@ -193,68 +198,69 @@ cd /mnt/urbalurbadisk
 ./networking/tailscale/801-tailscale-tunnel-setup.sh
 ```
 
-### Step 9: Deploy Tailscale Operator to Cluster  
+### Step 9: Deploy Tailscale Operator to Cluster
 ```bash
-# Deploy operator (uses TAILSCALE_CLUSTER_HOSTNAME from secrets, or specify your own)
+# Deploy operator (required for managing individual service ingresses)
 ./networking/tailscale/802-tailscale-tunnel-deploy.sh
-# Or override with custom hostname:
-# ./networking/tailscale/802-tailscale-tunnel-deploy.sh my-custom-name
 ```
 
-## ⚠️ Important Limitation: No Wildcard DNS Support
+### Step 10: Add Individual Services (The Working Solution)
 
-**Tailscale does not support wildcard DNS routing.** This means:
-
-- ✅ **Works**: `https://k8s.dog-pence.ts.net` (exact hostname)
-- ❌ **Does NOT work**: `https://whoami.k8s.dog-pence.ts.net` (subdomain)
-- ❌ **Does NOT work**: `https://SERVICE.k8s.dog-pence.ts.net` (wildcard pattern)
-
-**Reference**: [Tailscale GitHub Issue #1196](https://github.com/tailscale/tailscale/issues/1196) - This feature was requested but intentionally not implemented.
-
-**Workaround Options**:
-1. **Path-based routing**: Access services via `https://k8s.dog-pence.ts.net/SERVICE`
-2. **Individual ingresses**: Create separate Tailscale devices for each service
-3. **External DNS**: Use CNAME records with your own domain provider
-
-### Step 10: Add Individual Services (Workaround for No Wildcard Support)
-
-Since Tailscale doesn't support wildcard DNS, you can create individual public URLs for each service:
+Since Tailscale doesn't support wildcard DNS, use the `802-tailscale-tunnel-deploy.sh` script to expose each service individually:
 
 ```bash
-# Add a service with default settings (hostname = service name)
-./networking/tailscale/803-tailscale-tunnel-addhost.sh whoami
+# Basic usage: ./802-tailscale-tunnel-deploy.sh <service-name> [hostname]
 
-# Add a service with custom hostname for cleaner URLs
-./networking/tailscale/803-tailscale-tunnel-addhost.sh authentik-server authentik 80 authentik
+# Add whoami service (uses default hostname=whoami)
+./networking/tailscale/802-tailscale-tunnel-deploy.sh whoami
+# Result: https://whoami.dog-pence.ts.net
 
-# Remove a service
-./networking/tailscale/804-tailscale-tunnel-deletehost.sh whoami
+# Add OpenWebUI with custom hostname
+./networking/tailscale/802-tailscale-tunnel-deploy.sh open-webui openwebui
+# Result: https://openwebui.dog-pence.ts.net
+
+# Add Authentik with clean hostname
+./networking/tailscale/802-tailscale-tunnel-deploy.sh authentik-server authentik
+# Result: https://authentik.dog-pence.ts.net
+
+# Add Grafana
+./networking/tailscale/802-tailscale-tunnel-deploy.sh grafana grafana
+# Result: https://grafana.dog-pence.ts.net
 ```
 
-Each service gets:
-- Its own Tailscale pod (resource overhead)
-- Its own public URL (e.g., https://whoami.dog-pence.ts.net)
-- Routing through Traefik to maintain existing patterns
-- Public internet access via Funnel
+**What the script does:**
+1. Deploys Tailscale operator (if not already running)
+2. Creates a Tailscale ingress pod for that specific service
+3. Configures public internet access via Funnel
+4. Traefik handles routing to the appropriate service
+5. Sets up DNS entry at `[hostname].[your-domain].ts.net`
+
+**To remove a service:**
+```bash
+# Remove by hostname
+./networking/tailscale/803-tailscale-tunnel-deletehost.sh whoami
+```
+
+**Important notes:**
+- Each service requires its own Tailscale pod (slight resource overhead)
+- Services are directly accessible from the public internet
+- No authentication by default - add Authentik protection if needed
+- DNS propagation takes 1-2 minutes after adding a service
 
 ### Step 11: Test Public Internet Access
 ```bash
-# Your cluster is now publicly accessible from anywhere on the internet:
-curl https://k8s.dog-pence.ts.net
+# Test your exposed services (replace with your actual domain):
+curl https://whoami.dog-pence.ts.net
+curl https://openwebui.dog-pence.ts.net
+curl https://authentik.dog-pence.ts.net
 
-# ⚠️ IMPORTANT: Wildcard DNS does not work with Tailscale
-# URLs like https://whoami.k8s.dog-pence.ts.net will NOT work
-# See: https://github.com/tailscale/tailscale/issues/1196
-
-# For service access, you need to use:
-# - Path-based routing: https://k8s.dog-pence.ts.net/whoami
-# - Individual Tailscale ingresses (separate devices)
-# - External DNS with CNAME records
-
-# Test from any computer (not just tailnet members):
-# - Anyone can access https://k8s.dog-pence.ts.net from any browser
+# These URLs work from:
+# - Any browser on any computer
 # - No Tailscale client needed for visitors
 # - Full public internet exposure via Funnel
+
+# To see all your active Tailscale ingresses:
+kubectl get pods -n tailscale -l app.kubernetes.io/name=tailscale-ingress
 ```
 
 ## 🗑️ Complete Cleanup
@@ -262,7 +268,7 @@ curl https://k8s.dog-pence.ts.net
 To completely remove Tailscale and start over:
 ```bash
 # Delete everything
-./networking/tailscale/805-tailscale-tunnel-delete.sh
+./networking/tailscale/804-tailscale-tunnel-delete.sh
 ```
 
 **What gets deleted:**
@@ -348,46 +354,55 @@ curl -fsSL https://tailscale.com/install.sh | sh
 
 ## 📚 Architecture Details
 
-### Wildcard Routing Flow
+### Per-Service Routing Flow
 ```
-1. External request: https://whoami.k8s.dog-pence.ts.net
-2. Tailscale MagicDNS resolves *.dog-pence.ts.net to k8s device
-3. k8s device forwards to Traefik in Kubernetes
-4. Traefik matches HostRegexp(`whoami\..+`) and routes to whoami service
+1. External request: https://whoami.dog-pence.ts.net
+2. Tailscale MagicDNS resolves to specific whoami-ingress device
+3. whoami-ingress pod forwards directly to whoami service
+4. No Traefik involvement - direct service connection
 ```
 
 ### Script Dependencies
 - **801** → **802** → **803** (sequential execution required)
-- **804** can be run anytime for cleanup
+- **803** can be run multiple times to add different services
+- **804** removes individual service ingresses
+- **805** complete cleanup of everything
 
 ### Integration with Other Systems
 - Works alongside Cloudflare tunnels (different domains)
-- Leverages existing Traefik IngressRoute configurations
-- Uses HostRegexp patterns for automatic service discovery
+- Each service gets independent public URL
+- Can add Authentik protection per service if needed
 
 ## ✅ Verification
 
-After setup, verify your cluster is accessible:
+After setup, verify your services are accessible:
 
 ```bash
-# Test main services via wildcard routing
-curl https://whoami.k8s.dog-pence.ts.net
-curl https://openwebui.k8s.dog-pence.ts.net
-curl https://authentik.k8s.dog-pence.ts.net
+# Test individual service URLs (after running 803 for each)
+curl https://whoami.dog-pence.ts.net
+curl https://openwebui.dog-pence.ts.net
+curl https://authentik.dog-pence.ts.net
 
-# Check Tailscale device status
-tailscale status | grep k8s
-
-# Verify k8s device is online
+# Check all Tailscale ingress pods
 kubectl get pods -n tailscale
+
+# View Tailscale device status
+tailscale status
+
+# List all service ingresses
+kubectl get pods -n tailscale -l app.kubernetes.io/name=tailscale-ingress
 ```
 
 ## 🎉 Benefits Achieved
 
-✅ **Public Internet Access**: All services accessible via `*.dog-pence.ts.net` from anywhere  
-✅ **Automatic HTTPS**: Zero-configuration SSL certificates  
-✅ **Wildcard Routing**: Single ingress handles all services via Traefik  
-✅ **No Port Forwarding**: Works behind NAT/firewalls via Tailscale Funnel  
-✅ **Consistent Pattern**: Mirrors Cloudflare tunnel approach with public access
+✅ **Public Internet Access**: Each service accessible via its own `.ts.net` URL from anywhere
+✅ **Automatic HTTPS**: Zero-configuration SSL certificates
+✅ **No Port Forwarding**: Works behind NAT/firewalls via Tailscale Funnel
+✅ **Flexible Service Exposure**: Choose exactly which services to make public
+✅ **Simple Management**: Add/remove services with single command
 
-Your cluster is now publicly accessible on the internet via Tailscale Funnel with wildcard routing!
+## 📝 Summary
+
+While Tailscale doesn't support wildcard DNS (limiting us from using patterns like `*.k8s.dog-pence.ts.net`), the `802-tailscale-tunnel-deploy.sh` script provides a practical workaround. Each service gets its own public URL like `https://whoami.dog-pence.ts.net`, giving you full control over which services are exposed to the internet.
+
+⚠️ **Authentication Note**: Services exposed via Tailscale are publicly accessible by default. If you need authentication, consider adding Authentik protection. See `doc/traefik-ingress-rules.md` for authentication setup details.
