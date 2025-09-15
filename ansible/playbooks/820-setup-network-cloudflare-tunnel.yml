@@ -30,7 +30,7 @@
 
     - name: 3. Generate full hostnames
       ansible.builtin.set_fact:
-        hostnames: "{{ ['*.' + domain] if subdomains | length == 0 else (subdomains | map('regex_replace', '^(.+)$', '\\1.' + domain) | list) | unique }}"
+        hostnames: "{{ [domain, '*.' + domain] if subdomains | length == 0 else ([domain] + (subdomains | map('regex_replace', '^(.+)$', '\\1.' + domain) | list)) | unique }}"
 
     - name: 4. Display hostnames to be set up
       ansible.builtin.debug:
@@ -240,9 +240,10 @@
 
     - name: 33. Test connection through the tunnel for each hostname
       ansible.builtin.uri:
-        url: "http://{{ item | regex_replace('^\\*\\.', 'test.') }}:8080"
+        url: "https://{{ item | regex_replace('^\\*\\.', 'test.') if item.startswith('*.') else item }}"
         return_content: false
         validate_certs: false
+        timeout: 30
       register: tunnel_tests
       retries: 15
       delay: 10
@@ -252,7 +253,7 @@
 
     - name: 34. Display test results
       ansible.builtin.debug:
-        msg: "Tunnel test for {{ item.item | regex_replace('^\\*\\.', 'test.') }}: {{ 'successful' if item.status == 200 else 'failed' }}. Status: {{ item.status }}."
+        msg: "Tunnel test for https://{{ item.item | regex_replace('^\\*\\.', 'test.') if item.item.startswith('*.') else item.item }}: {{ 'successful' if item.status == 200 else 'failed' }}. Status: {{ item.status }}."
       loop: "{{ tunnel_tests.results }}"
 
     - name: 35. Stop the Cloudflare tunnel
