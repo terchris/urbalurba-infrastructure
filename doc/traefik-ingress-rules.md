@@ -776,3 +776,95 @@ spec:
 - **Test incrementally** to avoid debugging complexity
 
 This approach ensures consistent, maintainable ingress configuration across the cluster with support for both development and production environments, while enabling complex internal service communication patterns like OAuth integration.
+
+## ⚠️ **External Domain Authentication Limitations**
+
+### **The Problem**
+While Authentik works seamlessly with `*.localhost` domains, **adding external domains (like `urbalurba.no`) requires significant manual configuration**. This is a fundamental limitation of Authentik's proxy provider architecture, not our cluster setup.
+
+### **Why This Happens**
+Authentik's proxy providers have a single "External Host" field that only accepts ONE specific URL. You cannot use patterns or wildcards. This means:
+- ❌ Cannot have one provider for both `whoami.localhost` and `whoami.urbalurba.no`
+- ❌ Cannot use patterns like `https://whoami.*` in the External Host field
+- ❌ Each domain/service combination needs its own provider
+
+### **Manual Steps Required Per External Domain**
+
+When connecting a new external domain (e.g., via Cloudflare tunnel), developers must:
+
+#### **1. Update CSRF Trusted Origins** (~10 minutes)
+Edit `manifests/075-authentik-config.yaml` and add ALL external URLs that will be accessed:
+```yaml
+- name: AUTHENTIK_WEB__CSRF_TRUSTED_ORIGINS
+  value: "http://authentik.localhost,https://authentik.urbalurba.no,https://whoami.urbalurba.no,https://openwebui.urbalurba.no"
+```
+Then redeploy Authentik:
+```bash
+kubectl delete -f manifests/075-authentik-config.yaml
+kubectl apply -f manifests/075-authentik-config.yaml
+```
+
+#### **2. Create Proxy Provider in Authentik UI** (~5 minutes per service)
+For EACH protected service on the external domain:
+1. Login to Authentik admin: `https://authentik.urbalurba.no/if/flow/initial-setup/`
+2. Navigate to **Applications** → **Providers**
+3. Click **Create** → **Proxy Provider**
+4. Configure:
+   - **Name**: `whoami-urbalurba-provider`
+   - **Authorization flow**: `default-provider-authorization-implicit-consent`
+   - **Type**: Select **Forward auth (single application)**
+   - **External host**: `https://whoami.urbalurba.no` (exact URL, no wildcards)
+   - **Token validity**: `hours=24`
+
+#### **3. Create Application** (~3 minutes per service)
+1. Navigate to **Applications** → **Applications**
+2. Click **Create**
+3. Configure:
+   - **Name**: `whoami-urbalurba`
+   - **Slug**: `whoami-urbalurba`
+   - **Provider**: Select the provider created in step 2
+   - **Policy engine mode**: `any`
+
+#### **4. Update Embedded Outpost** (~2 minutes)
+1. Navigate to **Applications** → **Outposts**
+2. Edit **authentik Embedded Outpost**
+3. In **Applications**, add the new application from step 3
+4. Click **Update**
+
+### **Time Impact**
+- **First external domain**: ~45 minutes (includes CSRF update + first few services)
+- **Additional services on same domain**: ~10 minutes each
+- **New external domain**: ~20 minutes + 10 minutes per protected service
+
+### **Example Scenario**
+Developer connects `company.com` via Cloudflare tunnel and wants to protect 5 services:
+1. Update CSRF origins with all 5 service URLs: 10 minutes
+2. Create 5 proxy providers (one per service): 25 minutes
+3. Create 5 applications: 15 minutes
+4. Update outpost configuration: 2 minutes
+**Total**: ~52 minutes of manual configuration
+
+### **What Works Without Manual Configuration**
+✅ All `*.localhost` services (development)
+✅ Public services on external domains (no authentication)
+✅ Authentik admin UI on external domains (with CSP middleware)
+
+### **What Requires Manual Configuration**
+❌ Each protected service on external domains
+❌ CSRF trusted origins for each new domain
+❌ Separate provider/application for each domain/service combination
+
+### **Future Solutions Being Considered**
+1. **Custom Authentication Proxy**: Build domain-agnostic proxy between Traefik and Authentik
+2. **Automation Scripts**: Use Authentik API to auto-configure providers when new domains detected
+3. **Alternative Auth Systems**: Evaluate Authelia or OAuth2-Proxy for better multi-domain support
+4. **Kubernetes Operator**: Auto-configure Authentik based on IngressRoute annotations
+
+### **Current Workaround**
+For now, developers should:
+1. Use `*.localhost` for development (works automatically)
+2. Only configure external domain authentication for production/demo services
+3. Keep most services public during development
+4. Document which services need protection before going to production
+
+This limitation is acknowledged and being worked on, but for now represents a "one-time setup cost" per external domain that developers need to be aware of.

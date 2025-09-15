@@ -9,6 +9,7 @@
 
 Transform your local cluster from `http://service.localhost` to `https://service.yourcompany.com` with enterprise-grade security. Uses your Cloudflare-managed domain to provide global CDN, DDoS protection, and professional appearance.
 
+
 ## ✅ Prerequisites
 
 Before starting, ensure you have:
@@ -47,13 +48,7 @@ Three scripts manage the complete tunnel lifecycle:
 
 ## 🚀 Quick Start Guide
 
-### Step 1: Copy Scripts to Provision Host
-```bash
-# From your Mac host
-./copy2provisionhost.sh
-```
-
-### Step 2: Create Tunnel and Configure DNS
+### Step 1: Create Tunnel and Configure DNS
 ```bash
 # Inside provision-host container
 docker exec -it provision-host bash
@@ -65,12 +60,35 @@ cd /mnt/urbalurbadisk
 
 **What happens:**
 - Checks if tunnel already exists (smart detection)
-- Opens browser for Cloudflare authentication
+- Opens browser for Cloudflare authentication (see authentication steps below)
 - Creates tunnel with unique credentials
-- Configures DNS: `*.urbalurba.no` → tunnel
+- Configures DNS: `urbalurba.no` AND `*.urbalurba.no` → tunnel
 - Stores credentials for persistence
+- Updates `kubernetes-secrets.yml` with tunnel credentials
 
-### Step 3: Deploy Tunnel to Kubernetes
+#### Browser Authentication Process
+
+When the script runs, you'll need to complete a 2-step browser authentication:
+
+**Step 1: Select Domain Zone**
+- A browser URL will appear in the terminal - click or copy it to your browser
+- You'll see "Authorize Cloudflare Tunnel" page with all your domains
+- **ACTION**: Click on the row for your specific domain (e.g., urbalurba.no)
+- All domains should show "Active" status with green checkmarks
+
+**Step 2: Authorize Tunnel Creation**
+- You'll see a confirmation dialog: "Authorize Tunnel for [your-domain]"
+- Message: "To finish configuring Tunnel for your zone, click Authorize below"
+- **ACTION**: Click the blue "Authorize" button (NOT "Cancel")
+
+**Step 3: Success Confirmation**
+- You'll see a "Success" page
+- Message: "Cloudflared has installed a certificate allowing your origin to create a Tunnel on this zone"
+- **ACTION**: Close the browser window and return to the terminal
+
+⚠️ **Important**: You must complete BOTH browser steps (select domain AND authorize) or you'll get "Unauthorized" errors. The authentication link has a timeout, so complete it quickly.
+
+### Step 2: Deploy Tunnel to Kubernetes
 ```bash
 # Deploy to current cluster (no parameters needed)
 ./networking/cloudflare/821-cloudflare-tunnel-deploy.sh
@@ -82,28 +100,29 @@ cd /mnt/urbalurbadisk
 - Routes traffic to Traefik ingress
 - Establishes connection to Cloudflare edge
 
-### Step 4: Configure Root Domain (Optional)
-By default, only `*.domain` (wildcard) is configured. To also use the root domain:
+### Step 3: Root Domain Configuration (Automatic)
+The setup script now automatically configures both:
+- **Root domain**: `urbalurba.no` → tunnel
+- **Wildcard subdomains**: `*.urbalurba.no` → tunnel
 
-1. Add DNS route for root domain:
-```bash
-cloudflared tunnel --origincert /mnt/urbalurbadisk/cloudflare/cloudflare-certificate.pem \
-  route dns cloudflare-tunnel urbalurba.no
-```
+No manual configuration needed! Both domains are set up automatically during the tunnel creation process.
 
-2. Ensure no Cloudflare Workers are intercepting the root domain:
+**Note**: If you have Cloudflare Workers intercepting the root domain, you may need to:
    - Check **Workers & Pages** → Remove any custom domains
    - Check **Workers Routes** → Delete routes for your domain
 
-### Step 5: Verify Setup
+### Step 4: Verify Setup
 ```bash
-# Test subdomain routing
+# Test both root domain and subdomain routing
+curl https://urbalurba.no
+curl https://test.urbalurba.no
 curl https://whoami.urbalurba.no
 curl https://openwebui.urbalurba.no
-
-# Test root domain (if configured)
-curl https://urbalurba.no
 ```
+
+Both root domain and subdomains should work automatically!
+
+⚠️ **Authentication Note**: If you want to protect services with Authentik authentication on external domains, see `doc/traefik-ingress-rules.md` section "External Domain Authentication Limitations" for important manual configuration requirements.
 
 ## 🗑️ Complete Cleanup
 
@@ -116,9 +135,10 @@ To completely remove a tunnel and start over:
 
 **What gets deleted:**
 - Kubernetes deployment, configmap, and secrets
-- Cloudflare DNS routes
 - Cloudflare tunnel
 - Local configuration files
+- TODO: Cloudflare DNS routes (you must do it manually )
+- TODO: Cloudflare API tokens (you must do it manually )
 
 ## 🔧 Troubleshooting
 
@@ -132,6 +152,11 @@ To completely remove a tunnel and start over:
 | Tunnel pod not starting | Missing credentials | Re-run setup script to generate credentials |
 | Certificate error during setup | Not logged into Cloudflare | Login to dash.cloudflare.com first |
 | "Cannot have more than 50 tokens" | Too many API tokens created | Clean up unused tokens (see below) |
+| REST API unauthorized errors | Incomplete browser authentication | Complete BOTH steps: select domain AND click Authorize |
+| Authentication timeout | Took too long to complete browser steps | Run script again for fresh link, complete quickly |
+| Wrong domain selected | Multiple domains in account | Ensure you click the correct domain row that matches script parameter |
+| Permission denied errors | File ownership issues | Script now automatically fixes ownership using `docker exec -u root` |
+| "Unauthorized: Failed to get tunnel" | Credentials mismatch | Script now properly updates both Kubernetes secret and ConfigMap |
 
 ### Cleaning Up API Tokens (50 Token Limit)
 
@@ -168,10 +193,12 @@ kubectl logs -n default -l app=cloudflared --tail=50
 
 | File | Path | Purpose |
 |------|------|---------|
-| Certificate | `/mnt/urbalurbadisk/cloudflare/cloudflare-certificate.pem` | Global Cloudflare auth |
-| Credentials | `/mnt/urbalurbadisk/cloudflare/cloudflare-tunnel.json` | Tunnel-specific secrets |
+| Certificate | `/mnt/urbalurbadisk/cloudflare/cloudflare-certificate.pem` | Global Cloudflare auth (created during browser auth) |
+| Credentials | `/mnt/urbalurbadisk/cloudflare/cloudflare-tunnel.json` | Tunnel-specific secrets (encrypted) |
 | Config | `/mnt/urbalurbadisk/cloudflare/cloudflare-tunnel-config.yml` | Tunnel configuration |
 | Manifest | `/mnt/urbalurbadisk/manifests/cloudflare-tunnel-manifest.yaml` | K8s deployment |
+
+⚠️ **Security Note**: Never share the certificate or credential files. They provide access to your Cloudflare account and tunnel.
 
 ## 🏗️ Architecture
 
@@ -187,8 +214,8 @@ User Request → Cloudflare Edge → Tunnel Pod → Traefik → Service
 - **Services**: Your applications with IngressRoute definitions
 
 ### DNS Configuration
-- **Wildcard**: `*.domain` → All subdomains route to tunnel
-- **Root (optional)**: `domain` → Root domain routes to tunnel
+- **Root domain**: `urbalurba.no` → tunnel (automatically configured)
+- **Wildcard**: `*.urbalurba.no` → All subdomains route to tunnel
 - **Proxied**: Orange cloud enabled for CDN and security
 
 ## 📚 Additional Resources
