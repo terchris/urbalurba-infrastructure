@@ -2,8 +2,9 @@
 #
 # Description:
 # Helm values file for deploying Open WebUI with the official Helm chart.
+# PHASE 3: CONFIGURED TO USE LITELLM PROXY AS BACKEND
 # - Uses external PostgreSQL (with pgvector) via pre-constructed DATABASE_URL from secrets.
-# - Connects to both in-cluster and host Ollama instances.
+# - Routes ALL LLM calls through LiteLLM proxy for accounting and rate limiting.
 # - Uses an external Tika deployment for document extraction.
 # - Pipelines enabled for document processing.
 # - Persistent storage via existing PVC.
@@ -46,31 +47,21 @@ namespaceOverride: "ai"
 fullnameOverride: "open-webui"
 
 # External services configuration
-# Using built-in Ollama as originally planned
+# PHASE 3: Using LiteLLM proxy instead of direct Ollama connection
 ollama:
-  enabled: true   # Using built-in Ollama
-  # Use latest Ollama version (0.11.10) instead of default 0.11.4
-  image:
-    tag: "0.11.10"
-  # Reuse existing storage from the separate Ollama deployment
-  persistentVolume:
-    enabled: true
-    existingClaim: "ollama-models"  # Reuse 15Gi PVC
-  # Configure model to pull and run automatically
-  models:
-    pull:
-      - qwen3:0.6b
-    run:
-      - qwen3:0.6b
-  # Let Helm chart decide optimal resource limits
+  enabled: false  # Disable built-in Ollama - using LiteLLM proxy
 
-# Remove external Ollama URLs since we're using built-in
-# ollamaUrls: []
+# Configure LiteLLM as OpenAI-compatible backend instead of Ollama
+# Use openaiUrls for OpenAI-compatible APIs like LiteLLM
+ollamaUrls: []  # Disable Ollama URLs
+openaiUrl: "http://litellm.ai.svc.cluster.local:4000/v1"  # Singular URL for primary endpoint
+openaiUrls:
+  - "http://litellm.ai.svc.cluster.local:4000/v1"  # Point to LiteLLM OpenAI-compatible endpoint with full FQDN
 
 # Pipelines - Extends OpenWebUI functionality with custom processing chains
-# Currently enabled for enhanced document processing and model integrations
+# Disabled for now due to PVC issues - can enable later when needed
 pipelines:
-  enabled: true
+  enabled: false
 
 # Apache Tika - Document extraction and processing server
 # Currently using external deployment for better resource control
@@ -112,9 +103,33 @@ extraEnvVars:
         name: urbalurba-secrets
         key: DATABASE_URL
 
-  # Model that is selected for the user the first time they log in - the model is running in separate pod 
+  # Models available through LiteLLM proxy
   - name: DEFAULT_MODELS
-    value: "qwen3:0.6b"
+    value: "mac-gpt-oss-balanced"
+
+  # LiteLLM authentication - using the secret reference as designed
+  - name: OPENAI_API_KEY
+    valueFrom:
+      secretKeyRef:
+        name: urbalurba-secrets
+        key: LITELLM_PROXY_MASTER_KEY
+
+  # Set both singular and plural OpenAI API base URLs to LiteLLM
+  # The singular overrides the default OpenAI endpoint
+  - name: OPENAI_API_BASE_URL
+    value: "http://litellm.ai.svc.cluster.local:4000/v1"
+
+  # The plural is what OpenWebUI actually uses for connections
+  - name: OPENAI_API_BASE_URLS
+    value: "http://litellm.ai.svc.cluster.local:4000/v1"
+
+  # Explicitly enable OpenAI API and disable Ollama
+  - name: ENABLE_OPENAI_API
+    value: "true"
+
+  # Explicitly disable Ollama API since we're using LiteLLM
+  - name: ENABLE_OLLAMA_API
+    value: "false"
 
   # Authentication and User Management
   - name: DEFAULT_USER_ROLE

@@ -1,5 +1,5 @@
 #!/bin/bash
-# filename: 03-setup-litellm.sh
+# filename: provision-host/kubernetes/07-ai/not-in-use/03-setup-litellm.sh
 # description: Setup LiteLLM proxy on a Kubernetes cluster using Ansible playbook.
 #
 # This script deploys the LiteLLM proxy in the 'ai' namespace using the Ansible playbook 210-setup-litellm.yml.
