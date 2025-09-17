@@ -68,7 +68,7 @@ spec:
   entryPoints:
     - web
   routes:
-    - match: HostRegexp(`authentik\..+`)
+    - match: HostRegexp(`authentik\..+`) && !Host(`authentik.localhost`)
       kind: Rule
       services:
         - name: authentik-server

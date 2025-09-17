@@ -112,18 +112,18 @@ else
     echo "⚠️  Tailscale operator not found - will deploy it"
 fi
 
-# If no service specified, deploy operator + cluster ingress and exit
+# If no service specified, deploy operator only and exit
 if [ -z "$SERVICE_NAME" ]; then
     if [ "$OPERATOR_RUNNING" = false ]; then
         echo ""
-        echo "Deploying Tailscale operator and cluster ingress: $TAILSCALE_CLUSTER_HOSTNAME"
+        echo "Deploying Tailscale operator: $TAILSCALE_CLUSTER_HOSTNAME"
         echo "Using playbook: $OPERATOR_PLAYBOOK_PATH"
         echo ""
         
         # Execute the operator deployment playbook (includes cluster ingress)
-        echo "Deploying Tailscale operator and cluster ingress (this may take a few minutes)..."
+        echo "Deploying Tailscale operator (this may take a few minutes)..."
         cd /mnt/urbalurbadisk/ansible && ansible-playbook $OPERATOR_PLAYBOOK_PATH -e TAILSCALE_CLUSTER_HOSTNAME="$TAILSCALE_CLUSTER_HOSTNAME"
-        check_command_success "Deploy Tailscale operator and cluster ingress"
+        check_command_success "Deploy Tailscale operator"
         
         # Wait for operator to be ready
         echo "Waiting for Tailscale operator to be ready..."
@@ -137,18 +137,25 @@ if [ -z "$SERVICE_NAME" ]; then
             sleep 10
         done
     else
-        echo "✅ Tailscale operator is already running"
-        echo "⚠️  Cluster ingress already exists - no changes needed"
+        echo "✅ Tailscale operator is already running - no changes needed"
     fi
     
     echo ""
-    echo "✅ Tailscale operator and cluster ingress deployment completed"
-    echo "Cluster ingress will be accessible at: https://$TAILSCALE_CLUSTER_HOSTNAME"
+    echo "✅ Tailscale operator deployment completed"
     echo ""
     echo "To add individual services, run:"
     echo "  ./802-tailscale-tunnel-deploy.sh whoami"
     echo "  ./802-tailscale-tunnel-deploy.sh authentik"
     echo "  ./802-tailscale-tunnel-deploy.sh grafana"
+    echo ""
+    echo "Each service will be accessible at: https://[service-name].$TAILSCALE_DOMAIN"
+    echo ""
+    echo "Note: If a service doesn't exist, Traefik will serve the catch-all nginx page"
+    echo ""
+    echo "DNS Troubleshooting:"
+    echo "  Check DNS resolution: nslookup [service-name].$TAILSCALE_DOMAIN"
+    echo "  Check DNS details: dig [service-name].$TAILSCALE_DOMAIN"
+    echo "  Note: DNS propagation can take 1-5 minutes globally"
     exit 0
 fi
 
@@ -226,8 +233,12 @@ else
     echo ""
     echo "✅ Traefik will handle routing to the appropriate service"
     echo ""
-    echo "Note: It may take 1-2 minutes for the DNS to become available"
-    echo "Test with: curl https://$HOSTNAME.$TAILSCALE_DOMAIN"
+    echo "DNS Troubleshooting:"
+    echo "  Check DNS resolution: nslookup $HOSTNAME.$TAILSCALE_DOMAIN"
+    echo "  Check DNS details: dig $HOSTNAME.$TAILSCALE_DOMAIN"
+    echo "  Test connectivity: curl https://$HOSTNAME.$TAILSCALE_DOMAIN"
+    echo ""
+    echo "Note: DNS propagation can take 1-5 minutes globally"
 fi
 
 echo "-----------------------------------------------------------"

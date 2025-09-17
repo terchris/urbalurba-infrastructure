@@ -166,17 +166,17 @@ Edit `topsecret/kubernetes/kubernetes-secrets.yml` with your values:
 TAILSCALE_SECRET: tskey-auth-YOUR-AUTH-KEY           # From Step 3: Auth Key
 TAILSCALE_TAILNET: your-tailnet-name                # From Step 1: Your tailnet name
 TAILSCALE_DOMAIN: your-magic-dns-domain             # From Step 5: MagicDNS domain  
-TAILSCALE_CLUSTER_HOSTNAME: k8s                     # Becomes: *.k8s.[your-domain].ts.net
+TAILSCALE_CLUSTER_HOSTNAME: k8s                     # Becomes: k8s.[your-domain].ts.net (cluster ingress only)
 TAILSCALE_CLIENTID: YOUR-OAUTH-CLIENT-ID            # From Step 4: OAuth Client ID
 TAILSCALE_CLIENTSECRET: tskey-client-YOUR-OAUTH-CLIENT-SECRET  # From Step 4: OAuth Client Secret
 ```
 
 **Important: TAILSCALE_CLUSTER_HOSTNAME:**
-- This becomes the base hostname for ALL your cluster services
+- This is used for the cluster-wide ingress only (when no service parameter is provided)
 - Example: If set to `k8s` and your domain is `dog-pence.ts.net`:
-  - `whoami.k8s.dog-pence.ts.net` → Routes to whoami service
-  - `grafana.k8s.dog-pence.ts.net` → Routes to Grafana
-  - `*.k8s.dog-pence.ts.net` → Routes to any service via Traefik
+  - `k8s.dog-pence.ts.net` → Routes to Traefik's default backend (nginx catch-all)
+  - Individual services get their own URLs: `whoami.dog-pence.ts.net`, `grafana.dog-pence.ts.net`
+  - **Note**: Tailscale does NOT support wildcard DNS, so `*.k8s.dog-pence.ts.net` patterns won't work
 
 ### Step 7: Apply Secrets to Kubernetes
 ```bash
@@ -245,7 +245,7 @@ Since Tailscale doesn't support wildcard DNS, use the `802-tailscale-tunnel-depl
 - Each service requires its own Tailscale pod (slight resource overhead)
 - Services are directly accessible from the public internet
 - No authentication by default - add Authentik protection if needed
-- DNS propagation takes 1-2 minutes after adding a service
+- DNS propagation takes 1-5 minutes globally after adding a service
 
 ### Step 11: Test Public Internet Access
 ```bash
@@ -262,6 +262,31 @@ curl https://authentik.dog-pence.ts.net
 # To see all your active Tailscale ingresses:
 kubectl get pods -n tailscale -l app.kubernetes.io/name=tailscale-ingress
 ```
+
+### Step 12: DNS Troubleshooting
+
+If services are not immediately accessible, use these commands to check DNS resolution:
+
+```bash
+# Check basic DNS resolution
+nslookup whoami.dog-pence.ts.net
+
+# Get detailed DNS information
+dig whoami.dog-pence.ts.net
+
+# Test connectivity with verbose output
+curl -v https://whoami.dog-pence.ts.net
+```
+
+**Expected Results:**
+- `nslookup` should return a Tailscale Funnel IP (e.g., `185.40.234.37`)
+- `dig` should show the A record with TTL information
+- `curl -v` should show successful TLS handshake and HTTP response
+
+**Common Issues:**
+- **"Could not resolve host"** - DNS propagation still in progress (wait 1-5 minutes)
+- **"Connection timeout"** - Check if service is running in cluster
+- **"404 Not Found"** - Service exists but Traefik routing needs adjustment
 
 ## 🗑️ Complete Cleanup
 

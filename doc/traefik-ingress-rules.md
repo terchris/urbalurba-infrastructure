@@ -52,7 +52,7 @@ While the localhost routing works perfectly for browser access, **pods within th
 This cluster implements **internal DNS resolution** using CoreDNS rewrite rules that map `*.localhost` hostnames to internal service FQDNs:
 
 ```yaml
-# CoreDNS Configuration (manifests/005-internal-dns.yaml)
+# CoreDNS Configuration (REMOVED - was manifests/005-internal-dns.yaml)
 rewrite name authentik.localhost authentik-server.authentik.svc.cluster.local
 rewrite name openwebui.localhost open-webui.ai.svc.cluster.local
 ```
@@ -74,7 +74,7 @@ Pod → authentik.localhost → CoreDNS → 10.43.x.x (ClusterIP) → authentik-
 - ✅ **Automatic Resolution**: Pods automatically resolve `*.localhost` to service IPs
 
 **Implementation Details**:
-- **File**: `manifests/005-internal-dns.yaml` (deployed early in cluster setup)
+- **File**: `manifests/005-internal-dns.yaml` (REMOVED - was deployed early in cluster setup)
 - **Method**: Patches existing CoreDNS ConfigMap with rewrite rules
 - **Scope**: All pods cluster-wide get the internal DNS resolution
 - **Verification**: `kubectl exec -it <pod> -- getent hosts authentik.localhost`
@@ -737,7 +737,7 @@ spec:
 - [Traefik Routing Rules](https://doc.traefik.io/traefik/routing/routers/)
 
 ### **Cluster-Specific Files**:
-- **Internal DNS**: `manifests/005-internal-dns.yaml`
+- **Internal DNS**: `manifests/005-internal-dns.yaml` (REMOVED)
 - **Nginx Catch-All**: `manifests/020-nginx-root-ingress.yaml`
 - **Whoami Public**: `manifests/071-whoami-public-ingressroute.yaml`
 - **Authentik CSP Middleware**: `manifests/076-authentik-csp-middleware.yaml`
@@ -751,7 +751,7 @@ spec:
 
 ### **Key Points**:
 1. **Use `traefik.io/v1alpha1`** - this is the current working version in Traefik 3.3.6
-2. **Deploy internal DNS early** - `manifests/005-internal-dns.yaml` enables pod-to-pod communication
+2. **Deploy internal DNS early** - `manifests/005-internal-dns.yaml` (REMOVED - was used for pod-to-pod communication)
 3. **Prefer `HostRegexp()` patterns** for all services to enable multi-domain support
 4. **Use `HostRegexp()` for unified internal/external access** - single rule handles multiple domains
 5. **Set appropriate priorities** (1 = lowest, 100+ = highest)
