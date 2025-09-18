@@ -504,7 +504,7 @@ The blueprint ensures that the user specification is accurately converted into a
 
 ## Resources
 
-- [Authentik Blueprints Manual](doc/package-authentication-blueprints.md)
+- [Authentik Blueprints Manual](doc/package-auth-authentik-blueprints-syntax.md)
 - [Okta Fields Reference](terchris/okta/okta-fields.md)
 - [User Table Specification](terchris/okta/user-table.md)
 - [Blueprint Conversion Guide](terchris/okta/howto-convert-userdatatblueprint.md)

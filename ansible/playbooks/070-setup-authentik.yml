@@ -41,16 +41,26 @@
     # Manifest files (following manual deployment guide order)
     whoami_service_file: "{{ manifests_folder }}/070-whoami-service-and-deployment.yaml"
     whoami_public_ingress_file: "{{ manifests_folder }}/071-whoami-public-ingressroute.yaml"
-    system_core_whoami_blueprint_file: "{{ manifests_folder }}/072-authentik-system-core-whoami-blueprint.yaml"
+
+    # Auth10 Templates (located in manifests folder)
+    auth10_templates_folder: "/mnt/urbalurbadisk/manifests"
+    service_protection_blueprint_file: "{{ manifests_folder }}/073-authentik-service-protection-blueprint.yaml"
+
+    # Static blueprints (unchanged)
     test_users_groups_blueprint_file: "{{ manifests_folder }}/073-authentik-1-test-users-groups-blueprint.yaml"
     openwebui_blueprint_file: "{{ manifests_folder }}/073-authentik-2-openwebui-blueprint.yaml"
     app_slot1_blueprint_file: "{{ manifests_folder }}/073-authentik-3-app-slot1-blueprint.yaml"
+
+    # Auth10 generated files (dynamic)
     authentik_helm_values_file: "{{ manifests_folder }}/075-authentik-config.yaml"
+    service_protection_ingressroute_file: "{{ manifests_folder }}/078-service-protection-ingressroute.yaml"
+
+    # Static middleware and routing files (unchanged)
     authentik_csp_middleware_file: "{{ manifests_folder }}/076-authentik-csp-middleware.yaml"
     authentik_ingressroute_file: "{{ manifests_folder }}/076-authentik-ingressroute.yaml"
-    authentik_localhost_ingressroute_file: "{{ manifests_folder }}/076-authentik-localhost-ingressroute.yaml"
     forward_auth_middleware_file: "{{ manifests_folder }}/077-authentik-forward-auth-middleware.yaml"
-    whoami_protected_ingress_file: "{{ manifests_folder }}/078-whoami-protected-ingressroute.yaml"
+
+    # Auth10 configuration (loaded from Kubernetes secret)
 
     # Other playbooks
     verify_authentik_playbook: "/mnt/urbalurbadisk/ansible/playbooks/070-verify-authentik.yml"
@@ -274,13 +284,85 @@
           🌐 Public route: http://whoami-public.localhost
           🧪 Ready for authentication integration
 
+    # Phase 3.5: Auth10 Template Rendering (Dynamic Configuration Generation)
+    - name: "24.1. Get Auth10 configuration from Kubernetes secret"
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Secret
+        name: urbalurba-secrets
+        namespace: default
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: auth10_secret
+
+    - name: "24.2. Parse Auth10 domains and services from secret"
+      ansible.builtin.set_fact:
+        auth10_config:
+          domains: "{{ auth10_secret.resources[0].data.AUTH10_DOMAINS | b64decode | from_yaml }}"
+          protected_services: "{{ auth10_secret.resources[0].data.AUTH10_PROTECTED_SERVICES | b64decode | from_yaml }}"
+
+    - name: "24.3. Display Auth10 configuration loaded"
+      ansible.builtin.debug:
+        msg: |
+          ✅ Auth10 Configuration Loaded from Kubernetes Secret
+          🌐 Domains: {{ auth10_config.domains.keys() | list }}
+          🛡️ Protected services: {{ auth10_config.protected_services | map(attribute='name') | list }}
+
+    - name: "24.4. Render Auth10 service protection blueprint"
+      ansible.builtin.template:
+        src: "{{ auth10_templates_folder }}/073-authentik-service-protection-blueprint.yaml.j2"
+        dest: "{{ service_protection_blueprint_file }}"
+        mode: '0644'
+      vars:
+        domains: "{{ auth10_config.domains }}"
+        protected_services: "{{ auth10_config.protected_services }}"
+      register: blueprint_generation
+
+    - name: "24.5. Render Auth10 Authentik configuration"
+      ansible.builtin.template:
+        src: "{{ auth10_templates_folder }}/075-authentik-config.yaml.j2"
+        dest: "{{ authentik_helm_values_file }}"
+        mode: '0644'
+      vars:
+        domains: "{{ auth10_config.domains }}"
+        protected_services: "{{ auth10_config.protected_services }}"
+      register: config_generation
+
+    - name: "24.6. Render Auth10 service protection IngressRoute"
+      ansible.builtin.template:
+        src: "{{ auth10_templates_folder }}/078-service-protection-ingressroute.yaml.j2"
+        dest: "{{ service_protection_ingressroute_file }}"
+        mode: '0644'
+      vars:
+        domains: "{{ auth10_config.domains }}"
+        protected_services: "{{ auth10_config.protected_services }}"
+
+    - name: "24.7. Render Auth10 Authentik IngressRoute"
+      ansible.builtin.template:
+        src: "{{ auth10_templates_folder }}/076-authentik-ingressroute.yaml.j2"
+        dest: "{{ authentik_ingressroute_file }}"
+        mode: '0644'
+      vars:
+        domains: "{{ auth10_config.domains }}"
+      register: ingressroute_generation
+
+    - name: "24.8. Display Auth10 template rendering status"
+      ansible.builtin.debug:
+        msg: |
+          ✅ Auth10 Templates Rendered Successfully
+          📝 Generated files:
+          • Service protection blueprint: {{ service_protection_blueprint_file }}
+          • Authentik configuration: {{ authentik_helm_values_file }}
+          • Service protection IngressRoute: {{ service_protection_ingressroute_file }}
+          • Authentik IngressRoute: {{ authentik_ingressroute_file }}
+          🎯 Dynamic configuration: {{ auth10_config.protected_services | length }} services across {{ auth10_config.domains.keys() | list | length }} domains
+
     # Phase 4: Blueprint Deployment (CRITICAL - must be before Helm)
-    - name: "25. Deploy system core whoami blueprint BEFORE Helm deployment"
+    - name: "25. Deploy Auth10 service protection blueprint BEFORE Helm deployment"
       ansible.builtin.command: >
-        kubectl apply -f {{ system_core_whoami_blueprint_file }}
+        kubectl apply -f {{ service_protection_blueprint_file }}
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
-      register: system_core_blueprint_deploy_result
+      register: service_protection_blueprint_deploy_result
       changed_when: true
 
     - name: "26. Verify blueprint ConfigMap exists before Helm"
@@ -366,10 +448,11 @@
         msg: |
           ✅ All Blueprint ConfigMaps deployed BEFORE Helm installation
           📝 Blueprints deployed:
-          • system-core-whoami-blueprint (core system + whoami application)
+          • service-protection-blueprint (Auth10 generated - multi-domain service protection)
           • test-users-groups-blueprint (test users and groups)
           • openwebui-blueprint (OpenWebUI OAuth2/OIDC)
           • app-slot1-blueprint (expansion slot for future apps)
+          🎯 Auth10 Features: Dynamic multi-domain authentication for {{ auth10_config.protected_services | length }} services
           🔧 Total blueprints: {{ all_blueprints_verify.stdout_lines | length if all_blueprints_verify.stdout_lines else '4' }}
           📋 Blueprint status: {{ all_blueprints_verify.stdout if all_blueprints_verify.stdout else 'All ConfigMaps ready' }}
 
@@ -507,7 +590,7 @@
       register: authentik_csp_middleware_result
       changed_when: true
 
-    - name: "39. Deploy Authentik IngressRoute for external domains (with CSP)"
+    - name: "39. Deploy Auth10 Authentik IngressRoute (unified localhost + external domains)"
       ansible.builtin.command: >
         kubectl apply -f {{ authentik_ingressroute_file }}
       environment:
@@ -515,15 +598,7 @@
       register: authentik_ingressroute_result
       changed_when: true
 
-    - name: "40. Deploy Authentik IngressRoute for localhost (no CSP)"
-      ansible.builtin.command: >
-        kubectl apply -f {{ authentik_localhost_ingressroute_file }}
-      environment:
-        KUBECONFIG: "{{ merged_kubeconf_file }}"
-      register: authentik_localhost_ingressroute_result
-      changed_when: true
-
-    - name: "41. Wait for Authentik IngressRoutes to be ready"
+    - name: "40. Wait for Authentik IngressRoutes to be ready"
       ansible.builtin.shell: |
         kubectl wait --for=condition=Ready ingressroute authentik-server --timeout=60s -n {{ authentik_namespace }} && \
         kubectl wait --for=condition=Ready ingressroute authentik-server-localhost --timeout=60s -n {{ authentik_namespace }}
@@ -593,9 +668,9 @@
       register: middleware_result
       changed_when: true
 
-    - name: "46. Deploy protected whoami route"
+    - name: "46. Deploy Auth10 service protection IngressRoute"
       ansible.builtin.command: >
-        kubectl apply -f {{ whoami_protected_ingress_file }}
+        kubectl apply -f {{ service_protection_ingressroute_file }}
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
       register: protected_route_result
@@ -715,20 +790,21 @@
           - ""
           - "{{ '✅ SUCCESS - All components are running' if installation_successful else '⚠️ PARTIAL SUCCESS - Some components may not be running yet' }}"
           - ""
-          - "📦 Components deployed (following manual guide):"
+          - "📦 Components deployed (with Auth10 integration):"
           - "• Step 1: Prerequisites verified (PostgreSQL, Redis, Traefik)"
           - "• Step 2: Whoami service deployed"
-          - "• Step 3: Blueprints deployed BEFORE Helm (critical)"
-          - "  - system-core-whoami-blueprint (core system + whoami application)"
+          - "• Step 3: Auth10 template rendering (dynamic configuration)"
+          - "• Step 4: Blueprints deployed BEFORE Helm (critical)"
+          - "  - service-protection-blueprint (Auth10 generated - multi-domain)"
           - "  - test-users-groups-blueprint (test users and groups)"
           - "  - openwebui-blueprint (OpenWebUI OAuth2/OIDC)"
           - "  - app-slot1-blueprint (expansion slot for future apps)"
-          - "• Step 4: PostgreSQL database created (authentik)"
-          - "• Step 5: Authentik server/worker deployed (Helm {{ authentik_version }})"
-          - "• Step 6: Authentik IngressRoute deployed (CRITICAL for access)"
-          - "• Step 7: Forward auth middleware configured"
-          - "• Step 8: Protected routes established"
-          - "• Step 9: Verification completed"
+          - "• Step 5: PostgreSQL database created (authentik)"
+          - "• Step 6: Authentik server/worker deployed (Helm {{ authentik_version }})"
+          - "• Step 7: Authentik IngressRoute deployed (CRITICAL for access)"
+          - "• Step 8: Forward auth middleware configured"
+          - "• Step 9: Auth10 service protection routes established"
+          - "• Step 10: Verification completed"
           - ""
           - "🔄 Status:"
           - "• Running pods: {{ running_pods_count.stdout }} / 2+"
@@ -746,11 +822,11 @@
           - "• Default Login: admin@urbalurba.local"
           - "• Default Password: SecretPassword1"
           - ""
-          - "🧪 Test Authentication Flow:"
-          - "1. Visit: http://whoami.localhost (from host machine)"
-          - "2. Should redirect to: http://authentik.localhost/if/flow/..."
-          - "3. Login with admin credentials above"
-          - "4. Should redirect back to whoami with authentication headers"
+          - "🧪 Test Auth10 Multi-Domain Authentication:"
+          - "🌐 Localhost: http://whoami.localhost (development)"
+          - "🔒 External domains: Automatically configured for {% for domain_type, domain_config in auth10_config.domains.items() %}{% if domain_config.enabled %}{{ domain_config.protocol }}://whoami.{{ domain_config.base_domain }}{% if not loop.last %}, {% endif %}{% endif %}{% endfor %}"
+          - "📋 Flow: All domains → redirect to authentik.localhost → login → redirect back"
+          - "✅ Auth10 benefit: Add new services by updating kubernetes-secrets.yml only"
           - ""
           - "👥 Test Users Available (Password: Password123):"
           - "• it1@urbalurba.no (IT Bruker 1) - Group: Øk.Adm IT"

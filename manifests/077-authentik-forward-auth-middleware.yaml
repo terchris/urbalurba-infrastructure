@@ -7,12 +7,14 @@
 # Passes authentication headers to protected applications
 #
 # Usage:
-# kubectl apply -f 077-authentik-forward-auth-middleware.yaml
+# Automatically deployed via Auth10 system (ansible/playbooks/070-setup-authentik.yml)
+# Manual deployment: kubectl apply -f 077-authentik-forward-auth-middleware.yaml
 #
 # Dependencies:
 # - 075-authentik-config.yaml (Authentik must be deployed and running)
 # - Authentik outpost service must be available
-# - Authentik UI configuration must be completed (application, provider, outpost assignment)
+# - Auth10 service protection blueprint (073-authentik-service-protection-blueprint.yaml)
+# - NO manual UI configuration needed (Auth10 handles provider/outpost assignment)
 #
 # Testing:
 # kubectl get middleware authentik-forward-auth -n default
@@ -22,18 +24,21 @@
 # kubectl run debug-pod --image=curlimages/curl --rm -it --restart=Never -- \
 #   curl -v http://authentik-server.authentik.svc.cluster.local:80/outpost.goauthentik.io/auth/traefik
 #
-# Integration:
-# Reference in IngressRoute middleware section:
+# Integration with Auth10:
+# Automatically integrated via Auth10 template system
+# Template: manifests/078-service-protection-ingressroute.yaml.j2
+# Applied to all proxy-type protected services
 #   middlewares:
 #     - name: authentik-forward-auth
 #       namespace: default
 #
-# Authentication Flow:
-# 1. User requests protected resource
+# Auth10 Authentication Flow:
+# 1. User requests protected resource (e.g., http://whoami.localhost)
 # 2. Traefik forwards auth check to Authentik outpost
-# 3. If not authenticated, user redirected to Authentik login
+# 3. If not authenticated, user redirected to authentik.localhost login
 # 4. After successful login, user redirected back with headers
-# 5. Application receives request with authentication headers
+# 5. Application receives request with Auth10 authentication headers
+# 6. Works across all configured domains (localhost, tailscale, cloudflare)
 #
 # Cluster Standards Compliance:
 # - Uses traefik.io/v1alpha1 API version
@@ -60,6 +65,7 @@ spec:
     trustForwardHeader: true
     # Headers to pass from Authentik to protected application
     # These are the actual headers Authentik provides (not X-Forwarded-*)
+    # See developer guide for integration examples: doc/package-auth-authentik-auth10-developer-guide.md
     authResponseHeaders:
       - X-authentik-username
       - X-authentik-groups
