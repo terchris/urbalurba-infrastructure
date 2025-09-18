@@ -1,0 +1,154 @@
+# Authentik Helm Chart Values
+# Generated manually to fix worker crash issue
+
+authentik:
+  # Secret key will be loaded from environment variables
+  secret_key: ""  # Empty - loaded via global.env
+
+  # Debugging and error reporting
+  error_reporting:
+    enabled: false
+
+  # External PostgreSQL configuration
+  postgresql:
+    host: "postgresql.default.svc.cluster.local"
+    name: authentik
+    user: authentik
+    port: 5432
+    password: ""  # Empty - loaded via global.env
+
+  # External Redis configuration
+  redis:
+    host: "redis-master.default.svc.cluster.local"
+    port: 6379
+    password: ""  # Empty - loaded via global.env
+
+# CRITICAL: Environment variables for Authentik + outpost communication
+global:
+  envFrom:
+    - secretRef:
+        name: urbalurba-secrets
+  env:
+    # Bootstrap admin account (only used on *first startup*)
+    - name: AUTHENTIK_BOOTSTRAP_EMAIL
+      valueFrom:
+        secretKeyRef:
+          name: urbalurba-secrets
+          key: AUTHENTIK_BOOTSTRAP_EMAIL
+    - name: AUTHENTIK_BOOTSTRAP_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: urbalurba-secrets
+          key: AUTHENTIK_BOOTSTRAP_PASSWORD
+    # CRITICAL: Internal cluster URL for multi-domain support
+    - name: AUTHENTIK_HOST
+      value: "http://authentik-server.authentik.svc.cluster.local"
+    # Allow HTTP (⚠️ dev only — don't use in production)
+    - name: AUTHENTIK_INSECURE
+      value: "true"
+    # Secret key for session encryption and security
+    - name: AUTHENTIK_SECRET_KEY
+      valueFrom:
+        secretKeyRef:
+          name: urbalurba-secrets
+          key: AUTHENTIK_SECRET_KEY
+    # PostgreSQL password
+    - name: AUTHENTIK_POSTGRESQL__PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: urbalurba-secrets
+          key: AUTHENTIK_POSTGRESQL__PASSWORD
+    # Redis password
+    - name: AUTHENTIK_REDIS__PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: urbalurba-secrets
+          key: AUTHENTIK_REDIS__PASSWORD
+    # CSRF trusted origins for Auth10 domains
+    - name: AUTHENTIK_WEB__CSRF_TRUSTED_ORIGINS
+      value: "http://whoami.localhost,https://whoami.dog-pence.ts.net,https://whoami.urbalurba.no"
+
+# Blueprint system configuration with volume mounting
+blueprints:
+  # List of ConfigMaps containing blueprints
+  configMaps:
+    - "test-users-groups-blueprint"
+    - "openwebui-blueprint"
+    - "app-slot1-blueprint"
+    - "service-protection-blueprint"
+
+# Authentik server configuration with blueprint volume mounting
+server:
+  # Ingress disabled - using separate IngressRoute
+  ingress:
+    enabled: false
+
+  # Blueprint volume configuration for automatic discovery
+  volumes:
+    - name: test-users-groups-blueprint
+      configMap:
+        name: test-users-groups-blueprint
+    - name: openwebui-blueprint
+      configMap:
+        name: openwebui-blueprint
+    - name: app-slot1-blueprint
+      configMap:
+        name: app-slot1-blueprint
+    - name: service-protection-blueprint
+      configMap:
+        name: service-protection-blueprint
+  volumeMounts:
+    - name: test-users-groups-blueprint
+      mountPath: /blueprints/test-users-groups
+      readOnly: true
+    - name: openwebui-blueprint
+      mountPath: /blueprints/openwebui
+      readOnly: true
+    - name: app-slot1-blueprint
+      mountPath: /blueprints/app-slot1
+      readOnly: true
+    - name: service-protection-blueprint
+      mountPath: /blueprints/service-protection
+      readOnly: true
+
+# Worker configuration with blueprint volume mounting and metrics
+worker:
+  enabled: true
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: false
+
+  # Blueprint volume configuration for automatic discovery
+  volumes:
+    - name: test-users-groups-blueprint
+      configMap:
+        name: test-users-groups-blueprint
+    - name: openwebui-blueprint
+      configMap:
+        name: openwebui-blueprint
+    - name: app-slot1-blueprint
+      configMap:
+        name: app-slot1-blueprint
+    - name: service-protection-blueprint
+      configMap:
+        name: service-protection-blueprint
+  volumeMounts:
+    - name: test-users-groups-blueprint
+      mountPath: /blueprints/test-users-groups
+      readOnly: true
+    - name: openwebui-blueprint
+      mountPath: /blueprints/openwebui
+      readOnly: true
+    - name: app-slot1-blueprint
+      mountPath: /blueprints/app-slot1
+      readOnly: true
+    - name: service-protection-blueprint
+      mountPath: /blueprints/service-protection
+      readOnly: true
+
+# Disable built-in Postgres/Redis (using external services)
+postgresql:
+  enabled: false
+redis:
+  enabled: false

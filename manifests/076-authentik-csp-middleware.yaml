@@ -24,13 +24,16 @@
 # - Uses standard browser functionality
 #
 # Usage:
-# kubectl apply -f 076-authentik-csp-middleware.yaml
+# Automatically deployed via Auth10 system (ansible/playbooks/070-setup-authentik.yml)
+# Manual deployment: kubectl apply -f 076-authentik-csp-middleware.yaml
 #
-# Integration:
-# Reference in IngressRoute middleware section:
+# Integration with Auth10:
+# Automatically integrated via Auth10 template system
+# Template: manifests/076-authentik-ingressroute.yaml.j2
+# Applied to external domains only (not localhost)
 #   middlewares:
 #     - name: authentik-csp-upgrade
-#       namespace: default
+#       namespace: authentik
 #
 # Dependencies:
 # - authentik-server service must support HTTPS on port 443 (✅ already configured)
@@ -41,10 +44,11 @@
 # After: https://authentik.urbalurba.no → All API calls automatically use HTTPS
 # Localhost: http://authentik.localhost → No change, works as before
 #
-# Compatibility:
-# - Works with all external domains (Cloudflare, Tailscale, custom domains)
-# - Preserves localhost development workflow
-# - No impact on internal cluster communication
+# Auth10 Compatibility:
+# - Works with all configured domains from kubernetes-secrets.yml
+# - External domains (cloudflare: urbalurba.no, tailscale: dog-pence.ts.net)
+# - Preserves localhost development workflow (no CSP applied)
+# - Supports Auth10 dynamic multi-domain authentication
 # - Standard CSP directive with universal browser support
 #
 # Cluster Standards Compliance:
