@@ -16,6 +16,7 @@
 #
 # Dependencies:
 # - 075-authentik-config.yaml (Authentik Helm deployment with ingress disabled)
+# - 076-authentik-csp-middleware.yaml (CSP middleware for mixed content resolution)
 # - Authentik service must exist in authentik namespace
 #
 # Testing:
@@ -29,6 +30,8 @@
 # - Enables CoreDNS resolution for *.localhost domains in pod contexts
 # - Supports OAuth discovery endpoints for OpenWebUI integration
 # - Complements OAuth forward authentication middleware
+# - Uses CSP middleware to resolve mixed content issues on HTTPS domains
+# - Automatically upgrades HTTP API calls to HTTPS when accessed via external tunnels
 #
 # Cluster Standards Compliance:
 # - Uses traefik.io/v1alpha1 API version (current working version in Traefik 3.3.6)
@@ -65,8 +68,11 @@ spec:
   entryPoints:
     - web
   routes:
-    - match: HostRegexp(`authentik\..+`)
+    - match: HostRegexp(`authentik\..+`) && !Host(`authentik.localhost`)
       kind: Rule
       services:
         - name: authentik-server
           port: 80
+      middlewares:
+        - name: authentik-csp-upgrade
+          namespace: authentik

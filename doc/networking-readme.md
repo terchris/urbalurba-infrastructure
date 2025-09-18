@@ -1,141 +1,302 @@
 # Networking Overview
 
-TODO: I have not been able to set up redirect from an external DNS to the tunnels. 
-I can set up CNAME that points to the tunnel like this:
-
-```plaintext
-a) jalla2.skryter.no	10800	CNAME	jalla.skryter.no.urbalurba.no	
-b) jalla3.skryter.no	10800	CNAME	f68c1459-8b12-4b2b-b566-c2f68d538a19.cfargotunnel.com	
-c) jalla4.skryter.no	10800	CNAME	urbalurba.no	
-d) jalla5.skryter.no	10800	CNAME	proxy-worker.terje-97e.workers.dev
-```
-
-```plaintext
-a is pointing directly to a tunnel in cloudflare using the cname name in urbalurba dns.
-b is pointing directly to the tunnel id in cloudflare.
-c is pointing to the root domain and to a worker that redirects to the tunnel (using alias name).
-d is pointing to the same worker but uses the full name of the worker.
-```
-
-All of the redirects from the skryter.no DNS works. So that is not the problem.
-The problem is how cloudflare is not sending the request to the tunnel.
-curl -i http://jalla4.skryter.no and curl -i http://jalla2.skryter.no gives a `error code: 1001`
-
-The tunnels are working and I can do direct curl to the tunnel and get a response.
-eg curl http://jalla2.skryter.no.urbalurba.no and curl http://jalla4.ublalurba.no
+**Status**: 🌐 Dual-Tunnel Internet Access Architecture  
+**Updated**: September 8, 2025  
+**Architecture**: HostRegexp routing with Tailscale + Cloudflare support
 
 
 
 
+
+## 🚀 Quick Start - Connect Your Cluster to the Internet
+
+Your cluster works perfectly on `.localhost` domains for development. Ready to connect to the internet?
+
+**You have two options** - both are supported by your existing manifests:
+
+### Option A: Tailscale Funnel 🔵 (Quick & Free)
+- **Get online in**: 15 minutes
+- **Cost**: Free 
+- **URLs**: `https://whoami.your-device.ts.net`
+- **Perfect for**: Personal projects, demos, team development
+
+### Option B: Cloudflare Tunnel ⚡ (Professional)  
+- **Get online in**: 45 minutes
+- **Cost**: ~$10-15/year (domain)
+- **URLs**: `https://whoami.your-domain.com`
+- **Perfect for**: Business sites, production apps, custom branding
+
+**👉 [Jump to tunnel selection guide](#-internet-access-options-tailscale-vs-cloudflare)**
+
+---
 
 ## Introduction
 
-This document provides an overview of: 
-* The networking setup that makes the services reachable from the Internet.
-* How DevOps admins connect to the clusters for administration and maintenance.
+This document provides a complete guide to:
+* **Internet access options** - Choose between Tailscale Funnel and Cloudflare Tunnel
+* **Architecture overview** - How the dual-tunnel system works
+* **Setup guidance** - Get your services online quickly
+* **DevOps access** - Secure administration with Tailscale VPN
+
+---
+
+## 🌐 Internet Access Options: Tailscale vs Cloudflare
+
+### Your Current Status ✅
+
+You have successfully deployed your cluster and everything works on development domains:
+- ✅ `http://whoami.localhost` - Working great  
+- ✅ `http://openwebui.localhost` - AI chat accessible
+- ✅ `http://authentik.localhost` - Authentication ready
+- ✅ All services running smoothly
+
+**Next Step**: Connect to the internet so others can access your services.
+
+### 🤔 Which Option Should You Choose?
+
+### Choose **Tailscale Funnel** if you want:
+
+✅ **Quick & Free Setup**
+- No domain purchase required
+- Automatic HTTPS certificates  
+- Working in 15 minutes
+
+✅ **Personal/Learning Projects**
+- Perfect for demos and testing
+- Share with friends easily
+- No ongoing domain costs
+
+✅ **Built-in Security**
+- Only people you invite can access
+- VPN-level security by default
+- Fine-grained access controls
+
+✅ **Simple Management**
+- One dashboard for everything
+- No DNS configuration needed
+- Automatic updates and renewal
+
+**Best for**: Personal projects, learning, demos, team development, secure internal tools
+
+### Choose **Cloudflare Tunnel** if you want:
+
+✅ **Professional Domains**
+- Your own custom domain (`yourcompany.com`)
+- Professional appearance for clients
+- Brand consistency
+
+✅ **Production-Ready Features**
+- Global CDN and caching
+- DDoS protection included
+- Web Application Firewall (WAF)
+- Analytics and monitoring
+
+✅ **Public Access**
+- Anyone can access (no VPN needed)
+- Perfect for public-facing services
+- SEO-friendly URLs
+
+✅ **Scalability**
+- Handle high traffic loads
+- Multiple domains supported
+- Enterprise-grade infrastructure
+
+**Best for**: Business websites, public services, client demos, production applications
+
+### 📊 Quick Comparison
+
+| Feature | Tailscale | Cloudflare |
+|---------|-----------|------------|
+| **Setup Time** | 15 minutes | 45 minutes |
+| **Domain Cost** | Free | $10-15/year |
+| **Custom Domain** | No | Yes |
+| **Security** | VPN-style (invite only) | Public + WAF protection |
+| **Performance** | Direct connection | Global CDN |
+| **Maintenance** | Minimal | Minimal |
+| **Production Ready** | Personal/team use | Enterprise grade |
+| **Access Control** | Tailscale accounts | Internet + optional auth |
+
+### 🚀 Can You Use Both?
+
+**Yes!** Your **HostRegexp routing architecture** supports both simultaneously:
+
+- **Development**: `service.localhost` (local testing)
+- **Team Access**: `service.your-device.ts.net` (secure team sharing)  
+- **Public Access**: `service.yourcompany.com` (customer-facing)
+
+**Technical Implementation**:
+```yaml
+# Your manifests use HostRegexp patterns like this:
+match: HostRegexp(`whoami\..+`)
+
+# This automatically handles:
+# - whoami.localhost (development)
+# - whoami.provision-host.dog-pence.ts.net (Tailscale Funnel)  
+# - whoami.yourcompany.com (Cloudflare Tunnel)
+```
+
+**Common Pattern**:
+1. Start with **Tailscale** for immediate internet access
+2. Add **Cloudflare** later when you need custom domains
+3. Use both for different purposes (internal vs external)
+
+*See [Traefik Ingress Rules](traefik-ingress-rules.md) for complete technical details on HostRegexp routing.*
+
+### 🎯 Recommended Decision Path
+
+#### Quick Decision Questions:
+
+1. **Do you need a custom domain (yourcompany.com)?**
+   - Yes → Cloudflare
+   - No → Tailscale
+
+2. **Is this for business/client use?**
+   - Yes → Cloudflare  
+   - No → Tailscale
+
+3. **Do you want to spend money on a domain?**
+   - Yes → Cloudflare
+   - No → Tailscale
+
+4. **Do you need public internet access?**
+   - Yes → Cloudflare
+   - Team only → Tailscale
+
+**When in doubt, start with Tailscale** - you can always add Cloudflare later!
+
+
+
+---
+
+## 🏗️ Architecture Overview
 
 ### Microsoft Cloud Adoption Framework (CAF) principles
 
-The networking architecture follow the Microsoft Cloud Adoption Framework (CAF) principles.
+The networking architecture follows Microsoft Cloud Adoption Framework (CAF) principles for enterprise-grade infrastructure design.
 
-TODO: The CAF principles are:
+Kubernetes clusters can be defined as Landing Zones - either standalone or within larger Azure/cloud Landing Zones, providing isolation, governance, and security boundaries.
 
-TODO: explain how the kubernetes custers can be defined as Landing Zones. A kubernetes cluster can it self be defined as a Landing Zone, but it can also be placed in a Azure Landing zone.
+### Dual-Tunnel Architecture Benefits
+
+Your cluster uses **HostRegexp routing patterns** in Traefik IngressRoutes that automatically work with both tunnel types:
+
+```yaml
+# Example from your working manifests:
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+spec:
+  routes:
+    - match: HostRegexp(`whoami\..+`)  # Matches any domain starting with "whoami."
+      kind: Rule
+      services:
+        - name: whoami
+          port: 80
+
+# This pattern automatically handles:
+# - whoami.localhost (development - auto-routes to 127.0.0.1)
+# - whoami.provision-host.dog-pence.ts.net (Tailscale Funnel)  
+# - whoami.yourcompany.com (Cloudflare Tunnel)
+```
+
+**Key Technical Advantages**:
+- ✅ **Unified Routing**: Single IngressRoute handles multiple domains
+- ✅ **Zero Configuration**: No manifest changes when adding tunnel types
+- ✅ **Internal DNS Support**: CoreDNS resolves `.localhost` for pod-to-pod communication  
+- ✅ **Authentication Ready**: Works with Authentik forward auth middleware
+- ✅ **Future-Proof**: Automatically supports any new domains
+
+*Technical details: [Traefik Ingress Rules Guide](traefik-ingress-rules.md)*
 
 ### External Access with Cloudflare
 
-We use Cloudflare to safely and securely expose the services to the Internet.
+Cloudflare provides secure, scalable exposure of services to the internet:
 
-Cloudflare provides secure exposure of services to the internet:
+- **Purpose**: Professional public access with custom domains
+- **Benefits**: Global CDN, DDoS protection, WAF, rate limiting, zero-trust access
+- **Implementation**: Cloudflare Tunnels connect to Kubernetes without inbound ports
+- **URLs**: `https://service.yourcompany.com`
 
-- **Purpose**: Allow external users to access services without exposing infrastructure
-- **Benefits**: DDoS protection, WAF, rate limiting, and zero-trust access
-- **Implementation**: Cloudflare Tunnels connect to Kubernetes clusters without inbound ports
+### Internet Access with Tailscale Funnel
 
-### Internal Networking with Tailscale
+Tailscale Funnel provides quick, secure internet access without custom domains:
 
-We use Tailscale to securely connect the DevOps team to the Kubernetes clusters.
+- **Purpose**: Fast internet access for personal/team projects
+- **Benefits**: Zero configuration, automatic HTTPS, invite-based security
+- **Implementation**: Tailscale Funnel exposes services via .ts.net domains
+- **URLs**: `https://service.your-device.ts.net`
 
-Tailscale provides a secure mesh VPN that connects all infrastructure components:
+### Internal Networking with Tailscale VPN
 
-- **Purpose**: Private communication between provision host and Kubernetes clusters
+Tailscale VPN provides secure DevOps access to clusters:
+
+- **Purpose**: Private communication for administration and maintenance
 - **Benefits**: Works across any environment (local, cloud, multi-cloud)
 - **Security**: Zero-trust networking with MagicDNS and ACL-based access control
 
+## High-Level Architecture for Internet Access
 
-
-## High-Level Architecture for exposing services to the Internet
-
-1) The figure below shows how traffic is routed to the CloudFlare account for urbalurba.no
-2) The CloudFlare worker then routes the traffic based on the domain name to the defined tunnel.
-3) The tunnel is terminated in in the kubernetes cluster and handed ower to the ingress router (traefik) which then routes the traffic to the appropriate service.
+The diagram below shows how external traffic reaches your services through either tunnel type:
 
 :::mermaid
 flowchart TD
-    User["External User calling<br>web.urb.skryter.no"]
-    User2["External User calling<br>api.bylab.no"]
-    DNS["External DNS<br> *.urb.skryter.no -><br> urbalurba.no"]
-    DNS2["External DNS<br> *.bylab.no -><br> urbalurba.no"]
+    User["External User"]
+    User2["Team Member"]
+    Dev["Developer"]
     
-    subgraph Cloudflare_Layer ["Cloudflare Layer"]
-        CF_Security["urbalurba.no<br>Cloudflare Security Layer<br>(WAF, DDoS)"]
-        CF_Worker["Cloudflare Worker<br>(Routing Logic)"]
-        Azure_Tunnel["azure-microk8s-tunnel"]
-        Rancher_Tunnel["rancher-k3s-tunnel"]
+    subgraph Internet_Access ["Internet Access Options"]
+        Tailscale_Funnel["Tailscale Funnel<br>service.device.ts.net"]
+        CF_Tunnel["Cloudflare Tunnel<br>service.domain.com"]
+        Localhost["Localhost<br>service.localhost"]
     end
     
-    subgraph Azure_Cluster ["azure-microk8s cluster"]
-        Azure_Pod["azure-microk8s-tunnel-pod"]
-        Azure_Traefik["Traefik<br>Ingress router"]
-        Azure_Web["Web Services"]
-        Azure_API["API Services"]
+    subgraph Your_Cluster ["Your Kubernetes Cluster"]
+        subgraph Traefik_Layer ["Traefik Layer"]
+            Traefik["Traefik 3.3.6<br>IngressRoute CRDs"]
+            HostRegexp["HostRegexp Routing<br>`service\..+`"]
+            Internal_DNS["Internal DNS<br>CoreDNS Rewrites"]
+        end
+        
+        subgraph Services_Layer ["Services Layer"]
+            Services["Your Services<br>(whoami, openwebui, authentik)"]
+            Auth["Authentik Forward Auth<br>(Optional)"]
+        end
     end
     
-    subgraph Rancher_Cluster ["rancher-k3s cluster"]
-        Rancher_Pod["rancher-k3s-tunnel-pod"]
-        Rancher_Traefik["Traefik<br>Ingress router"]
-        Rancher_Web["Web Services"]
-        Rancher_API["API Services"]
-    end
+    User --> CF_Tunnel
+    User2 --> Tailscale_Funnel
+    Dev --> Localhost
     
-    User --> DNS
-    User2 --> DNS2
-    DNS --> CF_Security
-    DNS2 --> CF_Security
-    CF_Security --> CF_Worker
-    CF_Worker --> Azure_Tunnel
-    CF_Worker --> Rancher_Tunnel
-    Azure_Tunnel --> Azure_Pod
-    Rancher_Tunnel --> Rancher_Pod
-    Azure_Pod --> Azure_Traefik
-    Rancher_Pod --> Rancher_Traefik
-    Azure_Traefik --> Azure_Web
-    Azure_Traefik --> Azure_API
-    Rancher_Traefik --> Rancher_Web
-    Rancher_Traefik --> Rancher_API
+    CF_Tunnel --> Traefik
+    Tailscale_Funnel --> Traefik
+    Localhost --> Traefik
+    
+    Traefik --> HostRegexp
+    HostRegexp --> Auth
+    HostRegexp --> Services
+    Auth --> Services
+    
+    Internal_DNS -.-> Services
 :::
 
-The setup enables us to create as many clusters as we want and connect them to the same CloudFlare account. Each cluster just needs a place to run and a tunnel to CloudFlare. The clusters can run on Azure, AWS, or on-premises. And even on a Raspberry Pi in the corner of a room.
+**Key Technical Features**:
+- **HostRegexp routing**: `match: HostRegexp('service\..+')` patterns handle all domain types
+- **Traefik IngressRoute CRDs**: Using `traefik.io/v1alpha1` API (current stable version)
+- **Internal DNS**: CoreDNS rewrites enable pod-to-pod communication on same hostnames
+- **Authentication**: Optional Authentik forward auth middleware for protected services
+- **Zero Configuration**: No manifest changes needed when adding/switching tunnels
 
-## High-Level Architecture for connecting to the clusters
+## High-Level Architecture for DevOps Access
 
-The figure below shows how the DevOps engineers connect to the clusters using Tailscale.
-* On the DevOps machine a container named provisoin-host is runing.
-* In the container all the tools needed to admin and maintain the kubernetes cluster and the infrastructure is installed.
-* In the container and on the Azure VM a tailscale client is running so that these machines are on the same network.
-* The tailscale network is a Zero Trust network and the ACL rules are configured to allow the DevOps team to connect to the VMs running the clusters. But the Clusters cannot connect to eachother.
-
+The diagram below shows how DevOps engineers securely connect to clusters:
 
 :::mermaid
 flowchart TD
     subgraph DevOps["DevOps Engineer's Machine"]
-    
         subgraph provision_host_container ["provision-host container"]
             kubectl["kubectl"]
-            tools["SSH<br>Ansible<br>AZ CLI"]
+            tools["SSH<br>Ansible<br>Cloud CLIs"]
             Tailscale_Client["Tailscale Client"]
             
-            %% Force vertical stacking with invisible connections
             kubectl --- tools --- Tailscale_Client
             linkStyle 0 stroke-width:0,stroke-opacity:0,fill-opacity:0
             linkStyle 1 stroke-width:0,stroke-opacity:0,fill-opacity:0
@@ -143,58 +304,92 @@ flowchart TD
     end
     
     subgraph Tailscale_Network ["Tailscale Secure Network"]
-        TS_Cloud["Tailscale Control Plane<br>(Authentication & Coordination)"]
-        ACL_Rules["ACL Rules<br>(Access Control Policies)"]
-        
-        TS_Cloud --- ACL_Rules        
+        TS_Cloud["Tailscale Control Plane<br>(Authentication & ACLs)"]
     end
     
-    subgraph Azure_Landing_Zone ["Azure Landing Zone"]
-        subgraph Azure_VM["Azure VM"]
-            Azure_Tailscale["Tailscale Client"]
-            MicroK8s["azure-microk8s Cluster"]
+    subgraph Your_Infrastructure ["Your Infrastructure"]
+        subgraph Cluster_VM["Cluster Host"]
+            Tailscale_Agent["Tailscale Client"]
+            K8s_Cluster["Kubernetes Cluster"]
             
-            %% Force vertical stacking with invisible connections
-            Azure_Tailscale --- MicroK8s
+            Tailscale_Agent --- K8s_Cluster
             linkStyle 3 stroke-width:0,stroke-opacity:0,fill-opacity:0
         end
     end
     
-    Tailscale_Client -- "Establishes encrypted<br>WireGuard connection" --> TS_Cloud
-    Azure_Tailscale -- "Establishes encrypted<br>WireGuard connection" --> TS_Cloud
+    Tailscale_Client -- "Secure Connection" --> TS_Cloud
+    Tailscale_Agent -- "Secure Connection" --> TS_Cloud
     
-    Tailscale_Client -. "Secure peer-to-peer connection<br>via Tailscale network" .-> Azure_Tailscale
+    Tailscale_Client -. "Encrypted P2P<br>Administration" .-> Tailscale_Agent
 :::
 
-By using a container that contains all the tools needed to admin and maintain the kubernetes cluster and the infrastructure we can easily connect to any cluster from any machine.
-The devops machine can be a laptop or a desktop computer. A windows or mac machine. A ARM or X86 machine.
+---
 
-The Tailscale network is a Zero Trust network and the ACL rules are configured so that we can specify which machines that can connect to which clusters.
+## Technology Choices for Optimal Security and Performance
 
-## Technology choices for optimal security and networking performance
+### Why Cloudflare?
 
-### Why CloudFlare?
+Cloudflare provides enterprise-grade security and performance for public-facing services:
 
-Cloudflare was selected as our external-facing security and networking solution because it provides a comprehensive platform for protecting and optimizing our services. Acting as a protective shield between our infrastructure and the internet, Cloudflare offers enterprise-grade security features without the traditional complexity.
+**Security Features**:
+- Advanced Web Application Firewall (WAF) blocks malicious traffic
+- DDoS protection mitigates attacks of any size
+- Zero-trust tunnel approach - no inbound ports needed
+- SSL/TLS termination with automatic certificate management
 
-Cloudflare's global network spans over 300 cities worldwide, ensuring low-latency connections for users regardless of their location. Its advanced Web Application Firewall (WAF) actively blocks malicious traffic, SQL injections, and other common attack vectors before they ever reach our infrastructure. The built-in DDoS protection system can mitigate attacks of any size, protecting our services from volumetric attacks that would otherwise overwhelm traditional defenses.
+**Performance Features**:
+- Global network spans 300+ cities for low latency
+- Intelligent edge caching reduces server load
+- Cloudflare Workers enable custom routing logic
+- Analytics and monitoring for traffic insights
 
-The Cloudflare Tunnel technology (formerly Argo Tunnel) creates secure outbound-only connections from our Kubernetes clusters to Cloudflare's edge, eliminating the need to expose our infrastructure directly to the internet. This zero-trust approach means we don't need to manage public IP addresses, open inbound firewall ports, or worry about traditional network attack surfaces.
+**Implementation**:
+- Cloudflare Tunnels create secure outbound-only connections
+- No public IP addresses or firewall ports needed
+- Programmable routing based on domain, path, or headers
+- Automatic failover and load balancing
 
-Cloudflare Workers provide us with programmable routing logic at the edge, allowing us to intelligently direct traffic based on domain names, paths, or other request attributes to the appropriate backend services and clusters. This edge computing capability also enables us to implement custom access policies, perform request transformations, and handle specialized routing needs without modifying our core applications.
-
-For detailed Cloudflare setup and configuration instructions, refer to the [Cloudflare configuration guide](external-cloudflare-readme.md).
-
-To learn more about Cloudflare technology, visit [cloudflare.com](https://www.cloudflare.com/learning/).
+For detailed setup instructions, see [Cloudflare Tunnel Setup Guide](networking-cloudflare-setup.md).
 
 ### Why Tailscale?
 
-Tailscale is a network platform that provides secure, private connections between devices. It allows DevOps admins to connect to the clusters from anywhere, while ensuring that only authorized devices can access the clusters.
+Tailscale provides zero-configuration secure networking for both internet access and DevOps administration:
 
-Tailscale was chosen as our internal networking solution because it eliminates the complexity of traditional VPNs while providing superior security. Based on WireGuard, it offers encrypted peer-to-peer connections, removing the need for a central VPN server.
+**For Internet Access (Tailscale Funnel)**:
+- Instant HTTPS endpoints on .ts.net domains
+- No domain purchase or DNS configuration required
+- Invite-based access control for security
+- Perfect for personal projects and team development
 
-Tailscale's "zero config" approach means it works seamlessly across NATs and firewalls without port forwarding or complex routing rules. Its identity-based access control model ensures that only authorized devices and users can access specific resources, following a true zero-trust architecture model. This makes it ideal for connecting distributed infrastructure components across different environments and cloud providers.
+**For DevOps Access (Tailscale VPN)**:
+- WireGuard-based encrypted peer-to-peer connections
+- Works seamlessly across NATs and firewalls
+- Identity-based access control with fine-grained ACLs
+- "Zero config" approach eliminates traditional VPN complexity
 
-For detailed Tailscale setup and configuration instructions, refer to the [Tailscale VPN readme](vpn-tailscale-readme.md).
-To learn more about Tailscale technology, visit [tailscale.com](https://tailscale.com/learn).
+**Architecture Benefits**:
+- True zero-trust networking model
+- Eliminates central VPN server points of failure
+- Automatic key rotation and device management
+- Cross-platform support for all environments
+
+For detailed setup instructions, see [Tailscale Funnel Setup Guide](networking-tailscale-setup.md).
+
+---
+
+## Next Steps
+
+### Ready to Connect to the Internet?
+
+Choose your tunnel type and follow the setup guide:
+
+1. **🔵 [Tailscale Funnel Setup](networking-tailscale-setup.md)** - Get online in 15 minutes (free)
+2. **⚡ [Cloudflare Tunnel Setup](networking-cloudflare-setup.md)** - Professional setup with custom domain
+
+
+
+
+---
+
+*Your HostRegexp architecture makes switching between tunnel types seamless - the same manifests work for localhost development, Tailscale team access, and Cloudflare production without any modifications.*
 

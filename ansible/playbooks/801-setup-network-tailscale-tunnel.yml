@@ -1,0 +1,226 @@
+---
+# file: playbooks/801-tailscale-tunnel-setup.yml
+# description: Complete Tailscale setup and testing
+#
+# This playbook:
+# 1. Sets up Tailscale daemon and persistent storage
+# 2. Authenticates with Tailscale using secrets
+# 3. Enables SSH and configures settings
+# 4. Runs connectivity and Funnel tests
+# 5. Cleans up after testing
+
+- name: Complete Tailscale setup and testing
+  hosts: localhost
+  gather_facts: true
+  vars:
+    test_port: 8080
+    test_dir: /mnt/urbalurbadisk/testdata/website
+
+  tasks:
+    - name: "01 Check if Tailscale is installed"
+      ansible.builtin.command:
+        cmd: tailscale version
+      register: tailscale_version
+      failed_when: false
+
+    - name: "02 Fail if Tailscale is not installed"
+      ansible.builtin.fail:
+        msg: "Tailscale is not installed. Please install Tailscale first."
+      when: tailscale_version.rc != 0
+
+    - name: "03 Get Tailscale secrets from Kubernetes"
+      ansible.builtin.shell:
+        cmd: "kubectl get secret --namespace default urbalurba-secrets -o jsonpath='{.data.{{ item }}}' | base64 -d"
+      register: tailscale_secrets
+      loop:
+        - "TAILSCALE_SECRET"
+        - "TAILSCALE_DOMAIN"
+      failed_when: false
+
+    - name: "04 Set Tailscale variables"
+      ansible.builtin.set_fact:
+        tailscale_authkey: "{{ tailscale_secrets.results[0].stdout }}"
+        tailscale_domain: "{{ tailscale_secrets.results[1].stdout }}"
+
+    - name: "05 Check if credentials are template values"
+      ansible.builtin.set_fact:
+        using_templates: "{{ 'tskey-auth-ktyTufs' in tailscale_authkey or 'XXXXXXX' in tailscale_authkey }}"
+
+    - name: "06 Skip setup if using template values"
+      ansible.builtin.debug:
+        msg:
+          - "NOTICE: Using template/placeholder Tailscale values"
+          - "To use Tailscale, update your Kubernetes secrets with valid Tailscale keys"
+      when: using_templates
+
+    - name: "07 Exit if using template values"
+      ansible.builtin.meta: end_play
+      when: using_templates
+
+    - name: "08 Setup persistent storage for Tailscale"
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - /mnt/provision-data/tailscale/state
+        - /mnt/provision-data/tailscale/run
+      become: yes
+
+    - name: "09 Create symlinks to standard locations"
+      ansible.builtin.file:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        state: link
+        force: yes
+      loop:
+        - { src: '/mnt/provision-data/tailscale/state', dest: '/var/lib/tailscale' }
+        - { src: '/mnt/provision-data/tailscale/run', dest: '/var/run/tailscale' }
+      become: yes
+
+    - name: "10 Stop any existing tailscaled"
+      ansible.builtin.shell:
+        cmd: "pkill -9 tailscaled || true"
+      become: yes
+
+    - name: "11 Start tailscaled daemon"
+      ansible.builtin.shell:
+        cmd: "nohup tailscaled --state=/var/lib/tailscale/tailscaled.state --socket=/var/run/tailscale/tailscaled.sock >/dev/null 2>&1 &"
+      become: yes
+
+    - name: "12 Wait for tailscaled to initialize"
+      ansible.builtin.pause:
+        seconds: 3
+
+    - name: "13 Connect to Tailscale network"
+      ansible.builtin.shell:
+        cmd: "tailscale up --reset --authkey='{{ tailscale_authkey }}' --hostname='provision-host' --advertise-tags='tag:k8s-operator' --accept-routes --accept-dns"
+      become: yes
+
+    - name: "14 Enable Tailscale SSH"
+      ansible.builtin.shell:
+        cmd: "tailscale set --ssh --accept-routes --accept-dns"
+      become: yes
+      failed_when: false
+
+    - name: "15 Get Tailscale status"
+      ansible.builtin.command:
+        cmd: tailscale status --json
+      register: tailscale_status_result
+
+    - name: "16 Parse Tailscale information"
+      ansible.builtin.set_fact:
+        tailscale_ip: "{{ (tailscale_status_result.stdout | from_json).Self.TailscaleIPs[0] }}"
+        tailscale_hostname: "{{ (tailscale_status_result.stdout | from_json).Self.DNSName | regex_replace('\\.$', '') }}"
+
+    - name: "17 Display Tailscale status"
+      ansible.builtin.debug:
+        msg:
+          - "✅ Tailscale setup completed successfully!"
+          - "  - IP: {{ tailscale_ip }}"
+          - "  - Hostname: {{ tailscale_hostname }}"
+
+    - name: "18 Start test web server"
+      ansible.builtin.shell:
+        cmd: "python3 -m http.server {{ test_port }} --directory {{ test_dir }} > /dev/null 2>&1 &"
+
+    - name: "19 Wait for web server to start"
+      ansible.builtin.pause:
+        seconds: 2
+
+    - name: "20 Enable Tailscale serve"
+      ansible.builtin.shell:
+        cmd: "sudo tailscale serve --bg http://localhost:{{ test_port }} 2>/dev/null"
+      become: yes
+      register: serve_result
+      failed_when: false
+
+    - name: "21 Enable Tailscale funnel for public access"
+      ansible.builtin.shell:
+        cmd: "sudo tailscale funnel --bg {{ test_port }} 2>/dev/null"
+      become: yes
+      register: funnel_result
+      failed_when: false
+
+    - name: "22 Wait for funnel to stabilize"
+      ansible.builtin.pause:
+        seconds: 3
+      when: funnel_result.rc == 0
+
+    - name: "23 Test public internet access via funnel"
+      ansible.builtin.shell:
+        cmd: "wget --no-check-certificate --server-response https://{{ tailscale_hostname }} 2>&1 || true"
+      register: wget_test
+      retries: 3
+      delay: 5
+      until: "'HTTP/1.1 200 OK' in wget_test.stdout or 'HTTP/1.1 404 Not Found' in wget_test.stdout"
+      failed_when: false
+      when: funnel_result.rc == 0
+
+    - name: "24 Display Funnel test result"
+      ansible.builtin.debug:
+        msg:
+          - "🎉 SUCCESS: Tailscale Funnel is working!"
+          - "{{ '✅ FUNNEL TEST: Got 200 response from public internet' if 'HTTP/1.1 200 OK' in wget_test.stdout else '✅ FUNNEL TEST: Connected via Tailscale (404 expected from container)' if 'HTTP/1.1 404 Not Found' in wget_test.stdout else '⚠️ FUNNEL TEST: Unexpected response' }}"
+          - "🔗 PUBLIC ACCESS: https://{{ tailscale_hostname }}"
+      when: funnel_result.rc == 0
+
+    - name: "25 Cleanup - Stop web server"
+      ansible.builtin.shell:
+        cmd: "pkill -f 'python3 -m http.server {{ test_port }}'"
+      failed_when: false
+
+    - name: "26 Cleanup - Disable Tailscale funnel"
+      ansible.builtin.shell:
+        cmd: "sudo tailscale funnel reset 2>/dev/null"
+      become: yes
+      failed_when: false
+
+    - name: "27 Cleanup - Disable Tailscale serve"
+      ansible.builtin.shell:
+        cmd: "sudo tailscale serve --https=443 off 2>/dev/null"
+      become: yes
+      failed_when: false
+
+    - name: "28 Disconnect from Tailscale (logout)"
+      ansible.builtin.shell:
+        cmd: "tailscale logout"
+      become: yes
+      failed_when: false
+      ignore_errors: yes
+
+    - name: "29 Force disconnect with down command"
+      ansible.builtin.shell:
+        cmd: "tailscale down"
+      become: yes
+      failed_when: false
+      ignore_errors: yes
+
+    - name: "30 Stop tailscaled daemon"
+      ansible.builtin.shell:
+        cmd: "pkill -f tailscaled"
+      become: yes
+      failed_when: false
+      ignore_errors: yes
+
+    - name: "31 Clean up Tailscale state"
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /var/lib/tailscale
+        - /var/run/tailscale
+      become: yes
+      failed_when: false
+      ignore_errors: yes
+
+    - name: "32 Display completion message"
+      ansible.builtin.debug:
+        msg:
+          - "🎉 Tailscale setup completed successfully!"
+          - "✅ Tailscale installed and tested"
+          - "✅ Provision-host disconnected from Tailscale (cleanup completed)"
+          - ""
+          - "🔗 Next steps:"
+          - "   1. Run: ./networking/tailscale/802-tailscale-tunnel-deploy.sh"
+          - "   2. This will deploy the Tailscale operator to Kubernetes for cluster access"

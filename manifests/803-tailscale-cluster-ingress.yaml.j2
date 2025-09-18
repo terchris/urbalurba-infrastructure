@@ -1,0 +1,30 @@
+# 803-tailscale-cluster-ingress.yaml.j2
+# Creates a Tailscale Ingress resource that exposes the Traefik service
+# Moved from: 011-tailscale-traefik-ingress.yaml (September 8, 2025)
+# Usage: This file is used by the Ansible playbook 020-setup-tailscale-ingress.yml
+# with variable substitution for the hostname
+#
+# The ingressHostname value will be used as the Tailscale device name
+# and will be accessible via https://[ingressHostname].[your-tailnet].ts.net
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: traefik-ingress
+  namespace: kube-system
+  annotations:
+    tailscale.com/funnel: "true"  # Enables public internet access via Tailscale Funnel
+    tailscale.com/tags: "tag:k8s-operator"  # Explicitly define tags
+    tailscale.com/expose-metrics: "true"  # Expose metrics for monitoring
+    tailscale.com/hostname: "{{ TAILSCALE_CLUSTER_HOSTNAME }}"  # Explicit hostname
+    # Removed wildcard routing - routes directly to Traefik's default backend (nginx)
+spec:
+  ingressClassName: tailscale
+  defaultBackend:
+    service:
+      name: traefik
+      port:
+        number: 80  # Updated to match Traefik's HTTP port
+  tls:
+    - hosts:
+        - {{ TAILSCALE_CLUSTER_HOSTNAME }}  # Using Jinja2 template syntax for Ansible

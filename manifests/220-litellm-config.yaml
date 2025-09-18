@@ -51,11 +51,27 @@
 image:
   repository: ghcr.io/berriai/litellm-database
   pullPolicy: Always
-  tag: "main-latest"
+  tag: "main-latest"  # Back to latest - should have the fix
+
+# Keep internal PostgreSQL - it's already working
+# postgresql:
+#   enabled: false
+
+# No need for extra DATABASE_URL since we're using internal PostgreSQL
+# extraEnvVars:
+#   - name: DATABASE_URL
+#     value: "postgresql://postgres:postgres@postgres.default.svc.cluster.local:5432/litellm"
 
 # Reference to Kubernetes secrets with env vars
 environmentSecrets:
   - urbalurba-secrets
+
+# Enable debug logging and database model storage
+extraEnvVars:
+  - name: LITELLM_LOG
+    value: "DEBUG"
+  - name: STORE_MODEL_IN_DB
+    value: "True"
 
 # Master key for authentication
 masterkeySecretName: urbalurba-secrets
@@ -75,9 +91,11 @@ proxy_config:
     routing_strategy: "simple-shuffle"
     # Define fallbacks from cloud models to local models
     fallbacks: [
-      {"gpt-4o": ["external-ollama-gemma3", "qwen3-0.6b-incluster"]},
-      {"claude-3-opus": ["external-ollama-gemma3", "qwen3-0.6b-incluster"]},
-      {"gpt-3.5-turbo": ["external-ollama-gemma3", "qwen3-0.6b-incluster"]}
+      {"gpt-4o": ["mac-gpt-oss-balanced", "mac-gpt-oss-creative"]},
+      {"claude-3-opus": ["mac-gpt-oss-balanced", "mac-gpt-oss-precise"]},
+      {"gpt-3.5-turbo": ["mac-gpt-oss-balanced"]},
+      {"azure-gpt-4": ["mac-gpt-oss-balanced"]},
+      {"external-ollama-gemma3": ["mac-gpt-oss-balanced"]}
     ]
   
   # LiteLLM settings
@@ -86,31 +104,67 @@ proxy_config:
     request_timeout: 120
     # Enable fallbacks for content policy errors
     content_policy_fallbacks: [
-      {"gpt-4o": ["external-ollama-gemma3", "qwen3-0.6b-incluster"]},
-      {"claude-3-opus": ["external-ollama-gemma3", "qwen3-0.6b-incluster"]}
+      {"gpt-4o": ["mac-gpt-oss-balanced"]},
+      {"claude-3-opus": ["mac-gpt-oss-balanced"]}
     ]
     # Retry on connection issues (helps with intermittent network problems)
     num_retries: 3
   
   # Model list configuration
   model_list:
-    # In-cluster Ollama model (always available)
-    - model_name: qwen3-0.6b-incluster
+    # Removed qwen3-0.6b-incluster - no longer available since built-in Ollama disabled
+
+    # Host Mac Ollama - Default configuration
+    - model_name: mac-gpt-oss-balanced
       litellm_params:
-        model: ollama/qwen3:0.6b
-        api_base: "http://ollama:11434"
+        model: ollama/gpt-oss:20b
+        api_base: "http://host.lima.internal:11434"
         temperature: 0.7
-        max_tokens: 1000
-        stop: ["<|im_start|>", "<|im_end|>"]
+        stream: false  # Disable streaming to avoid thinking field issues
       model_info:
-        description: "Qwen3 0.6B (small, in-cluster, for testing only)"
+        description: "Mac Ollama GPT-OSS (Balanced)"
         status: "active"
         input_cost_per_token: 0
         output_cost_per_token: 0
-        max_input_tokens: 32768
+        max_input_tokens: 8192
+        max_output_tokens: 2000
         mode: "chat"
-    
-    # External Mac Ollama gemma3:4b model
+
+    # Creative variant - Higher temperature for more creative responses
+    - model_name: mac-gpt-oss-creative
+      litellm_params:
+        model: ollama/gpt-oss:20b
+        api_base: "http://host.lima.internal:11434"
+        temperature: 0.9
+        top_p: 0.95
+        stream: false
+      model_info:
+        description: "Mac Ollama GPT-OSS (Creative Mode)"
+        status: "active"
+        input_cost_per_token: 0
+        output_cost_per_token: 0
+        max_input_tokens: 8192
+        max_output_tokens: 2000
+        mode: "chat"
+
+    # Precise variant - Lower temperature for more focused responses
+    - model_name: mac-gpt-oss-precise
+      litellm_params:
+        model: ollama/gpt-oss:20b
+        api_base: "http://host.lima.internal:11434"
+        temperature: 0.3
+        top_p: 0.9
+        stream: false
+      model_info:
+        description: "Mac Ollama GPT-OSS (Precise Mode)"
+        status: "active"
+        input_cost_per_token: 0
+        output_cost_per_token: 0
+        max_input_tokens: 8192
+        max_output_tokens: 2000
+        mode: "chat"
+
+    # External Mac Ollama gemma3:4b model (old IP, keeping for reference)
     - model_name: external-ollama-gemma3
       litellm_params:
         model: ollama/gemma3:4b

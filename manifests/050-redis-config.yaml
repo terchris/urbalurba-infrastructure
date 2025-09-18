@@ -40,3 +40,10 @@ service:
 # Enable metrics for monitoring (optional)
 metrics:
   enabled: false # ERR: if set to true -Set to true if you want to enable Prometheus metrics
+
+# Override image to use the official Redis image (works)
+image:
+  registry: docker.io
+  repository: redis
+  tag: 8.2.1
+  pullPolicy: IfNotPresent

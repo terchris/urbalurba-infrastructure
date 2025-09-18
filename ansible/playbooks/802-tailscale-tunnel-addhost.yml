@@ -1,0 +1,231 @@
+---
+# file: playbooks/802-tailscale-tunnel-addhost.yml
+# Description: Create a Tailscale ingress for a specific service
+#
+# This playbook creates a Tailscale ingress that exposes a service at:
+# https://SERVICE.dog-pence.ts.net with public internet access via Funnel
+#
+# Usage:
+#   ansible-playbook playbooks/802-tailscale-tunnel-addhost.yml \
+#     -e SERVICE_NAME=whoami \
+#     -e TAILSCALE_DOMAIN=dog-pence.ts.net
+#
+# Optional parameters (have sensible defaults):
+#     -e NAMESPACE=default \
+#     -e SERVICE_PORT=80
+#
+# Required parameters:
+#   SERVICE_NAME: Name of the Kubernetes service to expose
+#   NAMESPACE: Kubernetes namespace (defaults to 'default')  
+#   SERVICE_PORT: Port of the service (defaults to 80)
+
+- name: Create Tailscale ingress for service
+  hosts: localhost
+  gather_facts: false
+  vars:
+    kubeconfig_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    SERVICE_NAME: "{{ SERVICE_NAME | default('') }}"
+    ingress_namespace: "kube-system"
+    TAILSCALE_DOMAIN: "{{ TAILSCALE_DOMAIN | default('') }}"
+    HOSTNAME: "{{ HOSTNAME | default(SERVICE_NAME) }}"
+    ingress_name: "{{ HOSTNAME | default(SERVICE_NAME) }}-tailscale"
+    
+  tasks:
+    - name: "01 Validate required parameters"
+      ansible.builtin.fail:
+        msg: "SERVICE_NAME is required. Usage: -e SERVICE_NAME=whoami"
+      when: SERVICE_NAME == ""
+
+    - name: "01a Validate Tailscale domain parameter"
+      ansible.builtin.fail:
+        msg: "TAILSCALE_DOMAIN is required. Pass via -e TAILSCALE_DOMAIN=your-domain.ts.net"
+      when: TAILSCALE_DOMAIN == ""
+
+    - name: "02 Verify kubeconfig file exists"
+      ansible.builtin.stat:
+        path: "{{ kubeconfig_file }}"
+      register: kubeconfig_stat
+
+    - name: "03 Fail if kubeconfig file does not exist"
+      ansible.builtin.fail:
+        msg: "Kubeconfig file not found at {{ kubeconfig_file }}"
+      when: not kubeconfig_stat.stat.exists
+
+    - name: "04 Skip service validation - Traefik handles routing"
+      ansible.builtin.debug:
+        msg: |
+          ✅ Skipping service validation - Traefik will handle routing to {{ SERVICE_NAME }}
+          Creating Tailscale ingress for: {{ HOSTNAME }}.{{ TAILSCALE_DOMAIN }}
+
+    - name: "06 Skip operator check if SKIP_OPERATOR_CHECK is set"
+      ansible.builtin.set_fact:
+        tailscale_operator_found: true
+      when: SKIP_OPERATOR_CHECK is defined and SKIP_OPERATOR_CHECK == "true"
+
+    - name: "06a Check if Tailscale operator is running (try app=operator)"
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: tailscale
+        label_selectors:
+          - "app=operator"
+        kubeconfig: "{{ kubeconfig_file }}"
+      register: tailscale_operator_app
+      failed_when: false
+      when: SKIP_OPERATOR_CHECK is not defined or SKIP_OPERATOR_CHECK != "true"
+
+    - name: "06b Check if Tailscale operator is running (try app.kubernetes.io/name=tailscale-operator)"
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: tailscale
+        label_selectors:
+          - "app.kubernetes.io/name=tailscale-operator"
+        kubeconfig: "{{ kubeconfig_file }}"
+      register: tailscale_operator_helm
+      failed_when: false
+      when: SKIP_OPERATOR_CHECK is not defined or SKIP_OPERATOR_CHECK != "true"
+
+    - name: "06c Check if Tailscale operator is running (try field selector)"
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: tailscale
+        field_selectors:
+          - "status.phase=Running"
+        kubeconfig: "{{ kubeconfig_file }}"
+      register: tailscale_operator_pods
+      failed_when: false
+      when: SKIP_OPERATOR_CHECK is not defined or SKIP_OPERATOR_CHECK != "true"
+
+    - name: "06d Set operator found flag based on detection results"
+      ansible.builtin.set_fact:
+        tailscale_operator_found: "{{ (tailscale_operator_app.resources | length > 0) or (tailscale_operator_helm.resources | length > 0) or (tailscale_operator_pods.resources | selectattr('metadata.name', 'search', 'operator') | list | length > 0) }}"
+      when: SKIP_OPERATOR_CHECK is not defined or SKIP_OPERATOR_CHECK != "true"
+
+    - name: "07 Fail if Tailscale operator is not running"
+      ansible.builtin.fail:
+        msg: |
+          Tailscale operator not found in 'tailscale' namespace.
+          Run ./802-tailscale-tunnel-deploy.sh first to deploy the operator.
+      when: not tailscale_operator_found
+
+    - name: "08 Check if ingress already exists"
+      kubernetes.core.k8s_info:
+        kind: Ingress
+        name: "{{ ingress_name }}"
+        namespace: "{{ ingress_namespace }}"
+        kubeconfig: "{{ kubeconfig_file }}"
+      register: existing_ingress
+
+    - name: "09 Display existing ingress warning"
+      ansible.builtin.debug:
+        msg: |
+          ⚠️  Ingress '{{ ingress_name }}' already exists in namespace '{{ NAMESPACE }}'.
+          This will update the existing ingress configuration.
+      when: existing_ingress.resources | length > 0
+
+    - name: "10 Create Tailscale ingress manifest"
+      kubernetes.core.k8s:
+        definition:
+          apiVersion: networking.k8s.io/v1
+          kind: Ingress
+          metadata:
+            name: "{{ ingress_name }}"
+            namespace: "{{ ingress_namespace }}"
+            annotations:
+              tailscale.com/funnel: "true"
+              tailscale.com/tags: "tag:k8s-operator"
+              tailscale.com/hostname: "{{ HOSTNAME }}"
+              tailscale.com/expose-metrics: "true"
+            labels:
+              created-by: "tailscale-tunnel-addhost"
+              service-name: "{{ SERVICE_NAME }}"
+          spec:
+            ingressClassName: tailscale
+            defaultBackend:
+              service:
+                name: "traefik"
+                port:
+                  number: 80
+            tls:
+              - hosts:
+                  - "{{ HOSTNAME }}"
+        kubeconfig: "{{ kubeconfig_file }}"
+        state: present
+
+    - name: "11 Wait for ingress to be assigned address"
+      kubernetes.core.k8s_info:
+        kind: Ingress
+        name: "{{ ingress_name }}"
+        namespace: "{{ ingress_namespace }}"
+        kubeconfig: "{{ kubeconfig_file }}"
+      register: ingress_status
+      until: 
+        - ingress_status.resources | length > 0
+        - ingress_status.resources[0].status.loadBalancer.ingress is defined
+        - ingress_status.resources[0].status.loadBalancer.ingress | length > 0
+      retries: 30
+      delay: 5
+      failed_when: false
+
+    - name: "12 Get final ingress status"
+      kubernetes.core.k8s_info:
+        kind: Ingress
+        name: "{{ ingress_name }}"
+        namespace: "{{ ingress_namespace }}"
+        kubeconfig: "{{ kubeconfig_file }}"
+      register: final_ingress
+
+    - name: "13 Extract ingress hostname"
+      ansible.builtin.set_fact:
+        ingress_hostname: "{{ final_ingress.resources[0].status.loadBalancer.ingress[0].hostname | default('') }}"
+      when: 
+        - final_ingress.resources | length > 0
+        - final_ingress.resources[0].status.loadBalancer.ingress is defined
+        - final_ingress.resources[0].status.loadBalancer.ingress | length > 0
+
+    - name: "14 Display success message"
+      ansible.builtin.debug:
+        msg:
+          - "✅ Tailscale ingress created successfully!"
+          - "Service: {{ SERVICE_NAME }}"
+          - "Ingress: {{ ingress_name }}"
+          - "Hostname: {{ ingress_hostname | default('Pending...') }}"
+          - "URL: https://{{ HOSTNAME }}.{{ TAILSCALE_DOMAIN }}"
+          - ""
+          - "⏱️  Note: DNS propagation may take 1-2 minutes"
+
+    - name: "15 Wait for DNS propagation"
+      ansible.builtin.pause:
+        seconds: 10
+        prompt: "Waiting for Tailscale DNS to stabilize..."
+
+    - name: "16 Test service connectivity"
+      ansible.builtin.uri:
+        url: "https://{{ HOSTNAME }}.{{ TAILSCALE_DOMAIN }}"
+        method: GET
+        status_code: [200, 301, 302, 404]  # Accept various response codes
+        validate_certs: false
+        timeout: 30
+      register: connectivity_test
+      retries: 6
+      delay: 10
+      until: connectivity_test.status is defined
+      failed_when: false
+
+    - name: "17 Display connectivity test results"
+      ansible.builtin.debug:
+        msg:
+          - "🌐 Connectivity test results:"
+          - "URL: https://{{ HOSTNAME }}.{{ TAILSCALE_DOMAIN }}"
+          - "Status: {{ connectivity_test.status | default('Failed to connect') }}"
+          - "{% if connectivity_test.status is defined %}✅ Service is accessible via Tailscale Funnel!{% else %}❌ Service not yet accessible (may need more time for DNS){% endif %}"
+
+    - name: "18 Final summary"
+      ansible.builtin.debug:
+        msg:
+          - "🎉 Tailscale ingress deployment complete!"
+          - ""
+          - "Your service is now accessible at:"
+          - "  https://{{ SERVICE_NAME }}.{{ TAILSCALE_DOMAIN }}"
+          - ""
+          - "This URL is accessible from anywhere on the public internet."
+          - "No Tailscale client needed for visitors."

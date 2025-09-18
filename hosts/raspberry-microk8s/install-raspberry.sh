@@ -120,10 +120,10 @@ run_script_from_directory "kubernetes/default-apps" "07-setup-elasticsearch.sh"
 echo "----------------------> Start networking <----------------------"
 
 echo "------------------> Net 1: Set up tailscale on provision-host and connect it to the tailscale network"
-run_script_from_directory "networking" "net1-setup-tailscale.sh provision-host"
+run_script_from_directory "networking" "tailscale/802-tailscale-host-setup.sh provision-host"
 
 echo "------------------> Net 2: Set up tailscale on multipass-microk8s and connect it to the tailscale network"
-run_script_from_directory "networking" "net1-setup-tailscale.sh multipass-microk8s"
+run_script_from_directory "networking" "tailscale/802-tailscale-host-setup.sh multipass-microk8s"
 
 
 echo "----------------------> Continue the installation of the default apps <----------------------"
@@ -142,10 +142,10 @@ run_script_from_directory "" "cluster-status.sh multipass-microk8s"
 
 echo "### cloudflare does not work inside the company TODO: fix or move"
 echo "------------------> Net 3: Set Cloudflare tunnel and DNS for multipass-microk8s"
-run_script_from_directory "networking" "net3-setup-cloudflare.sh CLOUDFLARE_TEST"
+run_script_from_directory "networking" "cloudflare/820-cloudflare-tunnel-setup.sh CLOUDFLARE_TEST"
 
 echo "------------------> Net 4: Deploy the tunnel and expose domains on the internet for multipass-microk8s"
-run_script_from_directory "networking" "net4-deploy-cloudflare-tunnel.sh CLOUDFLARE_TEST multipass-microk8s"
+run_script_from_directory "networking" "cloudflare/821-cloudflare-tunnel-deploy.sh CLOUDFLARE_TEST multipass-microk8s"
 
 
 echo "All steps completed successfully."

@@ -1,0 +1,70 @@
+# File: manifests/076-authentik-csp-middleware.yaml
+#
+# Description:
+# Content Security Policy middleware for Authentik mixed content resolution
+# Adds 'upgrade-insecure-requests' CSP directive to automatically upgrade HTTP API calls to HTTPS
+# when accessed via HTTPS domains (e.g., authentik.urbalurba.no)
+#
+# Problem Solved:
+# - Mixed content error: HTTPS page trying to call HTTP APIs
+# - Browser blocks: "The page at 'https://authentik.urbalurba.no/...' was loaded over HTTPS, 
+#   but requested an insecure resource 'http://authentik.urbalurba.no/api/v3/...'"
+#
+# How It Works:
+# 1. When browser loads https://authentik.urbalurba.no, this middleware adds CSP header
+# 2. Browser sees 'upgrade-insecure-requests' and automatically converts:
+#    http://authentik.urbalurba.no/api/... → https://authentik.urbalurba.no/api/...
+# 3. HTTPS API calls succeed (authentik-server supports port 443)
+# 4. Mixed content error resolved
+#
+# Selective Application:
+# - Only affects HTTPS pages (urbalurba.no, Tailscale funnel, etc.)
+# - HTTP pages (authentik.localhost) remain unaffected
+# - No server-side changes needed
+# - Uses standard browser functionality
+#
+# Usage:
+# kubectl apply -f 076-authentik-csp-middleware.yaml
+#
+# Integration:
+# Reference in IngressRoute middleware section:
+#   middlewares:
+#     - name: authentik-csp-upgrade
+#       namespace: default
+#
+# Dependencies:
+# - authentik-server service must support HTTPS on port 443 (✅ already configured)
+# - Browser must support CSP upgrade-insecure-requests (✅ universal support)
+#
+# Testing:
+# Before: https://authentik.urbalurba.no → Mixed content error in dev tools
+# After: https://authentik.urbalurba.no → All API calls automatically use HTTPS
+# Localhost: http://authentik.localhost → No change, works as before
+#
+# Compatibility:
+# - Works with all external domains (Cloudflare, Tailscale, custom domains)
+# - Preserves localhost development workflow
+# - No impact on internal cluster communication
+# - Standard CSP directive with universal browser support
+#
+# Cluster Standards Compliance:
+# - Uses traefik.io/v1alpha1 API version
+# - Middleware CRD (follows cluster ingress standards)
+# - Implements industry-standard CSP approach for mixed content resolution
+
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: authentik-csp-upgrade
+  namespace: authentik
+  labels:
+    app: authentik
+    component: csp-middleware
+    purpose: mixed-content-resolution
+spec:
+  headers:
+    customResponseHeaders:
+      # Automatically upgrade HTTP requests to HTTPS from HTTPS pages
+      # This resolves mixed content issues when Authentik is accessed via external HTTPS domains
+      Content-Security-Policy: "upgrade-insecure-requests"

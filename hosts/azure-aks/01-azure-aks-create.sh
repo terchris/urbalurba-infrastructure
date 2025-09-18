@@ -39,6 +39,7 @@ print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
+
 # Load configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG_FILE="$SCRIPT_DIR/azure-aks-config.sh"
@@ -51,32 +52,48 @@ fi
 print_status "Loading configuration from azure-aks-config.sh..."
 source "$CONFIG_FILE"
 
-# Function to check PIM activation
+# Function to check and prompt for PIM activation (based on azure-microk8s pattern)
 check_pim_activation() {
     print_status "Checking for Contributor role..."
     
-    local has_role=$(az role assignment list \
-        --assignee $(az account show --query user.name -o tsv) \
-        --scope "/subscriptions/$SUBSCRIPTION_ID" \
-        --query "[?roleDefinitionName=='Contributor'].roleDefinitionName" \
-        -o tsv 2>/dev/null || echo "")
-    
-    if [[ -n "$has_role" ]]; then
-        print_success "Contributor role is active"
+    # First check if user already has Contributor role
+    if az role assignment list --scope "/subscriptions/$SUBSCRIPTION_ID" --query "[?roleDefinitionName=='Contributor' && principalType=='User']" -o tsv 2>/dev/null | grep -q .; then
+        print_success "Contributor role is already active"
         return 0
-    else
-        print_warning "Contributor role not active"
-        echo
-        echo "Please activate your PIM role:"
-        echo "1. Open: https://portal.azure.com/?feature.msaljs=true#view/Microsoft_Azure_PIMCommon/ActivationMenuBlade/~/azurerbac"
-        echo "2. Find and activate 'Contributor' role for subscription: $SUBSCRIPTION_ID"
-        echo "3. Wait 1-2 minutes for activation"
-        echo
-        read -p "Press Enter after activating PIM role (or Ctrl+C to cancel)..."
-        
-        # Re-check after user confirms
-        check_pim_activation
     fi
+    
+    # User doesn't have Contributor role
+    print_warning "Contributor role not detected"
+    
+    echo
+    echo "To activate the Contributor role in Azure:"
+    echo "1. Click: https://portal.azure.com/?feature.msaljs=true#view/Microsoft_Azure_PIMCommon/ActivationMenuBlade/~/azurerbac"
+    echo "2. Find and activate 'Contributor' role for subscription: $SUBSCRIPTION_ID"
+    echo "3. Wait 1-2 minutes for activation"
+    echo
+    
+    # Loop until user has Contributor role or gives up
+    local MAX_ATTEMPTS=3
+    for attempt in $(seq 1 $MAX_ATTEMPTS); do
+        read -p "After activating your Contributor role, press Enter to verify permissions..."
+        
+        print_status "Verifying Contributor role activation..."
+        if az role assignment list --scope "/subscriptions/$SUBSCRIPTION_ID" --query "[?roleDefinitionName=='Contributor' && principalType=='User']" -o tsv 2>/dev/null | grep -q .; then
+            print_success "Contributor role successfully activated"
+            return 0
+        else
+            if [ $attempt -lt $MAX_ATTEMPTS ]; then
+                print_warning "Contributor role not detected. Please make sure you completed the activation process."
+                echo "Attempt $attempt of $MAX_ATTEMPTS. Please try again."
+            else
+                print_error "Contributor role not detected after $MAX_ATTEMPTS attempts."
+                print_error "This script requires Contributor role to run successfully."
+                return 1
+            fi
+        fi
+    done
+    
+    return 1
 }
 
 # Function to wait for operation with status updates
@@ -112,29 +129,21 @@ main() {
     if ! az account show >/dev/null 2>&1; then
         print_warning "Not logged in to Azure. Starting login process..."
         az login --tenant "$TENANT_ID" --use-device-code
-        
-        # Select subscription interactively
-        echo
-        print_status "Select the subscription for deployment:"
-        az account list --query "[].{Name:name, ID:id}" -o table
-        read -p "Enter subscription number or press Enter for default: " sub_choice
-        
-        if [[ -n "$sub_choice" ]]; then
-            # User selected a specific subscription
-            az account set --subscription "$sub_choice"
-        fi
     fi
+    
+    # Step 2: Set subscription to configured one (unattended)
+    print_status "Setting subscription to $SUBSCRIPTION_ID..."
+    az account set --subscription "$SUBSCRIPTION_ID"
     
     # Show current subscription
     CURRENT_SUB=$(az account show --query name -o tsv)
     print_success "Using subscription: $CURRENT_SUB"
     
-    # Step 2: Set subscription
-    print_status "Setting subscription to $SUBSCRIPTION_ID..."
-    az account set --subscription "$SUBSCRIPTION_ID"
-    
     # Step 3: Check PIM activation
-    check_pim_activation
+    if ! check_pim_activation; then
+        print_error "Cannot proceed without Contributor role"
+        exit 1
+    fi
     
     # Step 4: Check quota
     print_status "Checking Azure quota availability..."
@@ -150,12 +159,7 @@ main() {
     # Step 5: Create resource group
     print_status "Checking resource group: $RESOURCE_GROUP..."
     if az group show --name "$RESOURCE_GROUP" >/dev/null 2>&1; then
-        print_warning "Resource group already exists: $RESOURCE_GROUP"
-        read -p "Do you want to use the existing resource group? (y/n): " use_existing
-        if [[ "$use_existing" != "y" ]]; then
-            print_error "Cancelled by user"
-            exit 1
-        fi
+        print_success "Resource group already exists: $RESOURCE_GROUP"
     else
         print_status "Creating resource group: $RESOURCE_GROUP..."
         az group create \
@@ -168,34 +172,11 @@ main() {
     # Step 6: Check if cluster already exists
     print_status "Checking for existing cluster: $CLUSTER_NAME..."
     if az aks show --resource-group "$RESOURCE_GROUP" --name "$CLUSTER_NAME" >/dev/null 2>&1; then
-        print_warning "Cluster already exists: $CLUSTER_NAME"
-        read -p "Do you want to delete and recreate it? (y/n): " recreate
-        
-        if [[ "$recreate" == "y" ]]; then
-            print_status "Deleting existing cluster..."
-            az aks delete \
-                --resource-group "$RESOURCE_GROUP" \
-                --name "$CLUSTER_NAME" \
-                --yes \
-                --no-wait
-            
-            # Wait for deletion
-            wait_for_operation "Waiting for cluster deletion" \
-                "! az aks show --resource-group '$RESOURCE_GROUP' --name '$CLUSTER_NAME' 2>/dev/null" \
-                120 10
-        else
-            print_status "Using existing cluster"
-            # Get credentials and continue
-            print_status "Getting cluster credentials..."
-            az aks get-credentials \
-                --resource-group "$RESOURCE_GROUP" \
-                --name "$CLUSTER_NAME" \
-                --file "$KUBECONFIG_FILE" \
-                --overwrite-existing
-            print_success "Cluster credentials retrieved"
-            exit 0
-        fi
+        print_success "Cluster already exists: $CLUSTER_NAME"
+        print_success "Cluster creation completed (cluster already exists)"
+        return 0
     fi
+    
     
     # Step 7: Create AKS cluster
     print_status "Creating AKS cluster: $CLUSTER_NAME..."

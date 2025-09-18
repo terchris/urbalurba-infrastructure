@@ -11,8 +11,9 @@
 # - azure-aks-config.sh with cluster configuration
 #
 # Usage:
-# ./03-azure-aks-cleanup.sh [--full]
-#   --full : Also delete the resource group and all resources in it
+# ./03-azure-aks-cleanup.sh [--keep-rg]
+#   --keep-rg : Keep the resource group (only delete the AKS cluster)
+#   Default behavior: Delete everything (cluster and resource group)
 
 set -e
 
@@ -52,19 +53,25 @@ fi
 source "$CONFIG_FILE"
 
 # Parse command line arguments
-FULL_CLEANUP=false
+KEEP_RESOURCE_GROUP=false
 for arg in "$@"; do
     case $arg in
+        --keep-rg)
+            KEEP_RESOURCE_GROUP=true
+            shift
+            ;;
         --full)
-            FULL_CLEANUP=true
+            # Keep for backwards compatibility, but now does nothing as full is default
+            print_warning "--full flag is deprecated. Full cleanup is now the default behavior."
+            print_warning "Use --keep-rg to preserve the resource group."
             shift
             ;;
         --help|-h)
-            echo "Usage: $0 [--full]"
-            echo "  --full : Also delete the resource group and all resources"
+            echo "Usage: $0 [--keep-rg]"
+            echo "  --keep-rg : Keep the resource group (only delete the AKS cluster)"
             echo ""
-            echo "Without --full, only the AKS cluster is deleted."
-            echo "With --full, the entire resource group is deleted."
+            echo "Default behavior: Delete everything (cluster and resource group)"
+            echo "With --keep-rg: Only the AKS cluster is deleted, resource group is preserved"
             exit 0
             ;;
     esac
@@ -185,11 +192,11 @@ main() {
     echo "Subscription: $CURRENT_SUB"
     echo "Resource Group: $RESOURCE_GROUP"
     echo "Cluster Name: $CLUSTER_NAME"
-    echo "Cleanup Mode: $(if $FULL_CLEANUP; then echo "FULL (Resource Group + All Resources)"; else echo "CLUSTER ONLY"; fi)"
+    echo "Cleanup Mode: $(if $KEEP_RESOURCE_GROUP; then echo "CLUSTER ONLY (Keeping Resource Group)"; else echo "FULL (Resource Group + All Resources)"; fi)"
     echo
     
-    if $FULL_CLEANUP; then
-        # Full cleanup - delete entire resource group
+    if ! $KEEP_RESOURCE_GROUP; then
+        # Default: Full cleanup - delete entire resource group
         
         # Check if resource group exists
         if ! resource_exists "group" "$RESOURCE_GROUP"; then
@@ -215,10 +222,36 @@ main() {
         print_status "Deleting resource group: $RESOURCE_GROUP..."
         print_status "This will delete all resources in the group..."
         
-        az group delete \
+        # Try to delete the resource group without --no-wait first to catch authorization errors
+        DELETE_OUTPUT=$(az group delete \
             --name "$RESOURCE_GROUP" \
             --yes \
-            --no-wait
+            --no-wait 2>&1) || true
+        
+        # Check if there's an authorization error in the output
+        if echo "$DELETE_OUTPUT" | grep -q "AuthorizationFailed"; then
+            echo
+            print_error "Authorization Failed - Insufficient permissions to delete resources"
+            print_warning "You need elevated permissions (PIM) to delete Azure resources"
+            echo
+            echo "To resolve this:"
+            echo "1. Click this link to activate PIM:"
+            echo "   https://portal.azure.com/#view/Microsoft_Azure_PIMCommon/ActivationMenuBlade/~/azurerbac"
+            echo ""
+            echo "2. Activate your 'Contributor' or 'Owner' role for this subscription:"
+            echo "   Subscription: $CURRENT_SUB"
+            echo ""
+            echo "3. Wait 2-3 minutes for activation to complete"
+            echo ""
+            echo "4. Run this script again"
+            echo ""
+            echo "Alternative: Ask someone with permissions to delete the resource group:"
+            echo "   Resource Group: $RESOURCE_GROUP"
+            echo "   Subscription ID: $SUBSCRIPTION_ID"
+            exit 1
+        fi
+        
+        # If no immediate error, the deletion was initiated
         
         # Wait for deletion
         wait_for_deletion "Waiting for resource group deletion" \
@@ -228,7 +261,7 @@ main() {
         print_success "Resource group deleted: $RESOURCE_GROUP"
         
     else
-        # Cluster-only cleanup
+        # --keep-rg flag used: Cluster-only cleanup
         
         # Check if cluster exists
         if ! resource_exists "cluster" "$CLUSTER_NAME" "$RESOURCE_GROUP"; then
@@ -261,11 +294,38 @@ main() {
         # Delete cluster
         print_status "Deleting AKS cluster: $CLUSTER_NAME..."
         
-        az aks delete \
+        # Try to delete the AKS cluster and capture any errors
+        DELETE_OUTPUT=$(az aks delete \
             --resource-group "$RESOURCE_GROUP" \
             --name "$CLUSTER_NAME" \
             --yes \
-            --no-wait
+            --no-wait 2>&1) || true
+        
+        # Check if there's an authorization error in the output
+        if echo "$DELETE_OUTPUT" | grep -q "AuthorizationFailed"; then
+            echo
+            print_error "Authorization Failed - Insufficient permissions to delete AKS cluster"
+            print_warning "You need elevated permissions (PIM) to delete Azure resources"
+            echo
+            echo "To resolve this:"
+            echo "1. Click this link to activate PIM:"
+            echo "   https://portal.azure.com/#view/Microsoft_Azure_PIMCommon/ActivationMenuBlade/~/azurerbac"
+            echo ""
+            echo "2. Activate your 'Contributor' or 'Owner' role for this subscription:"
+            echo "   Subscription: $CURRENT_SUB"
+            echo ""
+            echo "3. Wait 2-3 minutes for activation to complete"
+            echo ""
+            echo "4. Run this script again"
+            echo ""
+            echo "Alternative: Ask someone with permissions to delete the cluster:"
+            echo "   Cluster: $CLUSTER_NAME"
+            echo "   Resource Group: $RESOURCE_GROUP"
+            echo "   Subscription ID: $SUBSCRIPTION_ID"
+            exit 1
+        fi
+        
+        # If no immediate error, the deletion was initiated
         
         # Wait for deletion
         wait_for_deletion "Waiting for cluster deletion" \
@@ -284,7 +344,34 @@ main() {
             
             if [[ "${delete_empty,,}" == "y" ]]; then
                 print_status "Deleting empty resource group..."
-                az group delete --name "$RESOURCE_GROUP" --yes --no-wait
+                
+                # Try to delete the empty resource group and capture any errors
+                DELETE_OUTPUT=$(az group delete --name "$RESOURCE_GROUP" --yes --no-wait 2>&1) || true
+                
+                # Check if there's an authorization error in the output
+                if echo "$DELETE_OUTPUT" | grep -q "AuthorizationFailed"; then
+                    echo
+                    print_error "Authorization Failed - Insufficient permissions to delete resource group"
+                    print_warning "You need elevated permissions (PIM) to delete Azure resources"
+                    echo
+                    echo "To resolve this:"
+                    echo "1. Click this link to activate PIM:"
+                    echo "   https://portal.azure.com/#view/Microsoft_Azure_PIMCommon/ActivationMenuBlade/~/azurerbac"
+                    echo ""
+                    echo "2. Activate your 'Contributor' or 'Owner' role for this subscription:"
+                    echo "   Subscription: $CURRENT_SUB"
+                    echo ""
+                    echo "3. Wait 2-3 minutes for activation to complete"
+                    echo ""
+                    echo "4. Run this script again"
+                    echo ""
+                    echo "Alternative: Ask someone with permissions to delete the resource group:"
+                    echo "   Resource Group: $RESOURCE_GROUP"
+                    echo "   Subscription ID: $SUBSCRIPTION_ID"
+                    exit 1
+                fi
+                
+                # If no immediate error, the deletion was initiated
                 wait_for_deletion "Waiting for resource group deletion" \
                     "az group show --name '$RESOURCE_GROUP'" \
                     120
@@ -306,7 +393,7 @@ main() {
     print_success "========================================="
     echo
     
-    if $FULL_CLEANUP; then
+    if ! $KEEP_RESOURCE_GROUP; then
         echo "✅ Deleted resource group: $RESOURCE_GROUP"
         echo "✅ Deleted all resources in the group"
     else

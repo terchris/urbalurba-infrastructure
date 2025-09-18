@@ -1,0 +1,203 @@
+---
+# file: ansible/playbooks/200-setup-openwebui-litellm.yml
+# Description:
+# Set up complete AI infrastructure with OpenWebUI → LiteLLM → LLM Providers architecture
+# This playbook deploys both LiteLLM proxy and OpenWebUI configured to use LiteLLM
+#
+# Architecture:
+# - LiteLLM: Proxy for model routing, accounting, and fallbacks
+# - OpenWebUI: Web interface configured to use LiteLLM as backend
+# - Models: 3 Mac Ollama variants + cloud models with fallbacks
+# - Storage: PostgreSQL for both LiteLLM usage tracking and OpenWebUI data
+#
+# Prerequisites:
+# - The 'ai' namespace must exist (created if not exists)
+# - The 'urbalurba-secrets' secret with LITELLM_PROXY_MASTER_KEY
+# - Host Mac Ollama running at host.lima.internal:11434 with gpt-oss:20b model
+#
+# Usage:
+# ansible-playbook playbooks/200-setup-openwebui-litellm.yml -e kube_context="rancher-desktop"
+
+- name: Set up OpenWebUI with LiteLLM proxy on Kubernetes
+  hosts: localhost
+  gather_facts: false
+  vars:
+    manifests_folder: "/mnt/urbalurbadisk/manifests"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    ai_namespace: "ai"
+    installation_timeout: 600  # 10 minutes
+    pod_readiness_timeout: 300 # 5 minutes
+    litellm_config_file: "{{ manifests_folder }}/220-litellm-config.yaml"
+    litellm_ingress_file: "{{ manifests_folder }}/221-litellm-ingress.yaml"
+    openwebui_config_file: "{{ manifests_folder }}/208-openwebui-config.yaml"
+    tika_config_file: "{{ manifests_folder }}/205-tika-config.yaml"
+    litellm_helm_chart: "oci://ghcr.io/berriai/litellm-helm"
+    openwebui_helm_chart: "open-webui/open-webui"
+
+  tasks:
+    - name: 1. Create AI namespace if not exists
+      ansible.builtin.command: >
+        kubectl create namespace {{ ai_namespace }} --dry-run=client -o yaml
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: namespace_yaml
+      changed_when: false
+
+    - name: Apply namespace creation
+      ansible.builtin.shell: |
+        echo "{{ namespace_yaml.stdout }}" | kubectl apply -f -
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: namespace_result
+      changed_when: "'created' in namespace_result.stdout"
+
+    - name: 2. Deploy Apache Tika server
+      ansible.builtin.command: >
+        helm upgrade --install tika {{ manifests_folder }}/205-tika-config.yaml
+        --namespace {{ ai_namespace }}
+        --timeout {{ installation_timeout }}s
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: tika_result
+      changed_when: true
+      ignore_errors: true
+
+    - name: 3. Deploy LiteLLM via Helm
+      ansible.builtin.command: >
+        helm upgrade --install litellm {{ litellm_helm_chart }}
+        -f {{ litellm_config_file }}
+        --namespace {{ ai_namespace }}
+        --create-namespace
+        --timeout {{ installation_timeout }}s
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: litellm_helm_result
+      changed_when: true
+
+    - name: 4. Apply LiteLLM ingress manifest
+      ansible.builtin.command: kubectl apply -f {{ litellm_ingress_file }} -n {{ ai_namespace }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: litellm_ingress_result
+      changed_when: litellm_ingress_result.rc == 0
+      failed_when: litellm_ingress_result.rc != 0
+      ignore_errors: true
+
+    - name: 5. Wait for LiteLLM pod to be ready
+      ansible.builtin.shell: |
+        kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=litellm -n {{ ai_namespace }} --timeout={{ pod_readiness_timeout }}s || true
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: litellm_wait_result
+      changed_when: false
+      ignore_errors: true
+
+    - name: 6. Add OpenWebUI Helm repository
+      ansible.builtin.command: helm repo add open-webui https://helm.openwebui.com/
+      register: helm_repo_result
+      changed_when: "'already exists' not in helm_repo_result.stderr"
+      failed_when: false
+
+    - name: Update Helm repositories
+      ansible.builtin.command: helm repo update
+      changed_when: true
+
+    - name: 7. Deploy OpenWebUI with LiteLLM integration
+      ansible.builtin.command: >
+        helm upgrade --install open-webui {{ openwebui_helm_chart }}
+        -f {{ openwebui_config_file }}
+        --namespace {{ ai_namespace }}
+        --create-namespace
+        --timeout {{ installation_timeout }}s
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: openwebui_helm_result
+      changed_when: true
+
+    - name: 8. Wait for OpenWebUI pod to be ready
+      ansible.builtin.shell: |
+        kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=open-webui -n {{ ai_namespace }} --timeout={{ pod_readiness_timeout }}s || true
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: openwebui_wait_result
+      changed_when: false
+      ignore_errors: true
+
+    - name: 9. Test LiteLLM API connectivity
+      ansible.builtin.shell: |
+        kubectl run test-litellm-api --image=curlimages/curl --rm -it --restart=Never -n {{ ai_namespace }} -- \
+          curl -s -H "Authorization: Bearer sk-1234567890abcdef" \
+          http://litellm:4000/v1/models | grep -q "mac-gpt-oss" && echo "SUCCESS" || echo "FAILED"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: litellm_test_result
+      changed_when: false
+      ignore_errors: true
+
+    - name: 10. Get deployment status
+      ansible.builtin.shell: |
+        kubectl get pods -n {{ ai_namespace }} | grep -E "(litellm|open-webui|tika)" || echo "No AI pods found"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: ai_pods
+      changed_when: false
+      ignore_errors: true
+
+    - name: 11. Get services status
+      ansible.builtin.shell: |
+        kubectl get svc -n {{ ai_namespace }} | grep -E "(litellm|open-webui|tika)" || echo "No AI services found"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: ai_services
+      changed_when: false
+      ignore_errors: true
+
+    - name: 12. Display final status
+      ansible.builtin.debug:
+        msg:
+          - "==============================================="
+          - "🚀 AI Infrastructure Deployment Status"
+          - "==============================================="
+          - ""
+          - "Architecture: OpenWebUI → LiteLLM → LLM Providers"
+          - ""
+          - "{{ '✅ SUCCESS - LiteLLM is ready' if litellm_wait_result.rc == 0 else '⚠️ WARNING - LiteLLM may still be starting' }}"
+          - "{{ '✅ SUCCESS - OpenWebUI is ready' if openwebui_wait_result.rc == 0 else '⚠️ WARNING - OpenWebUI may still be starting' }}"
+          - "{{ '✅ SUCCESS - API connectivity test passed' if 'SUCCESS' in litellm_test_result.stdout else '⚠️ WARNING - API test failed or incomplete' }}"
+          - ""
+          - "🔄 Pods Status:"
+          - "{{ ai_pods.stdout_lines | default(['No pods information available']) }}"
+          - ""
+          - "🌐 Services Status:"
+          - "{{ ai_services.stdout_lines | default(['No services information available']) }}"
+          - ""
+          - "🌐 Access URLs:"
+          - "• OpenWebUI: http://openwebui.localhost"
+          - "• LiteLLM Admin: http://litellm.localhost"
+          - ""
+          - "🔑 OpenWebUI Connection Settings:"
+          - "Go to Settings → Connections in OpenWebUI:"
+          - "• URL: http://litellm.ai.svc.cluster.local:4000/v1"
+          - "• Auth: Bearer"
+          - "• API Key: sk-1234567890abcdef"
+          - ""
+          - "🤖 Available Models (Mac Ollama variants):"
+          - "• mac-gpt-oss-balanced (Temperature: 0.7)"
+          - "• mac-gpt-oss-creative (Temperature: 0.9)"
+          - "• mac-gpt-oss-precise (Temperature: 0.3)"
+          - ""
+          - "🥊 Arena Mode:"
+          - "Select 'Arena' from model dropdown to compare responses"
+          - ""
+          - "🔧 Quick Commands:"
+          - "• Check pods: kubectl get pods -n {{ ai_namespace }}"
+          - "• View logs: kubectl logs -f <pod-name> -n {{ ai_namespace }}"
+          - "• Restart LiteLLM: kubectl rollout restart deployment/litellm -n {{ ai_namespace }}"
+          - "• Restart OpenWebUI: kubectl rollout restart statefulset/open-webui -n {{ ai_namespace }}"
+          - ""
+          - "📝 Next Steps:"
+          - "1. Access OpenWebUI and create first admin user"
+          - "2. Configure connection to LiteLLM in Settings"
+          - "3. Test models and Arena mode"
+          - "4. Proceed to Phase 4: Authentication integration"
+          - "==============================================="

@@ -1,6 +1,6 @@
 # 012-traefik-nginx-ingress.yaml
 # Creates a Traefik Ingress resource that routes traffic from the Tailscale ingress to the Nginx service
-# Usage: This file is intended to be used after setting up Tailscale funnel with 011-tailscale-traefik-ingress.yaml
+# Usage: This file is intended to be used after setting up Tailscale funnel with 803-tailscale-cluster-ingress.yaml.j2
 # 
 # This ingress accepts traffic from any hostname and routes it to the Nginx service in the default namespace
 # It supports both HTTP and HTTPS protocols, with Tailscale handling the external TLS termination

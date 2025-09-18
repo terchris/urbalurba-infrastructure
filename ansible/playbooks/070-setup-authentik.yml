@@ -46,7 +46,9 @@
     openwebui_blueprint_file: "{{ manifests_folder }}/073-authentik-2-openwebui-blueprint.yaml"
     app_slot1_blueprint_file: "{{ manifests_folder }}/073-authentik-3-app-slot1-blueprint.yaml"
     authentik_helm_values_file: "{{ manifests_folder }}/075-authentik-config.yaml"
+    authentik_csp_middleware_file: "{{ manifests_folder }}/076-authentik-csp-middleware.yaml"
     authentik_ingressroute_file: "{{ manifests_folder }}/076-authentik-ingressroute.yaml"
+    authentik_localhost_ingressroute_file: "{{ manifests_folder }}/076-authentik-localhost-ingressroute.yaml"
     forward_auth_middleware_file: "{{ manifests_folder }}/077-authentik-forward-auth-middleware.yaml"
     whoami_protected_ingress_file: "{{ manifests_folder }}/078-whoami-protected-ingressroute.yaml"
 
@@ -496,8 +498,16 @@
           📋 Specific blueprints: {{ 'Found references' if specific_blueprint_logs.stdout and 'No specific blueprint logs found yet' not in specific_blueprint_logs.stdout else 'Processing or completed' }}
           🔧 Ready for IngressRoute deployment and forward authentication setup
 
-    # Phase 6.1: Deploy Authentik IngressRoute (CRITICAL - required for access)
-    - name: "38. Deploy Authentik IngressRoute for *.localhost routing"
+    # Phase 6.1: Deploy CSP Middleware and Authentik IngressRoute (CRITICAL - required for access)
+    - name: "38. Deploy Authentik CSP middleware for mixed content resolution"
+      ansible.builtin.command: >
+        kubectl apply -f {{ authentik_csp_middleware_file }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: authentik_csp_middleware_result
+      changed_when: true
+
+    - name: "39. Deploy Authentik IngressRoute for external domains (with CSP)"
       ansible.builtin.command: >
         kubectl apply -f {{ authentik_ingressroute_file }}
       environment:
@@ -505,16 +515,25 @@
       register: authentik_ingressroute_result
       changed_when: true
 
-    - name: "39. Wait for Authentik IngressRoute to be ready"
+    - name: "40. Deploy Authentik IngressRoute for localhost (no CSP)"
+      ansible.builtin.command: >
+        kubectl apply -f {{ authentik_localhost_ingressroute_file }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: authentik_localhost_ingressroute_result
+      changed_when: true
+
+    - name: "41. Wait for Authentik IngressRoutes to be ready"
       ansible.builtin.shell: |
-        kubectl wait --for=condition=Ready ingressroute authentik-server --timeout=60s -n {{ authentik_namespace }}
+        kubectl wait --for=condition=Ready ingressroute authentik-server --timeout=60s -n {{ authentik_namespace }} && \
+        kubectl wait --for=condition=Ready ingressroute authentik-server-localhost --timeout=60s -n {{ authentik_namespace }}
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
       register: authentik_ingressroute_wait
       failed_when: false
       changed_when: false
 
-    - name: "40. Test Authentik access via new IngressRoute"
+    - name: "42. Test Authentik access via new IngressRoute"
       ansible.builtin.shell: |
         kubectl run curl-test-authentik-ingressroute --image=curlimages/curl --rm -i --restart=Never --command -- \
           curl -s -H "Host: authentik.localhost" -w "HTTP_STATUS:%{http_code}" \
@@ -525,7 +544,7 @@
       failed_when: false
       changed_when: false
 
-    - name: "41. Verify Authentik IngressRoute is working"
+    - name: "42. Verify Authentik IngressRoute is working"
       ansible.builtin.fail:
         msg: |
           ❌ Authentik IngressRoute test failed!
@@ -538,6 +557,7 @@
         msg: |
           ✅ Authentik IngressRoute deployed successfully
           🌐 Pattern: HostRegexp(`authentik\\..+`) for multi-domain support
+          🔒 CSP Middleware: {{ 'Deployed' if authentik_csp_middleware_result is succeeded else 'Check deployment' }} (fixes mixed content for external domains)
           🔗 Access: http://authentik.localhost (external) + internal service discovery
           📊 Status: {{ 'SUCCESS (200/302)' if '200' in authentik_ingressroute_test.stdout or '302' in authentik_ingressroute_test.stdout else 'NEEDS_REVIEW' }}
           🚀 Ready for OAuth integration and CoreDNS resolution

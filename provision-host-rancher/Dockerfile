@@ -30,6 +30,27 @@ RUN apt-get update && \
     traceroute \
     && rm -rf /var/lib/apt/lists/*
 
+# Install yq for manipulating yaml files in scripts
+RUN YQ_VERSION="v4.44.1" && \
+    ARCH=$(uname -m) && \
+    case "$ARCH" in \
+      x86_64) \
+        BINARY="yq_linux_amd64" \
+        ;; \
+      aarch64 | arm64) \
+        BINARY="yq_linux_arm64" \
+        ;; \
+      *) \
+        echo "Unsupported architecture: $ARCH" && \
+        exit 1 \
+        ;; \
+    esac && \
+    echo "Downloading yq version $YQ_VERSION for architecture $ARCH..." && \
+    wget -qO /usr/local/bin/yq "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/${BINARY}" && \
+    chmod a+x /usr/local/bin/yq && \
+    echo "Installed yq version:" && \
+    /usr/local/bin/yq --version
+
 # Create necessary directories
 RUN mkdir -p /mnt/urbalurbadisk && \
     chown ansible:ansible /mnt/urbalurbadisk

@@ -52,7 +52,7 @@ While the localhost routing works perfectly for browser access, **pods within th
 This cluster implements **internal DNS resolution** using CoreDNS rewrite rules that map `*.localhost` hostnames to internal service FQDNs:
 
 ```yaml
-# CoreDNS Configuration (manifests/005-internal-dns.yaml)
+# CoreDNS Configuration (REMOVED - was manifests/005-internal-dns.yaml)
 rewrite name authentik.localhost authentik-server.authentik.svc.cluster.local
 rewrite name openwebui.localhost open-webui.ai.svc.cluster.local
 ```
@@ -74,7 +74,7 @@ Pod → authentik.localhost → CoreDNS → 10.43.x.x (ClusterIP) → authentik-
 - ✅ **Automatic Resolution**: Pods automatically resolve `*.localhost` to service IPs
 
 **Implementation Details**:
-- **File**: `manifests/005-internal-dns.yaml` (deployed early in cluster setup)
+- **File**: `manifests/005-internal-dns.yaml` (REMOVED - was deployed early in cluster setup)
 - **Method**: Patches existing CoreDNS ConfigMap with rewrite rules
 - **Scope**: All pods cluster-wide get the internal DNS resolution
 - **Verification**: `kubectl exec -it <pod> -- getent hosts authentik.localhost`
@@ -99,7 +99,7 @@ This **dual-context DNS resolution** ensures that the same hostname works seamle
 This cluster supports **optional authentication** using **Authentik** as the identity provider. Services can be configured as public (no auth) or protected (requires login). Protected services use Traefik middleware (`authentik-forward-auth`) that forwards authentication requests to Authentik before serving content. See `manifests/075-authentik-config.yaml`, `manifests/077-authentik-forward-auth-middleware.yaml`, and `manifests/078-whoami-protected-ingressroute.yaml` for implementation examples.
 
 ### **External Traffic Access**:
-For external access beyond localhost, this cluster supports **Cloudflare Tunnels** and **Tailscale Funnel** to securely route external traffic to Traefik. External domains can be configured to route through Cloudflare (with WAF/DDoS protection) or directly via Tailscale Funnel, while maintaining the same Traefik ingress rules. See `doc/networking-external-cloudflare-readme.md`, `doc/networking-external-cloudflare-tailscale-readme.md`, and `doc/networking-readme.md` for setup details.
+For external access beyond localhost, this cluster supports **Cloudflare Tunnels** and **Tailscale Funnel** to securely route external traffic to Traefik. External domains can be configured to route through Cloudflare (with WAF/DDoS protection) or directly via Tailscale Funnel, while maintaining the same Traefik ingress rules. See `doc/networking-cloudflare-setup.md`, `doc/networking-tailscale-setup.md`, and `doc/networking-readme.md` for setup details.
 
 ### **Why Traefik IngressRoute CRDs?**
 - **More Features**: Path rewriting, header manipulation, middleware
@@ -320,8 +320,54 @@ sequenceDiagram
 
 ### **Required Components**
 1. **Authentik Deployment**: `manifests/075-authentik-config.yaml`
-2. **Forward Auth Middleware**: `manifests/077-authentik-forward-auth-middleware.yaml`
-3. **Protected IngressRoute**: Example below
+2. **CSP Middleware**: `manifests/076-authentik-csp-middleware.yaml` (for external domain support)
+3. **Forward Auth Middleware**: `manifests/077-authentik-forward-auth-middleware.yaml`
+4. **Protected IngressRoute**: Example below
+
+### **CSP Middleware for External Domains**
+When using external domains (like `authentik.urbalurba.no` via Cloudflare tunnel), the authentication UI experiences **mixed content errors** because:
+- Page loads over HTTPS: `https://authentik.urbalurba.no`
+- But API calls use HTTP: `http://authentik.urbalurba.no/api/v3/...`
+- Browsers block HTTP requests from HTTPS pages
+
+The **CSP middleware** solves this by adding the `upgrade-insecure-requests` header:
+
+```yaml
+# File: manifests/076-authentik-csp-middleware.yaml
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: authentik-csp-upgrade
+  namespace: authentik
+spec:
+  headers:
+    customResponseHeaders:
+      Content-Security-Policy: "upgrade-insecure-requests"
+```
+
+**How it works**:
+- **HTTPS domains** (external): Get CSP header → Browser automatically upgrades HTTP API calls to HTTPS ✅
+- **HTTP domains** (.localhost): No CSP header → Works normally with HTTP ✅
+
+**Integration**: The CSP middleware is automatically applied to the Authentik IngressRoute:
+```yaml
+# File: manifests/076-authentik-ingressroute.yaml
+spec:
+  routes:
+    - match: HostRegexp(`authentik\..+`)
+      middlewares:
+        - name: authentik-csp-upgrade
+          namespace: authentik
+      services:
+        - name: authentik-server
+          port: 80
+```
+
+**Benefits**:
+- ✅ Enables external domain authentication (Cloudflare, Tailscale)
+- ✅ Preserves localhost development workflow
+- ✅ Uses browser-native mixed content resolution
+- ✅ No server-side configuration changes needed
 
 ### **Example: Protected Service with HostRegexp**
 ```yaml
@@ -691,9 +737,10 @@ spec:
 - [Traefik Routing Rules](https://doc.traefik.io/traefik/routing/routers/)
 
 ### **Cluster-Specific Files**:
-- **Internal DNS**: `manifests/005-internal-dns.yaml`
+- **Internal DNS**: `manifests/005-internal-dns.yaml` (REMOVED)
 - **Nginx Catch-All**: `manifests/020-nginx-root-ingress.yaml`
 - **Whoami Public**: `manifests/071-whoami-public-ingressroute.yaml`
+- **Authentik CSP Middleware**: `manifests/076-authentik-csp-middleware.yaml`
 - **Gravitee Examples**: `manifests/091-gravitee-ingress.yaml`
 
 ### **Related Documentation**:
@@ -704,7 +751,7 @@ spec:
 
 ### **Key Points**:
 1. **Use `traefik.io/v1alpha1`** - this is the current working version in Traefik 3.3.6
-2. **Deploy internal DNS early** - `manifests/005-internal-dns.yaml` enables pod-to-pod communication
+2. **Deploy internal DNS early** - `manifests/005-internal-dns.yaml` (REMOVED - was used for pod-to-pod communication)
 3. **Prefer `HostRegexp()` patterns** for all services to enable multi-domain support
 4. **Use `HostRegexp()` for unified internal/external access** - single rule handles multiple domains
 5. **Set appropriate priorities** (1 = lowest, 100+ = highest)
@@ -729,3 +776,95 @@ spec:
 - **Test incrementally** to avoid debugging complexity
 
 This approach ensures consistent, maintainable ingress configuration across the cluster with support for both development and production environments, while enabling complex internal service communication patterns like OAuth integration.
+
+## ⚠️ **External Domain Authentication Limitations**
+
+### **The Problem**
+While Authentik works seamlessly with `*.localhost` domains, **adding external domains (like `urbalurba.no`) requires significant manual configuration**. This is a fundamental limitation of Authentik's proxy provider architecture, not our cluster setup.
+
+### **Why This Happens**
+Authentik's proxy providers have a single "External Host" field that only accepts ONE specific URL. You cannot use patterns or wildcards. This means:
+- ❌ Cannot have one provider for both `whoami.localhost` and `whoami.urbalurba.no`
+- ❌ Cannot use patterns like `https://whoami.*` in the External Host field
+- ❌ Each domain/service combination needs its own provider
+
+### **Manual Steps Required Per External Domain**
+
+When connecting a new external domain (e.g., via Cloudflare tunnel), developers must:
+
+#### **1. Update CSRF Trusted Origins** (~10 minutes)
+Edit `manifests/075-authentik-config.yaml` and add ALL external URLs that will be accessed:
+```yaml
+- name: AUTHENTIK_WEB__CSRF_TRUSTED_ORIGINS
+  value: "http://authentik.localhost,https://authentik.urbalurba.no,https://whoami.urbalurba.no,https://openwebui.urbalurba.no"
+```
+Then redeploy Authentik:
+```bash
+kubectl delete -f manifests/075-authentik-config.yaml
+kubectl apply -f manifests/075-authentik-config.yaml
+```
+
+#### **2. Create Proxy Provider in Authentik UI** (~5 minutes per service)
+For EACH protected service on the external domain:
+1. Login to Authentik admin: `https://authentik.urbalurba.no/if/flow/initial-setup/`
+2. Navigate to **Applications** → **Providers**
+3. Click **Create** → **Proxy Provider**
+4. Configure:
+   - **Name**: `whoami-urbalurba-provider`
+   - **Authorization flow**: `default-provider-authorization-implicit-consent`
+   - **Type**: Select **Forward auth (single application)**
+   - **External host**: `https://whoami.urbalurba.no` (exact URL, no wildcards)
+   - **Token validity**: `hours=24`
+
+#### **3. Create Application** (~3 minutes per service)
+1. Navigate to **Applications** → **Applications**
+2. Click **Create**
+3. Configure:
+   - **Name**: `whoami-urbalurba`
+   - **Slug**: `whoami-urbalurba`
+   - **Provider**: Select the provider created in step 2
+   - **Policy engine mode**: `any`
+
+#### **4. Update Embedded Outpost** (~2 minutes)
+1. Navigate to **Applications** → **Outposts**
+2. Edit **authentik Embedded Outpost**
+3. In **Applications**, add the new application from step 3
+4. Click **Update**
+
+### **Time Impact**
+- **First external domain**: ~45 minutes (includes CSRF update + first few services)
+- **Additional services on same domain**: ~10 minutes each
+- **New external domain**: ~20 minutes + 10 minutes per protected service
+
+### **Example Scenario**
+Developer connects `company.com` via Cloudflare tunnel and wants to protect 5 services:
+1. Update CSRF origins with all 5 service URLs: 10 minutes
+2. Create 5 proxy providers (one per service): 25 minutes
+3. Create 5 applications: 15 minutes
+4. Update outpost configuration: 2 minutes
+**Total**: ~52 minutes of manual configuration
+
+### **What Works Without Manual Configuration**
+✅ All `*.localhost` services (development)
+✅ Public services on external domains (no authentication)
+✅ Authentik admin UI on external domains (with CSP middleware)
+
+### **What Requires Manual Configuration**
+❌ Each protected service on external domains
+❌ CSRF trusted origins for each new domain
+❌ Separate provider/application for each domain/service combination
+
+### **Future Solutions Being Considered**
+1. **Custom Authentication Proxy**: Build domain-agnostic proxy between Traefik and Authentik
+2. **Automation Scripts**: Use Authentik API to auto-configure providers when new domains detected
+3. **Alternative Auth Systems**: Evaluate Authelia or OAuth2-Proxy for better multi-domain support
+4. **Kubernetes Operator**: Auto-configure Authentik based on IngressRoute annotations
+
+### **Current Workaround**
+For now, developers should:
+1. Use `*.localhost` for development (works automatically)
+2. Only configure external domain authentication for production/demo services
+3. Keep most services public during development
+4. Document which services need protection before going to production
+
+This limitation is acknowledged and being worked on, but for now represents a "one-time setup cost" per external domain that developers need to be aware of.

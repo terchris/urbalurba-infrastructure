@@ -17,4 +17,10 @@ debugging
 
 troubleshooting/*.txt
 troubleshooting/output/*
+
+
+# AI stuff 
 .playwright-mcp
+WARP.md
+CLAUDE.md
+

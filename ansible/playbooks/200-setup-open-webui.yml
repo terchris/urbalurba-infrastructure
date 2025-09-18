@@ -13,19 +13,18 @@
 # - Persistent storage and required secrets must be set up
 #
 # Ollama deployment:
-# - By default, Ollama is deployed in-cluster for dev/test.
-# - For production, you can skip in-cluster Ollama by running:
-#   ansible-playbook playbooks/200-setup-open-webui.yml -e deploy_ollama_incluster=false
-#   and configure Open WebUI to use a host-based Ollama instance (e.g., http://host.lima.internal:11434)
+# - Using built-in Ollama in OpenWebUI (ollama.enabled: true)
+# - Separate Ollama deployment is disabled (deploy_ollama_incluster: false)
+# - For external LLMs, set ollama.enabled: false in 208-openwebui-config.yaml
 #
 # Architecture:
-# - OpenWebUI connects directly to both Ollama instances (in-cluster and on host)
-# - Users can download and manage models on the host Ollama through the UI
-# - The in-cluster Ollama provides a stable, minimal model for testing
+# - OpenWebUI with integrated Ollama (managed by Helm chart)
+# - Models stored in persistent ollama-models PVC
+# - Can toggle between local Ollama and external LLMs via config
 #
 # Usage:
 # ansible-playbook playbooks/200-setup-open-webui.yml -e kube_context="rancher-desktop"
-#   (add -e deploy_ollama_incluster=false to skip in-cluster Ollama)
+#   (separate Ollama deployment is disabled - using built-in Ollama in OpenWebUI)
 
 - name: Set up Open WebUI with subsystems on Kubernetes
   hosts: localhost
@@ -49,8 +48,8 @@
     openwebui_ingress_file: "{{ manifests_folder }}/210-openwebui-ingress.yaml"
 
 
-    # Ollama deployment toggle
-    deploy_ollama_incluster: true
+    # Ollama deployment toggle - DISABLED: Using built-in Ollama in OpenWebUI instead
+    deploy_ollama_incluster: false
 
   tasks:
 
