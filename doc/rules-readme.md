@@ -42,6 +42,22 @@ Detailed standards for configuring ingress and networking using Traefik in the K
 
 ---
 
+### **Secrets Management Rules**
+**🔒 [Secrets Management Rules Guide](rules-secrets-management.md)**
+
+Comprehensive rules for the modular secrets management system ensuring security and maintainability:
+
+- **Template + Gitignore Pattern**: Separation of base templates from actual secrets
+- **Variable Substitution Standards**: Centralized configuration with `${VARIABLE}` patterns
+- **Security Verification**: Git safety checks and validation requirements
+- **Service Integration**: Proper namespace organization and secret structure
+- **Rotation Procedures**: Safe secret rotation and emergency response protocols
+- **Cross-System Dependencies**: Integration with provisioning, ingress, and git workflows
+
+**When to use**: All secrets management, configuration updates, service deployments requiring credentials
+
+---
+
 ### **Git Workflow and Development Rules**
 **🔀 [Git Workflow Rules Guide](rules-git-workflow.md)**
 
@@ -62,11 +78,13 @@ Professional Git workflow standards for maintaining code quality and enabling co
 
 ### **For New Developers**
 1. **Start with**: [Git Workflow Rules](rules-git-workflow.md) - Learn development workflow and collaboration
-2. **Then read**: [Provisioning Rules](rules-provisioning.md) - Learn infrastructure deployment patterns
-3. **Finally**: [Ingress Rules](rules-ingress-traefik.md) - Understand service exposure
+2. **Then read**: [Secrets Management Rules](rules-secrets-management.md) - Learn secure secrets handling
+3. **Next**: [Provisioning Rules](rules-provisioning.md) - Learn infrastructure deployment patterns
+4. **Finally**: [Ingress Rules](rules-ingress-traefik.md) - Understand service exposure
 
 ### **For Development Work**
 - **Making code changes**: Follow [Git Workflow Rules](rules-git-workflow.md)
+- **Managing secrets**: Follow [Secrets Management Rules](rules-secrets-management.md)
 - **Deploying services**: Follow [Provisioning Rules](rules-provisioning.md)
 - **Exposing services**: Follow [Ingress Rules](rules-ingress-traefik.md)
 

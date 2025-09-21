@@ -3,6 +3,8 @@ id_rsa_*
 *cloud-init.yml
 kubeconf-all
 kubernetes-secrets.yml
+kubernetes-secrets.yml.backup*
+kubernetes-secrets.yml.tmp
 /topsecret/azure
 /topsecret/kubeconfig
 /topsecret/cloudflare/cloudflare-tunnel.pem
@@ -14,6 +16,9 @@ debugging
 
 /terchris
 
+# Modular secrets management system
+/topsecret/secrets-config/
+/topsecret/secrets-generated/
 
 troubleshooting/*.txt
 troubleshooting/output/*

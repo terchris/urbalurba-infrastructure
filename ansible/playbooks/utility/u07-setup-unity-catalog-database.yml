@@ -215,6 +215,9 @@
           UNITY_CATALOG_DATABASE_PASSWORD: "{{ unity_catalog_password }}"
 
           🚀 Next Steps:
+          # TODO: Update this to use new modular secrets management system
+          # The kubernetes-secrets-template.yml approach is deprecated
+          # Should use: ./create-kubernetes-secrets.sh (which auto-generates from templates)
           1. Update your kubernetes-secrets-template.yml with the above values
           2. Apply secrets to unity-catalog namespace:
              kubectl apply -f kubernetes-secrets-template.yml
