@@ -3,7 +3,7 @@
 **File**: `doc/rules-readme.md`
 **Purpose**: Central entry point for all infrastructure rules and standards
 **Target Audience**: Developers, DevOps engineers, and anyone working with the Urbalurba platform
-**Last Updated**: September 20, 2024
+**Last Updated**: September 21, 2024
 
 ## 📋 **Overview**
 
@@ -42,13 +42,31 @@ Detailed standards for configuring ingress and networking using Traefik in the K
 
 ---
 
+### **Git Workflow and Development Rules**
+**🔀 [Git Workflow Rules Guide](rules-git-workflow.md)**
+
+Professional Git workflow standards for maintaining code quality and enabling collaboration:
+
+- **Feature Branch Workflow**: Branch strategy and naming conventions
+- **Pull Request Requirements**: Mandatory PR process with detailed descriptions
+- **Code Review Standards**: Quality criteria and review processes
+- **Commit Message Standards**: Clear, descriptive commit practices
+- **Branch Management**: Creation, merging, and cleanup procedures
+- **Emergency Procedures**: Hotfix and rollback processes
+
+**When to use**: All code contributions, feature development, bug fixes, documentation updates
+
+---
+
 ## 🎯 **Quick Reference**
 
 ### **For New Developers**
-1. **Start with**: [Provisioning Rules](rules-provisioning.md) - Learn infrastructure deployment patterns
-2. **Then read**: [Ingress Rules](rules-ingress-traefik.md) - Understand service exposure
+1. **Start with**: [Git Workflow Rules](rules-git-workflow.md) - Learn development workflow and collaboration
+2. **Then read**: [Provisioning Rules](rules-provisioning.md) - Learn infrastructure deployment patterns
+3. **Finally**: [Ingress Rules](rules-ingress-traefik.md) - Understand service exposure
 
-### **For Infrastructure Work**
+### **For Development Work**
+- **Making code changes**: Follow [Git Workflow Rules](rules-git-workflow.md)
 - **Deploying services**: Follow [Provisioning Rules](rules-provisioning.md)
 - **Exposing services**: Follow [Ingress Rules](rules-ingress-traefik.md)
 
