@@ -35,7 +35,7 @@ Urbalurba Infrastructure provides a complete datacenter environment on your lapt
 - **Object storage** - File and blob storage solutions
 
 ### AI & Machine Learning
-- **[AI Package](doc/package-ai.md)** - ChatGPT-like system running locally
+- **[AI Package](doc/package-ai-readme.md)** - ChatGPT-like system running locally
 - **Private AI models** - Use AI on your sensitive documents safely
 - **Local LLM execution** - Run AI models without cloud dependencies
 
@@ -81,7 +81,7 @@ See the [Installation Guide](doc/INSTALL.md) for prerequisites, the one-line ins
 urbalurba-infrastructure/
 ├── manifests/           # Kubernetes manifests for all services
 ├── doc/                 # Documentation and guides
-│   └── package-ai.md   # AI package setup and usage
+│   └── package-ai-readme.md   # AI package setup and usage
 ├── install-urbalurba.sh # Main installation script
 ├── Brewfile            # macOS dependencies definition
 └── README.md           # This file
@@ -89,7 +89,7 @@ urbalurba-infrastructure/
 
 ## 📚 Documentation
 
-- **[AI Package](doc/package-ai.md)** - Local ChatGPT setup and usage
+- **[AI Package](doc/package-ai-readme.md)** - Local ChatGPT setup and usage
 - **[Manifests](manifests/)** - Kubernetes configurations for all services
 - **Service Documentation** - Individual service setups and configurations
 - **Deployment Guides** - Moving from local to cloud production

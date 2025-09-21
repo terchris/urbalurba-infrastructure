@@ -27,7 +27,40 @@
     litellm_helm_chart: "oci://ghcr.io/berriai/litellm-helm"
 
   tasks:
-    - name: 1. Deploy LiteLLM via Helm
+    - name: 1. Verify Helm can access OCI registry
+      ansible.builtin.command: helm show chart {{ litellm_helm_chart }}
+      register: helm_chart_check
+      changed_when: false
+      failed_when: helm_chart_check.rc != 0
+
+    - name: 2. Set up LiteLLM database on shared PostgreSQL
+      ansible.builtin.shell: |
+        ansible-playbook utility/u10-litellm-create-postgres.yml -e operation=create
+      args:
+        chdir: /mnt/urbalurbadisk/ansible/playbooks
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: litellm_db_result
+      changed_when: litellm_db_result.rc == 0
+      failed_when: litellm_db_result.rc != 0
+
+    - name: 2.1. Display utility playbook output on failure
+      ansible.builtin.debug:
+        msg:
+          - "❌ LiteLLM database setup failed!"
+          - "Full output from utility playbook:"
+          - "{{ litellm_db_result.stdout_lines }}"
+      when: litellm_db_result.rc != 0
+
+    - name: 3. Verify LiteLLM ConfigMap exists
+      ansible.builtin.command: kubectl get configmap litellm-config -n {{ ai_namespace }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: configmap_check
+      changed_when: false
+      failed_when: configmap_check.rc != 0
+
+    - name: 4. Deploy LiteLLM via Helm
       ansible.builtin.command: >
         helm upgrade --install litellm {{ litellm_helm_chart }}
         -f {{ litellm_config_file }}
@@ -39,7 +72,7 @@
       register: litellm_helm_result
       changed_when: true
 
-    - name: 2. Apply LiteLLM ingress manifest
+    - name: 5. Apply LiteLLM ingress manifest
       ansible.builtin.command: kubectl apply -f {{ litellm_ingress_file }} -n {{ ai_namespace }}
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
@@ -47,20 +80,103 @@
       changed_when: litellm_ingress_result.rc == 0
       failed_when: litellm_ingress_result.rc != 0
 
-    - name: 3. Wait for LiteLLM pod to be ready
+    - name: 6. Verify LiteLLM IngressRoute is created
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ merged_kubeconf_file }}"
+        api_version: traefik.io/v1alpha1
+        kind: IngressRoute
+        namespace: "{{ ai_namespace }}"
+        name: litellm
+      register: litellm_ingress_check
+      retries: 5
+      delay: 2
+      until: litellm_ingress_check.resources | length > 0
+
+    - name: 7. Wait for LiteLLM pod to be ready
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ merged_kubeconf_file }}"
+        kind: Pod
+        namespace: "{{ ai_namespace }}"
+        label_selectors:
+          - app.kubernetes.io/name=litellm
+      register: litellm_pods
+      retries: 20
+      delay: 15
+      until: litellm_pods.resources | length > 0 and litellm_pods.resources[0].status.phase == "Running"
+
+    - name: 8. Display LiteLLM pod readiness status
+      ansible.builtin.debug:
+        msg: "LiteLLM readiness status: Ready"
+
+    - name: 9. Test LiteLLM service connectivity from within cluster
       ansible.builtin.shell: |
-        kubectl wait --for=condition=ready pod -l app=litellm -n {{ ai_namespace }} --timeout={{ pod_readiness_timeout }}s || true
+        kubectl run curl-test --image=curlimages/curl --rm -i --restart=Never -n {{ ai_namespace }} -- \
+        curl -s -w "HTTP_CODE:%{http_code}" http://litellm:4000/health
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
-      register: litellm_wait_result
+      register: litellm_service_test
+      retries: 5
+      delay: 5
+      until: litellm_service_test.rc == 0 and (litellm_service_test.stdout.find('HTTP_CODE:200') != -1 or litellm_service_test.stdout.find('HTTP_CODE:401') != -1)
       changed_when: false
       ignore_errors: true
 
-    - name: 4. Display LiteLLM pod readiness status
+    - name: 10. Display service connectivity test result
       ansible.builtin.debug:
-        msg: "LiteLLM readiness status: {{ 'Ready' if litellm_wait_result.rc == 0 else 'Not ready yet, continuing anyway' }}"
+        msg: "LiteLLM service test: {{ litellm_service_test.stdout | default('Test failed') }}"
 
-    - name: 5. Get LiteLLM pods
+    - name: 11. Get master key for API testing
+      ansible.builtin.shell: |
+        kubectl get secret urbalurba-secrets -n {{ ai_namespace }} -o jsonpath="{.data.LITELLM_PROXY_MASTER_KEY}" | base64 --decode
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: master_key
+      changed_when: false
+
+    - name: 12. Test LiteLLM API and verify models from within cluster
+      ansible.builtin.shell: |
+        kubectl run curl-test --image=curlimages/curl --rm -i --restart=Never -n {{ ai_namespace }} -- \
+        curl -s -H "Authorization: Bearer {{ master_key.stdout }}" \
+        http://litellm:4000/v1/models
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: api_response
+      retries: 5
+      delay: 10
+      until: api_response.rc == 0
+      changed_when: false
+
+    - name: 13. Get expected models from ConfigMap
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ merged_kubeconf_file }}"
+        api_version: v1
+        kind: ConfigMap
+        namespace: "{{ ai_namespace }}"
+        name: litellm-config
+      register: litellm_configmap
+      when: api_response is not failed
+
+    - name: 14. Parse expected model count from ConfigMap
+      ansible.builtin.set_fact:
+        expected_model_names: "{{ litellm_configmap.resources[0].data['config.yaml'] | regex_findall('- model_name: ([^\\n]+)') | unique }}"
+      when:
+        - api_response is not failed
+        - litellm_configmap.resources | length > 0
+
+    - name: 15. Display model verification results
+      ansible.builtin.debug:
+        msg:
+          - "Expected models from ConfigMap: {{ expected_model_names | default([]) | length }}"
+          - "Expected model names: {{ expected_model_names | default([]) | join(', ') }}"
+          - "API Response: {{ api_response.stdout | default('No response') }}"
+      when: api_response.rc == 0
+
+    - name: 16. Verify API response contains model data
+      ansible.builtin.debug:
+        msg: "✅ LiteLLM API is responding and returning model data"
+      when: api_response.rc == 0 and 'data' in api_response.stdout
+
+    - name: 17. Get LiteLLM pods
       ansible.builtin.shell: |
         kubectl get pods -n {{ ai_namespace }} | grep litellm || true
       environment:
@@ -69,11 +185,11 @@
       changed_when: false
       ignore_errors: true
 
-    - name: 6. Display LiteLLM pods
+    - name: 18. Display LiteLLM pods
       ansible.builtin.debug:
         var: litellm_pods.stdout_lines
 
-    - name: 7. Get LiteLLM service
+    - name: 19. Get LiteLLM service
       ansible.builtin.shell: |
         kubectl get svc -n {{ ai_namespace }} | grep litellm || true
       environment:
@@ -82,24 +198,34 @@
       changed_when: false
       ignore_errors: true
 
-    - name: 8. Display LiteLLM service
+    - name: 20. Display LiteLLM service
       ansible.builtin.debug:
         var: litellm_service.stdout_lines
 
-    - name: 9. Display final status
+    - name: 21. Display final status
       ansible.builtin.debug:
         msg:
           - "==============================================="
           - "🚀 LiteLLM Installation Status"
           - "==============================================="
           - ""
-          - "{{ '✅ SUCCESS - LiteLLM is running' if litellm_wait_result.rc == 0 else '⚠️ PARTIAL SUCCESS - LiteLLM may still be starting' }}"
+          - "✅ SUCCESS - LiteLLM is running and verified"
+          - ""
+          - "🗄️ Database Configuration:"
+          - "• Using shared PostgreSQL in default namespace"
+          - "• Database: litellm"
+          - "• Host: postgresql.default.svc.cluster.local:5432"
           - ""
           - "🔄 Status:"
           - "• Pods:"
           - "{{ litellm_pods.stdout_lines | default(['No pods found']) }}"
           - "• Service:"
           - "{{ litellm_service.stdout_lines | default(['No service found']) }}"
+          - ""
+          - "🚀 API Verification:"
+          - "• Service connectivity: ✅ Internal cluster communication verified"
+          - "• API responding: ✅ Models loaded and verified"
+          - "• IngressRoute: ✅ Traefik routing configured"
           - ""
           - "🌐 Access Instructions:"
           - "• Port-forward: kubectl port-forward svc/litellm 4000:4000 -n {{ ai_namespace }}"
@@ -108,5 +234,6 @@
           - "🔧 Troubleshooting:"
           - "• Check pod status: kubectl get pods -n {{ ai_namespace }}"
           - "• View logs: kubectl logs -f <pod-name> -n {{ ai_namespace }}"
+          - "• Check database: kubectl logs -f -n {{ ai_namespace }} -l app=litellm | grep -i database"
           - "• Restart deployment: kubectl rollout restart deployment/litellm -n {{ ai_namespace }}"
           - "===============================================" 

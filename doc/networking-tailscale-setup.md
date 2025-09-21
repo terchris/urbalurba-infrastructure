@@ -430,4 +430,4 @@ kubectl get pods -n tailscale -l app.kubernetes.io/name=tailscale-ingress
 
 While Tailscale doesn't support wildcard DNS (limiting us from using patterns like `*.k8s.dog-pence.ts.net`), the `802-tailscale-tunnel-deploy.sh` script provides a practical workaround. Each service gets its own public URL like `https://whoami.dog-pence.ts.net`, giving you full control over which services are exposed to the internet.
 
-⚠️ **Authentication Note**: Services exposed via Tailscale are publicly accessible by default. If you need authentication, consider adding Authentik protection. See `doc/traefik-ingress-rules.md` for authentication setup details.
+⚠️ **Authentication Note**: Services exposed via Tailscale are publicly accessible by default. If you need authentication, consider adding Authentik protection. See `doc/rules-ingress-traefik.md` for authentication setup details.

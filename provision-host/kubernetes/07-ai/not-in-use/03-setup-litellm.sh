@@ -1,5 +1,9 @@
 #!/bin/bash
 # filename: provision-host/kubernetes/07-ai/not-in-use/03-setup-litellm.sh
+# ⚠️ IMPORTANT: This script is for MANUAL TROUBLESHOOTING ONLY
+# DO NOT move to auto-execute directory - use 01-setup-litellm-openwebui.sh for automatic provisioning
+# Reason: Prevents redundant deployments during cluster rebuild
+#
 # description: Setup LiteLLM proxy on a Kubernetes cluster using Ansible playbook.
 #
 # This script deploys the LiteLLM proxy in the 'ai' namespace using the Ansible playbook 210-setup-litellm.yml.
@@ -61,28 +65,9 @@ run_playbook() {
     return $result
 }
 
-check_secret() {
-    local namespace="ai"
-    local secret_name="urbalurba-secrets"
-    echo "Checking if $secret_name exists in $namespace namespace..."
-    kubectl get secret $secret_name -n $namespace &>/dev/null
-    if [ $? -ne 0 ]; then
-        echo "Error: Secret '$secret_name' not found in namespace '$namespace'"
-        echo "Please create the secret before running this script"
-        echo ""
-        echo "Example:"
-        echo "kubectl create secret generic $secret_name -n $namespace \\" 
-        echo "  --from-literal=LITELLM_PROXY_MASTER_KEY=your-master-key"
-        return 1
-    fi
-    echo "Secret '$secret_name' found in namespace '$namespace'"
-    return 0
-}
-
 main() {
     echo "Starting LiteLLM proxy setup on $TARGET_HOST"
     echo "---------------------------------------------"
-    check_secret || return 1
     run_playbook "Setup LiteLLM proxy" "$PLAYBOOK_PATH_SETUP_LITELLM" || return 1
     print_summary
     return ${#ERRORS[@]}

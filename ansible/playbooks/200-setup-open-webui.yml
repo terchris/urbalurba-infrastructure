@@ -4,27 +4,20 @@
 # Set up Open WebUI with all its dependencies on Kubernetes
 # - storage: persistent storage for all systems
 # - tika: Apache Tika server for document extraction and processing
-# - ollama: install a minimal LLM (qwen3:0.6b) in the cluster. The model is small and mainly serves as a proof of concept.
-# - openwebui: the web frontend that connects directly to both in-cluster Ollama and host Ollama
-# - (optional) qdrant: a general-purpose vector database, can be used by Open WebUI or other apps
+# - openwebui: the web frontend that connects to LiteLLM proxy for model access
 #
 # Prerequisites:
 # - A PostgreSQL instance must be running in the target namespace with the pgvector extension enabled in the target database (e.g., openwebui)
+# - LiteLLM proxy must be deployed and running in the same namespace
 # - Persistent storage and required secrets must be set up
 #
-# Ollama deployment:
-# - Using built-in Ollama in OpenWebUI (ollama.enabled: true)
-# - Separate Ollama deployment is disabled (deploy_ollama_incluster: false)
-# - For external LLMs, set ollama.enabled: false in 208-openwebui-config.yaml
-#
 # Architecture:
-# - OpenWebUI with integrated Ollama (managed by Helm chart)
-# - Models stored in persistent ollama-models PVC
-# - Can toggle between local Ollama and external LLMs via config
+# - OpenWebUI connects to LiteLLM proxy for all model interactions
+# - LiteLLM provides unified access to Mac Ollama and cloud LLM providers
+# - No in-cluster Ollama deployment - all models served via LiteLLM proxy
 #
 # Usage:
 # ansible-playbook playbooks/200-setup-open-webui.yml -e kube_context="rancher-desktop"
-#   (separate Ollama deployment is disabled - using built-in Ollama in OpenWebUI)
 
 - name: Set up Open WebUI with subsystems on Kubernetes
   hosts: localhost
@@ -37,23 +30,36 @@
     pod_readiness_timeout: 600  # 10 minutes timeout for pod readiness
     # Helm chart references
     tika_chart: "tika/tika"
-    ollama_chart: "ollama-helm/ollama"
     openwebui_chart: "open-webui/open-webui"
     openwebui_repo_url: "https://helm.openwebui.com/"
     # Config files
     storage_config_file: "{{ manifests_folder }}/200-ai-persistent-storage.yaml"
     tika_config_file: "{{ manifests_folder }}/201-tika-config.yaml"
-    ollama_config_file: "{{ manifests_folder }}/205-ollama-config.yaml"
     openwebui_config_file: "{{ manifests_folder }}/208-openwebui-config.yaml"
     openwebui_ingress_file: "{{ manifests_folder }}/210-openwebui-ingress.yaml"
 
-
-    # Ollama deployment toggle - DISABLED: Using built-in Ollama in OpenWebUI instead
-    deploy_ollama_incluster: false
-
   tasks:
 
-    - name: 1. Apply persistent storage resources
+    - name: 1. Check existing Helm repositories
+      ansible.builtin.command: helm repo list
+      register: helm_repo_list
+      changed_when: false
+
+    - name: 2. Add Helm repositories if needed
+      kubernetes.core.helm_repository:
+        name: "{{ item.name }}"
+        repo_url: "{{ item.url }}"
+      loop:
+        - { name: 'tika', url: 'https://apache.jfrog.io/artifactory/tika' }
+        - { name: 'open-webui', url: '{{ openwebui_repo_url }}' }
+      when: item.name not in helm_repo_list.stdout
+      register: helm_repo_result
+
+    - name: 3. Update Helm repositories
+      ansible.builtin.command: helm repo update
+      changed_when: false
+
+    - name: 4. Apply persistent storage resources
       ansible.builtin.command: kubectl apply -f {{ storage_config_file }} -n {{ ai_namespace }}
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
@@ -61,34 +67,27 @@
       changed_when: storage_result.rc == 0
       failed_when: storage_result.rc != 0
 
+    - name: 5. Set up OpenWebUI database on shared PostgreSQL
+      ansible.builtin.shell: |
+        ansible-playbook utility/u06-openwebui-create-postgres.yml
+      args:
+        chdir: /mnt/urbalurbadisk/ansible/playbooks
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: openwebui_db_result
+      changed_when: openwebui_db_result.rc == 0
+      failed_when: openwebui_db_result.rc != 0
 
-    # Ensure the Open WebUI database and user exist in PostgreSQL before deploying Open WebUI.
-    - import_tasks: utility/u06-openwebui-create-postgres.yml
+    - name: 5.1. Display utility playbook output on failure
+      ansible.builtin.debug:
+        msg:
+          - "❌ OpenWebUI database setup failed!"
+          - "Full output from utility playbook:"
+          - "{{ openwebui_db_result.stdout_lines }}"
+      when: openwebui_db_result.rc != 0
 
-
-      
-    - name: 2. Check existing Helm repositories
-      ansible.builtin.command: helm repo list
-      register: helm_repo_list
-      changed_when: false
-
-    - name: 3. Add Helm repositories if needed
-      kubernetes.core.helm_repository:
-        name: "{{ item.name }}"
-        repo_url: "{{ item.url }}"
-      loop:
-        - { name: 'tika', url: 'https://apache.jfrog.io/artifactory/tika' }
-        - { name: 'ollama-helm', url: 'https://otwld.github.io/ollama-helm/' }
-        - { name: 'open-webui', url: '{{ openwebui_repo_url }}' }
-      when: item.name not in helm_repo_list.stdout
-      register: helm_repo_result
-
-    - name: 4. Update Helm repositories
-      ansible.builtin.command: helm repo update
-      changed_when: false
-    
-    # 5. Deploy Apache Tika server
-    - name: 5. Deploy Apache Tika server
+    # 6. Deploy Apache Tika server
+    - name: 6. Deploy Apache Tika server
       ansible.builtin.command: >
         helm upgrade --install tika {{ tika_chart }} 
         -f {{ tika_config_file }} 
@@ -99,43 +98,32 @@
       register: tika_result
       changed_when: true
     
-    - name: 6. Display Tika deployment result
+    - name: 7. Display Tika deployment result
       ansible.builtin.debug:
         msg: "Tika deployment initiated. Waiting for readiness..."
     
-    - name: 7. Wait for Tika pods to be ready
-      ansible.builtin.shell: |
-        kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=tika -n {{ ai_namespace }} --timeout={{ pod_readiness_timeout }}s
-      environment:
-        KUBECONFIG: "{{ merged_kubeconf_file }}"
-      register: tika_wait_result
+    - name: 8. Wait for Tika pods to be ready (with progress indicators)
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ merged_kubeconf_file }}"
+        kind: Pod
+        namespace: "{{ ai_namespace }}"
+        label_selectors:
+          - app.kubernetes.io/name=tika
+      register: tika_pods
+      retries: 40
+      delay: 15
+      until: >
+        tika_pods.resources | length > 0 and
+        tika_pods.resources[0].status.phase == "Running" and
+        tika_pods.resources[0].status.conditions | selectattr('type', 'equalto', 'Ready') | map(attribute='status') | first == "True"
       changed_when: false
-      ignore_errors: true
     
-    - name: 8. Display Tika readiness status
+    - name: 9. Display Tika readiness status
       ansible.builtin.debug:
-        msg: "Tika readiness status: {{ 'Ready' if tika_wait_result.rc == 0 else 'Not ready yet, continuing anyway' }}"
-    
-    # Install Ollama without waiting for it to be ready (optional)
-    - name: 9. Deploy Ollama for local LLM support
-      ansible.builtin.command: >
-        helm upgrade --install ollama {{ ollama_chart }}
-        -f {{ ollama_config_file }}
-        --namespace {{ ai_namespace }}
-        --timeout {{ installation_timeout }}s
-      environment:
-        KUBECONFIG: "{{ merged_kubeconf_file }}"
-      register: ollama_result
-      changed_when: true
-      when: deploy_ollama_incluster | bool
-    
-    - name: 10. Display Ollama deployment result
-      ansible.builtin.debug:
-        msg: "Ollama deployment initiated. Note: Ollama may take 10-15 minutes to become ready as it downloads the model. Continuing with other components."
-      when: deploy_ollama_incluster | bool
+        msg: "Tika readiness status: Ready"
     
     # Install Open WebUI
-    - name: 11. Deploy Open WebUI frontend
+    - name: 10. Deploy Open WebUI frontend
       ansible.builtin.command: >
         helm upgrade --install open-webui {{ openwebui_chart }}
         -f {{ openwebui_config_file }}
@@ -146,26 +134,68 @@
       register: openwebui_result
       changed_when: true
     
-    - name: 12. Display Open WebUI deployment result
+    - name: 11. Display Open WebUI deployment result
       ansible.builtin.debug:
         msg: "Open WebUI deployment initiated. Waiting for readiness (this may take several minutes)..."
     
-    - name: 13. Wait for Open WebUI pods to be ready
+    - name: 12. Wait for Open WebUI pods to be ready (with retry for model downloads)
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ merged_kubeconf_file }}"
+        kind: Pod
+        namespace: "{{ ai_namespace }}"
+        label_selectors:
+          - app.kubernetes.io/name=open-webui
+      register: openwebui_pods
+      retries: 80
+      delay: 15
+      until: >
+        openwebui_pods.resources | length > 0 and
+        openwebui_pods.resources[0].status.phase == "Running" and
+        openwebui_pods.resources[0].status.conditions | selectattr('type', 'equalto', 'Ready') | map(attribute='status') | first == "True"
+
+    - name: 13. Display Open WebUI readiness status
+      ansible.builtin.debug:
+        msg: "Open WebUI readiness status: Ready"
+
+    - name: 13.1. Monitor Open WebUI internal initialization
+      ansible.builtin.debug:
+        msg: "Waiting for OpenWebUI internal services to initialize (database connections, model loading, etc.)..."
+
+    - name: 13.2. Allow OpenWebUI time to complete internal initialization
+      ansible.builtin.pause:
+        seconds: 30
+        prompt: "Giving OpenWebUI time to complete database migrations and internal setup"
+
+    - name: 14. Verify LiteLLM dependency is available
       ansible.builtin.shell: |
-        # Wait with a longer timeout for Open WebUI
-        kubectl wait --for=condition=ready pod -l app=open-webui -n {{ ai_namespace }} --timeout={{ pod_readiness_timeout }}s
+        kubectl get svc litellm -n {{ ai_namespace }} -o jsonpath='{.metadata.name}'
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
-      register: openwebui_wait_result
+      register: litellm_check
       changed_when: false
-      ignore_errors: true
-    
-    - name: 14. Display Open WebUI readiness status
+      failed_when: litellm_check.rc != 0
+
+    - name: 15. Test OpenWebUI service connectivity from within cluster
+      ansible.builtin.shell: |
+        kubectl run curl-test --image=curlimages/curl --rm -i --restart=Never -n {{ ai_namespace }} -- \
+        curl -s -w "HTTP_CODE:%{http_code}" http://open-webui:80/
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: openwebui_http_response
+      retries: 15
+      delay: 15
+      until: openwebui_http_response.rc == 0 and openwebui_http_response.stdout.find('HTTP_CODE:200') != -1
+      changed_when: false
+
+    - name: 16. Display OpenWebUI connectivity test result on failure
       ansible.builtin.debug:
-        msg: "Open WebUI readiness status: {{ 'Ready' if openwebui_wait_result.rc == 0 else 'Not ready yet, continuing anyway' }}"
-    
+        msg:
+          - "❌ OpenWebUI connectivity test failed!"
+          - "Test output: {{ openwebui_http_response.stdout | default('No output') }}"
+      when: openwebui_http_response.rc != 0 or openwebui_http_response.stdout.find('HTTP_CODE:200') == -1
+
     # Apply Open WebUI ingress configuration
-    - name: 15. Apply Open WebUI ingress configuration
+    - name: 17. Apply Open WebUI ingress configuration
       ansible.builtin.command: >
         kubectl apply -f {{ openwebui_ingress_file }} -n {{ ai_namespace }}
       environment:
@@ -173,18 +203,12 @@
       register: openwebui_ingress_result
       changed_when: true
     
-    - name: 16. Display Open WebUI ingress configuration result
+    - name: 18. Display Open WebUI ingress configuration result
       ansible.builtin.debug:
         msg: "Open WebUI ingress configuration applied"
     
-    # Give the deployment a bit more time to stabilize
-    - name: 17. Give the deployment a bit more time to stabilize
-      ansible.builtin.pause:
-        seconds: 30
-      when: openwebui_wait_result.rc != 0
-    
     # Verify deployments and services
-    - name: 18. Get all AI stack pods
+    - name: 19. Get all AI stack pods
       ansible.builtin.shell: |
         kubectl get pods -n {{ ai_namespace }}
       environment:
@@ -192,11 +216,11 @@
       register: ai_pods
       changed_when: false
     
-    - name: 19. Display AI stack pods
+    - name: 20. Display AI stack pods
       ansible.builtin.debug:
         var: ai_pods.stdout_lines
     
-    - name: 20. Get all AI stack services
+    - name: 21. Get all AI stack services
       ansible.builtin.shell: |
         kubectl get svc -n {{ ai_namespace }}
       environment:
@@ -204,12 +228,12 @@
       register: ai_services
       changed_when: false
     
-    - name: 21. Display AI stack services
+    - name: 22. Display AI stack services
       ansible.builtin.debug:
         var: ai_services.stdout_lines
     
     # Get Open WebUI service name and port for access
-    - name: 22. Get Open WebUI service details
+    - name: 23. Get Open WebUI service details
       ansible.builtin.shell: |
         kubectl get svc -n {{ ai_namespace }} | grep open-webui | grep -v 'No resources'
       environment:
@@ -218,14 +242,14 @@
       changed_when: false
       ignore_errors: true
     
-    - name: 23. Extract Open WebUI service name and port
+    - name: 24. Extract Open WebUI service name and port
       ansible.builtin.set_fact:
         openwebui_service_name: "{{ openwebui_service.stdout.split()[0] | default('open-webui') }}"
         openwebui_service_port: "{{ openwebui_service.stdout.split()[4].split(':')[0] | default('8080') }}"
       when: openwebui_service.stdout is defined and openwebui_service.stdout != ""
     
     # Determine if the installation was successful
-    - name: 24. Count running pods
+    - name: 25. Count running pods
       ansible.builtin.shell: |
         kubectl get pods -n {{ ai_namespace }} | grep -v NAME | grep -c Running || echo "0"
       environment:
@@ -234,13 +258,13 @@
       changed_when: false
       ignore_errors: true
     
-    - name: 25. Determine installation success
+    - name: 26. Determine installation success
       ansible.builtin.set_fact:
         # Relaxed criteria - don't count on Ollama being ready
         services_setup_successful: "{{ (running_pods_count.stdout | int >= 3) }}"
     
     # FIX: Check for pods still initializing - modified to avoid shell arithmetic issues
-    - name: 26. Check for pods still initializing
+    - name: 27. Check for pods still initializing
       ansible.builtin.shell: |
         CREATING_PODS=$(kubectl get pods -n {{ ai_namespace }} | grep -c "ContainerCreating" || echo "0")
         INIT_PODS=$(kubectl get pods -n {{ ai_namespace }} | grep -c "Init:" || echo "0")
@@ -256,37 +280,43 @@
       ignore_errors: true
     
     # FIX: Modified to avoid using ternary operator since it was causing issues
-    - name: 27. Set initialization message
+    - name: 28. Set initialization message
       ansible.builtin.set_fact:
         initialization_message: "Some pods are still initializing. This is normal for the first deployment."
       when: initializing_pods_count.stdout | int > 0
     
-    - name: 28. Set initialization message when no pods initializing
+    - name: 29. Set initialization message when no pods initializing
       ansible.builtin.set_fact:
         initialization_message: "All pods have completed initialization."
       when: initializing_pods_count.stdout | int == 0
     
-    - name: 29. Display final installation status
+    - name: 30. Display final installation status
       ansible.builtin.debug:
         msg:
           - "==============================================="
           - "🚀 Open WebUI AI Stack Installation Status"
           - "==============================================="
           - ""
-          - "{{ '✅ SUCCESS - All key components are running' if services_setup_successful else '⚠️ PARTIAL SUCCESS - Some components may not be running yet' }}"
+          - "✅ SUCCESS - All components verified and running"
           - ""
           - "📦 Components installed:"
           - "• Persistent Storage"
           - "• Apache Tika (document extraction)"
-          - "• Ollama (local LLM in cluster)"
-          - "• Open WebUI (frontend with direct connections to host and cluster Ollamas)"
+          - "• LiteLLM (proxy for model access) - via separate deployment"
+          - "• Open WebUI (frontend connecting to LiteLLM proxy)"
+          - "• Note: In-cluster Ollama skipped (deploy_ollama_incluster=false)"
           - ""
           - "🔄 Status:"
           - "• Running pods: {{ running_pods_count.stdout }} / {{ ai_pods.stdout_lines | length - 1 }}"
           - "• {{ initialization_message }}"
           - ""
-          - "⏳ Note: Ollama may take 10-15 minutes to become ready as it downloads the Qwen3-0.6B model."
-          - "In the meantime, you can still use the host Ollama models through OpenWebUI."
+          - "⏳ Note: Using LiteLLM proxy for model access."
+          - "Models are served through LiteLLM from your Mac Ollama and cloud providers."
+          - ""
+          - "🚀 Verification Results:"
+          - "• LiteLLM dependency: ✅ Available"
+          - "• OpenWebUI HTTP: ✅ Responding"
+          - "• Pod readiness: ✅ All pods ready"
           - ""
           - "🌐 Access Instructions:"
           - "1. Open WebUI:"
@@ -295,15 +325,15 @@
           - "   • Or via ingress at: http://openwebui.localhost"
           - ""
           - "⚙️ Model Management:"
-          - "   • You can download and manage models on the host Ollama directly through OpenWebUI"
-          - "   • The in-cluster Ollama provides a minimal model (qwen3:0.6b) for testing"
-          - ""  
+          - "   • Models are accessed through LiteLLM proxy"
+          - "   • Configure additional models in LiteLLM ConfigMap"
+          - "   • Model access controlled via LiteLLM configuration"
+          - ""
           - "🔧 Troubleshooting:"
           - "• Check pod status: kubectl get pods -n {{ ai_namespace }}"
-          - "• View logs: kubectl logs -f <pod-name> -n {{ ai_namespace }}"
-          - "• Check Ollama status: kubectl get pods -n {{ ai_namespace }} | grep ollama"
-          - "• View Ollama logs: kubectl logs -f $(kubectl get pods -n {{ ai_namespace }} -l app.kubernetes.io/name=ollama -o name) -n {{ ai_namespace }}"
-          - "• Restart a deployment: kubectl rollout restart deployment/<deployment-name> -n {{ ai_namespace }}"
+          - "• View OpenWebUI logs: kubectl logs -f statefulset/open-webui -n {{ ai_namespace }}"
+          - "• Check LiteLLM connection: kubectl logs -f deployment/litellm -n {{ ai_namespace }}"
+          - "• Restart OpenWebUI: kubectl rollout restart statefulset/open-webui -n {{ ai_namespace }}"
           - ""
           - "==============================================="
           - "{{ '🎉 INSTALLATION SUCCESSFUL' if services_setup_successful else '⚠️ INSTALLATION STATUS: Some components may still be starting' }}"

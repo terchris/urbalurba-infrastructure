@@ -1,6 +1,6 @@
 # Traefik Ingress Rules - Cluster Standards Guide
 
-**File**: `doc/traefik-ingress-rules.md`  
+**File**: `doc/rules-ingress-traefik.md`  
 **Purpose**: Explain how ingress is configured in this Kubernetes cluster using Traefik  
 **Target Audience**: Developers, DevOps engineers, and anyone working with cluster ingress  
 **Last Updated**: September 01, 2025  

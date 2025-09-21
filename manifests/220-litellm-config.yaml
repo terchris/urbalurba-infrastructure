@@ -1,5 +1,4 @@
-# 207-litellm-config.yaml
-#  7may25: not in use anymore
+# manifests/220-litellm-config.yaml
 # Description:
 # LiteLLM proxy configuration with multiple model sources:
 # 1. In-cluster Ollama qwen3:0.6b-incluster model (always available in the cluster)
@@ -53,176 +52,58 @@ image:
   pullPolicy: Always
   tag: "main-latest"  # Back to latest - should have the fix
 
-# Keep internal PostgreSQL - it's already working
-# postgresql:
-#   enabled: false
+# Disable internal PostgreSQL - use shared PostgreSQL instead
+db:
+  useExisting: true
+  deployStandalone: false
+  endpoint: postgresql.default.svc.cluster.local
+  database: litellm
+  secret:
+    name: urbalurba-secrets
+    usernameKey: LITELLM_POSTGRESQL__USER
+    passwordKey: LITELLM_POSTGRESQL__PASSWORD
 
-# No need for extra DATABASE_URL since we're using internal PostgreSQL
-# extraEnvVars:
-#   - name: DATABASE_URL
-#     value: "postgresql://postgres:postgres@postgres.default.svc.cluster.local:5432/litellm"
+postgresql:
+  enabled: false
 
 # Reference to Kubernetes secrets with env vars
 environmentSecrets:
   - urbalurba-secrets
 
-# Enable debug logging and database model storage
+# Configure DATABASE_URL and enable debug logging and database model storage
 extraEnvVars:
+  - name: DATABASE_URL
+    value: "postgresql://litellm:$(LITELLM_POSTGRESQL__PASSWORD)@postgresql.default.svc.cluster.local:5432/litellm"
   - name: LITELLM_LOG
     value: "DEBUG"
   - name: STORE_MODEL_IN_DB
     value: "True"
+  # UI authentication environment variables (ENTERPRISE/PREMIUM FEATURE ONLY)
+  # NOTE: These require LiteLLM Enterprise license - commenting out for free version
+  # - name: UI_USERNAME
+  #   valueFrom:
+  #     secretKeyRef:
+  #       name: urbalurba-secrets
+  #       key: UI_USERNAME
+  # - name: UI_PASSWORD
+  #   valueFrom:
+  #     secretKeyRef:
+  #       name: urbalurba-secrets
+  #       key: UI_PASSWORD
 
 # Master key for authentication
 masterkeySecretName: urbalurba-secrets
 masterkeySecretKey: LITELLM_PROXY_MASTER_KEY
 
-# Configure the proxy with fallbacks and error handling
-proxy_config:
-  # Configure general settings for reliable operation
-  general_settings:
-    # If cloud models fail, still allow local models to work
-    allow_model_caching_in_memory: True
-    # Return useful error messages
-    detailed_error_messaging: True
-  
-  # Configure router settings for better reliability
-  router_settings:
-    routing_strategy: "simple-shuffle"
-    # Define fallbacks from cloud models to local models
-    fallbacks: [
-      {"gpt-4o": ["mac-gpt-oss-balanced", "mac-gpt-oss-creative"]},
-      {"claude-3-opus": ["mac-gpt-oss-balanced", "mac-gpt-oss-precise"]},
-      {"gpt-3.5-turbo": ["mac-gpt-oss-balanced"]},
-      {"azure-gpt-4": ["mac-gpt-oss-balanced"]},
-      {"external-ollama-gemma3": ["mac-gpt-oss-balanced"]}
-    ]
-  
-  # LiteLLM settings
-  litellm_settings:
-    # Set a reasonable timeout
-    request_timeout: 120
-    # Enable fallbacks for content policy errors
-    content_policy_fallbacks: [
-      {"gpt-4o": ["mac-gpt-oss-balanced"]},
-      {"claude-3-opus": ["mac-gpt-oss-balanced"]}
-    ]
-    # Retry on connection issues (helps with intermittent network problems)
-    num_retries: 3
-  
-  # Model list configuration
-  model_list:
-    # Removed qwen3-0.6b-incluster - no longer available since built-in Ollama disabled
+# Use existing ConfigMap instead of inline config
+configMapRef:
+  name: litellm-config
+  key: config.yaml
 
-    # Host Mac Ollama - Default configuration
-    - model_name: mac-gpt-oss-balanced
-      litellm_params:
-        model: ollama/gpt-oss:20b
-        api_base: "http://host.lima.internal:11434"
-        temperature: 0.7
-        stream: false  # Disable streaming to avoid thinking field issues
-      model_info:
-        description: "Mac Ollama GPT-OSS (Balanced)"
-        status: "active"
-        input_cost_per_token: 0
-        output_cost_per_token: 0
-        max_input_tokens: 8192
-        max_output_tokens: 2000
-        mode: "chat"
+# Disable Helm-managed ConfigMap creation and use our existing one
+proxyConfigMap:
+  create: false
+  name: litellm-config  # Name of the existing ConfigMap to use
 
-    # Creative variant - Higher temperature for more creative responses
-    - model_name: mac-gpt-oss-creative
-      litellm_params:
-        model: ollama/gpt-oss:20b
-        api_base: "http://host.lima.internal:11434"
-        temperature: 0.9
-        top_p: 0.95
-        stream: false
-      model_info:
-        description: "Mac Ollama GPT-OSS (Creative Mode)"
-        status: "active"
-        input_cost_per_token: 0
-        output_cost_per_token: 0
-        max_input_tokens: 8192
-        max_output_tokens: 2000
-        mode: "chat"
-
-    # Precise variant - Lower temperature for more focused responses
-    - model_name: mac-gpt-oss-precise
-      litellm_params:
-        model: ollama/gpt-oss:20b
-        api_base: "http://host.lima.internal:11434"
-        temperature: 0.3
-        top_p: 0.9
-        stream: false
-      model_info:
-        description: "Mac Ollama GPT-OSS (Precise Mode)"
-        status: "active"
-        input_cost_per_token: 0
-        output_cost_per_token: 0
-        max_input_tokens: 8192
-        max_output_tokens: 2000
-        mode: "chat"
-
-    # External Mac Ollama gemma3:4b model (old IP, keeping for reference)
-    - model_name: external-ollama-gemma3
-      litellm_params:
-        model: ollama/gemma3:4b
-        api_base: "http://192.168.68.61:11434"
-        temperature: 0.7
-        max_tokens: 2000
-        stop: ["<|im_start|>", "<|im_end|>"]
-      model_info:
-        description: "Gemma 3 4B model running on external Mac Ollama"
-        status: "active"
-        input_cost_per_token: 0
-        output_cost_per_token: 0
-        max_input_tokens: 8192
-        max_output_tokens: 2000
-        mode: "chat"
-        architecture: "gemma3"
-        parameters: "4B"
-    
-    # OpenAI GPT-4o (requires valid API key)
-    - model_name: gpt-4o
-      litellm_params:
-        model: openai/gpt-4o
-        api_key: "os.environ/OPENAI_API_KEY"
-        max_tokens: 4000
-      model_info:
-        description: "GPT-4o from OpenAI (requires valid API key in secret)"
-        status: "requires_api_key"
-        input_cost_per_token: 0.00005
-        output_cost_per_token: 0.00015
-        max_input_tokens: 128000
-        mode: "chat"
-    
-    # Azure OpenAI model (requires valid API key)
-    - model_name: azure-gpt-4
-      litellm_params:
-        model: azure/gpt-4
-        api_base: "os.environ/AZURE_API_BASE"
-        api_key: "os.environ/AZURE_API_KEY"
-        api_version: "2023-07-01-preview"
-        max_tokens: 4000
-      model_info:
-        description: "GPT-4 deployed on Azure OpenAI (requires valid Azure credentials in secret)"
-        status: "requires_api_key"
-        input_cost_per_token: 0.00003
-        output_cost_per_token: 0.00006
-        max_input_tokens: 8192
-        mode: "chat"
-    
-    # Anthropic Claude model (requires valid API key)
-    - model_name: claude-3-opus
-      litellm_params:
-        model: anthropic/claude-3-opus-20240229
-        api_key: "os.environ/ANTHROPIC_API_KEY"
-        max_tokens: 4000
-      model_info:
-        description: "Claude 3 Opus from Anthropic (requires valid API key in secret)"
-        status: "requires_api_key"
-        input_cost_per_token: 0.00003
-        output_cost_per_token: 0.00015
-        max_input_tokens: 200000
-        mode: "chat"
+# Remove inline config since we're using external ConfigMap
+# The model configuration is now managed in topsecret/kubernetes/kubernetes-secrets.yml

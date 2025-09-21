@@ -12,10 +12,9 @@ On your host computer, run the following command to install the AI package:
 
 The script will install the AI package and start the Open WebUI frontend. You can then access the Open WebUI frontend at [http://openwebui.localhost](http://openwebui.localhost).
 
-The install takes a while to complete as it downloads a model into the cluster. The model in the cluster is just there to verify that the setup works (it is slow and small and not that smart).
+The install takes a while to complete as it sets up the LiteLLM proxy and OpenWebUI components. No models are downloaded into the cluster - all models are accessed through the LiteLLM proxy.
 
-While you are waiting for the install to complete you should install ollama on your host computer. When running on your host computer Ollama is able to use the GPU of your host computer.
-It will also be able to use more memory so that you can run a larger / smarter model.
+To use models, you should install Ollama on your host computer and configure the LiteLLM proxy to access it. When running on your host computer, Ollama is able to use the GPU and access more memory for larger, smarter models.
 
 ### Checking installation progress
 
@@ -47,11 +46,11 @@ While our implementation is based on Open WebUI, we've made several significant 
 
 #### 1. Vector Database
 - **Original**: Uses ChromaDB as the default vector database
-- **Our Implementation**: Replaced with Qdrant for better scalability and performance
-  - Enhanced similarity search capabilities
-  - Better support for large-scale deployments
-  - Improved query performance
-  - More robust clustering support
+- **Our Implementation**: Uses PostgreSQL with pgvector extension
+  - Leverages existing shared database infrastructure
+  - Simplified deployment and maintenance
+  - Better integration with enterprise databases
+  - Reduced resource requirements
 
 #### 2. Document Processing
 - **Original**: Uses embedded Tika server
@@ -108,7 +107,7 @@ Key features include:
   - Document ingestion and processing through a RAG (Retrieval-Augmented Generation) pipeline
   - Support for various document formats (PDF, Word, Excel, PowerPoint)
   - Integration with Apache Tika for advanced document extraction
-  - Vector database storage using Qdrant for efficient similarity search
+  - Vector database storage using PostgreSQL with pgvector extension
 
 - **Chat Interface**:
   - ChatGPT-like interface for querying knowledge bases
@@ -167,7 +166,7 @@ The platform is designed to operate entirely offline while maintaining enterpris
 
 ## System Architecture
 
-TODO: we removed litellm so we need to update the diagrams.
+The AI platform uses LiteLLM as a central proxy for all LLM interactions, providing unified access to multiple AI providers through a single interface.
 
 ```mermaid
 graph TD
@@ -177,7 +176,7 @@ graph TD
         C --> D[Vector Embeddings]
     end
 
-    subgraph "Knowledge Bases"
+    subgraph "Knowledge Bases (PostgreSQL)"
         D --> E[Internal KB]
         D --> F[Public KB]
         D --> G[Department KB]
@@ -218,8 +217,8 @@ sequenceDiagram
     Tika-->>OpenWebUI: Extracted Text
     OpenWebUI->>LiteLLM: Generate Embeddings
     LiteLLM-->>OpenWebUI: Document Embeddings
-    OpenWebUI->>Qdrant: Store in Knowledge Base
-    Qdrant-->>OpenWebUI: Confirmation
+    OpenWebUI->>PostgreSQL: Store in Knowledge Base
+    PostgreSQL-->>OpenWebUI: Confirmation
     OpenWebUI-->>User: Document Processed
 ```
 
@@ -293,25 +292,7 @@ The AI stack is set up using an Ansible playbook (`200-setup-open-webui.yml`) th
    - [Apache Tika Official Website](https://tika.apache.org/)
    - [Tika Helm Chart](https://artifacthub.io/packages/helm/tika/tika)
 
-3. **Qdrant Vector Database**
-   - Vector database for storing and querying embeddings
-   - Replaces the default ChromaDB in Open WebUI
-   - Provides efficient similarity search capabilities
-   - Helm chart: `qdrant/qdrant`
-   - [Qdrant Official Website](https://qdrant.tech/)
-   - [Qdrant Documentation](https://qdrant.tech/documentation/)
-   - [Qdrant Helm Chart](https://github.com/qdrant/qdrant-helm)
-
-4. **Ollama**
-   - Local LLM deployment
-   - Installs a minimal model (qwen2:0.5b) for testing
-   - Can be extended with additional models
-   - Helm chart: `ollama-helm/ollama`
-   - [Ollama Official Website](https://ollama.ai/)
-   - [Ollama Documentation](https://github.com/ollama/ollama)
-   - [Ollama Helm Chart](https://github.com/otwld/ollama-helm)
-
-5. **LiteLLM**
+3. **LiteLLM**
    - LLM proxy service and gateway
    - Acts as a central dispatcher for all LLM requests
    - Enables integration with various LLM providers
@@ -319,12 +300,14 @@ The AI stack is set up using an Ansible playbook (`200-setup-open-webui.yml`) th
    - Provides detailed cost tracking and usage analytics
    - Manages API keys and access control
    - Implements rate limiting and fallback strategies
+   - **Configuration**: Uses external ConfigMap in `topsecret/kubernetes/kubernetes-secrets.yml`
+   - **Database**: Uses shared PostgreSQL (database: `litellm`, user: `litellm`)
    - Helm chart: `oci://ghcr.io/berriai/litellm-helm`
    - [LiteLLM Official Website](https://litellm.ai/)
    - [LiteLLM Documentation](https://docs.litellm.ai/)
    - [LiteLLM Helm Chart](https://github.com/BerriAI/litellm-helm)
 
-6. **Open WebUI**
+4. **Open WebUI**
    - An extensible, feature-rich, and user-friendly self-hosted AI platform
    - Designed to operate entirely offline
    - Supports various LLM runners like Ollama and OpenAI-compatible APIs
@@ -350,7 +333,7 @@ The default Open WebUI Helm chart has been customized to better integrate with o
 - Document processing pipelines
 - Persistent storage using existing PVC
 - Integration with LiteLLM proxy for LLM access
-- Qdrant vector database for document storage
+- PostgreSQL with pgvector for vector database storage
 - Standalone Tika server for document extraction
 
 #### Resource Configuration
@@ -368,20 +351,20 @@ The default Open WebUI Helm chart has been customized to better integrate with o
    - Configured for document extraction and processing
 
 3. **Vector Database**
-   - Uses Qdrant at `http://qdrant:6333`
-   - Custom collection name: `openwebui_documents`
-   - API key from Kubernetes secrets
+   - Uses PostgreSQL with pgvector extension
+   - Database: `openwebui`
+   - Connection via shared PostgreSQL service
 
 4. **Embedding Model**
    - Uses `all-MiniLM-L6-v2` for RAG embeddings
    - Configured for efficient document processing
 
 #### Technical Notes
-- **Minimal Model Configuration**: 
-  - The system is configured to load a minimal model (qwen2:0.5b) into the cluster for testing purposes
-  - This model should be unloaded after initial testing
-  - For production use, the system should be configured to use the Ollama instance installed on the host computer
-  - This ensures better performance and access to the full range of available models
+- **Model Access via LiteLLM Proxy**:
+  - No models are deployed in the cluster
+  - All model access is routed through LiteLLM proxy
+  - Configure Ollama on your host computer for local model access
+  - Cloud models (OpenAI, Anthropic, etc.) are accessed via API keys in LiteLLM configuration
 
 ### Configuration and Requirements
 
@@ -389,12 +372,12 @@ The setup requires:
 - A Kubernetes cluster
 - Helm package manager
 - Required API keys stored in Kubernetes secrets:
-  - `OPENWEBUI_QDRANT_API_KEY`
   - `LITELLM_PROXY_MASTER_KEY`
   - `OPENAI_API_KEY`
   - `ANTHROPIC_API_KEY`
   - `AZURE_API_KEY`
   - `AZURE_API_BASE`
+  - PostgreSQL database credentials (automatically configured)
 
 ### Deployment Process
 
@@ -403,10 +386,8 @@ The setup requires:
 3. Sets up persistent storage
 4. Adds required Helm repositories
 5. Deploys components in sequence:
+   - LiteLLM proxy (first - required dependency)
    - Tika server
-   - Qdrant vector database
-   - Ollama (with minimal model)
-   - LiteLLM proxy
    - Open WebUI frontend
 
 Each component is deployed with appropriate timeouts and readiness checks to ensure proper initialization.
