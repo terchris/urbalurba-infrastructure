@@ -1,5 +1,9 @@
 #!/bin/bash
 # filename: 02-setup-open-webui.sh
+# ⚠️ IMPORTANT: This script is for MANUAL TROUBLESHOOTING ONLY
+# DO NOT move to auto-execute directory - use 01-setup-litellm-openwebui.sh for automatic provisioning
+# Reason: Prevents redundant deployments during cluster rebuild
+#
 # description: Setup Open WebUI on a Kubernetes cluster using Ansible playbook.
 # Also installs the dependencies for the open-webui: 
 # - storage : persistent storage for all systems
@@ -77,58 +81,14 @@ run_playbook() {
     return $result
 }
 
-# Function to check Kubernetes secret
-check_secret() {
-    local namespace="ai"
-    local secret_name="urbalurba-secrets"
-    
-    echo "Checking if $secret_name exists in $namespace namespace..."
-    kubectl get secret $secret_name -n $namespace &>/dev/null
-    if [ $? -ne 0 ]; then
-        echo "Error: Secret '$secret_name' not found in namespace '$namespace'"
-        echo "Please create the secret before running this script"
-        echo ""
-        echo "Example:"
-        echo "kubectl create secret generic $secret_name -n $namespace \\"
-        echo "  --from-literal=OPENWEBUI_QDRANT_API_KEY=your-qdrant-api-key"
-        return 1
-    fi
-    
-    echo "Secret '$secret_name' found in namespace '$namespace'"
-    return 0
-}
-
-# Function to check if Helm repos are added
-check_helm_repos() {
-    echo "Checking Helm repositories..."
-    local required_repos=("tika" "ollama-helm" "open-webui")
-    local missing_repos=()
-    
-    for repo in "${required_repos[@]}"; do
-        if ! helm repo list | grep -q "$repo"; then
-            missing_repos+=("$repo")
-        fi
-    done
-    
-    if [ ${#missing_repos[@]} -gt 0 ]; then
-        echo "Missing Helm repositories: ${missing_repos[*]}"
-        echo "The Ansible playbook will attempt to add them"
-    else
-        echo "All required Helm repositories are present"
-    fi
-    
-    return 0
-}
+# Removed check_secret and check_helm_repos functions
+# These checks are handled by the Ansible playbook
 
 # Main execution
 main() {
     echo "Starting Open WebUI AI Stack setup on $TARGET_HOST"
     echo "---------------------------------------------------"
-    
-    # Check prerequisites
-    check_secret || return 1
-    check_helm_repos
-    
+
     # Run the Ansible playbook to set up Open WebUI
     run_playbook "Setup Open WebUI and AI Stack" "$PLAYBOOK_PATH_SETUP_OPEN_WEBUI" || return 1
     
@@ -153,38 +113,18 @@ print_summary() {
         echo "Components installed:"
         echo "- Persistent storage for all services"
         echo "- Apache Tika (document extraction)"
-        echo "- Ollama (local LLM in cluster)"
-        echo "- Open WebUI (frontend with direct connections to Ollama instances)"
+        echo "- LiteLLM (proxy for model access) - via separate deployment"
+        echo "- Open WebUI (frontend connecting to LiteLLM proxy)"
+        echo "- Note: In-cluster Ollama skipped (deploy_ollama_incluster=false)"
         echo ""
-        
-        # Verify deployment status
-        echo "Verifying deployment status..."
-        echo "Note: Some pods might still be initializing."
-        
-        # Count running pods
-        RUNNING_PODS=$(kubectl get pods -n ai | grep Running | wc -l)
-        TOTAL_PODS=$(kubectl get pods -n ai | grep -v NAME | wc -l)
-        INIT_PODS=$(kubectl get pods -n ai | grep -E 'ContainerCreating|Init:' | wc -l)
-        
-        echo "Running pods: $RUNNING_PODS / $TOTAL_PODS"
-        echo "Initializing pods: $INIT_PODS"
-        
-        if [ "$INIT_PODS" -gt 0 ]; then
-            echo "Some pods are still initializing. This is normal for first-time deployments."
-            
-            # Check specifically for Ollama status
-            OLLAMA_STATUS=$(kubectl get pods -n ai | grep ollama | awk '{print $3}')
-            if [ "$OLLAMA_STATUS" = "ContainerCreating" ]; then
-                echo "Note: Ollama is still initializing and may take 10-15 minutes to become ready."
-                echo "In the meantime, you can still use models from your host Ollama through OpenWebUI."
-            fi
-        fi
-        
+
+        # Deployment verification is handled by the Ansible playbook
+
         echo ""
         echo "Architecture:"
-        echo "- OpenWebUI connects directly to the in-cluster Ollama model (qwen3:0.6b)"
-        echo "- OpenWebUI connects directly to your host Ollama on Mac"
-        echo "- You can download and manage models on your host through the OpenWebUI interface"
+        echo "- OpenWebUI connects to LiteLLM proxy for all model access"
+        echo "- LiteLLM provides unified access to Mac Ollama and cloud providers"
+        echo "- Models are served through LiteLLM from your configured providers"
         echo ""
         echo "You can check the OpenWebUI pods with: kubectl get pods -n ai"
         echo "You can access OpenWebUI by port-forwarding: kubectl port-forward svc/open-webui 8080:8080 -n ai"

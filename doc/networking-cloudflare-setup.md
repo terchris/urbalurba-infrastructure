@@ -122,7 +122,7 @@ curl https://openwebui.urbalurba.no
 
 Both root domain and subdomains should work automatically!
 
-⚠️ **Authentication Note**: If you want to protect services with Authentik authentication on external domains, see `doc/traefik-ingress-rules.md` section "External Domain Authentication Limitations" for important manual configuration requirements.
+⚠️ **Authentication Note**: If you want to protect services with Authentik authentication on external domains, see `doc/rules-ingress-traefik.md` section "External Domain Authentication Limitations" for important manual configuration requirements.
 
 ## 🗑️ Complete Cleanup
 

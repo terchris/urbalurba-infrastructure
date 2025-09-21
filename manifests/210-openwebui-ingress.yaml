@@ -34,7 +34,7 @@
 #
 # Cluster Standards Compliance:
 # - Uses traefik.io/v1alpha1 API version (current working version in Traefik 3.3.6)
-# - IngressRoute CRD following established cluster standards per doc/traefik-ingress-rules.md
+# - IngressRoute CRD following established cluster standards per doc/rules-ingress-traefik.md
 # - HostRegexp pattern for unified routing (recommended approach)
 # - Descriptive labels matching cluster conventions
 # - Service port 80 reference (not pod port 8080)

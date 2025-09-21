@@ -1,26 +1,24 @@
-# 208-litellm-ingress.yaml
-#  7may25: not in use anymore
+# 221-litellm-ingress.yaml
+# Description: IngressRoute configuration for LiteLLM proxy service
+# Provides unified access via localhost and external domains using HostRegexp pattern
+# Follows cluster standard for Traefik IngressRoute CRDs
 
-# Description: Ingress configuration for LiteLLM using Traefik
-# This is a separate ingress configuration to expose the LiteLLM proxy service
-
-apiVersion: networking.k8s.io/v1
-kind: Ingress
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
 metadata:
   name: litellm
   namespace: ai
-  annotations:
-    traefik.ingress.kubernetes.io/ssl-redirect: "false"
+  labels:
+    app: litellm
+    component: llm-proxy
+    routing: unified
+    protection: public
 spec:
-  ingressClassName: traefik
-  rules:
-    - host: "litellm.localhost"
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: litellm
-                port:
-                  number: 4000 
+  entryPoints:
+    - web
+  routes:
+    - match: HostRegexp(`litellm\..+`)
+      kind: Rule
+      services:
+        - name: litellm
+          port: 4000 

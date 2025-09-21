@@ -31,58 +31,47 @@ echo ""
 # Step 1: Deploy LiteLLM first
 echo "📦 Step 1/2: Deploying LiteLLM proxy..."
 echo "----------------------------------------"
-if [ -f "$SCRIPT_DIR/03-setup-litellm.sh" ]; then
-    bash "$SCRIPT_DIR/03-setup-litellm.sh" "$TARGET_HOST"
-    LITELLM_EXIT_CODE=$?
+# Call Ansible playbook directly
+ansible-playbook /mnt/urbalurbadisk/ansible/playbooks/210-setup-litellm.yml
+LITELLM_EXIT_CODE=$?
 
-    if [ $LITELLM_EXIT_CODE -ne 0 ]; then
-        echo ""
-        echo "❌ Error: LiteLLM deployment failed with exit code $LITELLM_EXIT_CODE"
-        echo "Cannot proceed with OpenWebUI deployment without LiteLLM running."
-        echo ""
-        echo "Troubleshooting:"
-        echo "• Check LiteLLM pods: kubectl get pods -n ai | grep litellm"
-        echo "• Check LiteLLM logs: kubectl logs -f deployment/litellm -n ai"
-        echo "• Verify secrets exist: kubectl get secret urbalurba-secrets -n ai"
-        exit $LITELLM_EXIT_CODE
-    fi
-
+if [ $LITELLM_EXIT_CODE -ne 0 ]; then
     echo ""
-    echo "✅ LiteLLM deployment completed successfully"
-else
-    echo "❌ Error: LiteLLM setup script not found at $SCRIPT_DIR/03-setup-litellm.sh"
-    exit 1
+    echo "❌ Error: LiteLLM deployment failed with exit code $LITELLM_EXIT_CODE"
+    echo "Cannot proceed with OpenWebUI deployment without LiteLLM running."
+    echo ""
+    echo "Troubleshooting:"
+    echo "• Check LiteLLM pods: kubectl get pods -n ai | grep litellm"
+    echo "• Check LiteLLM logs: kubectl logs -f deployment/litellm -n ai"
+    echo "• Verify secrets exist: kubectl get secret urbalurba-secrets -n ai"
+    exit $LITELLM_EXIT_CODE
 fi
+
+echo ""
+echo "✅ LiteLLM deployment completed successfully"
 
 echo ""
 echo "📦 Step 2/2: Deploying OpenWebUI with LiteLLM integration..."
 echo "----------------------------------------"
 
 # Step 2: Deploy OpenWebUI configured for LiteLLM
-# Note: The 02-setup-open-webui.sh needs to be updated to use our new OpenWebUI config
-# that integrates with LiteLLM instead of direct Ollama connection
-if [ -f "$SCRIPT_DIR/02-setup-open-webui.sh" ]; then
-    # Call OpenWebUI setup with deploy_ollama_incluster=false since we're using LiteLLM
-    bash "$SCRIPT_DIR/02-setup-open-webui.sh" "$TARGET_HOST" false
-    OPENWEBUI_EXIT_CODE=$?
+# Call Ansible playbook directly
+ansible-playbook /mnt/urbalurbadisk/ansible/playbooks/200-setup-open-webui.yml
+OPENWEBUI_EXIT_CODE=$?
 
-    if [ $OPENWEBUI_EXIT_CODE -ne 0 ]; then
-        echo ""
-        echo "❌ Error: OpenWebUI deployment failed with exit code $OPENWEBUI_EXIT_CODE"
-        echo ""
-        echo "Troubleshooting:"
-        echo "• Check OpenWebUI pods: kubectl get pods -n ai | grep open-webui"
-        echo "• Check OpenWebUI logs: kubectl logs -f statefulset/open-webui -n ai"
-        echo "• Verify LiteLLM is running: kubectl get pods -n ai | grep litellm"
-        exit $OPENWEBUI_EXIT_CODE
-    fi
-
+if [ $OPENWEBUI_EXIT_CODE -ne 0 ]; then
     echo ""
-    echo "✅ OpenWebUI deployment completed successfully"
-else
-    echo "❌ Error: OpenWebUI setup script not found at $SCRIPT_DIR/02-setup-open-webui.sh"
-    exit 1
+    echo "❌ Error: OpenWebUI deployment failed with exit code $OPENWEBUI_EXIT_CODE"
+    echo ""
+    echo "Troubleshooting:"
+    echo "• Check OpenWebUI pods: kubectl get pods -n ai | grep open-webui"
+    echo "• Check OpenWebUI logs: kubectl logs -f statefulset/open-webui -n ai"
+    echo "• Verify LiteLLM is running: kubectl get pods -n ai | grep litellm"
+    exit $OPENWEBUI_EXIT_CODE
 fi
+
+echo ""
+echo "✅ OpenWebUI deployment completed successfully"
 
 echo ""
 echo "========================================="
@@ -93,13 +82,15 @@ echo "📌 Access Points:"
 echo "• OpenWebUI: http://openwebui.localhost"
 echo "• LiteLLM Admin: http://litellm.localhost"
 echo ""
+
+echo ""
 echo "🔧 OpenWebUI Configuration Required:"
 echo "1. Access OpenWebUI and create admin user"
 echo "2. Go to Settings → Connections"
 echo "3. Configure LiteLLM connection:"
 echo "   • URL: http://litellm.ai.svc.cluster.local:4000/v1"
 echo "   • Auth: Bearer"
-echo "   • API Key: sk-1234567890abcdef"
+echo "   • API Key: (retrieve with: kubectl get secret urbalurba-secrets -n ai -o jsonpath=\"{.data.LITELLM_PROXY_MASTER_KEY}\" | base64 --decode)"
 echo "4. Save and refresh to see models"
 echo ""
 echo "🤖 Available Models:"
