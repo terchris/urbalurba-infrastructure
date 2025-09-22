@@ -1,6 +1,11 @@
-# Azure AKS Documentation
+# Azure AKS Host Documentation
 
-**Version 4.0** - Complete operational documentation for Urbalurba Infrastructure on Azure Kubernetes Service (AKS). All components tested and working in production.
+**File**: `doc/hosts-azure-aks.md`
+**Purpose**: Complete operational documentation for Urbalurba Infrastructure on Azure Kubernetes Service (AKS)
+**Target Audience**: Infrastructure engineers deploying to Azure AKS
+**Last Updated**: September 22, 2024
+
+**Version 4.0** - All components tested and working in production.
 
 ## Executive Summary
 
@@ -23,7 +28,8 @@
 docker exec -it provision-host bash
 cd /mnt/urbalurbadisk
 
-# 2. Configure Azure settings
+# 2. Configure Azure settings (see Configuration section below)
+cp hosts/azure-aks/azure-aks-config.sh-template hosts/azure-aks/azure-aks-config.sh
 nano hosts/azure-aks/azure-aks-config.sh
 
 # 3. Deploy AKS cluster
@@ -37,9 +43,32 @@ cd /mnt/urbalurbadisk/provision-host/kubernetes
 ./hosts/azure-aks/manage-aks-cluster.sh
 ```
 
-### Configuration
+## Configuration
 
-**Azure Settings** (`azure-aks-config.sh`):
+**IMPORTANT**: Before running any deployment scripts, you must configure your Azure credentials:
+
+1. **Copy the template file**:
+   ```bash
+   cd hosts/azure-aks
+   cp azure-aks-config.sh-template azure-aks-config.sh
+   ```
+
+2. **Edit the configuration file** and replace placeholder values with your actual Azure information:
+   ```bash
+   nano azure-aks-config.sh
+   ```
+
+   Replace these placeholder values:
+   - `TENANT_ID="your-tenant-id"` → Your Azure tenant ID
+   - `SUBSCRIPTION_ID="your-subscription-id"` → Your Azure subscription ID
+   - `your-email@organization.com` → Your actual email address
+   - `your-cost-center` → Your organization's cost center
+
+3. **Security Note**: The `azure-aks-config.sh` file contains sensitive information and is automatically excluded from git commits via `.gitignore`.
+
+### Azure Settings
+
+**Example configuration** (`azure-aks-config.sh`):
 ```bash
 TENANT_ID="your-tenant-id"
 SUBSCRIPTION_ID="your-subscription-id"
@@ -54,6 +83,7 @@ NODE_SIZE="Standard_B2ms"
 - Azure subscription with Contributor access
 - PIM role activation capability
 - Provision-host container running
+- **Configuration setup**: Copy template and add your Azure credentials (see Configuration section above)
 
 ## Deployment Components
 
@@ -69,7 +99,6 @@ NODE_SIZE="Standard_B2ms"
    - ✅ `azure-aks-config.sh` - Centralized configuration management
    - ✅ `check-aks-quota.sh` - Pre-deployment quota validation
    - ✅ `manage-aks-cluster.sh` - Operations management (internet, costs, cluster control)
-   - ✅ `steps-plan.md` - Detailed manual deployment reference
 
 3. **Infrastructure Configuration** ✅
    - ✅ `manifests-overrides/000-storage-class-azure-alias.yaml` - Storage class compatibility
@@ -237,25 +266,6 @@ kubectl get ingressroute --all-namespaces
 - **Cluster recreation**: Fully automated via scripts
 - **Service restoration**: Standard manifest redeployment
 
-## File Reference
-
-### Core Scripts ✅
-- ✅ **`install-azure-aks.sh`** - Main deployment orchestrator
-- ✅ **`01-azure-aks-create.sh`** - Cluster creation and configuration
-- ✅ **`02-azure-aks-setup.sh`** - Post-deployment setup (Traefik, storage, etc.)
-- ✅ **`03-azure-aks-cleanup.sh`** - Complete removal and cleanup
-
-### Management Tools ✅
-- ✅ **`manage-aks-cluster.sh`** - Operations management (status, costs, internet, cluster control)
-- ✅ **`check-aks-quota.sh`** - Pre-deployment quota validation
-- ✅ **`azure-aks-config.sh`** - Centralized configuration file
-
-### Documentation ✅
-- ✅ **`steps-plan.md`** - Detailed manual deployment walkthrough
-- ✅ **`azure-aks-readme.md`** - This operational documentation
-
-### Integration Files ✅
-- ✅ **`manifests-overrides/000-storage-class-azure-alias.yaml`** - Storage compatibility layer
 
 ## Summary
 

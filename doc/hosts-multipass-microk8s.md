@@ -1,19 +1,39 @@
-# multipass-microk8s
+# Multipass MicroK8s Host Documentation
 
-Provisioning kubernetes (microk8s) on ubuntu running in multipass.
+**File**: `doc/hosts-multipass-microk8s.md`
+**Purpose**: LEGACY deployment guide for MicroK8s on Ubuntu VM using Multipass
+**Target Audience**: Historical reference - **USE RANCHER DESKTOP INSTEAD**
+**Last Updated**: September 22, 2024
 
-This is only a good idea if you want to test the system on your local machine. I used it to test the setup before for provisioning on a physical ubuntu server.
+> ⚠️ **LEGACY DOCUMENTATION** - This setup has been **REPLACED BY RANCHER DESKTOP**
+>
+> For new installations, use the default Rancher Desktop setup instead.
+> See [hosts-rancher-kubernetes.md](./hosts-rancher-kubernetes.md) for current instructions.
 
-The host that is created is named: multipass-microk8s
+## 📋 Overview
 
-Below is a manual description of how to set up the VM multipass-microk8s. There is also a script that does it all.
-The script in the root folder named `ìnstall-all.sh` will run the scripts here. So all the stuff here describes how to do it manually.
+This guide covers provisioning Kubernetes (MicroK8s) on Ubuntu running in Multipass. This setup is ideal for testing the system on your local machine before deploying to physical servers or cloud environments.
+
+### **Key Features**
+- **Local virtualization** using Multipass for lightweight VMs
+- **Cloud-init automation** for consistent VM provisioning
+- **MicroK8s installation** with core add-ons
+- **Bridge networking** for local network access
+- **Development-focused** with configurable resources
+
+### **Use Cases**
+- Local development and testing
+- GitOps workflow validation
+- Infrastructure experimentation
+- Pre-deployment testing
+
+The host that is created is named: `multipass-microk8s`
 
 ## create the VM named multipass-microk8s
 
 Make sure you are in the folder `hosts/multipass-microk8s` when you run the script.
 
-Default the script will create a VM with so small resources that it can only be used to verifi that GitOps works. If you want to use it for development you must provide parameters that give it more resources.
+By default, the script will create a VM with minimal resources that can only be used to verify that GitOps works. If you want to use it for development you must provide parameters that give it more resources.
 Run it with the command:
 
 
@@ -37,9 +57,9 @@ The VM is now created. To set it up we use the VM named provision-host.
 ## Register multipass-microk8s in ansible inventory
 
 For the provision-host VM to be able to reach the multipass-microk8s VM we must set up the ansible inventory file.
-This is descibed in the file [provision-host/02-register-ansible-inventory.md](/provision-host/02-register-ansible-inventory.md).
+This is described in the file [provision-host/02-register-ansible-inventory.md](/provision-host/02-register-ansible-inventory.md).
 
-(there is now a script that does this) Taks:
+(there is now a script that does this) Tasks:
 
 - log in to the provision-host VM
 - set up the ansible inventory file
@@ -55,11 +75,11 @@ Then return here for instructions on how to install the kubernetes cluster on th
 In the folder `hosts/multipass-microk8s`run the script to install microk8s on the VM multipass-microk8s.
 A lot of things are done in the script. It will install microk8s, set up the dashboard and set up metallb.
 
-The below example will install microk8s on the VM multipass-microk8s and set up metallb to provide IP addresses in the range 192.168.68.240-192.168.68.242 for the cluster. It means the addresses: 192.168.68.240, 192.168.68.241 and 192.168.68.242
+The below example will install microk8s on the VM multipass-microk8s and set up metallb to provide IP addresses in a suitable range for the cluster. Replace the IP range with values appropriate for your network.
 
 ```bash
 cd hosts/multipass-microk8s
-./03-setup-multipass-microk8s.sh 192.168.68.240-192.168.68.242
+./03-setup-multipass-microk8s.sh 192.168.x.240-192.168.x.242  # Replace x with your network
 ```
 
 At the bottom you will see.
@@ -87,13 +107,13 @@ The playbook for installing microk8s is `02-install-microk8s.yml` is in the fold
 It needs two parameters. The hostname and the IP range that the cluster can provide IP addresses from.
 
 For the VM multipass-microk8s the hostname is `multipass-microk8s`.
-In order to provide a IP range we must know something about the network that the VM is running on. Running `multipass info multipass-microk8s` will give us the IP address of the VM. In IPv4 there are two adresses listed. One for NAT and one for the local network. We will use the local network address. That is the second address. In my case it is `192.168.68.65`
-On my home LAN i know that the addresses above `192.168.68.240` are not used. So I can use the range `192.168.68.240-192.168.68.242` for the cluster. This gives the cluster three IP addresses to use. If you do this on a corporate network you must check with the network administrator what range you can use.
+In order to provide an IP range we must know something about the network that the VM is running on. Running `multipass info multipass-microk8s` will give us the IP address of the VM. In IPv4 there are two addresses listed. One for NAT and one for the local network. We will use the local network address. That is the second address. For example, it might be `192.168.x.65`
+On your local network, identify a range of addresses that are not currently used. For example, if addresses above `192.168.x.240` are available, you can use the range `192.168.x.240-192.168.x.242` for the cluster. This gives the cluster three IP addresses to use. If you do this on a corporate network you must check with the network administrator what range you can use.
 
 Log in to the provision-host VM and change to the folder `/mnt/urbalurbadisk/ansible`. Run the command:
 
 ```bash
-ansible-playbook playbooks/02-install-microk8s.yml -e target_host="multipass-microk8s" -e metallb_ip_range="192.168.68.240-192.168.68.242"
+ansible-playbook playbooks/02-install-microk8s.yml -e target_host="multipass-microk8s" -e metallb_ip_range="192.168.x.240-192.168.x.242"
 ```
 
 The install will also set up the dashboard.
@@ -102,11 +122,11 @@ The output will show the token and the url to use to log in to the dashboard.
 
 ```plaintext
 TASK [Display the NodePort for Kubernetes Dashboard for all IPs] ****************************************************************
-ok: [multipass-microk8s] => (item=192.168.64.23) => {
-    "msg": "Kubernetes Dashboard is accessible on: https://192.168.64.23:31630"
+ok: [multipass-microk8s] => (item=192.168.x.23) => {
+    "msg": "Kubernetes Dashboard is accessible on: https://192.168.x.23:31630"
 }
-ok: [multipass-microk8s] => (item=192.168.68.81) => {
-    "msg": "Kubernetes Dashboard is accessible on: https://192.168.68.81:31630"
+ok: [multipass-microk8s] => (item=192.168.x.81) => {
+    "msg": "Kubernetes Dashboard is accessible on: https://192.168.x.81:31630"
 }
 ```
 

@@ -1,6 +1,20 @@
-# Azure VM with MicroK8s in a CAF Environment
+# Azure MicroK8s Host Documentation
 
-This guide covers setting up a VM in Azure using the Cloud Adoption Framework (CAF). In a CAF environment, resources are locked down by default, requiring explicit permissions for access. While this enhances security, it adds complexity to the setup process.
+**File**: `doc/hosts-azure-microk8s.md`
+**Purpose**: Deployment guide for Azure VM with MicroK8s using Cloud Adoption Framework (CAF)
+**Target Audience**: Infrastructure engineers deploying to Azure environments
+**Last Updated**: September 22, 2024
+
+## 📋 Overview
+
+This guide covers setting up a VM in Azure using the Cloud Adoption Framework (CAF) with MicroK8s. In a CAF environment, resources are locked down by default, requiring explicit permissions for access. While this enhances security, it adds complexity to the setup process.
+
+### **Key Features**
+- **Azure VM deployment** with automated MicroK8s installation
+- **CAF compliance** with proper resource group and networking setup
+- **Tailscale VPN integration** for secure remote access
+- **Cloud-init automation** for consistent provisioning
+- **Ansible integration** for ongoing management
 
 ## Automated Setup with Enhanced Script
 
@@ -11,15 +25,41 @@ We've created an improved script (`01-azure-vm-create-redcross-v2.sh`) that hand
 - Azure subscription with Contributor role access
 - Tailscale account and network setup
 - SSH keys for the ansible user
+- **Configuration setup**: Copy the template file and add your Azure credentials (see Configuration section below)
+
+### Deployment Process
+
+## Configuration
+
+**IMPORTANT**: Before running any deployment scripts, you must configure your Azure credentials:
+
+1. **Copy the template file**:
+   ```bash
+   cd hosts/azure-microk8s
+   cp azure-vm-config-redcross-sandbox.sh-template azure-vm-config-redcross-sandbox.sh
+   ```
+
+2. **Edit the configuration file** and replace placeholder values with your actual Azure information:
+   ```bash
+   nano azure-vm-config-redcross-sandbox.sh
+   ```
+
+   Replace these placeholder values:
+   - `TENANT_ID="your-tenant-id"` → Your Azure tenant ID
+   - `SUBSCRIPTION_ID="your-subscription-id"` → Your Azure subscription ID
+   - `your-email@organization.com` → Your actual email address
+   - `your-cost-center` → Your organization's cost center
+
+3. **Security Note**: The `azure-vm-config-redcross-sandbox.sh` file contains sensitive information and is automatically excluded from git commits via `.gitignore`.
 
 ### Deployment Process
 
 The deployment uses these files:
 
-* [VM configuration for sandbox `azure-vm-config-redcross-sandbox.sh`](azure-vm-config-redcross-sandbox.sh)
-* [VM creation script `01-azure-vm-create-redcross-v2.sh`](01-azure-vm-create-redcross-v2.sh)
-* [Insertion into Ansible inventory `02-azure-ansible-inventory.sh`](02-azure-ansible-inventory.sh)
-* [Resource cleanup script `azure-vm-cleanup-redcross-v2.sh`](azure-vm-cleanup-redcross-v2.sh)
+* **VM configuration**: `azure-vm-config-redcross-sandbox.sh` (created from template above)
+* **VM creation script**: `01-azure-vm-create-redcross-v2.sh`
+* **Ansible inventory**: `02-azure-ansible-inventory.sh`
+* **Resource cleanup**: `azure-vm-cleanup-redcross-v2.sh`
 
 ### Running the Creation Script
 
@@ -29,7 +69,7 @@ The deployment uses these files:
 
 Example:
 ```bash
-./01-azure-vm-create-redcross-v2.sh ansible Secretp@ssword1 azure-microk8s
+./01-azure-vm-create-redcross-v2.sh ansible <your-password> azure-microk8s
 ```
 
 The script performs these steps:
@@ -197,7 +237,7 @@ Configured variables:
   VM Instance Name: vm-sandbox-k8s-azure-microk8s-weu
   VM Resource Group: rg-sandbox-k8s-weu
   Network Resource Group: rg-sandbox-network-weu
-  Subscription ID: 68bf1e87-1a04-4500-ab03-cc04054b0862
+  Subscription ID: <your-subscription-id>
 
 === STEP 1.5: Activating Privileged Identity Management (PIM) role ===
 IMPORTANT: You need the Contributor role on the Azure subscription to run this script.
@@ -224,142 +264,24 @@ Please follow these steps to log in:
   1. Open a web browser and go to: https://microsoft.com/devicelogin
   2. Enter the code that will be displayed below
   3. Follow the prompts to complete the login process
-Running: az login --tenant d34df49e-8ff4-46d6-b78d-3cef3261bcd6 --use-device-code
-To sign in, use a web browser to open the page https://microsoft.com/devicelogin and enter the code DS9UQ9EYD to authenticate.
+Running: az login --tenant <your-tenant-id> --use-device-code
+To sign in, use a web browser to open the page https://microsoft.com/devicelogin and enter the code XXXXXXXX to authenticate.
 [
   {
     "cloudName": "AzureCloud",
-    "homeTenantId": "d34df49e-8ff4-46d6-b78d-3cef3261bcd6",
-    "id": "ecdaea9d-f0be-4fe0-8e0c-5961dce20fa2",
+    "homeTenantId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+    "id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
     "isDefault": true,
     "managedByTenants": [],
-    "name": "PROD - SHARED SERVICES - AZ - RED CROSS",
+    "name": "Your Subscription Name",
     "state": "Enabled",
-    "tenantId": "d34df49e-8ff4-46d6-b78d-3cef3261bcd6",
+    "tenantId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
     "user": {
-      "name": "terje.christensen@redcross.no",
-      "type": "user"
-    }
-  },
-  {
-    "cloudName": "AzureCloud",
-    "homeTenantId": "d34df49e-8ff4-46d6-b78d-3cef3261bcd6",
-    "id": "81b4e732-2f1f-45db-9cf7-2bc06eed4c2c",
-    "isDefault": false,
-    "managedByTenants": [],
-    "name": "DEV - AZURE INTEGRATIONS - AZ - RED CROSS",
-    "state": "Enabled",
-    "tenantId": "d34df49e-8ff4-46d6-b78d-3cef3261bcd6",
-    "user": {
-      "name": "terje.christensen@redcross.no",
-      "type": "user"
-    }
-  },
-  {
-    "cloudName": "AzureCloud",
-    "homeTenantId": "d34df49e-8ff4-46d6-b78d-3cef3261bcd6",
-    "id": "29fe8854-df9f-40c3-a130-93efa6793a0f",
-    "isDefault": false,
-    "managedByTenants": [
-      {
-        "tenantId": "2f4a9838-26b7-47ee-be60-ccc1fdec5953"
-      },
-      {
-        "tenantId": "f07f9381-1c8c-4177-8dcd-d237ec684ff3"
-      }
-    ],
-    "name": "Betala per användning",
-    "state": "Enabled",
-    "tenantId": "d34df49e-8ff4-46d6-b78d-3cef3261bcd6",
-    "user": {
-      "name": "terje.christensen@redcross.no",
-      "type": "user"
-    }
-  },
-  {
-    "cloudName": "AzureCloud",
-    "homeTenantId": "d34df49e-8ff4-46d6-b78d-3cef3261bcd6",
-    "id": "68bf1e87-1a04-4500-ab03-cc04054b0862",
-    "isDefault": false,
-    "managedByTenants": [],
-    "name": "SANDBOX - TAILSCALE DEMO - AZ - RED CROSS",
-    "state": "Enabled",
-    "tenantId": "d34df49e-8ff4-46d6-b78d-3cef3261bcd6",
-    "user": {
-      "name": "terje.christensen@redcross.no",
-      "type": "user"
-    }
-  },
-  {
-    "cloudName": "AzureCloud",
-    "homeTenantId": "d34df49e-8ff4-46d6-b78d-3cef3261bcd6",
-    "id": "2bcf7f46-68b9-4cf0-b4ce-e917301f8e25",
-    "isDefault": false,
-    "managedByTenants": [],
-    "name": "PROD - AZURE INTEGRATIONS - AZ - RED CROSS",
-    "state": "Enabled",
-    "tenantId": "d34df49e-8ff4-46d6-b78d-3cef3261bcd6",
-    "user": {
-      "name": "terje.christensen@redcross.no",
-      "type": "user"
-    }
-  },
-  {
-    "cloudName": "AzureCloud",
-    "homeTenantId": "d34df49e-8ff4-46d6-b78d-3cef3261bcd6",
-    "id": "7ff47ada-d09a-47c2-b911-73f5d15c5a38",
-    "isDefault": false,
-    "managedByTenants": [],
-    "name": "SANDBOX - FINNENVENN - AZ - RED CROSS",
-    "state": "Enabled",
-    "tenantId": "d34df49e-8ff4-46d6-b78d-3cef3261bcd6",
-    "user": {
-      "name": "terje.christensen@redcross.no",
-      "type": "user"
-    }
-  },
-  {
-    "cloudName": "AzureCloud",
-    "homeTenantId": "d34df49e-8ff4-46d6-b78d-3cef3261bcd6",
-    "id": "99021ef9-3483-4366-aa66-984c86716f14",
-    "isDefault": false,
-    "managedByTenants": [],
-    "name": "PROD - NYSS - AZ - RED CROSS",
-    "state": "Enabled",
-    "tenantId": "d34df49e-8ff4-46d6-b78d-3cef3261bcd6",
-    "user": {
-      "name": "terje.christensen@redcross.no",
-      "type": "user"
-    }
-  },
-  {
-    "cloudName": "AzureCloud",
-    "homeTenantId": "d34df49e-8ff4-46d6-b78d-3cef3261bcd6",
-    "id": "3c58dd50-4276-4ed1-b938-d77188957e96",
-    "isDefault": false,
-    "managedByTenants": [],
-    "name": "TEST - AZURE INTEGRATIONS - AZ - RED CROSS",
-    "state": "Enabled",
-    "tenantId": "d34df49e-8ff4-46d6-b78d-3cef3261bcd6",
-    "user": {
-      "name": "terje.christensen@redcross.no",
-      "type": "user"
-    }
-  },
-  {
-    "cloudName": "AzureCloud",
-    "homeTenantId": "d34df49e-8ff4-46d6-b78d-3cef3261bcd6",
-    "id": "2db70c5d-333e-478d-a6cc-df7cb1e83b30",
-    "isDefault": false,
-    "managedByTenants": [],
-    "name": "PROD - IKT - AZ - RED CROSS",
-    "state": "Enabled",
-    "tenantId": "d34df49e-8ff4-46d6-b78d-3cef3261bcd6",
-    "user": {
-      "name": "terje.christensen@redcross.no",
+      "name": "user@organization.com",
       "type": "user"
     }
   }
+  // Additional subscriptions may appear here
 ]
   ✓ Azure login successful
   → Running: Set subscription
@@ -383,7 +305,7 @@ To sign in, use a web browser to open the page https://microsoft.com/devicelogin
   → Checking if VNet vnet-sandbox-network-weu exists
   ✓ VNet vnet-sandbox-network-weu already exists
   → Checking if Subnet sub-sandbox-k8s-weu exists
-/subscriptions/68bf1e87-1a04-4500-ab03-cc04054b0862/resourceGroups/rg-sandbox-network-weu/providers/Microsoft.Network/virtualNetworks/vnet-sandbox-network-weu/subnets/sub-sandbox-k8s-weu
+/subscriptions/<subscription-id>/resourceGroups/rg-sandbox-network-weu/providers/Microsoft.Network/virtualNetworks/vnet-sandbox-network-weu/subnets/sub-sandbox-k8s-weu
   ✓ Subnet sub-sandbox-k8s-weu already exists
   → Updating SUBNET_FULL_PATH variable
 
@@ -551,13 +473,13 @@ To SSH to the VM, use:
   → Checking if azure-microk8s exists in inventory
   ✓ Cluster name azure-microk8s found in inventory
   → Checking if IP address is correct
-  ✓ IP address 100.64.192.33 correctly set for azure-microk8s
+  ✓ IP address 100.x.x.x correctly set for azure-microk8s
 
 === STEP 4: Testing Ansible connection ===
-  → Checking network connectivity to 100.64.192.33
+  → Checking network connectivity to 100.x.x.x
   → Running: ICMP Ping Test
   ✓ Network: ICMP Ping Test
-  ✓ Host 100.64.192.33 is reachable via ICMP ping
+  ✓ Host 100.x.x.x is reachable via ICMP ping
   → Checking if SSH key exists: /mnt/urbalurbadisk/secrets/id_rsa_ansible
   ✓ SSH key found
   → Pinging host azure-microk8s via Ansible
@@ -583,7 +505,7 @@ Component Status:
 
 ✅ Ansible inventory update completed successfully.
   Cluster Name: azure-microk8s
-  Host IP: 100.64.192.33
+  Host IP: 100.x.x.x
   Inventory File: /mnt/urbalurbadisk/ansible/inventory.yml
 
 You can now manage this VM through Ansible:
@@ -644,144 +566,27 @@ Please follow these steps to log in:
   1. Open a web browser and go to: https://microsoft.com/devicelogin
   2. Enter the code that will be displayed below
   3. Follow the prompts to complete the login process
-To sign in, use a web browser to open the page https://microsoft.com/devicelogin and enter the code CZBCNT98A to authenticate.
+To sign in, use a web browser to open the page https://microsoft.com/devicelogin and enter the code XXXXXXXX to authenticate.
 [
+  // Azure subscription output - multiple subscriptions may appear
   {
     "cloudName": "AzureCloud",
-    "homeTenantId": "d34df49e-8ff4-46d6-b78d-3cef3261bcd6",
-    "id": "ecdaea9d-f0be-4fe0-8e0c-5961dce20fa2",
-    "isDefault": false,
-    "managedByTenants": [],
-    "name": "PROD - SHARED SERVICES - AZ - RED CROSS",
-    "state": "Enabled",
-    "tenantId": "d34df49e-8ff4-46d6-b78d-3cef3261bcd6",
-    "user": {
-      "name": "terje.christensen@redcross.no",
-      "type": "user"
-    }
-  },
-  {
-    "cloudName": "AzureCloud",
-    "homeTenantId": "d34df49e-8ff4-46d6-b78d-3cef3261bcd6",
-    "id": "81b4e732-2f1f-45db-9cf7-2bc06eed4c2c",
-    "isDefault": false,
-    "managedByTenants": [],
-    "name": "DEV - AZURE INTEGRATIONS - AZ - RED CROSS",
-    "state": "Enabled",
-    "tenantId": "d34df49e-8ff4-46d6-b78d-3cef3261bcd6",
-    "user": {
-      "name": "terje.christensen@redcross.no",
-      "type": "user"
-    }
-  },
-  {
-    "cloudName": "AzureCloud",
-    "homeTenantId": "d34df49e-8ff4-46d6-b78d-3cef3261bcd6",
-    "id": "29fe8854-df9f-40c3-a130-93efa6793a0f",
-    "isDefault": false,
-    "managedByTenants": [
-      {
-        "tenantId": "2f4a9838-26b7-47ee-be60-ccc1fdec5953"
-      },
-      {
-        "tenantId": "f07f9381-1c8c-4177-8dcd-d237ec684ff3"
-      }
-    ],
-    "name": "Betala per användning",
-    "state": "Enabled",
-    "tenantId": "d34df49e-8ff4-46d6-b78d-3cef3261bcd6",
-    "user": {
-      "name": "terje.christensen@redcross.no",
-      "type": "user"
-    }
-  },
-  {
-    "cloudName": "AzureCloud",
-    "homeTenantId": "d34df49e-8ff4-46d6-b78d-3cef3261bcd6",
-    "id": "68bf1e87-1a04-4500-ab03-cc04054b0862",
+    "homeTenantId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+    "id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
     "isDefault": true,
     "managedByTenants": [],
-    "name": "SANDBOX - TAILSCALE DEMO - AZ - RED CROSS",
+    "name": "Your Subscription Name",
     "state": "Enabled",
-    "tenantId": "d34df49e-8ff4-46d6-b78d-3cef3261bcd6",
+    "tenantId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
     "user": {
-      "name": "terje.christensen@redcross.no",
-      "type": "user"
-    }
-  },
-  {
-    "cloudName": "AzureCloud",
-    "homeTenantId": "d34df49e-8ff4-46d6-b78d-3cef3261bcd6",
-    "id": "2bcf7f46-68b9-4cf0-b4ce-e917301f8e25",
-    "isDefault": false,
-    "managedByTenants": [],
-    "name": "PROD - AZURE INTEGRATIONS - AZ - RED CROSS",
-    "state": "Enabled",
-    "tenantId": "d34df49e-8ff4-46d6-b78d-3cef3261bcd6",
-    "user": {
-      "name": "terje.christensen@redcross.no",
-      "type": "user"
-    }
-  },
-  {
-    "cloudName": "AzureCloud",
-    "homeTenantId": "d34df49e-8ff4-46d6-b78d-3cef3261bcd6",
-    "id": "7ff47ada-d09a-47c2-b911-73f5d15c5a38",
-    "isDefault": false,
-    "managedByTenants": [],
-    "name": "SANDBOX - FINNENVENN - AZ - RED CROSS",
-    "state": "Enabled",
-    "tenantId": "d34df49e-8ff4-46d6-b78d-3cef3261bcd6",
-    "user": {
-      "name": "terje.christensen@redcross.no",
-      "type": "user"
-    }
-  },
-  {
-    "cloudName": "AzureCloud",
-    "homeTenantId": "d34df49e-8ff4-46d6-b78d-3cef3261bcd6",
-    "id": "99021ef9-3483-4366-aa66-984c86716f14",
-    "isDefault": false,
-    "managedByTenants": [],
-    "name": "PROD - NYSS - AZ - RED CROSS",
-    "state": "Enabled",
-    "tenantId": "d34df49e-8ff4-46d6-b78d-3cef3261bcd6",
-    "user": {
-      "name": "terje.christensen@redcross.no",
-      "type": "user"
-    }
-  },
-  {
-    "cloudName": "AzureCloud",
-    "homeTenantId": "d34df49e-8ff4-46d6-b78d-3cef3261bcd6",
-    "id": "3c58dd50-4276-4ed1-b938-d77188957e96",
-    "isDefault": false,
-    "managedByTenants": [],
-    "name": "TEST - AZURE INTEGRATIONS - AZ - RED CROSS",
-    "state": "Enabled",
-    "tenantId": "d34df49e-8ff4-46d6-b78d-3cef3261bcd6",
-    "user": {
-      "name": "terje.christensen@redcross.no",
-      "type": "user"
-    }
-  },
-  {
-    "cloudName": "AzureCloud",
-    "homeTenantId": "d34df49e-8ff4-46d6-b78d-3cef3261bcd6",
-    "id": "2db70c5d-333e-478d-a6cc-df7cb1e83b30",
-    "isDefault": false,
-    "managedByTenants": [],
-    "name": "PROD - IKT - AZ - RED CROSS",
-    "state": "Enabled",
-    "tenantId": "d34df49e-8ff4-46d6-b78d-3cef3261bcd6",
-    "user": {
-      "name": "terje.christensen@redcross.no",
+      "name": "user@organization.com",
       "type": "user"
     }
   }
+  // Additional subscriptions removed for brevity
 ]
 ✓ Azure login successful
-→ Setting Azure subscription to 68bf1e87-1a04-4500-ab03-cc04054b0862
+→ Setting Azure subscription to <your-subscription-id>
 ✓ Setting Azure subscription succeeded
 
 === STEP 3: Checking for resource existence ===

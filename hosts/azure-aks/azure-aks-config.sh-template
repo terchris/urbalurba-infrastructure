@@ -1,0 +1,34 @@
+#!/bin/bash
+# filename: azure-aks-config.sh-template
+# description: Template configuration variables for Azure AKS deployment
+# usage: Copy this file to azure-aks-config.sh and replace placeholder values
+
+# Azure tenant and subscription configuration
+TENANT_ID="your-tenant-id"
+SUBSCRIPTION_ID="your-subscription-id"
+
+# AKS cluster configuration
+RESOURCE_GROUP="rg-urbalurba-aks-weu"
+CLUSTER_NAME="azure-aks"
+LOCATION="westeurope"
+
+# Node configuration
+NODE_COUNT=1
+NODE_SIZE="Standard_B2ms"
+
+# Additional configuration
+TAGS="CostCenter=your-cost-center Project=kubernetes-test Environment=Sandbox Description='Azure Kubernetes Service cluster for Urbalurba Infrastructure' BusinessOwner=your-email@organization.com ITOwner=your-email@organization.com"
+
+# Generate resource names based on configuration
+VM_INSTANCE_NAME="vm-${CLUSTER_NAME}-node"
+KUBECONFIG_FILE="/mnt/urbalurbadisk/kubeconfig/azure-aks-kubeconf"
+
+# Display configuration (when sourced)
+if [ "${BASH_SOURCE[0]}" != "${0}" ]; then
+    echo "Azure AKS Configuration loaded:"
+    echo "  Subscription: $SUBSCRIPTION_ID"
+    echo "  Resource Group: $RESOURCE_GROUP"
+    echo "  Cluster Name: $CLUSTER_NAME"
+    echo "  Location: $LOCATION"
+    echo "  Nodes: $NODE_COUNT x $NODE_SIZE"
+fi
