@@ -1,207 +1,181 @@
 # Hosts Documentation
 
-## Overview
+**File**: `doc/hosts-readme.md`
+**Purpose**: Comprehensive guide to Urbalurba infrastructure host types and deployment strategies
+**Target Audience**: Infrastructure engineers and developers deploying Urbalurba
+**Last Updated**: September 22, 2024
 
-The Urbalurba infrastructure is designed to be highly flexible and can be deployed across various environments and hardware configurations:
+## 📋 Overview
 
-- **Hardware Support**
-  - Raspberry Pi (ARM architecture)
-  - Standard x86/AMD64 servers
-  - Cloud virtual machines
-  - Bare metal servers
+The Urbalurba infrastructure is designed to be highly flexible and can be deployed across various environments and hardware configurations. This document provides a standardized overview of all supported host types and their deployment strategies.
 
-- **Deployment Options**
-  - Single machine deployment
-  - Multi-node clusters
-  - Multi-datacenter deployments
-  - Cross-cloud provider deployments
+### **Hardware Support**
+- **Raspberry Pi (ARM architecture)** - Edge computing and development
+- **Standard x86/AMD64 servers** - On-premises and bare metal
+- **Cloud virtual machines** - Azure, AWS, GCP
+- **Local virtualization** - Multipass, Rancher Desktop
 
-## Host Provisioning
 
-All hosts in the Urbalurba infrastructure are provisioned using cloud-init. For detailed information about cloud-init configuration and templates, please refer to [cloud-init-readme.md](./cloud-init-readme.md).
+The software and programs in the system work consistently across all host types.
 
-## Host Types
+## 🚀 Host Provisioning Strategy
+
+Ubuntu-based hosts (Azure MicroK8s, Multipass, Raspberry Pi) use **cloud-init** for automated provisioning, while managed services (Azure AKS, Rancher Desktop) use their own provisioning mechanisms. For detailed information about cloud-init configuration and templates, see [hosts-cloud-init-readme.md](./hosts-cloud-init-readme.md).
+
+## 🏗️ Host Types
 
 The system supports several types of host configurations:
 
-### 1. Azure MicroK8s Hosts
-Located in `hosts/azure-microk8s/`:
+### 1. Rancher Kubernetes Hosts
+**Documentation**: [hosts-rancher-kubernetes.md](./hosts-rancher-kubernetes.md) | **Scripts**: `hosts/rancher-kubernetes/`
+- Deploys Rancher-managed Kubernetes clusters
+- Default local development environment
+- Supports multi-node clusters
+- Includes Rancher-specific configurations
+- Provides cluster management interface
+- No cloud-init required (uses Rancher Desktop)
+
+### 2. Azure AKS Hosts
+**Documentation**: [hosts-azure-aks.md](./hosts-azure-aks.md) | **Scripts**: `hosts/azure-aks/`
+- Managed Kubernetes service on Azure
+- Production-ready with Azure integration
+- Cost management and scaling features
+- No cloud-init required (managed service)
+
+### 3. Azure MicroK8s Hosts
+**Documentation**: [hosts-azure-microk8s.md](./hosts-azure-microk8s.md) | **Scripts**: `hosts/azure-microk8s/`
 - Deploys MicroK8s on Azure VMs
-- Uses Azure-specific cloud-init configuration
+- Uses Azure-specific cloud-init configuration ✅
 - Supports automatic scaling
 - Integrates with Azure services
 - Includes Tailscale VPN for secure access
 
-### 2. Rancher Kubernetes Hosts
-Located in `hosts/rancher-kubernetes/`:
-- Deploys Rancher-managed Kubernetes clusters
-- Supports multi-node clusters
-- Includes Rancher-specific configurations
-- Provides cluster management interface
-
-### 3. Multipass MicroK8s Hosts
-Located in `hosts/multipass-microk8s/`:
-- Deploys MicroK8s using Multipass
-- Uses Multipass-specific cloud-init configuration
-- Ideal for local development
-- Lightweight virtualization
-- Quick setup and teardown
-
 ### 4. Raspberry Pi MicroK8s Hosts
-Located in `hosts/raspberry-microk8s/`:
-- Uses Raspberry Pi-specific cloud-init configuration
+**Documentation**: [hosts-raspberry-microk8s.md](./hosts-raspberry-microk8s.md) | **Scripts**: `hosts/raspberry-microk8s/`
+- Uses Raspberry Pi-specific cloud-init configuration ✅
 - Optimized for ARM architecture
 - Resource-efficient configuration
 - Edge computing support
 - Low-power operation
 - Includes WiFi configuration
 
-## Installation Scripts
+### 5. Multipass MicroK8s Hosts (LEGACY)
+**Documentation**: [hosts-multipass-microk8s.md](./hosts-multipass-microk8s.md) | **Scripts**: `hosts/multipass-microk8s/`
+- **REPLACED BY RANCHER DESKTOP** - Kept for historical reference
+- Deploys MicroK8s using Multipass
+- Uses Multipass-specific cloud-init configuration ✅
+- Previously used for local development
+- Lightweight virtualization
 
-The system provides installation scripts for each host type:
 
-### 1. Azure MicroK8s Installation
-`install-azure-microk8s-v2.sh`:
-- Creates Azure VM with MicroK8s
-- Uses cloud-init for initial configuration
-- Sets up Ansible inventory
-- Configures Kubernetes access
-- Integrates with Tailscale VPN
+## 🚀 Host Setup Commands
 
-### 2. Rancher Kubernetes Installation
-`install-rancher-kubernetes.sh`:
-- Deploys Rancher server
-- Creates Kubernetes clusters
-- Configures cluster access
-- Sets up monitoring
+Each host type provides Kubernetes cluster setup commands. These are run **from the provision-host container** to prepare different types of Kubernetes clusters.
 
-### 3. Multipass MicroK8s Installation
-`install-multipass-microk8s.sh`:
-- Creates Multipass VMs
-- Uses cloud-init for configuration
-- Installs MicroK8s
-- Configures networking
-- Sets up local access
+To set up clusters (and machines that run clusters) log in to `provision-host` container. Then change working directory to 
 
-## Host Provisioning Process
+```bash 
+cd /mnt/urbalurbadisk/hosts
+```
 
-The host provisioning follows a standardized process:
 
-1. **Initial Setup**
-   - Hardware/VM provisioning
-   - Cloud-init configuration (see [cloud-init-readme.md](./cloud-init-readme.md))
-   - Operating system installation
-   - Network configuration
-   - Security hardening
+### To set up Azure AKS
 
-2. **Kubernetes Installation**
-   - MicroK8s or Rancher installation
-   - Cluster configuration
-   - Network plugin setup
-   - Storage configuration
+Read documentation: [hosts-azure-aks.md](./hosts-azure-aks.md)
 
-3. **Ansible Integration**
-   - Inventory registration
-   - SSH key configuration
-   - Access control setup
-   - Service deployment
+```bash
+./install-azure-aks.sh
+```
 
-4. **Service Deployment**
-   - Core services installation
-   - Monitoring setup
-   - Logging configuration
-   - Backup configuration
+### To set up a VM in Azure and then prepare microk8s kubernetes on it
 
-## Configuration Management
+Read documentation: [hosts-azure-microk8s.md](./hosts-azure-microk8s.md)
 
-Each host type has specific configuration files:
+```bash
+./install-azure-microk8s-v2.sh
+```
 
-### 1. Azure Configuration
-- VM size and type
-- Network settings
-- Storage configuration
-- Security groups
-- Cloud-init configuration (see [cloud-init-readme.md](./cloud-init-readme.md))
+### To set up Ubuntu on a Raspberry Pi and then prepare microk8s kubernetes on it
 
-### 2. Rancher Configuration
-- Cluster settings
-- Node configuration
-- Network policies
-- Storage classes
+Raspberry Pi (manual setup required)
 
-### 3. Multipass Configuration
-- VM specifications
-- Network setup
-- Storage allocation
-- Resource limits
-- Cloud-init configuration (see [cloud-init-readme.md](./cloud-init-readme.md))
+See documentation: [hosts-raspberry-microk8s.md](./hosts-raspberry-microk8s.md)
 
-### 4. Raspberry Pi Configuration
-- Hardware-specific settings
-- Resource optimization
-- Network configuration
-- Storage management
-- WiFi configuration
-- Cloud-init configuration (see [cloud-init-readme.md](./cloud-init-readme.md))
+### Multipass MicroK8s (LEGACY - replaced by Rancher Desktop)
 
-## Security Considerations
+See documentation: [hosts-multipass-microk8s.md](./hosts-multipass-microk8s.md)
 
-1. **Access Control**
-   - SSH key management
-   - User permissions
-   - Service accounts
-   - RBAC configuration
-   - Tailscale VPN integration
 
-2. **Network Security**
-   - Firewall rules
-   - Network policies
-   - VPN configuration
-   - TLS certificates
 
-3. **Data Protection**
-   - Encryption at rest
-   - Secure backups
-   - Secret management
-   - Audit logging
 
-## Maintenance
+## **After Cluster Setup: Deploy All Services**
 
-1. **Regular Updates**
-   - Security patches
-   - Kubernetes updates
-   - System upgrades
-   - Configuration updates
+The benefit of Kubernetes is that once you have a cluster running, the application deployment process is identical across all cluster types.
 
-2. **Monitoring**
-   - Resource usage
-   - Performance metrics
-   - Health checks
-   - Alert configuration
+Once your Kubernetes cluster is ready, deploy all Urbalurba services:
 
-3. **Backup and Recovery**
-   - Regular backups
-   - Disaster recovery
-   - Configuration backup
-   - State management
+```bash
+# From inside provision-host container:
+cd /mnt/urbalurbadisk/provision-host/kubernetes
+./provision-kubernetes.sh <cluster-context>
 
-## Best Practices
+# Examples:
+./provision-kubernetes.sh rancher-desktop    # For Rancher Desktop
+./provision-kubernetes.sh azure-aks          # For Azure AKS
+./provision-kubernetes.sh multipass-microk8s # For Multipass (legacy)
+```
 
-1. **Host Configuration**
-   - Use standardized configurations
-   - Document custom settings
-   - Version control configurations
-   - Regular security audits
+This script automatically installs all services in the correct order (core systems, databases, AI services, monitoring, etc.).
 
-2. **Resource Management**
-   - Monitor resource usage
-   - Plan for scaling
-   - Optimize performance
-   - Regular cleanup
+## 🔄 Multi-Cluster Management
 
-3. **Security**
-   - Regular updates
-   - Security scanning
-   - Access control
-   - Audit logging
+When you set up multiple Kubernetes clusters, Urbalurba automatically merges their kubeconfig files for seamless context switching:
+
+### **Automatic Kubeconfig Merging**
+
+Each time a new cluster is added, the system runs:
+```bash
+# From inside provision-host container:
+ansible-playbook ansible/playbooks/04-merge-kubeconf.yml
+```
+
+This merges all `*-kubeconfig` files from `/mnt/urbalurbadisk/kubeconfig/` into a single file: `/mnt/urbalurbadisk/kubeconfig/kubeconf-all`
+
+### **Context Switching Between Clusters**
+
+Once merged, you can easily switch between different Kubernetes environments:
+
+```bash
+# Set the merged kubeconfig
+export KUBECONFIG=/mnt/urbalurbadisk/kubeconfig/kubeconf-all
+
+# Switch between clusters
+kubectl config use-context rancher-desktop  # Local development
+kubectl config use-context azure-aks       # Cloud production
+kubectl config use-context azure-microk8s  # Azure VM
+kubectl config use-context multipass-microk8s # Legacy multipass
+
+# Check current context
+kubectl config current-context
+
+# List all available contexts
+kubectl config get-contexts
+```
+
+### **Benefits of Multi-Cluster Setup**
+- **Development → Production workflow** - Test locally, deploy to cloud
+- **Cross-cloud redundancy** - Multiple cloud providers
+- **Environment isolation** - Separate dev/staging/prod clusters
+- **Unified management** - One kubectl interface for all clusters
+
+## 📚 Detailed Documentation
+
+For comprehensive setup guides, troubleshooting, and configuration details:
+
+- **[hosts-cloud-init-readme.md](./hosts-cloud-init-readme.md)** - Cloud-init configuration and templates
+- **[hosts-azure-microk8s.md](./hosts-azure-microk8s.md)** - Azure MicroK8s deployment guide
+- **[hosts-azure-aks.md](./hosts-azure-aks.md)** - Azure AKS deployment guide
+- **[hosts-multipass-microk8s.md](./hosts-multipass-microk8s.md)** - Multipass MicroK8s deployment guide
+- **[hosts-raspberry-microk8s.md](./hosts-raspberry-microk8s.md)** - Raspberry Pi MicroK8s deployment guide
+- **[hosts-rancher-kubernetes.md](./hosts-rancher-kubernetes.md)** - Rancher Kubernetes deployment guide
 

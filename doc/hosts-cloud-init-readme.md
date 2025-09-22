@@ -1,6 +1,11 @@
 # Cloud-Init Documentation
 
-## Overview
+**File**: `doc/hosts-cloud-init-readme.md`
+**Purpose**: Cloud-init configuration and templates for automated host provisioning
+**Target Audience**: Infrastructure engineers working with cloud-init deployments
+**Last Updated**: September 22, 2024
+
+## 📋 Overview
 
 Cloud-init is a critical component for automated host provisioning across different environments in the Urbalurba infrastructure. It provides a standardized way to configure hosts during their initial boot process, ensuring consistent setup across various deployment scenarios. In addition to basic system configuration, cloud-init also handles:
 
