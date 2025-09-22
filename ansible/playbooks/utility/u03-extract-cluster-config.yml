@@ -6,7 +6,7 @@
 - hosts: localhost
   gather_facts: false
   vars:
-    config_extract_folder: "/mnt/urbalurbadisk/kubeconfig/extract"
+    config_extract_folder: "/mnt/urbalurbadisk/troubleshooting/output"
     merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
     timestamp: "{{ lookup('pipe', 'date') }}"
 

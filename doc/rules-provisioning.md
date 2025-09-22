@@ -1,13 +1,24 @@
-# Deployment Rules and Standards
+# Provisioning Rules and Standards
 
-**File**: `doc/deployment-rules.md`
-**Purpose**: Define mandatory rules and patterns for all cluster deployments
-**Target Audience**: Developers, DevOps engineers, and LLMs working with cluster infrastructure
-**Last Updated**: September 20, 2025
+**File**: `doc/rules-provisioning.md`
+**Purpose**: Define the **IMPLEMENTATION LAYER** - how to write individual deployment scripts and playbooks
+**Target Audience**: Developers, DevOps engineers, and LLMs creating deployment scripts
+**Scope**: Script/playbook patterns, testing standards, error handling, and implementation best practices
+
+## Relationship to Other Rules
+
+This document covers **how to implement individual deployment scripts**:
+- Shell script + Ansible playbook pattern
+- Testing and verification standards
+- Error handling and progress feedback
+- Implementation best practices
+
+For **how scripts are organized and executed automatically**, see:
+→ [Rules for Automated Kubernetes Deployment](rules-automated-kubernetes-deployment.md) - Orchestration and automation framework
 
 ## 📋 **Overview**
 
-This document establishes mandatory rules for creating deployments in the Urbalurba Infrastructure cluster. These rules are based on proven patterns that ensure reliability, consistency, and maintainability across all services.
+This document establishes mandatory patterns for writing deployment scripts and playbooks in the Urbalurba Infrastructure. These patterns ensure reliability, consistency, and maintainability.
 
 ## 🎯 **Core Deployment Architecture**
 
@@ -48,6 +59,66 @@ echo "✅ LiteLLM deployment complete"
 - name: Deploy LiteLLM with comprehensive validation
   # ... all the actual deployment logic
 ```
+
+## 📝 **Script Template Pattern**
+
+### **Rule 1B: Script Naming Convention**
+
+All deployment scripts MUST follow this naming pattern:
+- **Setup Script**: `[NN]-setup-[service-name].sh` where NN is a two-digit number
+- **Remove Script**: `[NN]-remove-[service-name].sh` (same number prefix)
+- **Examples**: `05-setup-postgres.sh` and `05-remove-postgres.sh`
+
+**MANDATORY**: Every setup script MUST have a corresponding remove script for clean uninstallation.
+
+### **Rule 1C: Standard Script Structure**
+
+All deployment scripts MUST follow this template pattern:
+
+```bash
+#!/bin/bash
+# filename: [NN]-setup-[service].sh
+# description: Deploy [service] to Kubernetes cluster
+
+TARGET_HOST=${1:-"rancher-desktop"}
+STATUS=()
+ERROR=0
+
+echo "Starting [service] setup on $TARGET_HOST"
+echo "---------------------------------------------------"
+
+# Step 1: Verify prerequisites
+# Step 2: Apply configurations
+# Step 3: Deploy via Helm/manifests
+# Step 4: Verify deployment
+
+print_summary() {
+    echo "---------- Installation Summary ----------"
+    for step in "${STATUS[@]}"; do
+        echo "$step"
+    done
+    if [ $ERROR -eq 0 ]; then
+        echo "All steps completed successfully."
+    else
+        echo "Some steps failed. Please check the logs."
+    fi
+}
+
+main() {
+    # Implementation here
+    print_summary
+}
+
+main "$@"
+exit $ERROR
+```
+
+**Key Requirements**:
+- Accept `TARGET_HOST` as first parameter
+- Use `STATUS` array to track step completion
+- Use `ERROR` variable for exit code
+- Include `print_summary()` function
+- Call `main "$@"` and `exit $ERROR`
 
 ## 🧪 **Testing Requirements**
 
@@ -344,6 +415,7 @@ All files in `ansible/playbooks/utility/` MUST be complete playbooks, not just t
 - ✅ **Complete**: Has proper playbook structure with hosts, vars, tasks
 - ✅ **Maintainable**: Clear separation of concerns
 
+
 ### **Rule 11: Helm Repository Management**
 
 Every playbook that uses Helm charts MUST be responsible for managing its required Helm repositories.
@@ -442,74 +514,9 @@ When calling utility playbooks from main playbooks, MUST implement "quiet succes
 - ✅ No subprocess output buffering issues
 - ✅ Maintains utility playbook independence
 
-### **Rule 13: Automatic Execution System**
+### **Rule 13: Consistent File Naming and Numbering**
 
-The cluster uses an **automatic execution system** during full provisioning that executes scripts based on their location in the filesystem.
-
-**How Auto-Execution Works**:
-
-The `provision-host/kubernetes/provision-kubernetes.sh` script automatically discovers and executes setup scripts using this algorithm:
-
-1. **Directory Discovery**: Finds all numbered directories `[0-9]*` and sorts them numerically
-2. **Script Discovery**: In each directory, finds scripts matching pattern `[0-9]*.sh` and sorts them numerically
-3. **Sequential Execution**: Runs scripts in order across directories (01-core, 02-databases, 07-ai, etc.)
-4. **Depth Limitation**: Only searches at `maxdepth 1` - **excludes subdirectories like `not-in-use/`**
-
-**Critical Implementation Details**:
-```bash
-# From provision-kubernetes.sh lines 145-151
-directories=$(find . -maxdepth 1 -type d -name "[0-9]*" | sort -n)
-for dir in $directories; do
-    scripts=$(find "$dir" -maxdepth 1 -type f -name "[0-9]*.sh" | sort -n)
-```
-
-**Auto-Execution Rules**:
-
-**✅ WILL Auto-Execute**:
-- Scripts directly in numbered category directories
-- Example: `provision-host/kubernetes/07-ai/01-setup-litellm-openwebui.sh`
-- Pattern: `[nn]-[category]/[nn]*.sh`
-
-**❌ WILL NOT Auto-Execute**:
-- Scripts in `not-in-use/` subdirectories
-- Example: `provision-host/kubernetes/07-ai/not-in-use/01-remove-service.sh`
-- Any script in subdirectories beyond `maxdepth 1`
-
-**Managing Script Activation**:
-
-```bash
-# Activate a script for auto-execution
-mv provision-host/kubernetes/07-ai/not-in-use/01-setup-service.sh \
-   provision-host/kubernetes/07-ai/
-
-# Deactivate a script from auto-execution
-mv provision-host/kubernetes/07-ai/01-setup-service.sh \
-   provision-host/kubernetes/07-ai/not-in-use/
-```
-
-**Security by Design**:
-- **Setup scripts**: Move to category directory to enable auto-deployment
-- **Removal scripts**: Keep in `not-in-use/` to prevent accidental deletion
-- **Experimental scripts**: Keep in `not-in-use/` until ready for production
-
-**Execution Order Example**:
-```
-01-core-systems/020-setup-nginx.sh           # Executes first
-02-databases/05-setup-postgres.sh            # Executes second
-07-ai/01-setup-litellm-openwebui.sh         # Executes during AI phase
-07-ai/02-setup-open-webui.sh                # Executes after 01
-07-ai/03-setup-litellm.sh                   # Executes after 02
-07-ai/not-in-use/01-remove-service.sh       # NEVER auto-executes
-```
-
-**Benefits**:
-- ✅ **Predictable**: Clear execution order based on filesystem location
-- ✅ **Safe**: Removal scripts protected from accidental execution
-- ✅ **Flexible**: Easy to activate/deactivate services by moving files
-- ✅ **Organized**: Physical file organization reflects deployment sequence
-- ✅ **Auditable**: File location immediately shows deployment status
-
-### **Rule 14: Consistent File Naming and Numbering**
+TODO: we need to revise numbering (someday)
 
 ```
 scripts/packages/[service-name].sh
@@ -517,6 +524,94 @@ ansible/playbooks/[nnn]-setup-[service-name].yml
 ansible/playbooks/utility/[unn]-[purpose].yml
 manifests/[nnn]-[service-name]-[component].yaml
 provision-host/kubernetes/[nn]-[category]/[nn]-setup-[service].sh
+```
+
+### **Rule 14: Retry and Timeout Patterns**
+
+All deployment tasks MUST use appropriate retry patterns with visible progress indicators instead of silent long-running operations.
+
+**🔄 Retry Patterns by Use Case**:
+
+**1. Pod Startup (Standard Services)**:
+```yaml
+# Most services: 20 retries × 15s = 5 minutes
+- name: Wait for service pods to be ready
+  kubernetes.core.k8s_info:
+    kind: Pod
+    namespace: "{{ namespace }}"
+    label_selectors:
+      - app={{ service_name }}
+  register: service_pods
+  retries: 20
+  delay: 15
+  until: >
+    service_pods.resources | length > 0 and
+    service_pods.resources[0].status.phase == "Running"
+```
+
+**2. Pod Startup (Heavy Container Images)**:
+```yaml
+# OpenWebUI with large container: 80 retries × 15s = 20 minutes
+- name: Wait for OpenWebUI pods (large container download)
+  kubernetes.core.k8s_info:
+    kind: Pod
+    namespace: "{{ ai_namespace }}"
+    label_selectors:
+      - app=open-webui
+  register: openwebui_pods
+  retries: 80      # Extra time for container image download
+  delay: 15
+  until: >
+    openwebui_pods.resources | length > 0 and
+    openwebui_pods.resources[0].status.phase == "Running"
+```
+
+**3. Service Connectivity Tests**:
+```yaml
+# HTTP health checks: 15 retries × 15s = ~4 minutes
+- name: Test OpenWebUI HTTP response
+  ansible.builtin.shell: |
+    kubectl run curl-test --image=curlimages/curl --rm -i --restart=Never -n {{ namespace }} -- \
+    curl -s -w "HTTP_CODE:%{http_code}" http://open-webui/health
+  register: openwebui_http_response
+  retries: 15
+  delay: 15
+  until: openwebui_http_response.rc == 0 and openwebui_http_response.stdout.find('HTTP_CODE:200') != -1
+```
+
+**4. Resource Creation Checks**:
+```yaml
+# Quick resource checks: 5 retries × 2s = 10 seconds
+- name: Verify IngressRoute is created
+  kubernetes.core.k8s_info:
+    api_version: traefik.io/v1alpha1
+    kind: IngressRoute
+    namespace: "{{ namespace }}"
+    name: "{{ service_name }}"
+  register: ingress_check
+  retries: 5
+  delay: 2
+  until: ingress_check.resources | length > 0
+```
+
+**📏 Timeout Guidelines**:
+- **Lightweight services**: 20 retries × 15s = 5 minutes
+- **Heavy container images**: 80 retries × 15s = 20 minutes (OpenWebUI pattern)
+- **HTTP connectivity tests**: 15 retries × 15s = ~4 minutes
+- **Resource existence checks**: 5 retries × 2s = 10 seconds
+
+**💡 Key Benefits of This Pattern**:
+- ✅ **Visible Progress**: User sees "RETRYING (N retries left)" messages every 15 seconds
+- ✅ **Predictable Timing**: Clear expectation of maximum wait time
+- ✅ **No Silent Hangs**: Never appears frozen or unresponsive
+- ✅ **Appropriate Timeouts**: Different timeouts for different complexity levels
+
+**❌ What NOT to do**:
+```yaml
+# WRONG: Silent long-running operations
+- name: Wait for deployment
+  shell: kubectl wait --timeout=600s --for=condition=ready pod/service-pod
+  # Problem: 10 minutes of silence - appears to hang
 ```
 
 **Numbering Convention**:
@@ -591,7 +686,7 @@ fi
 - name: Wait for deployment
   shell: kubectl wait --timeout=600s ...
 ```
-**Solution**: Use Ansible retries with progress indicators.
+**Solution**: Use Ansible retries with progress indicators (see Rule 14: Retry and Timeout Patterns).
 
 ### **❌ Anti-Pattern 6: Utility Files as Task Lists**
 ```yaml

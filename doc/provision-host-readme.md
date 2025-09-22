@@ -1,269 +1,140 @@
-# Provision Host Documentation
+# Provision Host Documentation Guide
 
-The provision host is a containerized environment that contains all necessary tools for managing the Urbalurba infrastructure. This document provides detailed information about the provision host setup and its components.
+**File**: `doc/provision-host-readme.md`
+**Purpose**: Central entry point for all provision host documentation and guides
+**Target Audience**: Developers, DevOps engineers, and infrastructure administrators
+**Last Updated**: September 21, 2024
 
-## Overview
+## 📋 **Overview**
 
-The provision host is set up using a series of scripts that install and configure various tools and services. These scripts are designed to be run in sequence to ensure proper installation and configuration.
+This is the central starting point for understanding the provision host system - a comprehensive Docker container that serves as the management hub for Urbalurba infrastructure. The provision host contains all necessary tools for managing multi-cloud environments, Kubernetes clusters, and infrastructure automation.
 
-## Using the Provision Host
+## 🔧 **What is the Provision Host?**
 
-The **provision-host** is your central management environment for the Urbalurba Kubernetes cluster. It contains all the tools and scripts needed to set up, configure, and manage the various systems, applications, and services running in your cluster.
+The provision host is a self-contained Docker container that serves as your **complete infrastructure management environment**. All cluster and cloud operations are performed from within this container - no need to install any tools on your local machine.
 
-### 1. Logging In
+### **Container-First Approach**
+- **No Local Tool Installation**: AWS CLI, kubectl, Terraform, etc. all run in the container
+- **Consistent Environment**: Same container works identically on Windows, Linux, and macOS
+- **Version Controlled**: All tool versions are pinned and tested together
+- **Isolation**: No conflicts with locally installed tools or different versions
 
-After the provision-host container or VM is running, you can access it with:
+### **Fully Automated Setup**
+- **One-Command Deployment**: Run `./install-rancher.sh` to set up everything
+- **Two-Stage Process**: First creates and provisions the container, then deploys all cluster services
+- **Zero Manual Steps**: Complete infrastructure from container to running services automatically
 
-```bash
-docker exec -it provision-host bash
-```
-Or, if using a VM:
-```bash
-ssh provision-host
-```
+## 📚 **Documentation Guides**
 
-You will land in a shell with all management tools pre-installed.
+### **Container Tools Reference**
+**📖 [Provision Host Tools Guide](provision-host-tools.md)**
 
----
+Complete reference for all tools and software available in the provision host container - pre-configured with all major cloud providers, Kubernetes tools, automation frameworks, and networking capabilities. Includes detailed capabilities, usage examples, and authentication setup.
 
-### 2. Directory Structure
-
-Inside the provision-host, the main working directory is:
-
-```
-/mnt/urbalurbadisk/
-```
-
-Key subdirectories include:
-- `provision-host/kubernetes/` — Contains scripts for setting up and managing applications/services in the Kubernetes cluster.
-- `manifests/` — Kubernetes manifests for all services.
-- `ansible/` — Ansible playbooks and roles for advanced automation.
-- `secrets/` — Secure storage for sensitive files (private keys, etc.).
+**When to use**: Understanding available tools, troubleshooting tool issues, cloud authentication setup
 
 ---
 
-### 3. Managing Applications and Services
 
-To set up or manage applications in the Kubernetes cluster:
+### **Kubernetes Service Deployment**
+**☸️ [Provision Host Kubernetes Guide](provision-host-kubernetes.md)**
 
-1. **Navigate to the scripts directory:**
-   ```bash
-   cd /mnt/urbalurbadisk/provision-host/kubernetes/
-   ```
+User guide for deploying and managing applications on Kubernetes clusters using the automated provisioning system:
 
-2. **Explore available scripts:**
-   - Scripts are organized in numbered folders (e.g., `01-core-systems`, `02-databases`, etc.).
-   - Each folder contains scripts for specific applications or services.
-   - Scripts in `not-in-use/` subfolders are currently inactive;
-   - To activate you can just run it.
-   - If you want the service to be automatically activated when the cluster is provisioned, you can move the script to the `active/` folder. This is done before the provision-host is built.
+- **Declarative Configuration**: Repository file organization determines what gets deployed automatically
+- **One-Command Deployment**: `./install-rancher.sh` builds complete, reproducible clusters
+- **Service Management**: Activate/deactivate services by moving scripts in/out of `not-in-use/` folders
+- **Available Services**: AI services, databases, authentication, monitoring, and more
+- **Manual Operations**: Deploy/test individual services without changing automatic configuration
 
-3. **Run a provisioning script:**
-   - To provision the entire cluster (all active scripts):
-     ```bash
-     ./provision-kubernetes.sh
-     ```
-   - To run a specific script (e.g., set up PostgreSQL):
-     ```bash
-     cd 02-databases
-     ./05-cloud-setup-postgres.sh
-     ```
-
-4. **Activate/Deactivate Applications:**
-   - Move scripts in or out of the `not-in-use/` folders to control which applications are provisioned.
+**When to use**: Setting up your cluster configuration, understanding available services, managing what gets deployed automatically
 
 ---
 
-### 4. Best Practices
+### **Rancher Desktop Integration**
+**🖥️ [Provision Host Rancher Guide](provision-host-rancher.md)**
 
-- Always review scripts before running them.
-- Run scripts in the recommended order (numerical).
-- Use version control for any changes to scripts or configuration files.
-- Store sensitive data only in the `secrets/` directory.
+Specific setup and compatibility for Rancher Desktop environments:
+
+- **Rancher Desktop Setup**: Container creation and Kubernetes integration
+- **MicroK8s Compatibility**: Context aliasing, storage class mapping
+- **Installation Workflow**: Complete setup process and verification
+- **Troubleshooting**: Common issues and solutions
+
+**When to use**: Using Rancher Desktop as Kubernetes provider, migrating from MicroK8s, troubleshooting Rancher-specific issues
 
 ---
 
-### 5. Example Workflow
+## 🚀 **Quick Start Paths**
 
-```bash
-# Log in to the provision-host
-docker exec -it provision-host bash
+### **New Developer Getting Started:**
+1. Run `./install-rancher.sh` - One command sets up everything automatically
+2. **[Tools Guide](provision-host-tools.md)** - Understand what's available
+3. **[Kubernetes Guide](provision-host-kubernetes.md)** - Deploy your first services
 
-# Go to the Kubernetes provisioning scripts
-cd /mnt/urbalurbadisk/provision-host/kubernetes/
+### **DevOps Engineer Doing Multi-Cloud:**
+1. **[Tools Guide](provision-host-tools.md)** - Cloud provider capabilities
+2. Jump to specific cloud authentication sections
 
-# List available application setup scripts
-ls 02-databases/
+### **Using Rancher Desktop:**
+1. **[Rancher Guide](provision-host-rancher.md)** - Platform-specific setup
+2. **[Kubernetes Guide](provision-host-kubernetes.md)** - Service deployment
 
-# Run a script to set up PostgreSQL
-./02-databases/05-cloud-setup-postgres.sh
+### **Troubleshooting:**
+- Container issues? → **[Tools Guide](provision-host-tools.md)**
+- Installation problems? → **[Setup Guide](provision-host-setup.md)**
+- Service deployment failures? → **[Kubernetes Guide](provision-host-kubernetes.md)**
+- Rancher Desktop issues? → **[Rancher Guide](provision-host-rancher.md)**
+
+## 🏗️ **Architecture Overview**
+
+```
+Host Machine (Windows/Linux/macOS)
+└── Docker + Rancher Desktop
+    │
+    │ ./install-rancher.sh (One Command Setup)
+    │
+    ├─► 1. Creates & Provisions Container
+    │   ┌─────────────────────────────────────────────────────────────┐
+    │   │                  Provision Host Container                   │
+    │   ├─────────────────────────────────────────────────────────────┤
+    │   │  Cloud Tools: AWS CLI, Azure CLI, GCP SDK, OCI CLI, Terraform │
+    │   │  K8s Tools: kubectl, Helm, k9s, Ansible                   │
+    │   │  Network: Cloudflared, Tailscale                          │
+    │   │  Dev Tools: GitHub CLI, Python, yq/jq                     │
+    │   └─────────────────────────────────────────────────────────────┘
+    │                             │
+    └─► 2. Deploys All Services   ▼
+        ┌─────────────────────────────────────────────────────────────┐
+        │                    Kubernetes Cluster                        │
+        │              (Rancher Desktop / MicroK8s)                    │
+        ├─────────────────────────────────────────────────────────────┤
+        │  Services: Authentik, PostgreSQL, Redis, OpenWebUI, etc.    │
+        │  Storage: PVCs, ConfigMaps, Secrets                         │
+        │  Networking: Traefik, Ingress, Services                     │
+        └─────────────────────────────────────────────────────────────┘
 ```
 
+## 🎯 **Key Concepts**
+
+- **Zero Local Installation**: Only Docker required on your machine - all tools run in the container
+- **OS Agnostic**: Identical experience on Windows, Linux, and macOS
+- **Container-First**: All management tools run in a consistent Docker environment
+- **Multi-Cloud Ready**: Support for all major cloud providers out of the box
+- **Kubernetes Native**: Designed for Kubernetes-first infrastructure patterns
+- **Automation Focused**: Ansible playbooks and Infrastructure as Code
+- **Developer Friendly**: Pre-configured tools and streamlined workflows
+
+## 📞 **Getting Help**
+
+- **Tool not working?** Check the [Tools Guide](provision-host-tools.md)
+- **Setup failing?** Follow the [Setup Guide](provision-host-setup.md) step by step
+- **Service won't deploy?** Review the [Kubernetes Guide](provision-host-kubernetes.md)
+- **Rancher issues?** See the [Rancher Guide](provision-host-rancher.md)
+
 ---
 
-## Installation Scripts
-
-### 1. Core Software Installation (`provision-host-00-coresw.sh`)
-
-This script installs the core software tools required for the provision host:
-
-- **GitHub CLI (gh)**
-  - Used for GitHub repository management
-  - Installs the latest stable version
-  - Supports both x86_64 and aarch64 architectures
-
-### 2. Cloud Provider Tools (`provision-host-01-cloudproviders.sh`)
-
-Installs and configures tools for various cloud providers:
-
-- **Azure CLI**
-  - Command-line interface for Azure management
-  - Supports containerized environments
-  - Includes systemd service configuration
-
-- **OCI CLI (Oracle Cloud)**
-  - Python-based CLI for Oracle Cloud
-  - Installs in a virtual environment
-  - Configures PATH and shell integration
-
-- **AWS CLI**
-  - Command-line interface for AWS
-  - Supports both x86_64 and aarch64 architectures
-  - Includes automatic updates
-
-- **Terraform**
-  - Infrastructure as Code tool
-  - Installed via HashiCorp repository
-  - Supports multiple cloud providers
-
-### 3. Kubernetes Tools (`provision-host-02-kubetools.sh`)
-
-Installs Kubernetes-related tools and configurations:
-
-- **Ansible**
-  - Configuration management tool
-  - Includes Kubernetes Python module
-  - Configures global Ansible settings:
-    - Inventory file location
-    - Private key configuration
-    - SSH connection settings
-    - Roles path configuration
-
-- **kubectl**
-  - Kubernetes command-line tool
-  - Installs via snap or direct download
-  - Supports containerized environments
-
-- **k9s**
-  - Terminal UI for Kubernetes
-  - Installs latest version from GitHub
-  - Supports both x86_64 and aarch64 architectures
-
-- **Helm**
-  - Kubernetes package manager
-  - Installs Helm 3
-  - Includes automatic updates
-
-## Usage
-
-### Running the Installation Scripts
-
-The scripts should be run in the following order:
-
-1. Core software installation:
-   ```bash
-   ./provision-host-00-coresw.sh
-   ```
-
-2. Cloud provider tools:
-   ```bash
-   ./provision-host-01-cloudproviders.sh [provider]
-   ```
-   Where `[provider]` can be:
-   - `az` or `azure` - Install Azure CLI only
-   - `oci` or `oracle` - Install Oracle Cloud CLI only
-   - `aws` - Install AWS CLI only
-   - `gcp` or `google` - Install Google Cloud SDK only
-   - `tf` or `terraform` - Install Terraform only
-   - `all` - Install all cloud provider tools
-
-3. Kubernetes tools:
-   ```bash
-   ./provision-host-02-kubetools.sh
-   ```
-
-### Environment Variables
-
-- `RUNNING_IN_CONTAINER`: Set to "true" when running in a container environment
-- `ARCHITECTURE`: Automatically detected system architecture
-
-## Error Handling
-
-Each script includes comprehensive error handling:
-- Status tracking for each installation step
-- Detailed error messages
-- Cleanup procedures
-- Installation summaries
-
-## Architecture Support
-
-The provision host scripts support the following architectures:
-- x86_64 (AMD64)
-- aarch64 (ARM64)
-
-## Security Considerations
-
-- Private keys are stored in `/mnt/urbalurbadisk/secrets/`
-- SSH host key checking is disabled for automation
-- Ansible configuration uses pipelining for better performance
-- All tools are installed from official sources
-
-## Maintenance
-
-### Updating Tools
-
-Most tools can be updated using their respective package managers:
-- `apt` for Debian-based packages
-- `snap` for snap packages
-- Tool-specific update commands (e.g., `gh upgrade`)
-
-### Troubleshooting
-
-Common issues and solutions:
-1. **Permission Issues**
-   - Ensure proper sudo access
-   - Check file permissions in `/mnt/urbalurbadisk/`
-
-2. **Network Issues**
-   - Verify internet connectivity
-   - Check proxy settings if applicable
-
-3. **Architecture Mismatch**
-   - Verify system architecture
-   - Check tool compatibility
-
-## Best Practices
-
-1. **Script Execution**
-   - Run scripts in sequence
-   - Review installation summaries
-   - Check for error messages
-
-2. **Configuration**
-   - Keep sensitive data in `/mnt/urbalurbadisk/secrets/`
-   - Use version control for configuration files
-   - Document custom configurations
-
-3. **Security**
-   - Regularly update tools
-   - Monitor for security advisories
-   - Follow principle of least privilege
-
-## Future Improvements
-
-Planned enhancements:
-- [ ] Add support for additional cloud providers
-- [ ] Implement automated testing
-- [ ] Add version pinning for tools
-- [ ] Improve error reporting
-- [ ] Add rollback capabilities
+**Related Documentation:**
+- [Rules Documentation](rules-readme.md) - Infrastructure rules and standards
+- [Secrets Management](rules-secrets-management.md) - Security and secrets handling
+- [Ingress Configuration](rules-ingress-traefik.md) - Networking and routing
