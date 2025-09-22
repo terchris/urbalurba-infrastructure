@@ -27,6 +27,22 @@ Comprehensive rules for deploying and managing infrastructure on Kubernetes usin
 
 ---
 
+### **Automated Kubernetes Deployment Rules**
+**☸️ [Automated Kubernetes Deployment Rules Guide](rules-automated-kubernetes-deployment.md)**
+
+Mandatory patterns and standards for the automated deployment system in provision-host/kubernetes:
+
+- **Directory Structure**: Numbered categories for dependency management
+- **Script Requirements**: Parameter handling, status tracking, error resilience
+- **Active/Inactive Management**: Using not-in-use folders for optional services
+- **Dependency Order**: Ensuring prerequisites are met through proper numbering
+- **Namespace Standards**: Consistent namespace usage across services
+- **Testing Requirements**: Health checks and deployment verification
+
+**When to use**: Adding new applications, creating deployment scripts, managing service dependencies
+
+---
+
 ### **Ingress and Networking Rules**
 **🚦 [Ingress Rules Guide](rules-ingress-traefik.md)**
 
