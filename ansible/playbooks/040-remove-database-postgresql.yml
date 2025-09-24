@@ -1,0 +1,207 @@
+---
+# file: ansible/playbooks/040-remove-database-postgresql.yml
+# Description: Remove PostgreSQL database from Kubernetes cluster
+# This playbook:
+# - Uninstalls the PostgreSQL Helm release
+# - Waits for PostgreSQL pods to terminate
+# - Optionally removes PVCs (user configurable)
+# - Preserves urbalurba-secrets and namespace structure
+# Usage:
+# ansible-playbook playbooks/040-remove-database-postgresql.yml -e target_host="rancher-desktop"
+# ansible-playbook playbooks/040-remove-database-postgresql.yml -e target_host="rancher-desktop" -e remove_pvc=true
+
+- name: Remove PostgreSQL Database from Kubernetes
+  hosts: localhost
+  gather_facts: false
+  vars:
+    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    postgresql_namespace: "default"
+    postgresql_helm_release: "postgresql"
+    deletion_timeout: 120
+    remove_pvc: "{{ remove_pvc | default(false) }}"
+
+  tasks:
+    - name: 1. Get current Kubernetes context if target_host not provided
+      ansible.builtin.shell: |
+        kubectl config current-context
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: current_context
+      changed_when: false
+      when: target_host is not defined
+
+    - name: 2. Set target_host from current context if not provided
+      ansible.builtin.set_fact:
+        target_host: "{{ current_context.stdout }}"
+      when: target_host is not defined
+
+    - name: 3. Print removal description
+      ansible.builtin.debug:
+        msg: |
+          🧹 Starting PostgreSQL removal
+          🎯 Target: {{ target_host }}
+          📁 Namespace: {{ postgresql_namespace }}
+          🔐 PRESERVING: urbalurba-secrets and namespace structure
+          💾 PVC Removal: {{ 'Enabled' if remove_pvc else 'Disabled (use -e remove_pvc=true to enable)' }}
+          ⚠️  This will remove the PostgreSQL Helm release and pods but KEEP authentication configuration
+
+    - name: 4. Check for PostgreSQL Helm release
+      ansible.builtin.shell: helm list -n {{ postgresql_namespace }} | grep {{ postgresql_helm_release }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: postgresql_helm_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: 5. Check for PostgreSQL StatefulSet
+      ansible.builtin.shell: kubectl get statefulset {{ postgresql_helm_release }} -n {{ postgresql_namespace }} --context {{ target_host }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: postgresql_statefulset_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: 6. Check for PostgreSQL PVCs
+      ansible.builtin.shell: kubectl get pvc -l app.kubernetes.io/name=postgresql -n {{ postgresql_namespace }} --context {{ target_host }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: postgresql_pvc_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: 7. Remove PostgreSQL Helm release
+      ansible.builtin.shell: helm uninstall {{ postgresql_helm_release }} -n {{ postgresql_namespace }} --timeout {{ deletion_timeout }}s
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: postgresql_helm_removal
+      changed_when: true
+      ignore_errors: true
+      when: postgresql_helm_check.rc == 0
+
+    - name: 8. Wait for PostgreSQL pods to terminate
+      ansible.builtin.shell: kubectl get pods -n {{ postgresql_namespace }} -l app.kubernetes.io/name=postgresql --no-headers --context {{ target_host }} 2>/dev/null | wc -l
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: postgresql_pods_count
+      until: postgresql_pods_count.stdout | int == 0
+      retries: 20
+      delay: 10
+      changed_when: false
+
+    - name: 9. Remove PostgreSQL PVCs (if requested)
+      ansible.builtin.shell: kubectl delete pvc -l app.kubernetes.io/name=postgresql -n {{ postgresql_namespace }} --context {{ target_host }} --timeout={{ deletion_timeout }}s
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: postgresql_pvc_removal
+      changed_when: true
+      ignore_errors: true
+      when: remove_pvc and postgresql_pvc_check.rc == 0
+
+    - name: 10. Wait for PVCs to be fully deleted (if removal was requested)
+      ansible.builtin.shell: kubectl get pvc -l app.kubernetes.io/name=postgresql -n {{ postgresql_namespace }} --no-headers --context {{ target_host }} 2>/dev/null | wc -l
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: postgresql_pvc_count
+      until: postgresql_pvc_count.stdout | int == 0
+      retries: 15
+      delay: 10
+      changed_when: false
+      ignore_errors: true
+      when: remove_pvc
+
+    - name: 11. Verify PostgreSQL removal completion
+      ansible.builtin.shell: |
+        # Check for any remaining PostgreSQL resources
+        echo "Checking for remaining PostgreSQL resources..."
+        REMAINING_PODS=$(kubectl get pods -n {{ postgresql_namespace }} -l app.kubernetes.io/name=postgresql --no-headers --context {{ target_host }} 2>/dev/null | wc -l)
+        REMAINING_STS=$(kubectl get statefulset {{ postgresql_helm_release }} -n {{ postgresql_namespace }} --context {{ target_host }} 2>/dev/null | wc -l)
+        REMAINING_SVC=$(kubectl get svc {{ postgresql_helm_release }} -n {{ postgresql_namespace }} --context {{ target_host }} 2>/dev/null | wc -l)
+
+        {% if remove_pvc %}
+        REMAINING_PVC=$(kubectl get pvc -l app.kubernetes.io/name=postgresql -n {{ postgresql_namespace }} --no-headers --context {{ target_host }} 2>/dev/null | wc -l)
+        {% else %}
+        REMAINING_PVC="preserved"
+        {% endif %}
+
+        echo "Remaining resources:"
+        echo "- Pods: $REMAINING_PODS"
+        echo "- StatefulSet: $REMAINING_STS"
+        echo "- Service: $REMAINING_SVC"
+        echo "- PVCs: $REMAINING_PVC"
+
+        {% if remove_pvc %}
+        TOTAL_REMAINING=$((REMAINING_PODS + REMAINING_STS + REMAINING_SVC + REMAINING_PVC))
+        {% else %}
+        TOTAL_REMAINING=$((REMAINING_PODS + REMAINING_STS + REMAINING_SVC))
+        {% endif %}
+
+        if [ $TOTAL_REMAINING -eq 0 ]; then
+          echo "✅ All PostgreSQL resources successfully removed"
+          exit 0
+        else
+          echo "⚠️  Some PostgreSQL resources may still exist"
+          exit 1
+        fi
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: postgresql_cleanup_verification
+      changed_when: false
+      ignore_errors: true
+
+    - name: 12. Display PostgreSQL removal result
+      ansible.builtin.debug:
+        msg: |
+          PostgreSQL removal summary:
+          - Helm Release: {{ 'Removed' if postgresql_helm_check.rc == 0 else 'Not found' }}
+          - StatefulSet: {{ 'Removed' if postgresql_statefulset_check.rc == 0 else 'Not found' }}
+          - Service: {{ 'Removed with Helm release' if postgresql_helm_check.rc == 0 else 'Not found' }}
+          - PVCs: {{ 'Removed' if (remove_pvc and postgresql_pvc_check.rc == 0) else ('Preserved' if postgresql_pvc_check.rc == 0 else 'Not found') }}
+          - All PostgreSQL pods terminated
+          - urbalurba-secrets and namespace preserved
+
+          Verification: {{ postgresql_cleanup_verification.stdout_lines | join('\n          ') }}
+
+    - name: 13. Display data retention notice
+      ansible.builtin.debug:
+        msg: |
+          {% if not remove_pvc and postgresql_pvc_check.rc == 0 %}
+          📀 DATA RETENTION NOTICE:
+          PostgreSQL data has been preserved in persistent volume claims.
+
+          🔄 To reinstall PostgreSQL with existing data:
+          ./05-setup-postgres.sh {{ target_host }}
+
+          🗑️  To completely remove all data:
+          ansible-playbook playbooks/040-remove-database-postgresql.yml -e target_host={{ target_host }} -e remove_pvc=true
+          {% else %}
+          💾 All PostgreSQL data and storage has been completely removed.
+          {% endif %}
+
+    - name: 14. Final success message
+      ansible.builtin.debug:
+        msg: |
+          🎉 PostgreSQL removal completed successfully!
+
+          📋 What was removed:
+          - PostgreSQL Helm release
+          - PostgreSQL StatefulSet and pods
+          - PostgreSQL services and resources
+          {% if remove_pvc %}
+          - PostgreSQL persistent volume claims (DATA DELETED)
+          {% endif %}
+
+          🔐 What was preserved:
+          - urbalurba-secrets (PostgreSQL credentials retained for future use)
+          - Kubernetes namespace structure
+          - Other services and applications
+          {% if not remove_pvc %}
+          - PostgreSQL persistent volume claims (DATA PRESERVED)
+          {% endif %}
+
+          ℹ️  To redeploy PostgreSQL:
+          ./05-setup-postgres.sh {{ target_host }}
+
+          {% if not remove_pvc %}
+          ℹ️  To completely remove data:
+          ansible-playbook playbooks/040-remove-database-postgresql.yml -e target_host={{ target_host }} -e remove_pvc=true
+          {% endif %}

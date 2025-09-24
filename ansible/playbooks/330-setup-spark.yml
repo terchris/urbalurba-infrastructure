@@ -1,0 +1,159 @@
+---
+# file: ansible/playbooks/330-setup-spark.yml
+# Description:
+# Set up Spark Kubernetes Operator on Kubernetes
+# Distributed processing engine for data workloads
+#
+# Part of: Databricks Replacement Project - Phase 1 (Processing Engine)
+# Replaces: Databricks compute clusters and job execution
+#
+# Prerequisites:
+# - Kubernetes cluster with sufficient resources (4+ CPUs, 4+ GB RAM)
+# - kubectl configured for target cluster
+# - Helm 3.x installed
+# - Required manifests: 300-spark-config.yaml
+#
+# Architecture:
+# - Spark Operator manages Spark applications as Kubernetes custom resources
+# - Jobs run as ephemeral pods with automatic resource allocation
+# - ARM64 compatible for Apple Silicon hardware
+# - Clean job lifecycle management with automatic cleanup
+# - Helm manages all RBAC resources with proper ownership
+#
+# Usage:
+# ansible-playbook playbooks/330-setup-spark.yml -e target_host="rancher-desktop"
+
+- name: Set up Spark Kubernetes Operator on Kubernetes
+  hosts: localhost
+  gather_facts: false
+  vars:
+    manifests_folder: "/mnt/urbalurbadisk/manifests"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    spark_namespace: "spark-operator"
+    installation_timeout: 300  # 5 minutes timeout for installations
+    pod_readiness_timeout: 180  # 3 minutes timeout for pod readiness
+
+    # Helm chart references
+    spark_operator_chart: "spark-kubernetes-operator/spark-kubernetes-operator"
+    spark_operator_repo_url: "https://apache.github.io/spark-kubernetes-operator"
+
+    # Config files
+    spark_config_file: "{{ manifests_folder }}/300-spark-config.yaml"
+
+  tasks:
+    - name: 1. Print playbook description
+      ansible.builtin.debug:
+        msg: |
+          🚀 Setting up Spark Kubernetes Operator
+          📊 Phase 1: Apache Spark Kubernetes Operator (Processing Engine)
+          🎯 Target: {{ target_host | default('rancher-desktop') }}
+          📁 Namespace: {{ spark_namespace }}
+          🔧 RBAC: Managed by Helm (no manual RBAC files)
+
+    - name: 2. Create spark-operator namespace
+      kubernetes.core.k8s:
+        name: "{{ spark_namespace }}"
+        api_version: v1
+        kind: Namespace
+        state: present
+        kubeconfig: "{{ merged_kubeconf_file }}"
+
+    - name: 3. Check existing Helm repositories
+      ansible.builtin.command: helm repo list
+      register: helm_repo_list
+      changed_when: false
+
+    - name: 4. Add Spark Kubernetes Operator Helm repository if needed
+      kubernetes.core.helm_repository:
+        name: "spark-kubernetes-operator"
+        repo_url: "{{ spark_operator_repo_url }}"
+      when: "'spark-kubernetes-operator' not in helm_repo_list.stdout"
+      register: spark_helm_repo_result
+
+    - name: 5. Update Helm repositories for Spark
+      ansible.builtin.command: helm repo update
+      changed_when: false
+
+    - name: 6. Deploy Spark Kubernetes Operator
+      ansible.builtin.shell: |
+        helm upgrade --install spark-kubernetes-operator {{ spark_operator_chart }} \
+        -f {{ spark_config_file }} \
+        --namespace {{ spark_namespace }} \
+        --timeout {{ installation_timeout }}s
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: spark_result
+      changed_when: true
+
+    - name: 7. Display Spark deployment result
+      ansible.builtin.debug:
+        msg: "Spark Operator deployment initiated. Waiting for readiness..."
+
+    - name: 8. Wait for Spark Operator deployment to be ready
+      ansible.builtin.shell: |
+        kubectl wait --for=condition=available deployment/spark-kubernetes-operator \
+        -n {{ spark_namespace }} --timeout={{ pod_readiness_timeout }}s
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: spark_deployment_wait_result
+      retries: 3
+      delay: 10
+
+    - name: 9. Display Spark readiness status
+      ansible.builtin.debug:
+        msg: |
+          Spark Operator readiness status:
+          - Deployment: {{ 'Ready' if spark_deployment_wait_result.rc == 0 else 'Not ready yet' }}
+
+    - name: 10. Verify Spark Operator service is accessible
+      ansible.builtin.shell: |
+        kubectl get service spark-kubernetes-operator-webhook -n {{ spark_namespace }}
+        --no-headers -o wide 2>/dev/null || echo "Service not found"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: spark_service_check
+      changed_when: false
+
+    - name: 11. Get Spark Operator pods
+      ansible.builtin.shell: kubectl get pods -n {{ spark_namespace }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: spark_pods
+      changed_when: false
+
+    - name: 12. Display final deployment status
+      ansible.builtin.debug:
+        msg: |
+          ===============================================
+          🚀 Spark Kubernetes Operator Deployment Status
+          ===============================================
+
+          ✅ SUCCESS - Spark Operator deployed and ready
+
+          🔄 Status:
+          • Phase 1: Apache Spark Kubernetes Operator ✅
+          • Processing Engine: Ready for distributed computing ✅
+          • ARM64 Support: Native Apple Silicon compatibility ✅
+
+          📊 Deployment Details:
+          • Namespace: {{ spark_namespace }}
+          • Chart: {{ spark_operator_chart }}
+          • RBAC: Managed by Helm ✅
+
+          Spark Operator pods:
+          {{ spark_pods.stdout }}
+
+          🚀 Usage Instructions:
+          • Submit Spark jobs: kubectl apply -f manifests/331-sample-data-sparkapplication.yaml
+          • Monitor jobs: kubectl get sparkapplications -n {{ spark_namespace }}
+          • Check operator logs: kubectl logs -n {{ spark_namespace }} deployment/spark-kubernetes-operator
+
+          📈 Next Steps:
+          1. Deploy JupyterHub for web interface: ./05-setup-jupyterhub.sh
+          2. Test Spark job submission with sample applications
+          3. Check Spark applications: kubectl get sparkapplications -A
+
+          🎯 Databricks Replacement Status:
+          • Processing Engine: ✅ READY (Phase 1 Complete)
+          • Notebook Interface: ⏳ Deploy JupyterHub next
+          ===============================================

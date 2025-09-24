@@ -1,0 +1,98 @@
+---
+# file: ansible/playbooks/330-remove-spark.yml
+# Description: Remove Spark Kubernetes Operator from Kubernetes cluster
+# This playbook:
+# - Uninstalls the Spark Operator Helm release
+# - Waits for Spark pods to terminate
+# - Removes the spark-operator namespace
+# - Preserves any user data or applications
+# Usage:
+# ansible-playbook playbooks/330-remove-spark.yml -e target_host="rancher-desktop"
+
+- name: Remove Spark Kubernetes Operator from Kubernetes
+  hosts: localhost
+  gather_facts: false
+  vars:
+    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    spark_namespace: "spark-operator"
+    spark_helm_release: "spark-kubernetes-operator"
+    deletion_timeout: 180
+
+  tasks:
+    - name: 1. Print removal description
+      ansible.builtin.debug:
+        msg: |
+          🧹 Starting Spark Kubernetes Operator removal
+          🎯 Target: {{ target_host | default('rancher-desktop') }}
+          📁 Namespace: {{ spark_namespace }}
+          ⚠️  This will remove the Spark Operator and all running Spark applications
+
+    - name: 2. Check for Spark Operator Helm release
+      ansible.builtin.shell: helm list -n {{ spark_namespace }} | grep {{ spark_helm_release }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: spark_helm_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: 3. Uninstall Spark Operator Helm release
+      ansible.builtin.shell: |
+        helm uninstall {{ spark_helm_release }} -n {{ spark_namespace }} --timeout {{ deletion_timeout }}s
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      when: spark_helm_check.rc == 0
+      register: helm_uninstall_result
+
+    - name: 4. Wait for Spark Operator pods to terminate
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: "{{ spark_namespace }}"
+        label_selectors:
+          - "app.kubernetes.io/name=spark-kubernetes-operator"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: spark_pods
+      retries: 30
+      delay: 5
+      until: spark_pods.resources | length == 0
+      when: spark_helm_check.rc == 0
+
+    - name: 5. Remove spark-operator namespace
+      kubernetes.core.k8s:
+        name: "{{ spark_namespace }}"
+        api_version: v1
+        kind: Namespace
+        state: absent
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      when: spark_helm_check.rc == 0
+
+    - name: 6. Verify Spark removal
+      ansible.builtin.shell: kubectl get pods -n {{ spark_namespace }} --ignore-not-found
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: verification_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: 7. Display final removal status
+      ansible.builtin.debug:
+        msg:
+          - "==============================================="
+          - "🗑️  Spark Kubernetes Operator Removal Status"
+          - "==============================================="
+          - ""
+          - "{{ '✅ SUCCESS - Spark Operator completely removed' if verification_check.rc != 0 else '⚠️ WARNING - Some Spark components may still be present' }}"
+          - ""
+          - "🔄 Removal Summary:"
+          - "• Helm release: {{ '✅ Uninstalled' if spark_helm_check.rc == 0 else '⚪ Not found (already removed)' }}"
+          - "• Pod termination: {{ '✅ All pods terminated' if spark_helm_check.rc == 0 else '⚪ No pods found' }}"
+          - "• Namespace: {{ '✅ Removed' if spark_helm_check.rc == 0 else '⚪ Not found' }}"
+          - ""
+          - "🏗️  Infrastructure Status:"
+          - "• Processing Engine: ✅ Removed"
+          - "• SparkApplication CRDs: ✅ Cleaned up"
+          - "• RBAC Resources: ✅ Removed with Helm"
+          - ""
+          - "♻️  Re-deployment:"
+          - "• Ready for fresh deployment using ./03-setup-spark.sh"
+          - "• No manual cleanup required"
+          - "==============================================="

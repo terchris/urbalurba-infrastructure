@@ -43,22 +43,9 @@ configs:
 # Server configuration - ESSENTIAL COMPONENT
 # The server provides the API and UI for ArgoCD
 server:
-  # Expose the server through an Ingress
+  # Disable Helm-managed ingress - we use Traefik IngressRoute CRDs instead
   ingress:
-    # For local development, we'll use the *.localhost approach
-    enabled: true
-    ingressClassName: "traefik"  # Use Traefik as the ingress controller
-    annotations:
-      traefik.ingress.kubernetes.io/router.entrypoints: "web"  # Use HTTP for local dev
-    # Local development hostname      
-    hostname: argocd.localhost #undocumented required field
-    hosts:
-      - host: argocd.localhost
-        paths:
-          - path: /
-            pathType: Prefix    
-    # Empty TLS array instead of null to prevent default value usage
-    tls: []
+    enabled: false  # Disabled - using separate Traefik IngressRoute manifest following cluster standards
   
   # Resource settings - optimized for resource-constrained environments
   resources:

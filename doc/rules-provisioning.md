@@ -71,7 +71,37 @@ All deployment scripts MUST follow this naming pattern:
 
 **MANDATORY**: Every setup script MUST have a corresponding remove script for clean uninstallation.
 
-### **Rule 1C: Standard Script Structure**
+### **Rule 1C: Check Existing Playbooks First**
+
+**MANDATORY**: Before creating any new Ansible playbook, you MUST:
+
+1. **Search existing playbooks**: Check `ansible/playbooks/` for existing implementations
+   ```bash
+   # Search for similar service names
+   find ansible/playbooks -name "*[service-name]*" -type f
+
+   # Search for functionality in playbook content
+   grep -r "service-functionality" ansible/playbooks/
+   ```
+
+2. **Review existing playbook capabilities**: Many existing playbooks support multiple operations via parameters
+   - Look for `operation` parameter (e.g., `deploy`, `delete`, `verify`)
+   - Check variable definitions and supported modes
+   - Review task blocks for conditional logic
+
+3. **Extend existing playbooks** rather than create new ones when possible:
+   - Add new `operation` modes to existing playbooks
+   - Add conditional blocks for new functionality
+   - Maintain consistency with existing patterns
+
+4. **Create new playbooks** ONLY when:
+   - No existing playbook handles the service
+   - Functionality is completely different from existing patterns
+   - Combining would make existing playbook overly complex
+
+**Example**: The whoami service already has `025-setup-whoami-testpod.yml` with both deploy and delete operations. Use this instead of creating new playbooks.
+
+### **Rule 1D: Standard Script Structure**
 
 All deployment scripts MUST follow this template pattern:
 
@@ -224,7 +254,13 @@ exit $ERROR
 
 Every deployment MUST include:
 
-1. **Pod Readiness Check with Progress Feedback**:
+1. **Pod Readiness Check with Progress Feedback (Two-Stage Pattern)**:
+
+**RECOMMENDED: Two-Stage Pod Readiness Verification**
+
+For robust deployment verification, use the two-stage pattern:
+
+**Stage 1: Wait for Pod Running**
 ```yaml
 - name: Wait for service pods to be ready (with progress indicators)
   kubernetes.core.k8s_info:
@@ -235,7 +271,47 @@ Every deployment MUST include:
   register: service_pods
   retries: 20
   delay: 15
-  until: service_pods.resources | length > 0 and service_pods.resources[0].status.phase == "Running"
+  until: >
+    service_pods.resources | length > 0 and
+    service_pods.resources[0].status.phase == "Running"
+```
+
+**Stage 2: Wait for Container Ready**
+```yaml
+- name: Wait for service pods to be fully ready (1/1)
+  kubernetes.core.k8s_info:
+    kind: Pod
+    namespace: "{{ namespace }}"
+    label_selectors:
+      - app.kubernetes.io/name={{ service_name }}
+  register: service_pods_ready
+  retries: 30
+  delay: 10
+  until: >
+    service_pods_ready.resources | length > 0 and
+    service_pods_ready.resources[0].status.containerStatuses[0].ready == true
+```
+
+**Why Two Stages?**
+- **Stage 1 (`Running`)**: Pod scheduled, containers started, image pulled
+- **Stage 2 (`Ready`)**: Application initialized, readiness probes passing, ready for traffic
+- **Benefits**: Prevents false positives where pod exists but application isn't ready
+- **Use Cases**: Databases, message queues, complex applications with startup sequences
+
+**Alternative: Single-Stage Pattern (Minimum Requirement)**
+```yaml
+- name: Wait for service pods to be ready (with progress indicators)
+  kubernetes.core.k8s_info:
+    kind: Pod
+    namespace: "{{ namespace }}"
+    label_selectors:
+      - app.kubernetes.io/name={{ service_name }}
+  register: service_pods
+  retries: 20
+  delay: 15
+  until: >
+    service_pods.resources | length > 0 and
+    service_pods.resources[0].status.phase == "Running"
 ```
 
 2. **Service Connectivity Test**:

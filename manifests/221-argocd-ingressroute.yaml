@@ -1,0 +1,76 @@
+# File: manifests/221-argocd-ingressroute.yaml
+#
+# Description:
+# IngressRoute for ArgoCD GitOps continuous delivery interface
+# Provides web access to ArgoCD for GitOps application management
+# Automatically handles both internal (.localhost) and external domains
+# Routes to ArgoCD server service for GitOps administration
+#
+# HostRegexp Routing:
+# This IngressRoute uses HostRegexp('argocd\\..+') to automatically handle:
+# - argocd.localhost (internal development access)
+# - argocd.urbalurba.no (external access via Cloudflare tunnel)
+# - Any future domains (future-proof routing)
+#
+# Usage:
+# kubectl apply -f 221-argocd-ingressroute.yaml
+#
+# Dependencies:
+# - ArgoCD server service must exist (deployed via Helm)
+# - ArgoCD namespace must exist with proper RBAC
+#
+# Testing:
+# Internal: curl http://argocd.localhost
+# External: curl https://argocd.urbalurba.no
+# Both should return ArgoCD web interface login page
+#
+# Integration:
+# - Routes both internal and external domains to ArgoCD server automatically
+# - No authentication middleware (ArgoCD has built-in authentication system)
+# - Enables seamless switching between development and production access
+# - Integrates with Git repositories for GitOps deployments
+#
+# Cluster Standards Compliance:
+# - Uses traefik.io/v1alpha1 API version
+# - IngressRoute CRD (not standard Kubernetes Ingress)
+# - Follows established cluster ingress standards
+# - Implements HostRegexp pattern for unified routing
+#
+# HostRegexp Pattern Explanation:
+# - 'argocd\\..+' matches any domain that starts with 'argocd.'
+# - Examples: argocd.localhost, argocd.urbalurba.no, argocd.example.com
+# - The '\\.' escapes the literal dot, '.+' matches one or more characters
+# - This enables automatic external access without duplicating IngressRoute rules
+#
+# Security Considerations:
+# - ArgoCD web interface provides administrative access to GitOps deployments
+# - Consider adding authentication middleware for production use
+# - Web interface exposes application configurations and deployment status
+# - Default credentials should be changed from default values
+#
+# Migration Notes:
+# - This replaces Helm-managed standard Kubernetes Ingress
+# - ArgoCD Helm chart ingress is disabled in favor of this IngressRoute
+# - Maintains same routing behavior with enhanced multi-domain support
+# - Follows cluster standards for ingress configuration
+
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: argocd-server
+  namespace: argocd
+  labels:
+    app: argocd
+    component: server
+    type: development
+    routing: unified
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: HostRegexp(`argocd\..+`)
+      kind: Rule
+      services:
+        - name: argocd-server
+          port: 80

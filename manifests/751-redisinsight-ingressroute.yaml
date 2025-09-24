@@ -1,0 +1,63 @@
+# File: manifests/751-redisinsight-ingressroute.yaml
+#
+# Description:
+# IngressRoute for RedisInsight Redis administration interface
+# Provides web access to RedisInsight for Redis database management
+# Automatically handles both internal (.localhost) and external domains
+# Routes to RedisInsight service for Redis administration
+#
+# HostRegexp Routing:
+# This IngressRoute uses HostRegexp('redisinsight\\..+') to automatically handle:
+# - redisinsight.localhost (internal development access)
+# - redisinsight.urbalurba.no (external access via Cloudflare tunnel)
+# - Any future domains (future-proof routing)
+#
+# Usage:
+# kubectl apply -f 751-redisinsight-ingressroute.yaml
+#
+# Dependencies:
+# - RedisInsight service must exist (deployed via Helm)
+# - Redis must be deployed and accessible for administration
+#
+# Testing:
+# Internal: curl http://redisinsight.localhost
+# External: curl https://redisinsight.urbalurba.no
+# Both should return RedisInsight web interface
+#
+# Integration:
+# - Routes both internal and external domains to RedisInsight service automatically
+# - No authentication middleware (RedisInsight has built-in authentication options)
+# - Enables seamless switching between development and production access
+# - Integrates with Redis databases for administration
+#
+# Cluster Standards Compliance:
+# - Uses traefik.io/v1alpha1 API version
+# - IngressRoute CRD (not standard Kubernetes Ingress)
+# - Follows established cluster ingress standards
+# - Implements HostRegexp pattern for unified routing
+#
+# HostRegexp Pattern Explanation:
+# - 'redisinsight\\..+' matches any domain that starts with 'redisinsight.'
+# - Examples: redisinsight.localhost, redisinsight.urbalurba.no, redisinsight.example.com
+# - The '\\.' escapes the literal dot, '+' matches one or more characters
+# - This enables automatic external access without duplicating IngressRoute rules
+
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: redisinsight
+  namespace: default
+  labels:
+    app: redisinsight
+    type: management
+    routing: unified
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: HostRegexp(`redisinsight\..+`)
+      kind: Rule
+      services:
+        - name: redisinsight
+          port: 5540

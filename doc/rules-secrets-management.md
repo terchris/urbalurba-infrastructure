@@ -149,9 +149,75 @@ metadata:
   namespace: default              # Should use service namespace
 ```
 
+### **Rule 6: No Helm Chart Defaults for Security Values**
+NEVER use Helm chart default values for security-sensitive parameters:
+
+#### **✅ Correct Pattern: Override All Security Defaults**
+```yaml
+# In Ansible playbook deployment
+helm upgrade --install {{ service_name }} bitnami/rabbitmq \
+  --set auth.username={{ rabbitmq_username_fact | quote }} \
+  --set auth.password={{ rabbitmq_password_fact | quote }} \
+  --set auth.erlangCookie={{ rabbitmq_erlang_cookie_fact | quote }}
+```
+
+```yaml
+# In secrets configuration
+RABBITMQ_USERNAME: "${DEFAULT_ADMIN_USERNAME}"
+RABBITMQ_PASSWORD: "${DEFAULT_DATABASE_PASSWORD}"
+RABBITMQ_ERLANG_COOKIE: "${RABBITMQ_ERLANG_COOKIE}"
+```
+
+#### **❌ Anti-Pattern: Using Chart Defaults**
+```yaml
+# DON'T: Let Helm chart use default credentials
+auth:
+  username: user          # Bitnami default - predictable!
+  password: bitnami       # Chart default - insecure!
+
+# DON'T: Only override passwords but leave usernames as defaults
+auth:
+  username: user          # Still using chart default
+  password: "${SECURE_PASSWORD}"  # Good, but incomplete
+```
+
+#### **Security-Sensitive Helm Parameters to Always Override**
+- **Usernames**: `auth.username`, `rootUser.username`, `adminUser`
+- **Passwords**: `auth.password`, `rootPassword`, `adminPassword`
+- **API Keys**: `apiKey`, `secretKey`, `accessKey`
+- **Tokens**: `authToken`, `jwtSecret`, `sessionSecret`
+- **Cookies**: `erlangCookie`, `sessionCookie`
+- **Database URLs**: Connection strings with embedded credentials
+
+#### **Why This Matters**
+- ✅ **Predictable defaults** are security vulnerabilities
+- ✅ **Chart documentation** publishes default values publicly
+- ✅ **Centralized management** enables credential rotation
+- ✅ **Consistent security** across all services
+
+**Example: Common Bitnami Chart Defaults to Avoid**
+```bash
+# PostgreSQL defaults
+auth.postgresPassword: "postgres"
+auth.username: "postgres"
+
+# Redis defaults
+auth.password: "bitnami"
+
+# RabbitMQ defaults
+auth.username: "user"
+auth.password: "bitnami"
+
+# MongoDB defaults
+auth.rootPassword: "root"
+auth.username: "root"
+```
+
+**All of these MUST be overridden with values from `urbalurba-secrets`.**
+
 ## 🔧 **Operational Rules**
 
-### **Rule 6: Testing and Validation**
+### **Rule 7: Testing and Validation**
 ALL secret changes MUST be validated before deployment:
 
 #### **✅ Required Testing Steps**:
@@ -172,7 +238,7 @@ grep -c "PGPASSWORD\|REDIS_PASSWORD\|AUTHENTIK_SECRET_KEY" kubernetes/kubernetes
 - Not checking for unresolved variables
 - Missing verification that critical secrets are present
 
-### **Rule 7: Backup and Recovery Pattern**
+### **Rule 8: Backup and Recovery Pattern**
 Secret backups MUST follow secure patterns:
 
 #### **✅ Correct Backup**:
@@ -271,6 +337,49 @@ ALL secret changes MUST be reviewed for:
 - Proper gitignore coverage
 - Security best practices
 - Integration with existing services
+
+## 🔄 **Template Update Rules**
+
+### **Rule 11: User Config Override Pattern**
+When updating base templates, you MUST also update the user's config for immediate effect:
+
+#### **✅ Correct Workflow for Template Updates**:
+```bash
+# 1. Update base template (for team sharing)
+nano secrets-templates/00-master-secrets.yml.template
+git add secrets-templates/
+git commit -m "Add new secret template"
+
+# 2. Update user's config (for immediate use)
+nano secrets-config/00-master-secrets.yml.template
+./create-kubernetes-secrets.sh
+
+# 3. Deploy updated secrets
+kubectl apply -f kubernetes/kubernetes-secrets.yml
+```
+
+#### **❌ Anti-Pattern**:
+```bash
+# DON'T: Only update base templates
+nano secrets-templates/00-master-secrets.yml.template
+./create-kubernetes-secrets.sh  # Will use old user config!
+```
+
+#### **Why This Rule Exists**:
+The generation script prioritizes `secrets-config/` over `secrets-templates/` to enable user customization. Base templates are for team sharing, but user configs are for immediate use.
+
+#### **Verification Commands**:
+```bash
+# Check if user config exists and is up to date
+ls -la secrets-config/00-master-secrets.yml.template
+
+# Compare with base template
+diff secrets-templates/00-master-secrets.yml.template secrets-config/00-master-secrets.yml.template
+
+# Verify generation uses user config
+./create-kubernetes-secrets.sh
+grep "Your new secret" kubernetes/kubernetes-secrets.yml
+```
 
 ---
 

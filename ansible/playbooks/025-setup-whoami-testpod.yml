@@ -22,7 +22,7 @@
   vars:
     manifests_folder: "/mnt/urbalurbadisk/manifests"
     merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
-    whoami_test_app_file: "{{ manifests_folder }}/071-whoami-test-app.yaml"
+    whoami_test_app_file: "{{ manifests_folder }}/990-whoami-test-app.yaml"
     test_timeout: 120  # 2 minutes timeout for tests
     # operation variable is passed as external parameter, defaults handled in tasks
 

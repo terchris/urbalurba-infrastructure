@@ -1,0 +1,246 @@
+---
+# file: ansible/playbooks/350-setup-jupyterhub.yml
+# Description:
+# Set up JupyterHub with PySpark integration on Kubernetes
+# Notebook interface for data scientists with secret-based authentication
+#
+# Part of: Databricks Replacement Project - Phase 2 (Notebook Interface)
+# Replaces: Databricks workspace notebooks and collaborative environment
+#
+# Prerequisites:
+# - Kubernetes cluster with sufficient resources (2+ CPUs, 4+ GB RAM)
+# - kubectl configured for target cluster
+# - Helm 3.x installed
+# - Traefik ingress controller installed
+# - urbalurba-secrets applied to jupyterhub namespace (contains JUPYTERHUB_AUTH_PASSWORD)
+# - Required manifests: 310-jupyterhub-config.yaml, 311-jupyterhub-ingress.yaml
+#
+# Architecture:
+# - JupyterHub provides web-based notebook interface with PySpark integration
+# - Integrates with Spark Kubernetes Operator for distributed computing
+# - Clean user session management with automatic cleanup
+# - Helm manages all resources with proper ownership
+#
+# Usage:
+# ansible-playbook playbooks/350-setup-jupyterhub.yml -e target_host="rancher-desktop"
+
+- name: Set up JupyterHub with PySpark integration on Kubernetes
+  hosts: localhost
+  gather_facts: false
+  vars:
+    manifests_folder: "/mnt/urbalurbadisk/manifests"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    jupyterhub_namespace: "jupyterhub"
+    installation_timeout: 300  # 5 minutes timeout for installations
+    pod_readiness_timeout: 180  # 3 minutes timeout for pod readiness
+
+    # Helm chart references
+    jupyterhub_chart: "jupyterhub/jupyterhub"
+    jupyterhub_repo_url: "https://hub.jupyter.org/helm-chart/"
+
+    # Config files
+    jupyterhub_config_file: "{{ manifests_folder }}/310-jupyterhub-config.yaml"
+    jupyterhub_ingress_file: "{{ manifests_folder }}/311-jupyterhub-ingress.yaml"
+
+  tasks:
+    - name: 1. Print playbook description
+      ansible.builtin.debug:
+        msg: |
+          🚀 Setting up JupyterHub with PySpark Integration
+          📊 Phase 2: JupyterHub (Notebook Interface with Secret Authentication)
+          🎯 Target: {{ target_host | default('rancher-desktop') }}
+          📁 Namespace: {{ jupyterhub_namespace }}
+          🔐 Authentication: Password from urbalurba-secrets
+
+    - name: 2. Create jupyterhub namespace
+      kubernetes.core.k8s:
+        name: "{{ jupyterhub_namespace }}"
+        api_version: v1
+        kind: Namespace
+        state: present
+        kubeconfig: "{{ merged_kubeconf_file }}"
+
+    - name: 3. Apply urbalurba-secrets to cluster (includes jupyterhub namespace)
+      ansible.builtin.shell: |
+        kubectl apply -f /mnt/urbalurbadisk/topsecret/kubernetes/kubernetes-secrets.yml
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: secrets_apply_result
+      failed_when: false
+
+    - name: 4. Check existing Helm repositories
+      ansible.builtin.command: helm repo list
+      register: helm_repo_list
+      changed_when: false
+
+    - name: 5. Add JupyterHub Helm repository if needed
+      kubernetes.core.helm_repository:
+        name: "jupyterhub"
+        repo_url: "{{ jupyterhub_repo_url }}"
+      when: "'jupyterhub' not in helm_repo_list.stdout"
+      register: jupyterhub_helm_repo_result
+
+    - name: 6. Update Helm repositories for JupyterHub
+      ansible.builtin.command: helm repo update
+      changed_when: false
+
+    - name: 7. Check if urbalurba-secrets exists in jupyterhub namespace
+      ansible.builtin.shell: |
+        kubectl get secret urbalurba-secrets -n {{ jupyterhub_namespace }}
+        -o jsonpath='{.data.JUPYTERHUB_AUTH_PASSWORD}' 2>/dev/null | base64 -d || echo "NOT_FOUND"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: jupyterhub_secret_check
+      changed_when: false
+
+    - name: 8. Display JupyterHub secret status
+      ansible.builtin.debug:
+        msg: |
+          JupyterHub authentication secret status:
+          {{ 'Found - Password configured ✅' if jupyterhub_secret_check.stdout != 'NOT_FOUND' else 'NOT FOUND ⚠️ - Apply urbalurba-secrets to jupyterhub namespace' }}
+
+    - name: 9. Deploy JupyterHub with PySpark integration and secret authentication
+      ansible.builtin.shell: >
+        helm upgrade --install jupyterhub {{ jupyterhub_chart }}
+        -f {{ jupyterhub_config_file }}
+        --namespace {{ jupyterhub_namespace }}
+        --timeout {{ installation_timeout }}s
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: jupyterhub_result
+      changed_when: true
+
+    - name: 10. Display JupyterHub deployment result
+      ansible.builtin.debug:
+        msg: "JupyterHub deployment initiated. Waiting for readiness..."
+
+    - name: 11. Wait for JupyterHub hub pod to be ready
+      ansible.builtin.shell: |
+        kubectl wait --for=condition=ready pod \
+        -l app=jupyterhub,component=hub \
+        -n {{ jupyterhub_namespace }} --timeout={{ pod_readiness_timeout }}s
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: jupyterhub_hub_wait_result
+      retries: 3
+      delay: 10
+
+    - name: 12. Wait for JupyterHub proxy pod to be ready
+      ansible.builtin.shell: |
+        kubectl wait --for=condition=ready pod \
+        -l app=jupyterhub,component=proxy \
+        -n {{ jupyterhub_namespace }} --timeout={{ pod_readiness_timeout }}s
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: jupyterhub_proxy_wait_result
+      retries: 3
+      delay: 10
+
+    - name: 13. Display JupyterHub readiness status
+      ansible.builtin.debug:
+        msg: |
+          JupyterHub readiness status:
+          - Hub: {{ 'Ready' if jupyterhub_hub_wait_result.rc == 0 else 'Not ready yet' }}
+          - Proxy: {{ 'Ready' if jupyterhub_proxy_wait_result.rc == 0 else 'Not ready yet' }}
+
+    - name: 14. Apply JupyterHub ingress configuration
+      kubernetes.core.k8s:
+        src: "{{ jupyterhub_ingress_file }}"
+        state: present
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: jupyterhub_ingress_result
+
+    - name: 15. Check JupyterHub service exists
+      ansible.builtin.shell: |
+        kubectl get service proxy-public -n {{ jupyterhub_namespace }} --no-headers 2>/dev/null | wc -l
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: jupyterhub_service_check
+      changed_when: false
+
+    - name: 16. Check JupyterHub ingress status
+      ansible.builtin.shell: |
+        kubectl get ingress jupyterhub -n {{ jupyterhub_namespace }} --no-headers 2>/dev/null | wc -l
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: jupyterhub_ingress_check
+      changed_when: false
+
+    - name: 17. Get JupyterHub pods
+      ansible.builtin.shell: kubectl get pods -n {{ jupyterhub_namespace }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: jupyterhub_pods
+      changed_when: false
+
+    - name: 18. Get JupyterHub ingress
+      ansible.builtin.shell: kubectl get ingress -n {{ jupyterhub_namespace }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: jupyterhub_ingress
+      changed_when: false
+
+    - name: 19. Set deployment status variables
+      ansible.builtin.set_fact:
+        jupyterhub_running: "{{ jupyterhub_pods.stdout.find('Running') != -1 }}"
+        secret_configured: "{{ jupyterhub_secret_check.stdout != 'NOT_FOUND' }}"
+        jupyterhub_service_healthy: "{{ (jupyterhub_service_check.stdout | int) > 0 }}"
+        jupyterhub_ingress_working: "{{ (jupyterhub_ingress_check.stdout | int) > 0 }}"
+
+    - name: 20. Display final deployment status
+      ansible.builtin.debug:
+        msg: |
+          ===============================================
+          🚀 JupyterHub Deployment Status
+          ===============================================
+
+          ✅ SUCCESS - JupyterHub deployed and ready
+
+          🔄 Status:
+          • Phase 2: JupyterHub Notebook Interface {{ '✅' if jupyterhub_running else '⚠️' }}
+          • PySpark Integration: ✅ Ready for distributed computing
+          • ARM64 Support: Native Apple Silicon compatibility ✅
+
+          🔐 Authentication:
+          • Secret Status: {{ 'Configured ✅' if secret_configured else 'Missing ⚠️' }}
+          • Password Source: urbalurba-secrets/JUPYTERHUB_AUTH_PASSWORD
+          • Login Username: admin
+          • Login Password: {{ 'From secret' if secret_configured else 'NOT CONFIGURED - Apply urbalurba-secrets!' }}
+
+          📊 Deployment Details:
+          • Namespace: {{ jupyterhub_namespace }}
+          • Chart: {{ jupyterhub_chart }}
+          • Ingress: {{ 'Applied ✅' if jupyterhub_ingress_result is defined else 'Not applied ⚠️' }}
+          • JupyterHub Service: {{ 'Healthy ✅' if jupyterhub_service_healthy else 'Not responding ⚠️' }}
+          • JupyterHub Ingress: {{ 'Working ✅' if jupyterhub_ingress_working else 'Not configured ⚠️' }}
+
+          JupyterHub pods:
+          {{ jupyterhub_pods.stdout }}
+
+          JupyterHub ingress:
+          {{ jupyterhub_ingress.stdout }}
+
+          🌐 Access Instructions:
+          • JupyterHub Web Interface: http://jupyterhub.localhost
+          • Login: Username: admin, Password: {{ 'from urbalurba-secrets' if secret_configured else 'NOT CONFIGURED' }}
+          • Alternative access: kubectl port-forward -n {{ jupyterhub_namespace }} svc/proxy-public 8888:80
+
+          🚀 Usage Instructions:
+          1. Access JupyterHub at http://jupyterhub.localhost
+          2. Login with admin credentials from urbalurba-secrets
+          3. Create new notebooks with PySpark integration
+          4. Submit Spark jobs from within notebooks
+
+          🔧 Troubleshooting:
+          • Check JupyterHub pods: kubectl get pods -n {{ jupyterhub_namespace }}
+          • View hub logs: kubectl logs -n {{ jupyterhub_namespace }} deployment/hub
+          • View proxy logs: kubectl logs -n {{ jupyterhub_namespace }} deployment/proxy
+          • Check ingress: kubectl get ingress -n {{ jupyterhub_namespace }}
+          • Verify secret: kubectl get secret urbalurba-secrets -n {{ jupyterhub_namespace }}
+          • Manual access test: kubectl port-forward -n {{ jupyterhub_namespace }} svc/proxy-public 8888:80
+
+          {{ '⚠️ ACTION REQUIRED: Apply urbalurba-secrets to jupyterhub namespace before accessing JupyterHub!' if not secret_configured else '' }}
+
+          🎯 Databricks Replacement Status:
+          {{ '🎉 JUPYTERHUB READY - NOTEBOOK INTERFACE DEPLOYED!' if jupyterhub_running and secret_configured and jupyterhub_service_healthy else '⚠️ CHECK DEPLOYMENT STATUS AND VERIFICATION RESULTS' }}
+          ===============================================

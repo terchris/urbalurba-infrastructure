@@ -1,0 +1,238 @@
+---
+# file: ansible/playbooks/651-remove-redisinsight.yml
+# Description: Remove RedisInsight from Kubernetes cluster
+# This playbook:
+# - Removes RedisInsight Helm deployment and associated resources
+# - Deletes RedisInsight-related PVCs and data
+# - Removes RedisInsight IngressRoute configuration
+# - Waits for RedisInsight pods to terminate
+# - Preserves urbalurba-secrets and namespace structure
+# Usage:
+# ansible-playbook playbooks/651-remove-redisinsight.yml -e target_host="rancher-desktop"
+
+- name: Remove RedisInsight from Kubernetes
+  hosts: localhost
+  gather_facts: false
+  vars:
+    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    manifests_folder: "/mnt/urbalurbadisk/manifests"
+    redisinsight_namespace: "default"
+    redisinsight_release_name: "redisinsight"
+    redisinsight_pod_label: "app.kubernetes.io/name=redisinsight"
+    redisinsight_ingress_config_file: "751-redisinsight-ingressroute.yaml"
+    deletion_timeout: 120
+
+  tasks:
+    - name: 1. Check if required variables are provided
+      ansible.builtin.fail:
+        msg: "The variable 'target_host' is mandatory. Use -e target_host=your_host_name to specify it."
+      when: target_host is not defined
+      ignore_errors: true
+
+    - name: 2. Print removal description
+      ansible.builtin.debug:
+        msg: |
+          🧹 Starting RedisInsight removal
+          🎯 Target: {{ target_host }}
+          📁 Namespace: {{ redisinsight_namespace }}
+          📦 Helm Release: {{ redisinsight_release_name }}
+          🔐 PRESERVING: urbalurba-secrets and namespace structure
+          ⚠️  This will remove the RedisInsight Helm deployment, services, PVCs, and IngressRoute but KEEP authentication configuration
+
+    - name: 3. Check for RedisInsight Helm release
+      ansible.builtin.shell: helm list -n {{ redisinsight_namespace }} --output json
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: helm_releases
+      changed_when: false
+      ignore_errors: true
+
+    - name: 4. Parse Helm releases and check for RedisInsight
+      ansible.builtin.set_fact:
+        redisinsight_release_exists: "{{ (helm_releases.stdout | from_json) | selectattr('name', 'equalto', redisinsight_release_name) | list | length > 0 }}"
+      when: helm_releases.rc == 0
+
+    - name: 5. Set RedisInsight release exists to false if Helm command failed
+      ansible.builtin.set_fact:
+        redisinsight_release_exists: false
+      when: helm_releases.rc != 0
+
+    - name: 6. Check for RedisInsight pods
+      ansible.builtin.shell: kubectl get pods -n {{ redisinsight_namespace }} -l {{ redisinsight_pod_label }} --no-headers --context {{ target_host }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: redisinsight_pods_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: 7. Check for RedisInsight service
+      ansible.builtin.shell: kubectl get svc -n {{ redisinsight_namespace }} -l app.kubernetes.io/name=redisinsight --context {{ target_host }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: redisinsight_service_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: 8. Check for RedisInsight PVCs
+      ansible.builtin.shell: kubectl get pvc -n {{ redisinsight_namespace }} -l app.kubernetes.io/name=redisinsight --context {{ target_host }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: redisinsight_pvc_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: 9. Check for RedisInsight IngressRoute
+      kubernetes.core.k8s_info:
+        api_version: traefik.io/v1alpha1
+        kind: IngressRoute
+        namespace: "{{ redisinsight_namespace }}"
+        name: redisinsight
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: redisinsight_ingress_check
+      ignore_errors: true
+
+    - name: 10. Remove RedisInsight IngressRoute
+      kubernetes.core.k8s:
+        kubeconfig: "{{ merged_kubeconf_file }}"
+        state: absent
+        src: "{{ manifests_folder }}/{{ redisinsight_ingress_config_file }}"
+        namespace: "{{ redisinsight_namespace }}"
+      when: redisinsight_ingress_check.resources | length > 0
+      ignore_errors: true
+
+    - name: 11. Uninstall RedisInsight Helm release
+      ansible.builtin.shell: helm uninstall {{ redisinsight_release_name }} -n {{ redisinsight_namespace }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: helm_uninstall_result
+      changed_when: true
+      ignore_errors: true
+      when: redisinsight_release_exists
+
+    - name: 12. Force delete RedisInsight pods if still exists
+      ansible.builtin.shell: kubectl delete pods -n {{ redisinsight_namespace }} -l {{ redisinsight_pod_label }} --context {{ target_host }} --grace-period=0 --force
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: redisinsight_pods_force_removal
+      changed_when: true
+      ignore_errors: true
+      when: redisinsight_pods_check.rc == 0 and redisinsight_pods_check.stdout != ""
+
+    - name: 13. Force delete RedisInsight services if still exists
+      ansible.builtin.shell: kubectl delete svc -n {{ redisinsight_namespace }} -l app.kubernetes.io/name=redisinsight --context {{ target_host }} --grace-period=0
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: redisinsight_service_force_removal
+      changed_when: true
+      ignore_errors: true
+      when: redisinsight_service_check.rc == 0
+
+    - name: 14. Delete RedisInsight PVCs
+      ansible.builtin.shell: kubectl delete pvc -n {{ redisinsight_namespace }} -l app.kubernetes.io/name=redisinsight --context {{ target_host }} --timeout={{ deletion_timeout }}s
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: redisinsight_pvc_removal
+      changed_when: true
+      ignore_errors: true
+      when: redisinsight_pvc_check.rc == 0
+
+    - name: 15. Wait for RedisInsight pods to terminate
+      ansible.builtin.shell: kubectl get pods -n {{ redisinsight_namespace }} -l {{ redisinsight_pod_label }} --no-headers --context {{ target_host }} 2>/dev/null | wc -l
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: redisinsight_pods_count
+      until: redisinsight_pods_count.stdout | int == 0
+      retries: 20
+      delay: 10
+      changed_when: false
+
+    - name: 16. Wait for PVCs to be fully deleted
+      ansible.builtin.shell: kubectl get pvc -n {{ redisinsight_namespace }} -l app.kubernetes.io/name=redisinsight --no-headers --context {{ target_host }} 2>/dev/null | wc -l
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: redisinsight_pvc_count
+      until: redisinsight_pvc_count.stdout | int == 0
+      retries: 15
+      delay: 10
+      changed_when: false
+      ignore_errors: true
+
+    - name: 17. Wait for IngressRoute to be fully deleted
+      kubernetes.core.k8s_info:
+        api_version: traefik.io/v1alpha1
+        kind: IngressRoute
+        namespace: "{{ redisinsight_namespace }}"
+        name: redisinsight
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: redisinsight_ingress_final_check
+      until: redisinsight_ingress_final_check.resources | length == 0
+      retries: 10
+      delay: 5
+      changed_when: false
+      ignore_errors: true
+
+    - name: 18. Verify RedisInsight removal completion
+      ansible.builtin.shell: |
+        # Check for any remaining RedisInsight resources
+        echo "Checking for remaining RedisInsight resources..."
+        REMAINING_PODS=$(kubectl get pods -n {{ redisinsight_namespace }} -l {{ redisinsight_pod_label }} --no-headers --context {{ target_host }} 2>/dev/null | wc -l)
+        REMAINING_SVC=$(kubectl get svc -n {{ redisinsight_namespace }} -l app.kubernetes.io/name=redisinsight --no-headers --context {{ target_host }} 2>/dev/null | wc -l)
+        REMAINING_PVC=$(kubectl get pvc -n {{ redisinsight_namespace }} -l app.kubernetes.io/name=redisinsight --no-headers --context {{ target_host }} 2>/dev/null | wc -l)
+
+        # Check Helm release
+        REMAINING_HELM=$(helm list -n {{ redisinsight_namespace }} -q | grep -c "^{{ redisinsight_release_name }}$" 2>/dev/null || echo "0")
+
+        # Check IngressRoute
+        REMAINING_INGRESS=$(kubectl get ingressroute -n {{ redisinsight_namespace }} redisinsight --no-headers --context {{ target_host }} 2>/dev/null | wc -l)
+
+        echo "Remaining resources:"
+        echo "- Pods: $REMAINING_PODS"
+        echo "- Services: $REMAINING_SVC"
+        echo "- PVCs: $REMAINING_PVC"
+        echo "- Helm Release: $REMAINING_HELM"
+        echo "- IngressRoute: $REMAINING_INGRESS"
+
+        TOTAL_REMAINING=$((REMAINING_PODS + REMAINING_SVC + REMAINING_PVC + REMAINING_HELM + REMAINING_INGRESS))
+        if [ $TOTAL_REMAINING -eq 0 ]; then
+          echo "✅ All RedisInsight resources successfully removed"
+          exit 0
+        else
+          echo "⚠️  Some RedisInsight resources may still exist"
+          exit 1
+        fi
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: redisinsight_cleanup_verification
+      changed_when: false
+      ignore_errors: true
+
+    - name: 19. Display RedisInsight removal result
+      ansible.builtin.debug:
+        msg:
+          - "RedisInsight removal summary:"
+          - "- Helm Release: {{ 'Removed' if redisinsight_release_exists else 'Not found' }}"
+          - "- Pods: {{ 'Removed' if redisinsight_pods_check.rc == 0 and redisinsight_pods_check.stdout != '' else 'Not found' }}"
+          - "- Services: {{ 'Removed' if redisinsight_service_check.rc == 0 else 'Not found' }}"
+          - "- PVCs: {{ 'Removed' if redisinsight_pvc_check.rc == 0 else 'Not found' }}"
+          - "- IngressRoute: {{ 'Removed' if redisinsight_ingress_check.resources | length > 0 else 'Not found' }}"
+          - "- All RedisInsight pods terminated"
+          - "- urbalurba-secrets and namespace preserved"
+
+    - name: 20. Final success message
+      ansible.builtin.debug:
+        msg:
+          - "🎉 RedisInsight removal completed successfully!"
+          - ""
+          - "📋 What was removed:"
+          - "- RedisInsight Helm release"
+          - "- RedisInsight pods and services"
+          - "- RedisInsight persistent volume claims"
+          - "- RedisInsight IngressRoute configuration"
+          - "- RedisInsight configuration and data"
+          - ""
+          - "🔐 What was preserved:"
+          - "- urbalurba-secrets (RedisInsight credentials retained for future use)"
+          - "- Kubernetes namespace structure"
+          - "- Other services and applications"
+          - ""
+          - "ℹ️  To redeploy RedisInsight, run: ./05-setup-redisinsight.sh {{ target_host }}"

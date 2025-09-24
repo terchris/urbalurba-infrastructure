@@ -1,0 +1,175 @@
+---
+# file: ansible/playbooks/220-remove-argocd.yml
+# Description: Remove ArgoCD from Kubernetes cluster
+# This playbook:
+# - Uninstalls the ArgoCD Helm release
+# - Removes ArgoCD IngressRoute configuration
+# - Waits for ArgoCD pods to terminate
+# - Optionally removes PVCs (user configurable)
+# - Preserves urbalurba-secrets and namespace structure
+# Usage:
+# ansible-playbook playbooks/220-remove-argocd.yml -e target_host="rancher-desktop"
+# ansible-playbook playbooks/220-remove-argocd.yml -e target_host="rancher-desktop" -e remove_pvc=true
+
+- name: Remove ArgoCD from Kubernetes
+  hosts: localhost
+  gather_facts: false
+  vars:
+    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    manifests_folder: "/mnt/urbalurbadisk/manifests"
+    argocd_namespace: "argocd"
+    argocd_helm_release: "argocd"
+    deletion_timeout: 180
+    remove_pvc: false
+    argocd_ingress_config_file: "{{ manifests_folder }}/221-argocd-ingressroute.yaml"
+
+  tasks:
+    - name: 1. Get current Kubernetes context if target_host not provided
+      ansible.builtin.shell: |
+        kubectl config current-context
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: current_context
+      changed_when: false
+      when: target_host is not defined
+
+    - name: 2. Set target_host from current context if not provided
+      ansible.builtin.set_fact:
+        target_host: "{{ current_context.stdout }}"
+      when: target_host is not defined
+
+    - name: 3. Print removal description
+      ansible.builtin.debug:
+        msg: |
+          🧹 Starting ArgoCD removal
+          🎯 Target: {{ target_host }}
+          📁 Namespace: {{ argocd_namespace }}
+          🔐 PRESERVING: urbalurba-secrets and namespace structure
+          💾 PVC Removal: {{ 'Enabled' if remove_pvc | bool else 'Disabled (use -e remove_pvc=true to enable)' }}
+          ⚠️  This will remove the ArgoCD Helm release and pods but KEEP authentication configuration
+
+    - name: 4. Check for ArgoCD Helm release
+      ansible.builtin.shell: helm list -n {{ argocd_namespace }} | grep {{ argocd_helm_release }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: argocd_helm_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: 5. Check for ArgoCD deployment
+      ansible.builtin.shell: kubectl get deployment argocd-server -n {{ argocd_namespace }} --context {{ target_host }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: argocd_deployment_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: 6. Remove ArgoCD IngressRoute if it exists
+      kubernetes.core.k8s:
+        kubeconfig: "{{ merged_kubeconf_file }}"
+        state: absent
+        api_version: traefik.io/v1alpha1
+        kind: IngressRoute
+        namespace: "{{ argocd_namespace }}"
+        name: argocd-server
+      when: argocd_deployment_check.rc == 0
+      ignore_errors: true
+
+    - name: 7. Uninstall ArgoCD Helm release
+      ansible.builtin.shell: |
+        helm uninstall {{ argocd_helm_release }} -n {{ argocd_namespace }} --timeout {{ deletion_timeout }}s
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      when: argocd_helm_check.rc == 0
+      register: helm_uninstall_result
+
+    - name: 8. Wait for ArgoCD pods to terminate
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: "{{ argocd_namespace }}"
+        label_selectors:
+          - "app.kubernetes.io/name=argocd-server"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: argocd_pods
+      retries: 30
+      delay: 5
+      until: argocd_pods.resources | length == 0
+      when: argocd_helm_check.rc == 0
+
+    - name: 9. Wait for all ArgoCD components to terminate
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: "{{ argocd_namespace }}"
+        label_selectors:
+          - "app.kubernetes.io/part-of=argocd"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: all_argocd_pods
+      retries: 30
+      delay: 5
+      until: all_argocd_pods.resources | length == 0
+      when: argocd_helm_check.rc == 0
+
+    - name: 10. List PVCs in ArgoCD namespace
+      kubernetes.core.k8s_info:
+        kind: PersistentVolumeClaim
+        namespace: "{{ argocd_namespace }}"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: argocd_pvcs
+      when: remove_pvc | bool
+
+    - name: 11. Remove ArgoCD PVCs if requested
+      kubernetes.core.k8s:
+        kubeconfig: "{{ merged_kubeconf_file }}"
+        state: absent
+        kind: PersistentVolumeClaim
+        namespace: "{{ argocd_namespace }}"
+        name: "{{ item.metadata.name }}"
+      loop: "{{ argocd_pvcs.resources }}"
+      when: remove_pvc | bool and argocd_pvcs.resources | length > 0
+
+    - name: 12. Clean up ArgoCD-specific secrets (but preserve urbalurba-secrets)
+      kubernetes.core.k8s:
+        kubeconfig: "{{ merged_kubeconf_file }}"
+        state: absent
+        kind: Secret
+        namespace: "{{ argocd_namespace }}"
+        name: "{{ item }}"
+      loop:
+        - "argocd-initial-admin-secret"
+        - "argocd-secret"
+      ignore_errors: true
+
+    - name: 13. Verify ArgoCD removal
+      ansible.builtin.shell: kubectl get pods -n {{ argocd_namespace }} -l app.kubernetes.io/part-of=argocd --context {{ target_host }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: verification_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: 14. Display final removal status
+      ansible.builtin.debug:
+        msg:
+          - "==============================================="
+          - "🗑️  ArgoCD Removal Status"
+          - "==============================================="
+          - ""
+          - "{{ '✅ SUCCESS - ArgoCD completely removed' if verification_check.rc != 0 else '⚠️ WARNING - Some ArgoCD components may still be present' }}"
+          - ""
+          - "🔄 Removal Summary:"
+          - "• Helm release: {{ '✅ Uninstalled' if argocd_helm_check.rc == 0 else '⚪ Not found (already removed)' }}"
+          - "• Pod termination: {{ '✅ All pods terminated' if argocd_helm_check.rc == 0 else '⚪ No pods found' }}"
+          - "• IngressRoute: ✅ Removed (if present)"
+          - "• PVC removal: {{ '✅ Removed' if remove_pvc | bool else '⚠️ Preserved (use -e remove_pvc=true to remove)' }}"
+          - "• Secrets: ✅ ArgoCD-specific secrets removed, urbalurba-secrets preserved"
+          - ""
+          - "🏗️  Infrastructure Status:"
+          - "• Namespace: ✅ Preserved ({{ argocd_namespace }})"
+          - "• Authentication: ✅ urbalurba-secrets preserved for future deployments"
+          - "• Traefik routing: ✅ IngressRoute configuration removed"
+          - ""
+          - "♻️  Re-deployment:"
+          - "• Ready for fresh deployment using ./02-setup-argocd.sh"
+          - "• No manual cleanup required"
+          - "• Standardized credentials will be available immediately"
+          - "==============================================="

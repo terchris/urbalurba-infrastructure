@@ -1,0 +1,115 @@
+---
+# file: ansible/playbooks/350-remove-jupyterhub.yml
+# Description: Remove JupyterHub from Kubernetes cluster
+# This playbook:
+# - Uninstalls the JupyterHub Helm release
+# - Removes JupyterHub ingress configuration
+# - Waits for JupyterHub pods to terminate
+# - Preserves urbalurba-secrets for future deployments
+# - Removes the jupyterhub namespace
+# Usage:
+# ansible-playbook playbooks/350-remove-jupyterhub.yml -e target_host="rancher-desktop"
+
+- name: Remove JupyterHub from Kubernetes
+  hosts: localhost
+  gather_facts: false
+  vars:
+    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    manifests_folder: "/mnt/urbalurbadisk/manifests"
+    jupyterhub_namespace: "jupyterhub"
+    jupyterhub_helm_release: "jupyterhub"
+    deletion_timeout: 180
+    jupyterhub_ingress_file: "{{ manifests_folder }}/311-jupyterhub-ingress.yaml"
+
+  tasks:
+    - name: 1. Print removal description
+      ansible.builtin.debug:
+        msg: |
+          🧹 Starting JupyterHub removal
+          🎯 Target: {{ target_host | default('rancher-desktop') }}
+          📁 Namespace: {{ jupyterhub_namespace }}
+          🔐 PRESERVING: urbalurba-secrets for future deployments
+          ⚠️  This will remove JupyterHub and all user sessions
+
+    - name: 2. Check for JupyterHub Helm release
+      ansible.builtin.shell: helm list -n {{ jupyterhub_namespace }} | grep {{ jupyterhub_helm_release }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: jupyterhub_helm_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: 3. Remove JupyterHub ingress if it exists
+      kubernetes.core.k8s:
+        kubeconfig: "{{ merged_kubeconf_file }}"
+        state: absent
+        api_version: networking.k8s.io/v1
+        kind: Ingress
+        namespace: "{{ jupyterhub_namespace }}"
+        name: jupyterhub
+      when: jupyterhub_helm_check.rc == 0
+      ignore_errors: true
+
+    - name: 4. Uninstall JupyterHub Helm release
+      ansible.builtin.shell: |
+        helm uninstall {{ jupyterhub_helm_release }} -n {{ jupyterhub_namespace }} --timeout {{ deletion_timeout }}s
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      when: jupyterhub_helm_check.rc == 0
+      register: helm_uninstall_result
+
+    - name: 5. Wait for JupyterHub pods to terminate
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: "{{ jupyterhub_namespace }}"
+        label_selectors:
+          - "app=jupyterhub"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: jupyterhub_pods
+      retries: 30
+      delay: 5
+      until: jupyterhub_pods.resources | length == 0
+      when: jupyterhub_helm_check.rc == 0
+
+    - name: 6. Remove jupyterhub namespace
+      kubernetes.core.k8s:
+        name: "{{ jupyterhub_namespace }}"
+        api_version: v1
+        kind: Namespace
+        state: absent
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      when: jupyterhub_helm_check.rc == 0
+
+    - name: 7. Verify JupyterHub removal
+      ansible.builtin.shell: kubectl get pods -n {{ jupyterhub_namespace }} --ignore-not-found
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: verification_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: 8. Display final removal status
+      ansible.builtin.debug:
+        msg:
+          - "==============================================="
+          - "🗑️  JupyterHub Removal Status"
+          - "==============================================="
+          - ""
+          - "{{ '✅ SUCCESS - JupyterHub completely removed' if verification_check.rc != 0 else '⚠️ WARNING - Some JupyterHub components may still be present' }}"
+          - ""
+          - "🔄 Removal Summary:"
+          - "• Helm release: {{ '✅ Uninstalled' if jupyterhub_helm_check.rc == 0 else '⚪ Not found (already removed)' }}"
+          - "• Pod termination: {{ '✅ All pods terminated' if jupyterhub_helm_check.rc == 0 else '⚪ No pods found' }}"
+          - "• Ingress: ✅ Removed (if present)"
+          - "• Namespace: {{ '✅ Removed' if jupyterhub_helm_check.rc == 0 else '⚪ Not found' }}"
+          - ""
+          - "🏗️  Infrastructure Status:"
+          - "• Notebook Interface: ✅ Removed"
+          - "• User Sessions: ✅ Terminated"
+          - "• Traefik routing: ✅ Ingress configuration removed"
+          - ""
+          - "♻️  Re-deployment:"
+          - "• Ready for fresh deployment using ./05-setup-jupyterhub.sh"
+          - "• urbalurba-secrets will be recreated automatically"
+          - "• No manual cleanup required"
+          - "==============================================="

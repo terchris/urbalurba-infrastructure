@@ -1,0 +1,78 @@
+---
+# File: manifests/081-rabbitmq-ingressroute.yaml
+#
+# Description:
+# Traefik IngressRoute for RabbitMQ Management UI using unified routing with HostRegexp pattern.
+# Provides consistent access to RabbitMQ management interface across multiple domains.
+# Follows cluster standards for IngressRoute configuration and multi-domain support.
+#
+# HostRegexp Routing:
+# This IngressRoute uses HostRegexp('rabbitmq\..+') to automatically handle:
+# - rabbitmq.localhost (internal development access)
+# - rabbitmq.urbalurba.no (external demo access via Cloudflare tunnel)
+# - Any future domains (future-proof routing)
+#
+# Usage:
+# kubectl apply -f 081-rabbitmq-ingressroute.yaml
+#
+# Dependencies:
+# - 080-rabbitmq-config.yaml (RabbitMQ Helm deployment)
+# - rabbitmq service must exist in default namespace
+# - RabbitMQ management plugin must be enabled
+#
+# Testing:
+# Internal: curl http://rabbitmq.localhost
+# External: curl https://rabbitmq.urbalurba.no
+# Both should return RabbitMQ management UI (with authentication required)
+#
+# Integration:
+# - Routes both internal and external domains to rabbitmq service automatically
+# - Enables CoreDNS resolution for *.localhost domains in pod contexts
+# - Works with RabbitMQ management UI on port 15672
+# - No priority configuration needed (IngressRoute handles routing differently than Ingress)
+#
+# Cluster Standards Compliance:
+# - Uses traefik.io/v1alpha1 API version (current working version in Traefik 3.3.6)
+# - IngressRoute CRD following established cluster standards per doc/rules-ingress-traefik.md
+# - HostRegexp pattern for unified routing (recommended approach)
+# - Descriptive labels matching cluster conventions
+# - Service port 15672 reference (RabbitMQ management UI port)
+#
+# HostRegexp Pattern Explanation:
+# - 'rabbitmq\..+' matches any domain that starts with 'rabbitmq.'
+# - Examples: rabbitmq.localhost, rabbitmq.urbalurba.no, rabbitmq.example.com
+# - The '\.' escapes the literal dot, '.+' matches one or more characters
+# - Enables automatic external access without duplicating IngressRoute rules
+#
+# Security Considerations:
+# - RabbitMQ management UI provides administrative access to message broker
+# - Consider adding authentication middleware for production use
+# - Management UI exposes queue statistics, user management, and broker configuration
+# - Default credentials should be changed from default values
+#
+# Migration Notes:
+# - This is a new IngressRoute for RabbitMQ management UI access
+# - Previously only accessible via port-forward: kubectl port-forward svc/rabbitmq 15672:15672
+# - Now accessible via standard cluster ingress routing
+# - Maintains same service routing (rabbitmq:15672)
+
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: rabbitmq-management
+  namespace: default
+  labels:
+    app: rabbitmq
+    component: management-ui
+    type: public
+    routing: unified
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: HostRegexp(`rabbitmq\..+`)
+      kind: Rule
+      services:
+        - name: rabbitmq
+          port: 15672

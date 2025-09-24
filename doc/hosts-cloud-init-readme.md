@@ -19,6 +19,17 @@ This ensures that all hosts, regardless of their deployment environment, are:
 - Integrated into the infrastructure's network
 - Ready for service deployment
 
+## 🔑 Prerequisites
+
+**IMPORTANT**: Before using cloud-init templates, you must set up SSH keys for Ansible authentication:
+
+👉 **[SSH Key Setup Guide](./hosts-cloud-init-secrets.md)** - Create the required SSH keys for cloud-init deployments
+
+The SSH keys created in this prerequisite step are essential for:
+- Ansible automation and host management
+- Secure SSH access to provisioned hosts
+- Cloud-init user authentication setup
+
 ## Cloud-Init Templates
 
 Located in `cloud-init/`:

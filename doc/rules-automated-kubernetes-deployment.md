@@ -35,7 +35,7 @@ The **`provision-kubernetes.sh`** is the central automation controller that orch
 **Container Path**: `/mnt/urbalurbadisk/provision-host/kubernetes/provision-kubernetes.sh` (when running inside provision-host)
 
 **Key Functions**:
-- Automatically discovers all numbered directories (e.g., `01-core-systems`, `02-databases`)
+- Automatically discovers all numbered directories (e.g., `01-core`, `02-databases`)
 - Executes directories in **strict alphabetic order** (not numeric - this is critical!)
 - Within each directory, executes all `*.sh` scripts in **alphabetic order**
 - Ignores scripts in `not-in-use/` folders
@@ -84,7 +84,7 @@ Deployment scripts MUST be organized in numbered categories:
 **Repository Structure**:
 ```
 provision-host/kubernetes/
-├── 01-core-systems/     # Storage, ingress, DNS, basic infrastructure
+├── 01-core/             # Storage, ingress, DNS, basic infrastructure
 ├── 02-databases/        # PostgreSQL, MySQL, MongoDB, etc.
 ├── 03-queues/          # Redis, RabbitMQ, message brokers
 ├── 04-search/          # Elasticsearch, Solr, search engines

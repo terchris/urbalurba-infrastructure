@@ -1,0 +1,183 @@
+---
+# file: playbooks/020-remove-nginx.yml
+# Description:
+#   Removes Nginx deployment from Kubernetes and cleans up associated resources.
+#   This playbook:
+#   1. Removes Nginx Helm deployment
+#   2. Removes IngressRoute configuration
+#   3. Removes ConfigMaps and other Nginx-specific resources
+#   4. Optionally removes PVC (preserves data by default)
+#   5. Verifies complete removal
+#
+# Usage:
+#   ansible-playbook playbooks/020-remove-nginx.yml -e kube_context=your-context
+#   ansible-playbook playbooks/020-remove-nginx.yml -e kube_context=your-context -e remove_pvc=true
+#
+# Variables:
+#   kube_context: Kubernetes context to use
+#   remove_pvc: Set to true to also remove persistent volume claim (default: false)
+
+- name: Remove Nginx from Kubernetes
+  hosts: localhost
+  gather_facts: false
+  vars:
+    manifests_folder: "/mnt/urbalurbadisk/manifests"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    nginx_ingressroute_manifest: "{{ manifests_folder }}/020-nginx-root-ingress.yaml"
+    nginx_config_manifest: "{{ manifests_folder }}/020-nginx-config.yaml"
+    remove_pvc_flag: "{{ remove_pvc | default(false) | bool }}"
+
+  tasks:
+    - name: 1. Get current Kubernetes context
+      ansible.builtin.shell: |
+        kubectl config current-context
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: current_context
+      changed_when: false
+
+    - name: 2. Set kube_context from current context if not explicitly provided
+      ansible.builtin.set_fact:
+        kube_context: "{{ kube_context | default(current_context.stdout) }}"
+
+    - name: 3. Print playbook description
+      ansible.builtin.debug:
+        msg: |
+          🗑️ Removing Nginx from Kubernetes context: {{ kube_context }}
+          📋 PVC Removal: {{ 'Enabled' if remove_pvc_flag else 'Disabled (data preserved)' }}
+
+    - name: 4. Check if Nginx Helm release exists
+      ansible.builtin.shell: |
+        helm list --kube-context {{ kube_context }} -o json | jq -r '.[] | select(.name=="nginx") | .name'
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: nginx_release_check
+      changed_when: false
+      failed_when: false
+
+    - name: 5. Remove Nginx Helm release
+      ansible.builtin.shell: |
+        helm uninstall nginx --kube-context {{ kube_context }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      when: nginx_release_check.stdout == "nginx"
+      register: helm_uninstall
+      changed_when: true
+
+    - name: 6. Check for manifest-based nginx deployment
+      ansible.builtin.shell: |
+        kubectl get deployment nginx --context {{ kube_context }} -o name 2>/dev/null || echo "not-found"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: nginx_deployment_check
+      changed_when: false
+      failed_when: false
+
+    - name: 7. Remove manifest-based nginx deployment
+      ansible.builtin.shell: |
+        kubectl delete deployment nginx --context {{ kube_context }} --ignore-not-found=true
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      when: nginx_deployment_check.stdout != "not-found"
+      register: deployment_removal
+      changed_when: true
+
+    - name: 8. Remove nginx service
+      ansible.builtin.shell: |
+        kubectl delete service nginx --context {{ kube_context }} --ignore-not-found=true
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: service_removal
+      changed_when: true
+
+    - name: 9. Display removal result
+      ansible.builtin.debug:
+        msg: |
+          {% if nginx_release_check.stdout == "nginx" %}
+          ✅ Nginx Helm release removed successfully
+          {% elif nginx_deployment_check.stdout != "not-found" %}
+          ✅ Nginx manifest-based deployment removed successfully
+          {% else %}
+          ℹ️ No Nginx deployment found (already removed or never installed)
+          {% endif %}
+
+    - name: 10. Remove Nginx IngressRoute configuration
+      ansible.builtin.shell: |
+        kubectl delete -f {{ nginx_ingressroute_manifest }} --context {{ kube_context }} --ignore-not-found=true
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: ingressroute_removal
+      changed_when: true
+      failed_when: false
+
+    - name: 11. Remove Nginx ConfigMap
+      ansible.builtin.shell: |
+        kubectl delete -f {{ nginx_config_manifest }} --context {{ kube_context }} --ignore-not-found=true
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: configmap_removal
+      changed_when: true
+      failed_when: false
+
+    - name: 12. Remove Nginx PVC (if requested)
+      ansible.builtin.shell: |
+        kubectl delete pvc nginx-content-pvc --context {{ kube_context }} --ignore-not-found=true
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: pvc_removal
+      changed_when: true
+      failed_when: false
+      when: remove_pvc_flag
+
+    - name: 13. Wait for pods to be terminated
+      ansible.builtin.shell: |
+        kubectl wait --for=delete pod -l app.kubernetes.io/name=nginx --context {{ kube_context }} --timeout=60s || echo "Pods already terminated or not found"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: pod_termination_wait
+      changed_when: false
+      failed_when: false
+
+    - name: 14. Verify Nginx removal
+      ansible.builtin.shell: |
+        echo "=== PODS ==="
+        kubectl get pods -l app.kubernetes.io/name=nginx --context {{ kube_context }} 2>/dev/null || echo "No nginx pods found"
+        echo "=== SERVICES ==="
+        kubectl get svc -l app.kubernetes.io/name=nginx --context {{ kube_context }} 2>/dev/null || echo "No nginx services found"
+        echo "=== HELM RELEASES ==="
+        helm list --context {{ kube_context }} | grep nginx || echo "No nginx helm releases found"
+        echo "=== PVCs ==="
+        kubectl get pvc nginx-content-pvc --context {{ kube_context }} 2>/dev/null || echo "No nginx PVC found"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: removal_verification
+      changed_when: false
+      failed_when: false
+
+    - name: 15. Display removal verification results
+      ansible.builtin.debug:
+        msg: |
+          🔍 Nginx Removal Verification:
+          {{ removal_verification.stdout }}
+
+    - name: 16. Final removal summary
+      ansible.builtin.debug:
+        msg: |
+          ===============================================
+          🎉 Nginx Removal Complete
+          ===============================================
+
+          ✅ Removal Summary:
+          • Helm Release: {{ 'Removed' if nginx_release_check.stdout == 'nginx' else 'Not found' }}
+          • IngressRoute: Removed
+          • ConfigMap: Removed
+          • PVC: {{ 'Removed' if remove_pvc_flag else 'Preserved (use -e remove_pvc=true to remove)' }}
+
+          🎯 Target Context: {{ kube_context }}
+
+          {% if not remove_pvc_flag %}
+          💡 Note: PVC 'nginx-content-pvc' was preserved to retain data.
+             To remove it, run: kubectl delete pvc nginx-content-pvc
+          {% endif %}
+
+          ===============================================

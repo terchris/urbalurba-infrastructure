@@ -1,131 +1,190 @@
 ---
 # file: ansible/playbooks/080-setup-rabbitmq.yml
 # Set up RabbitMQ on microk8s cluster using the Bitnami Helm chart
-# e.g., ansible-playbook playbooks/080-setup-rabbitmq.yml -e target_host="multipass-microk8s"
-# TODO: target_host is not used - so it will use the last context in kubeconf-all
+# e.g., ansible-playbook playbooks/080-setup-rabbitmq.yml -e target_host="rancher-desktop"
 
 - hosts: localhost
   gather_facts: false
   vars:
     manifests_folder: "/mnt/urbalurbadisk/manifests"
     merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    namespace: "default"
+    service_name: "rabbitmq"
 
   tasks:
-    - name: Check if target_host is provided
+    - name: 1. Check if target_host is provided
       ansible.builtin.fail:
         msg: "The variable 'target_host' is mandatory. Use -e target_host=your_host_name to specify it."
       when: target_host is not defined
 
-    - name: Print playbook description
+    - name: 2. Print playbook description
       ansible.builtin.debug:
         msg: "Setting up RabbitMQ on MicroK8s on Ubuntu host: {{ target_host }} with manifests from: {{ manifests_folder }}. Use -e target_host=your_host_name to change settings."
 
-    # We'll skip creating the configmap for now to simplify the installation
-    - name: Print configmap info
-      ansible.builtin.debug:
-        msg: "Using default RabbitMQ configuration for a minimal installation."
+    - name: 3. Get RabbitMQ credentials from Kubernetes secrets
+      ansible.builtin.shell: >
+        kubectl get secret --namespace {{ namespace }} urbalurba-secrets -o jsonpath="{.data.RABBITMQ_USERNAME}" --kubeconfig {{ merged_kubeconf_file }} | base64 -d
+      register: rabbitmq_username
 
-    - name: Deploy RabbitMQ using Helm
+    - name: 4. Get RabbitMQ password from Kubernetes secrets
+      ansible.builtin.shell: >
+        kubectl get secret --namespace {{ namespace }} urbalurba-secrets -o jsonpath="{.data.RABBITMQ_PASSWORD}" --kubeconfig {{ merged_kubeconf_file }} | base64 -d
+      register: rabbitmq_password
+
+    - name: 5. Set RabbitMQ credential facts
+      ansible.builtin.set_fact:
+        rabbitmq_username_fact: "{{ rabbitmq_username.stdout }}"
+        rabbitmq_password_fact: "{{ rabbitmq_password.stdout }}"
+
+    - name: 6. Debug RabbitMQ credentials (masked)
+      ansible.builtin.debug:
+        msg:
+          - "RabbitMQ username: {{ rabbitmq_username_fact }}"
+          - "RabbitMQ password: {{ rabbitmq_password_fact | regex_replace('.', '*') }}"
+
+    - name: 7. Check existing Helm repositories
+      ansible.builtin.command: helm repo list
+      register: helm_repo_list
+      changed_when: false
+
+    - name: 8. Add required Helm repositories if missing
+      kubernetes.core.helm_repository:
+        name: "{{ item.name }}"
+        repo_url: "{{ item.url }}"
+      loop:
+        - { name: 'bitnami', url: 'https://charts.bitnami.com/bitnami' }
+      when: item.name not in helm_repo_list.stdout
+
+    - name: 9. Update Helm repositories
+      ansible.builtin.command: helm repo update
+      changed_when: false
+
+    - name: 10. Deploy RabbitMQ using Helm with centralized credentials
       ansible.builtin.command: >
-        helm install rabbitmq bitnami/rabbitmq 
+        helm upgrade --install {{ service_name }} bitnami/rabbitmq
         -f {{ manifests_folder }}/080-rabbitmq-config.yaml
+        --set auth.username={{ rabbitmq_username_fact | quote }}
+        --set auth.password={{ rabbitmq_password_fact | quote }}
+        --namespace {{ namespace }}
         --timeout 10m
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
 
-    - name: Wait for RabbitMQ pod to be ready
-      ansible.builtin.command: >
-        kubectl wait --for=condition=ready pod 
-        -l app.kubernetes.io/name=rabbitmq 
-        --timeout=600s 
-        --kubeconfig {{ merged_kubeconf_file }}
-      register: wait_result
-      until: wait_result.rc == 0
-      retries: 10
-      delay: 30
+    - name: 11. Wait for RabbitMQ pods to be ready (with progress indicators)
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: "{{ namespace }}"
+        label_selectors:
+          - app.kubernetes.io/name=rabbitmq
+      register: rabbitmq_pods
+      retries: 20
+      delay: 15
+      until: >
+        rabbitmq_pods.resources | length > 0 and
+        rabbitmq_pods.resources[0].status.phase == "Running"
 
-    - name: Verify RabbitMQ service is running
-      ansible.builtin.command: kubectl get svc --namespace default --kubeconfig {{ merged_kubeconf_file }}
+    - name: 12. Wait for RabbitMQ pods to be fully ready (1/1)
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: "{{ namespace }}"
+        label_selectors:
+          - app.kubernetes.io/name=rabbitmq
+      register: rabbitmq_pods_ready
+      retries: 30
+      delay: 10
+      until: >
+        rabbitmq_pods_ready.resources | length > 0 and
+        rabbitmq_pods_ready.resources[0].status.containerStatuses[0].ready == true
+
+    - name: 13. Wait for RabbitMQ management API to be ready
+      ansible.builtin.shell: |
+        kubectl run curl-test --image=curlimages/curl --rm -i --restart=Never -n {{ namespace }} -- \
+        curl -s -w "HTTP_CODE:%{http_code}" http://{{ service_name }}:15672/api/overview
+      register: rabbitmq_api_ready
+      retries: 30
+      delay: 10
+      until: >
+        rabbitmq_api_ready.rc == 0 and 
+        (rabbitmq_api_ready.stdout.find('HTTP_CODE:200') != -1 or 
+         rabbitmq_api_ready.stdout.find('HTTP_CODE:401') != -1)
+
+    - name: 14. Test RabbitMQ connectivity from within cluster
+      ansible.builtin.shell: |
+        kubectl run curl-test --image=curlimages/curl --rm -i --restart=Never -n {{ namespace }} -- \
+        curl -s -w "HTTP_CODE:%{http_code}" http://{{ service_name }}:15672/api/overview
+      register: rabbitmq_test
+      retries: 15
+      delay: 15
+      until: >
+        rabbitmq_test.rc == 0 and 
+        (rabbitmq_test.stdout.find('HTTP_CODE:200') != -1 or 
+         rabbitmq_test.stdout.find('HTTP_CODE:401') != -1)
+
+    - name: 15. Verify RabbitMQ service is running
+      ansible.builtin.command: kubectl get svc --namespace {{ namespace }} --kubeconfig {{ merged_kubeconf_file }}
       register: rabbitmq_svc
 
-    - name: Display RabbitMQ service details
-      ansible.builtin.debug:
-        var: rabbitmq_svc.stdout_lines
-
-    - name: Get RabbitMQ pod name
+    - name: 16. Get RabbitMQ service ClusterIP
       ansible.builtin.command: >
-        kubectl get pods -n default -l app.kubernetes.io/name=rabbitmq -o jsonpath='{.items[0].metadata.name}' 
-        --kubeconfig {{ merged_kubeconf_file }}
-      register: rabbitmq_pod_name
-
-    - name: Display RabbitMQ pod name
-      ansible.builtin.debug:
-        var: rabbitmq_pod_name.stdout
-
-    - name: Check if RabbitMQ pod is ready
-      ansible.builtin.command: >
-        kubectl get pod {{ rabbitmq_pod_name.stdout }} -o jsonpath='{.status.containerStatuses[0].ready}'
-        --kubeconfig {{ merged_kubeconf_file }}
-      register: rabbitmq_ready
-      
-    - name: Display pod ready status
-      ansible.builtin.debug:
-        var: rabbitmq_ready.stdout
-
-    - name: Check RabbitMQ AMQP port
-      ansible.builtin.command: >
-        kubectl get svc rabbitmq -o jsonpath='{.spec.ports[?(@.name=="amqp")].port}' 
-        --kubeconfig {{ merged_kubeconf_file }}
-      register: rabbitmq_amqp_port
-
-    - name: Display RabbitMQ AMQP port
-      ansible.builtin.debug:
-        var: rabbitmq_amqp_port.stdout
-
-    - name: Check RabbitMQ management port
-      ansible.builtin.command: >
-        kubectl get svc rabbitmq -o jsonpath='{.spec.ports[?(@.name=="http-stats")].port}' 
-        --kubeconfig {{ merged_kubeconf_file }}
-      register: rabbitmq_mgmt_port
-      
-    - name: Display RabbitMQ management port
-      ansible.builtin.debug:
-        var: rabbitmq_mgmt_port.stdout
-
-    - name: Get RabbitMQ service ClusterIP
-      ansible.builtin.command: >
-        kubectl get svc rabbitmq -o jsonpath='{.spec.clusterIP}' 
+        kubectl get svc {{ service_name }} -o jsonpath='{.spec.clusterIP}' 
         --kubeconfig {{ merged_kubeconf_file }}
       register: rabbitmq_ip
       ignore_errors: true
 
-    - name: Display RabbitMQ ClusterIP
-      ansible.builtin.debug:
-        var: rabbitmq_ip.stdout
-      when: rabbitmq_ip.stdout is defined
+    - name: 17. Check RabbitMQ AMQP port
+      ansible.builtin.command: >
+        kubectl get svc {{ service_name }} -o jsonpath='{.spec.ports[?(@.name=="amqp")].port}' 
+        --kubeconfig {{ merged_kubeconf_file }}
+      register: rabbitmq_amqp_port
 
-    - name: Get RabbitMQ password
-      ansible.builtin.shell: >
-        kubectl get secret --namespace default rabbitmq -o jsonpath="{.data.rabbitmq-password}" | base64 --decode
-      register: rabbitmq_password
-      environment:
-        KUBECONFIG: "{{ merged_kubeconf_file }}"
-      ignore_errors: true
-      
-    - name: Display RabbitMQ connection credentials
+    - name: 18. Check RabbitMQ management port
+      ansible.builtin.command: >
+        kubectl get svc {{ service_name }} -o jsonpath='{.spec.ports[?(@.name=="http-stats")].port}' 
+        --kubeconfig {{ merged_kubeconf_file }}
+      register: rabbitmq_mgmt_port
+
+    - name: 19. Apply RabbitMQ IngressRoute for management UI access
+      ansible.builtin.command: >
+        kubectl apply -f {{ manifests_folder }}/081-rabbitmq-ingressroute.yaml
+        --kubeconfig {{ merged_kubeconf_file }}
+      register: rabbitmq_ingress_apply
+
+    - name: 20. Verify IngressRoute was created successfully
+      ansible.builtin.command: >
+        kubectl get ingressroute rabbitmq-management -n {{ namespace }}
+        --kubeconfig {{ merged_kubeconf_file }}
+      register: rabbitmq_ingress_status
+
+    - name: 21. Display final deployment status
       ansible.builtin.debug:
-        msg: |
-          RabbitMQ has been successfully deployed:
-          - Username: user
-          - Password: {{ rabbitmq_password.stdout | default('bitnami') }}
-          - ClusterIP: {{ rabbitmq_ip.stdout }}
-          - AMQP Port: {{ rabbitmq_amqp_port.stdout }}
-          - Management UI Port: {{ rabbitmq_mgmt_port.stdout }}
-          
-    - name: Display kubectl port-forward command for management UI
-      ansible.builtin.debug:
-        msg: "To access the management UI locally, run: kubectl port-forward svc/rabbitmq 15672:15672"
-          
-    - name: Confirm RabbitMQ is working
-      ansible.builtin.debug:
-        msg: "RabbitMQ pod ready status: {{ rabbitmq_ready.stdout }}. If 'true', RabbitMQ is working properly."
+        msg:
+          - "==============================================="
+          - "🚀 RabbitMQ Deployment Status"
+          - "==============================================="
+          - ""
+          - "✅ SUCCESS - All components verified and running"
+          - ""
+          - "🔄 Status:"
+          - "• Service connectivity: ✅ Internal cluster communication verified"
+          - "• Management UI: ✅ HTTP response verified"
+          - "• Pod readiness: ✅ All pods running and ready"
+          - "• IngressRoute: ✅ Management UI accessible via cluster ingress"
+          - ""
+          - "🌐 Access Instructions:"
+          - "• Management UI: http://rabbitmq.localhost (via Traefik ingress)"
+          - "• Port-forward: kubectl port-forward svc/{{ service_name }} 15672:15672 -n {{ namespace }} (alternative)"
+          - "• External access: https://rabbitmq.urbalurba.no (when configured)"
+          - ""
+          - "🔧 Connection Details:"
+          - "• Username: {{ rabbitmq_username_fact }}"
+          - "• Password: {{ rabbitmq_password_fact | regex_replace('.', '*') }}"
+          - "• ClusterIP: {{ rabbitmq_ip.stdout }}"
+          - "• AMQP Port: {{ rabbitmq_amqp_port.stdout }}"
+          - "• Management UI Port: {{ rabbitmq_mgmt_port.stdout }}"
+          - ""
+          - "🔧 Troubleshooting:"
+          - "• Check pod status: kubectl get pods -n {{ namespace }}"
+          - "• View logs: kubectl logs -f <pod-name> -n {{ namespace }}"
+          - "• Test connectivity: kubectl run curl-test --image=curlimages/curl --rm -i --restart=Never -n {{ namespace }} -- curl http://{{ service_name }}:15672/api/overview"
+          - "• Check IngressRoute: kubectl get ingressroute rabbitmq-management -n {{ namespace }}"
+          - "==============================================="

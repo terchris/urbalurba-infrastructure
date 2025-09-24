@@ -1,0 +1,102 @@
+# 651-adm-redisinsight.yaml
+# Installs RedisInsight for administering Redis databases
+# Usage: helm install redisinsight redisinsight/redisinsight -f 651-adm-redisinsight.yaml
+
+# CHECK the Pod: kubectl get pods -l app.kubernetes.io/name=redisinsight -o wide
+# CHECK Port Forwarding to localhost on port 8999: kubectl port-forward $(kubectl get pod -l app.kubernetes.io/name=redisinsight -o jsonpath="{.items[0].metadata.name}") 8999:5540
+# CHECK Accessing RedisInsight via localhost: curl http://localhost:8999
+# DEBUG Display Logs: kubectl logs -f $(kubectl get pods -l app.kubernetes.io/name=redisinsight -o jsonpath="{.items[0].metadata.name}")
+
+# REMOVE: helm uninstall redisinsight
+
+# Replica count
+replicaCount: 1
+
+# Image configuration - using latest chart app version
+image:
+  repository: redis/redisinsight
+  tag: "2.70"
+  pullPolicy: IfNotPresent
+
+# Service account configuration
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}
+  name: ""
+
+# Pod annotations and labels
+podAnnotations: {}
+podLabels: {}
+
+# Security contexts
+podSecurityContext:
+  fsGroup: 1001
+
+securityContext:
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: false
+  runAsNonRoot: true
+  runAsUser: 1001
+  runAsGroup: 1001
+  allowPrivilegeEscalation: false
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 5540
+
+# Ingress disabled - using Traefik IngressRoute instead
+ingress:
+  enabled: false
+
+# Resource limits and requests
+resources:
+  requests:
+    memory: "256Mi"
+    cpu: "100m"
+  limits:
+    memory: "512Mi"
+    cpu: "200m"
+
+# Probes configuration - using chart's default path
+livenessProbe:
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 30
+  periodSeconds: 30
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 15
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+# Persistent storage for RedisInsight data (/data mount)
+# storageClassName omitted to use cluster's default storage class
+# This makes deployment portable across AKS, EKS, GKE, Rancher, etc.
+persistence:
+  enabled: true
+  accessMode: ReadWriteOnce
+  size: 5Gi
+
+# Additional volumes and volumeMounts
+volumes: []
+volumeMounts: []
+
+# Node selector, tolerations, and affinity
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# Autoscaling (disabled for admin tool)
+autoscaling:
+  enabled: false

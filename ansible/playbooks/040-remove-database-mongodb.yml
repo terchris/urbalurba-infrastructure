@@ -1,0 +1,184 @@
+---
+# file: ansible/playbooks/040-remove-database-mongodb.yml
+# Description: Remove MongoDB database from Kubernetes cluster
+# This playbook:
+# - Removes MongoDB StatefulSet and services
+# - Deletes MongoDB-related resources and PVCs
+# - Waits for MongoDB pods to terminate
+# - Preserves urbalurba-secrets and namespace structure
+# Usage:
+# ansible-playbook playbooks/040-remove-database-mongodb.yml -e target_host="rancher-desktop"
+
+- name: Remove MongoDB Database from Kubernetes
+  hosts: localhost
+  gather_facts: false
+  vars:
+    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    mongodb_namespace: "default"
+    manifests_folder: "/mnt/urbalurbadisk/manifests"
+    mongodb_config_path: "{{ manifests_folder }}/040-mongodb-config.yaml"
+    deletion_timeout: 120
+
+  tasks:
+    - name: 1. Get current Kubernetes context if kube_context not provided
+      ansible.builtin.shell: |
+        kubectl config current-context
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: current_context
+      changed_when: false
+      when: kube_context is not defined
+
+    - name: 2. Set kube_context from current context if not provided
+      ansible.builtin.set_fact:
+        kube_context: "{{ current_context.stdout }}"
+      when: kube_context is not defined
+
+    - name: 3. Print removal description
+      ansible.builtin.debug:
+        msg: |
+          🧹 Starting MongoDB removal
+          🎯 Target: {{ kube_context }}
+          📁 Namespace: {{ mongodb_namespace }}
+          🔐 PRESERVING: urbalurba-secrets and namespace structure
+          ⚠️  This will remove the MongoDB StatefulSet, services, and PVCs but KEEP authentication configuration
+
+    - name: 4. Check for MongoDB StatefulSet
+      ansible.builtin.shell: kubectl get statefulset mongodb -n {{ mongodb_namespace }} --context {{ kube_context }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: mongodb_statefulset_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: 5. Check for MongoDB service
+      ansible.builtin.shell: kubectl get svc mongodb -n {{ mongodb_namespace }} --context {{ kube_context }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: mongodb_service_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: 6. Check for MongoDB PVCs
+      ansible.builtin.shell: kubectl get pvc -l app=mongodb -n {{ mongodb_namespace }} --context {{ kube_context }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: mongodb_pvc_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: 7. Delete MongoDB resources using manifest
+      ansible.builtin.shell: kubectl delete -f {{ mongodb_config_path }} --context {{ kube_context }} --timeout={{ deletion_timeout }}s
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: mongodb_manifest_removal
+      changed_when: true
+      ignore_errors: true
+      when: mongodb_statefulset_check.rc == 0 or mongodb_service_check.rc == 0
+
+    - name: 8. Force delete StatefulSet if still exists
+      ansible.builtin.shell: kubectl delete statefulset mongodb -n {{ mongodb_namespace }} --context {{ kube_context }} --grace-period=0 --force
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: mongodb_statefulset_force_removal
+      changed_when: true
+      ignore_errors: true
+      when: mongodb_statefulset_check.rc == 0
+
+    - name: 9. Delete MongoDB service if still exists
+      ansible.builtin.shell: kubectl delete svc mongodb -n {{ mongodb_namespace }} --context {{ kube_context }} --grace-period=0
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: mongodb_service_removal
+      changed_when: true
+      ignore_errors: true
+      when: mongodb_service_check.rc == 0
+
+    - name: 10. Delete MongoDB PVCs
+      ansible.builtin.shell: kubectl delete pvc -l app=mongodb -n {{ mongodb_namespace }} --context {{ kube_context }} --timeout={{ deletion_timeout }}s
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: mongodb_pvc_removal
+      changed_when: true
+      ignore_errors: true
+      when: mongodb_pvc_check.rc == 0
+
+    - name: 11. Wait for MongoDB pods to terminate
+      ansible.builtin.shell: kubectl get pods -n {{ mongodb_namespace }} -l app=mongodb --no-headers --context {{ kube_context }} 2>/dev/null | wc -l
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: mongodb_pods_count
+      until: mongodb_pods_count.stdout | int == 0
+      retries: 20
+      delay: 10
+      changed_when: false
+
+    - name: 12. Wait for PVCs to be fully deleted
+      ansible.builtin.shell: kubectl get pvc -l app=mongodb -n {{ mongodb_namespace }} --no-headers --context {{ kube_context }} 2>/dev/null | wc -l
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: mongodb_pvc_count
+      until: mongodb_pvc_count.stdout | int == 0
+      retries: 15
+      delay: 10
+      changed_when: false
+      ignore_errors: true
+
+    - name: 13. Verify MongoDB removal completion
+      ansible.builtin.shell: |
+        # Check for any remaining MongoDB resources
+        echo "Checking for remaining MongoDB resources..."
+        REMAINING_PODS=$(kubectl get pods -n {{ mongodb_namespace }} -l app=mongodb --no-headers --context {{ kube_context }} 2>/dev/null | wc -l)
+        REMAINING_STS=$(kubectl get statefulset mongodb -n {{ mongodb_namespace }} --context {{ kube_context }} 2>/dev/null | wc -l)
+        REMAINING_SVC=$(kubectl get svc mongodb -n {{ mongodb_namespace }} --context {{ kube_context }} 2>/dev/null | wc -l)
+        REMAINING_PVC=$(kubectl get pvc -l app=mongodb -n {{ mongodb_namespace }} --no-headers --context {{ kube_context }} 2>/dev/null | wc -l)
+
+        echo "Remaining resources:"
+        echo "- Pods: $REMAINING_PODS"
+        echo "- StatefulSet: $REMAINING_STS"
+        echo "- Service: $REMAINING_SVC"
+        echo "- PVCs: $REMAINING_PVC"
+
+        TOTAL_REMAINING=$((REMAINING_PODS + REMAINING_STS + REMAINING_SVC + REMAINING_PVC))
+        if [ $TOTAL_REMAINING -eq 0 ]; then
+          echo "✅ All MongoDB resources successfully removed"
+          exit 0
+        else
+          echo "⚠️  Some MongoDB resources may still exist"
+          exit 1
+        fi
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: mongodb_cleanup_verification
+      changed_when: false
+      ignore_errors: true
+
+    - name: 14. Display MongoDB removal result
+      ansible.builtin.debug:
+        msg: |
+          MongoDB removal summary:
+          - StatefulSet: {{ 'Removed' if mongodb_statefulset_check.rc == 0 else 'Not found' }}
+          - Service: {{ 'Removed' if mongodb_service_check.rc == 0 else 'Not found' }}
+          - PVCs: {{ 'Removed' if mongodb_pvc_check.rc == 0 else 'Not found' }}
+          - All MongoDB pods terminated
+          - urbalurba-secrets and namespace preserved
+
+          Verification: {{ mongodb_cleanup_verification.stdout_lines | join('\n          ') }}
+
+    - name: 15. Final success message
+      ansible.builtin.debug:
+        msg: |
+          🎉 MongoDB removal completed successfully!
+
+          📋 What was removed:
+          - MongoDB StatefulSet and pods
+          - MongoDB service
+          - MongoDB persistent volume claims
+          - MongoDB configuration resources
+
+          🔐 What was preserved:
+          - urbalurba-secrets (MongoDB credentials retained for future use)
+          - Kubernetes namespace structure
+          - Other services and applications
+
+          ℹ️  To redeploy MongoDB, run: ./04-setup-mongodb.sh {{ kube_context }}

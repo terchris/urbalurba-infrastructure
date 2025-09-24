@@ -1,14 +1,8 @@
 #!/bin/bash
 # filename: 03-setup-pgadmin.sh
-# description: Setup pgadmin for admin of the PostgreSQL using Ansible playbook.
-# usage: ./03-setup-pgadmin.sh <target_host>
-# example: ./03-setup-pgadmin.sh multipass-microk8s
-#         ./03-setup-pgadmin.sh rancher-desktop
-#
-# Notes:
-# - For microk8s: Uses SSH-based deployment
-# - For Rancher Desktop: Uses local deployment
-# - Both use the same playbook with different connection methods
+# description: Setup pgAdmin for PostgreSQL administration using Ansible playbook
+# usage: ./03-setup-pgadmin.sh [target-host]
+# example: ./03-setup-pgadmin.sh rancher-desktop
 
 # Ensure the script is run with Bash
 if [ -z "$BASH_VERSION" ]; then
@@ -25,7 +19,7 @@ ANSIBLE_DIR="/mnt/urbalurbadisk/ansible"
 PLAYBOOK_PATH_SETUP_PGADMIN="$ANSIBLE_DIR/playbooks/641-adm-pgadmin.yml"
 
 # Check if TARGET_HOST is provided as an argument, otherwise set default
-TARGET_HOST=${1:-"multipass-microk8s"}
+TARGET_HOST=${1:-"rancher-desktop"}
 
 # Function to add status
 add_status() {
@@ -59,47 +53,82 @@ run_playbook() {
     local step=$1
     local playbook=$2
     local extra_args=${3:-""}
-    
-    echo "Running playbook for $step..."
-    cd $ANSIBLE_DIR && ansible-playbook $playbook $extra_args
-    check_command_success "$step"
+
+    echo "🔧 03-setup-pgadmin.sh: Running Ansible playbook for pgAdmin deployment..."
+    cd $ANSIBLE_DIR && ansible-playbook $playbook -e target_host=$TARGET_HOST $extra_args
+    local ansible_exit_code=$?
+
+    if [ $ansible_exit_code -ne 0 ]; then
+        add_status "$step" "Fail"
+        add_error "$step" "Ansible playbook failed with exit code $ansible_exit_code"
+        return 1
+    else
+        add_status "$step" "OK"
+        return 0
+    fi
+}
+
+# Test Kubernetes connection
+test_connection() {
+    echo "Testing connection to Kubernetes context $TARGET_HOST..."
+
+    # Check if context exists
+    if ! kubectl config get-contexts "$TARGET_HOST" &>/dev/null; then
+        add_status "Test connection" "Fail"
+        add_error "Test connection" "Context $TARGET_HOST not found in kubeconfig"
+        echo "Available contexts:"
+        kubectl config get-contexts
+        return 1
+    fi
+
+    # Switch to context and check nodes
+    kubectl config use-context "$TARGET_HOST" >/dev/null 2>&1
+    if kubectl get nodes &>/dev/null; then
+        local node_count=$(kubectl get nodes --no-headers 2>/dev/null | wc -l)
+        echo "Successfully connected to $TARGET_HOST (${node_count} nodes)"
+        check_command_success "Test connection"
+        return 0
+    else
+        add_status "Test connection" "Fail"
+        add_error "Test connection" "Cannot reach Kubernetes API for context $TARGET_HOST"
+        return 1
+    fi
 }
 
 # Main execution
 main() {
-    echo "Starting pgAdmin setup on $TARGET_HOST"
-    echo "---------------------------------------------------"
+    echo "🗃️  03-setup-pgadmin.sh: Setting up pgAdmin on Kubernetes cluster..."
+    echo "📍 Target Host: $TARGET_HOST"
+    echo "📋 Playbook: $PLAYBOOK_PATH_SETUP_PGADMIN"
+    echo ""
 
-    # Verify Kubernetes context...
-    kubectl config use-context $TARGET_HOST
-    
-    # Apply the pgAdmin ConfigMap first
-    echo "Applying pgAdmin ConfigMap..."
-    kubectl apply -f /mnt/urbalurbadisk/manifests/640-pgadmin-configmap.yaml
-    
-    # Check if we're running on Rancher Desktop
-    if [ "$TARGET_HOST" = "rancher-desktop" ]; then
-        echo "Running on Rancher Desktop - using local deployment"
-        run_playbook "Setup pgAdmin" "$PLAYBOOK_PATH_SETUP_PGADMIN" "-i localhost, -c local -e target_host=\"$TARGET_HOST\""
-    else
-        # Original microk8s deployment method
-        run_playbook "Setup pgAdmin" "$PLAYBOOK_PATH_SETUP_PGADMIN" "-e target_host=\"$TARGET_HOST\""
-    fi
-    
+    test_connection || return 1
+
+    run_playbook "Setup pgAdmin" "$PLAYBOOK_PATH_SETUP_PGADMIN" || return 1
+
     print_summary
+
+    # Return 0 if no errors, 1 otherwise
+    return ${#ERRORS[@]}
 }
 
 # Print summary
 print_summary() {
+    echo ""
     echo "---------- Installation Summary ----------"
     for step in "${!STATUS[@]}"; do
         echo "$step: ${STATUS[$step]}"
     done
 
     if [ ${#ERRORS[@]} -eq 0 ]; then
-        echo "All steps completed successfully."
+        echo ""
+        echo "✅ 03-setup-pgadmin.sh: pgAdmin setup completed successfully!"
+        echo "🎯 Target: $TARGET_HOST"
+        echo "📝 Note: pgAdmin is now available for PostgreSQL administration"
+        echo "🌐 Access: Use port-forward or ingress to access pgAdmin web interface"
     else
-        echo "Errors occurred during installation:"
+        echo ""
+        echo "❌ Errors occurred during pgAdmin installation:"
         for step in "${!ERRORS[@]}"; do
             echo "  $step: ${ERRORS[$step]}"
         done

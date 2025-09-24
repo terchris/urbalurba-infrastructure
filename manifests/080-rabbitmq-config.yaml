@@ -21,10 +21,10 @@ resources:
     memory: "256Mi"
     cpu: "200m"
 
-## Authentication - simplify to prevent issues
+## Authentication - password will be set via Helm --set parameter
 auth:
   username: user
-  password: "bitnami"
+  # password: will be set via --set auth.password={{ rabbitmq_password_fact }}
   # Generate a random Erlang cookie instead of using a fixed one
   # This helps prevent cookie mismatch issues
   generateErlangCookie: true

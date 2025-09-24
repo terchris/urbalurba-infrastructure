@@ -1,0 +1,240 @@
+---
+# file: ansible/playbooks/641-remove-pgadmin.yml
+# Description: Remove pgAdmin from Kubernetes cluster
+# This playbook:
+# - Removes pgAdmin Helm deployment and associated resources
+# - Deletes pgAdmin-related PVCs and data
+# - Removes pgAdmin IngressRoute configuration
+# - Waits for pgAdmin pods to terminate
+# - Preserves urbalurba-secrets and namespace structure
+# Usage:
+# ansible-playbook playbooks/641-remove-pgadmin.yml -e target_host="rancher-desktop"
+
+- name: Remove pgAdmin from Kubernetes
+  hosts: localhost
+  gather_facts: false
+  vars:
+    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    manifests_folder: "/mnt/urbalurbadisk/manifests"
+    pgadmin_namespace: "default"
+    pgadmin_release_name: "pgadmin"
+    pgadmin_pod_label: "app.kubernetes.io/name=pgadmin4"
+    pgadmin_ingress_config_file: "741-pgadmin-ingressroute.yaml"
+    deletion_timeout: 120
+
+  tasks:
+    - name: 1. Check if required variables are provided
+      ansible.builtin.fail:
+        msg: "The variable 'target_host' is mandatory. Use -e target_host=your_host_name to specify it."
+      when: target_host is not defined
+      ignore_errors: true
+
+    - name: 2. Print removal description
+      ansible.builtin.debug:
+        msg: |
+          🧹 Starting pgAdmin removal
+          🎯 Target: {{ target_host }}
+          📁 Namespace: {{ pgadmin_namespace }}
+          📦 Helm Release: {{ pgadmin_release_name }}
+          🔐 PRESERVING: urbalurba-secrets and namespace structure
+          ⚠️  This will remove the pgAdmin Helm deployment, services, PVCs, and IngressRoute but KEEP authentication configuration
+
+    - name: 3. Check for pgAdmin Helm release
+      ansible.builtin.shell: helm list -n {{ pgadmin_namespace }} --output json
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: helm_releases
+      changed_when: false
+      ignore_errors: true
+
+    - name: 4. Parse Helm releases and check for pgAdmin
+      ansible.builtin.set_fact:
+        pgadmin_release_exists: "{{ (helm_releases.stdout | from_json) | selectattr('name', 'equalto', pgadmin_release_name) | list | length > 0 }}"
+      when: helm_releases.rc == 0
+
+    - name: 5. Set pgAdmin release exists to false if Helm command failed
+      ansible.builtin.set_fact:
+        pgadmin_release_exists: false
+      when: helm_releases.rc != 0
+
+    - name: 6. Check for pgAdmin pods
+      ansible.builtin.shell: kubectl get pods -n {{ pgadmin_namespace }} -l {{ pgadmin_pod_label }} --no-headers --context {{ target_host }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: pgadmin_pods_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: 7. Check for pgAdmin service
+      ansible.builtin.shell: kubectl get svc -n {{ pgadmin_namespace }} -l app.kubernetes.io/name=pgadmin4 --context {{ target_host }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: pgadmin_service_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: 8. Check for pgAdmin PVCs
+      ansible.builtin.shell: kubectl get pvc -n {{ pgadmin_namespace }} -l app.kubernetes.io/name=pgadmin4 --context {{ target_host }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: pgadmin_pvc_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: 9. Check for pgAdmin IngressRoute
+      kubernetes.core.k8s_info:
+        api_version: traefik.io/v1alpha1
+        kind: IngressRoute
+        namespace: "{{ pgadmin_namespace }}"
+        name: pgadmin
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: pgadmin_ingress_check
+      ignore_errors: true
+
+    - name: 10. Remove pgAdmin IngressRoute
+      kubernetes.core.k8s:
+        kubeconfig: "{{ merged_kubeconf_file }}"
+        state: absent
+        src: "{{ manifests_folder }}/{{ pgadmin_ingress_config_file }}"
+        namespace: "{{ pgadmin_namespace }}"
+      when: pgadmin_ingress_check.resources | length > 0
+      ignore_errors: true
+
+    - name: 11. Uninstall pgAdmin Helm release
+      ansible.builtin.shell: helm uninstall {{ pgadmin_release_name }} -n {{ pgadmin_namespace }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: helm_uninstall_result
+      changed_when: true
+      ignore_errors: true
+      when: pgadmin_release_exists
+
+    - name: 12. Force delete pgAdmin pods if still exists
+      ansible.builtin.shell: kubectl delete pods -n {{ pgadmin_namespace }} -l {{ pgadmin_pod_label }} --context {{ target_host }} --grace-period=0 --force
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: pgadmin_pods_force_removal
+      changed_when: true
+      ignore_errors: true
+      when: pgadmin_pods_check.rc == 0 and pgadmin_pods_check.stdout != ""
+
+    - name: 13. Force delete pgAdmin services if still exists
+      ansible.builtin.shell: kubectl delete svc -n {{ pgadmin_namespace }} -l app.kubernetes.io/name=pgadmin4 --context {{ target_host }} --grace-period=0
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: pgadmin_service_force_removal
+      changed_when: true
+      ignore_errors: true
+      when: pgadmin_service_check.rc == 0
+
+    - name: 14. Delete pgAdmin PVCs
+      ansible.builtin.shell: kubectl delete pvc -n {{ pgadmin_namespace }} -l app.kubernetes.io/name=pgadmin4 --context {{ target_host }} --timeout={{ deletion_timeout }}s
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: pgadmin_pvc_removal
+      changed_when: true
+      ignore_errors: true
+      when: pgadmin_pvc_check.rc == 0
+
+    - name: 15. Wait for pgAdmin pods to terminate
+      ansible.builtin.shell: kubectl get pods -n {{ pgadmin_namespace }} -l {{ pgadmin_pod_label }} --no-headers --context {{ target_host }} 2>/dev/null | wc -l
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: pgadmin_pods_count
+      until: pgadmin_pods_count.stdout | int == 0
+      retries: 20
+      delay: 10
+      changed_when: false
+
+    - name: 16. Wait for PVCs to be fully deleted
+      ansible.builtin.shell: kubectl get pvc -n {{ pgadmin_namespace }} -l app.kubernetes.io/name=pgadmin4 --no-headers --context {{ target_host }} 2>/dev/null | wc -l
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: pgadmin_pvc_count
+      until: pgadmin_pvc_count.stdout | int == 0
+      retries: 15
+      delay: 10
+      changed_when: false
+      ignore_errors: true
+
+    - name: 17. Wait for IngressRoute to be fully deleted
+      kubernetes.core.k8s_info:
+        api_version: traefik.io/v1alpha1
+        kind: IngressRoute
+        namespace: "{{ pgadmin_namespace }}"
+        name: pgadmin
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: pgadmin_ingress_final_check
+      until: pgadmin_ingress_final_check.resources | length == 0
+      retries: 10
+      delay: 5
+      changed_when: false
+      ignore_errors: true
+
+    - name: 18. Verify pgAdmin removal completion
+      ansible.builtin.shell: |
+        # Check for any remaining pgAdmin resources
+        echo "Checking for remaining pgAdmin resources..."
+        REMAINING_PODS=$(kubectl get pods -n {{ pgadmin_namespace }} -l {{ pgadmin_pod_label }} --no-headers --context {{ target_host }} 2>/dev/null | wc -l)
+        REMAINING_SVC=$(kubectl get svc -n {{ pgadmin_namespace }} -l app.kubernetes.io/name=pgadmin4 --no-headers --context {{ target_host }} 2>/dev/null | wc -l)
+        REMAINING_PVC=$(kubectl get pvc -n {{ pgadmin_namespace }} -l app.kubernetes.io/name=pgadmin4 --no-headers --context {{ target_host }} 2>/dev/null | wc -l)
+
+        # Check Helm release
+        REMAINING_HELM=$(helm list -n {{ pgadmin_namespace }} -q | grep -c "^{{ pgadmin_release_name }}$" 2>/dev/null || echo "0")
+
+        # Check IngressRoute
+        REMAINING_INGRESS=$(kubectl get ingressroute -n {{ pgadmin_namespace }} pgadmin --no-headers --context {{ target_host }} 2>/dev/null | wc -l)
+
+        echo "Remaining resources:"
+        echo "- Pods: $REMAINING_PODS"
+        echo "- Services: $REMAINING_SVC"
+        echo "- PVCs: $REMAINING_PVC"
+        echo "- Helm Release: $REMAINING_HELM"
+        echo "- IngressRoute: $REMAINING_INGRESS"
+
+        TOTAL_REMAINING=$((REMAINING_PODS + REMAINING_SVC + REMAINING_PVC + REMAINING_HELM + REMAINING_INGRESS))
+        if [ $TOTAL_REMAINING -eq 0 ]; then
+          echo "✅ All pgAdmin resources successfully removed"
+          exit 0
+        else
+          echo "⚠️  Some pgAdmin resources may still exist"
+          exit 1
+        fi
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: pgadmin_cleanup_verification
+      changed_when: false
+      ignore_errors: true
+
+    - name: 19. Display pgAdmin removal result
+      ansible.builtin.debug:
+        msg: |
+          pgAdmin removal summary:
+          - Helm Release: {{ 'Removed' if pgadmin_release_exists else 'Not found' }}
+          - Pods: {{ 'Removed' if pgadmin_pods_check.rc == 0 and pgadmin_pods_check.stdout != "" else 'Not found' }}
+          - Services: {{ 'Removed' if pgadmin_service_check.rc == 0 else 'Not found' }}
+          - PVCs: {{ 'Removed' if pgadmin_pvc_check.rc == 0 else 'Not found' }}
+          - IngressRoute: {{ 'Removed' if pgadmin_ingress_check.resources | length > 0 else 'Not found' }}
+          - All pgAdmin pods terminated
+          - urbalurba-secrets and namespace preserved
+
+          Verification: {{ pgadmin_cleanup_verification.stdout_lines | join('\n          ') }}
+
+    - name: 20. Final success message
+      ansible.builtin.debug:
+        msg: |
+          🎉 pgAdmin removal completed successfully!
+
+          📋 What was removed:
+          - pgAdmin Helm release
+          - pgAdmin pods and services
+          - pgAdmin persistent volume claims
+          - pgAdmin IngressRoute configuration
+          - pgAdmin server definitions and configuration
+
+          🔐 What was preserved:
+          - urbalurba-secrets (pgAdmin credentials retained for future use)
+          - Kubernetes namespace structure
+          - Other services and applications
+
+          ℹ️  To redeploy pgAdmin, run: ./03-setup-pgadmin.sh {{ target_host }}

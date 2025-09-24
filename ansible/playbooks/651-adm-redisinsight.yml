@@ -1,0 +1,205 @@
+---
+# File: playbooks/651-adm-redisinsight.yml
+# Description: Set up RedisInsight for Redis database administration
+# Usage: ansible-playbook playbooks/651-adm-redisinsight.yml -e target_host="rancher-desktop"
+
+- name: Set up RedisInsight for Redis Administration
+  hosts: localhost
+  gather_facts: false
+  vars:
+    manifests_folder: "/mnt/urbalurbadisk/manifests"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    redisinsight_namespace: "default"
+    redisinsight_pod_label: "app.kubernetes.io/name=redisinsight"
+    redisinsight_service_name: "redisinsight"
+    redisinsight_values_file: "651-adm-redisinsight.yaml"
+    redisinsight_ingress_config_file: "751-redisinsight-ingressroute.yaml"
+    redisinsight_chart_repo: "redisinsight"
+    redisinsight_chart_name: "redisinsight/redisinsight"
+
+  tasks:
+    - name: 1. Check if required variables are provided
+      ansible.builtin.fail:
+        msg: "The variable 'target_host' is mandatory. Use -e target_host=your_host_name to specify it."
+      when: target_host is not defined
+      ignore_errors: true
+
+    - name: 2. Print playbook description
+      ansible.builtin.debug:
+        msg: >
+          Setting up RedisInsight for Redis administration on Kubernetes cluster: {{ target_host }}
+          with manifests from: {{ manifests_folder }}.
+          Using namespace: {{ redisinsight_namespace }}
+
+    - name: 3. Check existing Helm repositories
+      ansible.builtin.command: helm repo list
+      register: helm_repo_list
+      changed_when: false
+
+    - name: 4. Add required Helm repositories if missing
+      kubernetes.core.helm_repository:
+        name: "{{ item.name }}"
+        repo_url: "{{ item.url }}"
+      loop:
+        - { name: 'redisinsight', url: 'https://mrnim94.github.io/redisinsight/' }
+      when: item.name not in helm_repo_list.stdout
+
+    - name: 5. Update Helm repositories
+      ansible.builtin.command: helm repo update
+      changed_when: false
+
+    - name: 6. Get default storage class for the cluster
+      ansible.builtin.shell: |
+        kubectl get storageclass -o jsonpath='{.items[?(@.metadata.annotations.storageclass\.kubernetes\.io/is-default-class=="true")].metadata.name}' --kubeconfig {{ merged_kubeconf_file }}
+      register: default_storage_class
+      changed_when: false
+
+    - name: 7. Set storage class fact (use default or fallback)
+      ansible.builtin.set_fact:
+        storage_class_name: "{{ default_storage_class.stdout if default_storage_class.stdout else 'default' }}"
+
+    - name: 8. Display detected storage class
+      ansible.builtin.debug:
+        msg: "Using storage class: {{ storage_class_name }}"
+
+    - name: 9. Deploy RedisInsight using Helm
+      ansible.builtin.command: >
+        helm upgrade --install {{ redisinsight_service_name }} {{ redisinsight_chart_name }}
+        -f {{ manifests_folder }}/{{ redisinsight_values_file }}
+        --set persistence.storageClassName="{{ storage_class_name }}"
+        --namespace {{ redisinsight_namespace }}
+        --create-namespace
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      changed_when: true
+
+    - name: 10. Wait for RedisInsight pods to be ready (with progress indicators)
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: "{{ redisinsight_namespace }}"
+        label_selectors:
+          - "{{ redisinsight_pod_label }}"
+      register: redisinsight_pods
+      retries: 20
+      delay: 15
+      until: >
+        redisinsight_pods.resources | length > 0 and
+        redisinsight_pods.resources[0].status.phase == "Running"
+
+    - name: 11. Wait for RedisInsight pods to be fully ready (1/1)
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: "{{ redisinsight_namespace }}"
+        label_selectors:
+          - "{{ redisinsight_pod_label }}"
+      register: redisinsight_pods_ready
+      retries: 30
+      delay: 10
+      until: >
+        redisinsight_pods_ready.resources | length > 0 and
+        redisinsight_pods_ready.resources[0].status.containerStatuses[0].ready == true
+
+    - name: 12. Verify RedisInsight service is running
+      ansible.builtin.command:
+        cmd: >
+          kubectl get svc {{ redisinsight_service_name }}
+          --namespace {{ redisinsight_namespace }}
+          --kubeconfig {{ merged_kubeconf_file }}
+      register: redisinsight_svc
+      changed_when: false
+
+    - name: 13. Display RedisInsight service details
+      ansible.builtin.debug:
+        var: redisinsight_svc.stdout_lines
+
+    - name: 14. Get RedisInsight pod name
+      ansible.builtin.command:
+        cmd: >
+          kubectl get pods -n {{ redisinsight_namespace }}
+          -l {{ redisinsight_pod_label }}
+          -o jsonpath='{.items[0].metadata.name}'
+          --kubeconfig {{ merged_kubeconf_file }}
+      register: redisinsight_pod_name
+      changed_when: false
+
+    - name: 15. Test RedisInsight HTTP response from within cluster
+      ansible.builtin.shell: |
+        kubectl run curl-test --image=curlimages/curl --rm -i --restart=Never -n {{ redisinsight_namespace }} -- \
+        curl -s -w "HTTP_CODE:%{http_code}" http://{{ redisinsight_service_name }}:5540/
+      register: redisinsight_http_response
+      retries: 15
+      delay: 15
+      until: redisinsight_http_response.rc == 0 and (redisinsight_http_response.stdout.find('HTTP_CODE:200') != -1 or redisinsight_http_response.stdout.find('HTTP_CODE:302') != -1)
+
+    - name: 16. Apply RedisInsight ingress configuration
+      kubernetes.core.k8s:
+        kubeconfig: "{{ merged_kubeconf_file }}"
+        state: present
+        src: "{{ manifests_folder }}/{{ redisinsight_ingress_config_file }}"
+        namespace: "{{ redisinsight_namespace }}"
+
+    - name: 17. Verify RedisInsight ingress is created
+      kubernetes.core.k8s_info:
+        api_version: traefik.io/v1alpha1
+        kind: IngressRoute
+        namespace: "{{ redisinsight_namespace }}"
+        name: redisinsight
+      register: ingress_check
+      retries: 5
+      delay: 2
+      until: ingress_check.resources | length > 0
+
+    - name: 18. Check if Redis is available for connection
+      ansible.builtin.command:
+        cmd: >
+          kubectl get svc redis-master
+          --namespace {{ redisinsight_namespace }}
+          --kubeconfig {{ merged_kubeconf_file }}
+      register: redis_service_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: 19. Display Redis connection information (Redis found)
+      ansible.builtin.debug:
+        msg:
+          - "🗄️ Redis Connection Information:"
+          - "• Redis service found: redis-master"
+          - "• Host: redis-master.default.svc.cluster.local"
+          - "• Port: 6379"
+          - "• Add this connection manually in RedisInsight web interface"
+          - "• Use credentials from urbalurba-secrets if Redis has auth enabled"
+      when: redis_service_check.rc == 0
+
+    - name: 20. Display Redis connection information (Redis not found)
+      ansible.builtin.debug:
+        msg:
+          - "🗄️ Redis Connection Information:"
+          - "• Redis service not found in default namespace"
+          - "• Deploy Redis first using: ./06-setup-redis.sh {{ target_host }}"
+          - "• Or check Redis in other namespaces"
+      when: redis_service_check.rc != 0
+
+    - name: 21. Display final deployment status
+      ansible.builtin.debug:
+        msg:
+          - "==============================================="
+          - "🚀 RedisInsight Deployment Status"
+          - "==============================================="
+          - ""
+          - "✅ SUCCESS - All components verified and running"
+          - ""
+          - "🔄 Status:"
+          - "• Service connectivity: ✅ Internal cluster communication verified"
+          - "• HTTP responding: ✅ RedisInsight web interface accessible"
+          - "• IngressRoute: ✅ Traefik routing configured"
+          - "• Storage: ✅ Using {{ storage_class_name }} storage class"
+          - ""
+          - "🌐 Access Instructions:"
+          - "• Port-forward: kubectl port-forward svc/{{ redisinsight_service_name }} 8080:5540 -n {{ redisinsight_namespace }}"
+          - "• Ingress: http://redisinsight.localhost"
+          - "• Interface: Web-based Redis management interface"
+          - ""
+          - "🔧 Troubleshooting:"
+          - "• Check pod status: kubectl get pods -n {{ redisinsight_namespace }}"
+          - "• View logs: kubectl logs -f {{ redisinsight_pod_name.stdout }} -n {{ redisinsight_namespace }}"
+          - "==============================================="

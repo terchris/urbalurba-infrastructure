@@ -1,0 +1,205 @@
+---
+# file: ansible/playbooks/050-remove-redis.yml
+# Description: Remove Redis from Kubernetes cluster
+# This playbook:
+# - Removes Redis Helm deployment and associated resources
+# - Deletes Redis-related PVCs and data
+# - Waits for Redis pods to terminate
+# - Preserves urbalurba-secrets and namespace structure
+# Usage:
+# ansible-playbook playbooks/050-remove-redis.yml -e target_host="rancher-desktop"
+
+- name: Remove Redis from Kubernetes
+  hosts: localhost
+  gather_facts: false
+  vars:
+    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    redis_namespace: "default"
+    redis_release_name: "redis"
+    deletion_timeout: 120
+
+  tasks:
+    - name: 1. Get current Kubernetes context if kube_context not provided
+      ansible.builtin.shell: |
+        kubectl config current-context
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: current_context
+      changed_when: false
+      when: kube_context is not defined
+
+    - name: 2. Set kube_context from current context if not provided
+      ansible.builtin.set_fact:
+        kube_context: "{{ current_context.stdout }}"
+      when: kube_context is not defined
+
+    - name: 3. Print removal description
+      ansible.builtin.debug:
+        msg: |
+          🧹 Starting Redis removal
+          🎯 Target: {{ kube_context }}
+          📁 Namespace: {{ redis_namespace }}
+          📦 Helm Release: {{ redis_release_name }}
+          🔐 PRESERVING: urbalurba-secrets and namespace structure
+          ⚠️  This will remove the Redis Helm deployment, services, and PVCs but KEEP authentication configuration
+
+    - name: 4. Check for Redis Helm release
+      ansible.builtin.shell: helm list -n {{ redis_namespace }} --output json
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: helm_releases
+      changed_when: false
+      ignore_errors: true
+
+    - name: 5. Parse Helm releases and check for Redis
+      ansible.builtin.set_fact:
+        redis_release_exists: "{{ (helm_releases.stdout | from_json) | selectattr('name', 'equalto', redis_release_name) | list | length > 0 }}"
+      when: helm_releases.rc == 0
+
+    - name: 6. Set Redis release exists to false if Helm command failed
+      ansible.builtin.set_fact:
+        redis_release_exists: false
+      when: helm_releases.rc != 0
+
+    - name: 7. Check for Redis pods
+      ansible.builtin.shell: kubectl get pods -n {{ redis_namespace }} -l app.kubernetes.io/name=redis --no-headers --context {{ kube_context }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: redis_pods_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: 8. Check for Redis service
+      ansible.builtin.shell: kubectl get svc -n {{ redis_namespace }} -l app.kubernetes.io/name=redis --context {{ kube_context }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: redis_service_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: 9. Check for Redis PVCs
+      ansible.builtin.shell: kubectl get pvc -n {{ redis_namespace }} -l app.kubernetes.io/name=redis --context {{ kube_context }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: redis_pvc_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: 10. Uninstall Redis Helm release
+      ansible.builtin.shell: helm uninstall {{ redis_release_name }} -n {{ redis_namespace }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: helm_uninstall_result
+      changed_when: true
+      ignore_errors: true
+      when: redis_release_exists
+
+    - name: 11. Force delete Redis pods if still exists
+      ansible.builtin.shell: kubectl delete pods -n {{ redis_namespace }} -l app.kubernetes.io/name=redis --context {{ kube_context }} --grace-period=0 --force
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: redis_pods_force_removal
+      changed_when: true
+      ignore_errors: true
+      when: redis_pods_check.rc == 0 and redis_pods_check.stdout != ""
+
+    - name: 12. Force delete Redis services if still exists
+      ansible.builtin.shell: kubectl delete svc -n {{ redis_namespace }} -l app.kubernetes.io/name=redis --context {{ kube_context }} --grace-period=0
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: redis_service_force_removal
+      changed_when: true
+      ignore_errors: true
+      when: redis_service_check.rc == 0
+
+    - name: 13. Delete Redis PVCs
+      ansible.builtin.shell: kubectl delete pvc -n {{ redis_namespace }} -l app.kubernetes.io/name=redis --context {{ kube_context }} --timeout={{ deletion_timeout }}s
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: redis_pvc_removal
+      changed_when: true
+      ignore_errors: true
+      when: redis_pvc_check.rc == 0
+
+    - name: 14. Wait for Redis pods to terminate
+      ansible.builtin.shell: kubectl get pods -n {{ redis_namespace }} -l app.kubernetes.io/name=redis --no-headers --context {{ kube_context }} 2>/dev/null | wc -l
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: redis_pods_count
+      until: redis_pods_count.stdout | int == 0
+      retries: 20
+      delay: 10
+      changed_when: false
+
+    - name: 15. Wait for PVCs to be fully deleted
+      ansible.builtin.shell: kubectl get pvc -n {{ redis_namespace }} -l app.kubernetes.io/name=redis --no-headers --context {{ kube_context }} 2>/dev/null | wc -l
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: redis_pvc_count
+      until: redis_pvc_count.stdout | int == 0
+      retries: 15
+      delay: 10
+      changed_when: false
+      ignore_errors: true
+
+    - name: 16. Verify Redis removal completion
+      ansible.builtin.shell: |
+        # Check for any remaining Redis resources
+        echo "Checking for remaining Redis resources..."
+        REMAINING_PODS=$(kubectl get pods -n {{ redis_namespace }} -l app.kubernetes.io/name=redis --no-headers --context {{ kube_context }} 2>/dev/null | wc -l)
+        REMAINING_SVC=$(kubectl get svc -n {{ redis_namespace }} -l app.kubernetes.io/name=redis --no-headers --context {{ kube_context }} 2>/dev/null | wc -l)
+        REMAINING_PVC=$(kubectl get pvc -n {{ redis_namespace }} -l app.kubernetes.io/name=redis --no-headers --context {{ kube_context }} 2>/dev/null | wc -l)
+
+        # Check Helm release
+        REMAINING_HELM=$(helm list -n {{ redis_namespace }} -q | grep -c "^{{ redis_release_name }}$" 2>/dev/null || echo "0")
+
+        echo "Remaining resources:"
+        echo "- Pods: $REMAINING_PODS"
+        echo "- Services: $REMAINING_SVC"
+        echo "- PVCs: $REMAINING_PVC"
+        echo "- Helm Release: $REMAINING_HELM"
+
+        TOTAL_REMAINING=$((REMAINING_PODS + REMAINING_SVC + REMAINING_PVC + REMAINING_HELM))
+        if [ $TOTAL_REMAINING -eq 0 ]; then
+          echo "✅ All Redis resources successfully removed"
+          exit 0
+        else
+          echo "⚠️  Some Redis resources may still exist"
+          exit 1
+        fi
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: redis_cleanup_verification
+      changed_when: false
+      ignore_errors: true
+
+    - name: 17. Display Redis removal result
+      ansible.builtin.debug:
+        msg: |
+          Redis removal summary:
+          - Helm Release: {{ 'Removed' if redis_release_exists else 'Not found' }}
+          - Pods: {{ 'Removed' if redis_pods_check.rc == 0 and redis_pods_check.stdout != "" else 'Not found' }}
+          - Services: {{ 'Removed' if redis_service_check.rc == 0 else 'Not found' }}
+          - PVCs: {{ 'Removed' if redis_pvc_check.rc == 0 else 'Not found' }}
+          - All Redis pods terminated
+          - urbalurba-secrets and namespace preserved
+
+          Verification: {{ redis_cleanup_verification.stdout_lines | join('\n          ') }}
+
+    - name: 18. Final success message
+      ansible.builtin.debug:
+        msg: |
+          🎉 Redis removal completed successfully!
+
+          📋 What was removed:
+          - Redis Helm release
+          - Redis pods and services
+          - Redis persistent volume claims
+          - Redis configuration resources
+
+          🔐 What was preserved:
+          - urbalurba-secrets (Redis credentials retained for future use)
+          - Kubernetes namespace structure
+          - Other services and applications
+
+          ℹ️  To redeploy Redis, run: ./06-setup-redis.sh {{ kube_context }}

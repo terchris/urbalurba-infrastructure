@@ -1,0 +1,226 @@
+---
+# file: ansible/playbooks/080-remove-rabbitmq.yml
+# Description: Remove RabbitMQ from Kubernetes cluster
+# This playbook:
+# - Removes RabbitMQ Helm deployment and associated resources
+# - Deletes RabbitMQ-related PVCs and data
+# - Waits for RabbitMQ pods to terminate
+# - Preserves urbalurba-secrets and namespace structure
+# Usage:
+# ansible-playbook playbooks/080-remove-rabbitmq.yml -e target_host="rancher-desktop"
+
+- name: Remove RabbitMQ from Kubernetes
+  hosts: localhost
+  gather_facts: false
+  vars:
+    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    rabbitmq_namespace: "default"
+    rabbitmq_release_name: "rabbitmq"
+    deletion_timeout: 120
+
+  tasks:
+    - name: 1. Get current Kubernetes context if kube_context not provided
+      ansible.builtin.shell: |
+        kubectl config current-context
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: current_context
+      changed_when: false
+      when: kube_context is not defined
+
+    - name: 2. Set kube_context from current context if not provided
+      ansible.builtin.set_fact:
+        kube_context: "{{ current_context.stdout }}"
+      when: kube_context is not defined
+
+    - name: 3. Print removal description
+      ansible.builtin.debug:
+        msg: |
+          🧹 Starting RabbitMQ removal
+          🎯 Target: {{ kube_context }}
+          📁 Namespace: {{ rabbitmq_namespace }}
+          📦 Helm Release: {{ rabbitmq_release_name }}
+          🔐 PRESERVING: urbalurba-secrets and namespace structure
+          ⚠️  This will remove the RabbitMQ Helm deployment, services, and PVCs but KEEP authentication configuration
+
+    - name: 4. Check for RabbitMQ Helm release
+      ansible.builtin.shell: helm list -n {{ rabbitmq_namespace }} --output json
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: helm_releases
+      changed_when: false
+      ignore_errors: true
+
+    - name: 5. Parse Helm releases and check for RabbitMQ
+      ansible.builtin.set_fact:
+        rabbitmq_release_exists: "{{ (helm_releases.stdout | from_json) | selectattr('name', 'equalto', rabbitmq_release_name) | list | length > 0 }}"
+      when: helm_releases.rc == 0
+
+    - name: 6. Set RabbitMQ release exists to false if Helm command failed
+      ansible.builtin.set_fact:
+        rabbitmq_release_exists: false
+      when: helm_releases.rc != 0
+
+    - name: 7. Check for RabbitMQ pods
+      ansible.builtin.shell: kubectl get pods -n {{ rabbitmq_namespace }} -l app.kubernetes.io/name=rabbitmq --no-headers --context {{ kube_context }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: rabbitmq_pods_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: 8. Check for RabbitMQ service
+      ansible.builtin.shell: kubectl get svc -n {{ rabbitmq_namespace }} -l app.kubernetes.io/name=rabbitmq --context {{ kube_context }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: rabbitmq_service_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: 9. Check for RabbitMQ PVCs
+      ansible.builtin.shell: kubectl get pvc -n {{ rabbitmq_namespace }} -l app.kubernetes.io/name=rabbitmq --context {{ kube_context }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: rabbitmq_pvc_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: 10. Check for RabbitMQ secrets
+      ansible.builtin.shell: kubectl get secret -n {{ rabbitmq_namespace }} {{ rabbitmq_release_name }} --context {{ kube_context }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: rabbitmq_secret_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: 11. Uninstall RabbitMQ Helm release
+      ansible.builtin.shell: helm uninstall {{ rabbitmq_release_name }} -n {{ rabbitmq_namespace }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: helm_uninstall_result
+      changed_when: true
+      ignore_errors: true
+      when: rabbitmq_release_exists
+
+    - name: 12. Force delete RabbitMQ pods if still exists
+      ansible.builtin.shell: kubectl delete pods -n {{ rabbitmq_namespace }} -l app.kubernetes.io/name=rabbitmq --context {{ kube_context }} --grace-period=0 --force
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: rabbitmq_pods_force_removal
+      changed_when: true
+      ignore_errors: true
+      when: rabbitmq_pods_check.rc == 0 and rabbitmq_pods_check.stdout != ""
+
+    - name: 13. Force delete RabbitMQ services if still exists
+      ansible.builtin.shell: kubectl delete svc -n {{ rabbitmq_namespace }} -l app.kubernetes.io/name=rabbitmq --context {{ kube_context }} --grace-period=0
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: rabbitmq_service_force_removal
+      changed_when: true
+      ignore_errors: true
+      when: rabbitmq_service_check.rc == 0
+
+    - name: 14. Delete RabbitMQ PVCs
+      ansible.builtin.shell: kubectl delete pvc -n {{ rabbitmq_namespace }} -l app.kubernetes.io/name=rabbitmq --context {{ kube_context }} --timeout={{ deletion_timeout }}s
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: rabbitmq_pvc_removal
+      changed_when: true
+      ignore_errors: true
+      when: rabbitmq_pvc_check.rc == 0
+
+    - name: 15. Delete RabbitMQ secret if exists
+      ansible.builtin.shell: kubectl delete secret -n {{ rabbitmq_namespace }} {{ rabbitmq_release_name }} --context {{ kube_context }} --grace-period=0
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: rabbitmq_secret_removal
+      changed_when: true
+      ignore_errors: true
+      when: rabbitmq_secret_check.rc == 0
+
+    - name: 16. Wait for RabbitMQ pods to terminate
+      ansible.builtin.shell: kubectl get pods -n {{ rabbitmq_namespace }} -l app.kubernetes.io/name=rabbitmq --no-headers --context {{ kube_context }} 2>/dev/null | wc -l
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: rabbitmq_pods_count
+      until: rabbitmq_pods_count.stdout | int == 0
+      retries: 20
+      delay: 10
+      changed_when: false
+
+    - name: 17. Wait for PVCs to be fully deleted
+      ansible.builtin.shell: kubectl get pvc -n {{ rabbitmq_namespace }} -l app.kubernetes.io/name=rabbitmq --no-headers --context {{ kube_context }} 2>/dev/null | wc -l
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: rabbitmq_pvc_count
+      until: rabbitmq_pvc_count.stdout | int == 0
+      retries: 15
+      delay: 10
+      changed_when: false
+      ignore_errors: true
+
+    - name: 18. Verify RabbitMQ removal completion
+      ansible.builtin.shell: |
+        # Check for any remaining RabbitMQ resources
+        echo "Checking for remaining RabbitMQ resources..."
+        REMAINING_PODS=$(kubectl get pods -n {{ rabbitmq_namespace }} -l app.kubernetes.io/name=rabbitmq --no-headers --context {{ kube_context }} 2>/dev/null | wc -l)
+        REMAINING_SVC=$(kubectl get svc -n {{ rabbitmq_namespace }} -l app.kubernetes.io/name=rabbitmq --no-headers --context {{ kube_context }} 2>/dev/null | wc -l)
+        REMAINING_PVC=$(kubectl get pvc -n {{ rabbitmq_namespace }} -l app.kubernetes.io/name=rabbitmq --no-headers --context {{ kube_context }} 2>/dev/null | wc -l)
+        REMAINING_SECRET=$(kubectl get secret -n {{ rabbitmq_namespace }} {{ rabbitmq_release_name }} --context {{ kube_context }} 2>/dev/null | wc -l)
+
+        # Check Helm release
+        REMAINING_HELM=$(helm list -n {{ rabbitmq_namespace }} -q | grep -c "^{{ rabbitmq_release_name }}$" 2>/dev/null || echo "0")
+
+        echo "Remaining resources:"
+        echo "- Pods: $REMAINING_PODS"
+        echo "- Services: $REMAINING_SVC"
+        echo "- PVCs: $REMAINING_PVC"
+        echo "- Secret: $REMAINING_SECRET"
+        echo "- Helm Release: $REMAINING_HELM"
+
+        TOTAL_REMAINING=$((REMAINING_PODS + REMAINING_SVC + REMAINING_PVC + REMAINING_SECRET + REMAINING_HELM))
+        if [ $TOTAL_REMAINING -eq 0 ]; then
+          echo "✅ All RabbitMQ resources successfully removed"
+          exit 0
+        else
+          echo "⚠️  Some RabbitMQ resources may still exist"
+          exit 1
+        fi
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: rabbitmq_cleanup_verification
+      changed_when: false
+      ignore_errors: true
+
+    - name: 19. Display RabbitMQ removal result
+      ansible.builtin.debug:
+        msg: |
+          RabbitMQ removal summary:
+          - Helm Release: {{ 'Removed' if rabbitmq_release_exists else 'Not found' }}
+          - Pods: {{ 'Removed' if rabbitmq_pods_check.rc == 0 and rabbitmq_pods_check.stdout != "" else 'Not found' }}
+          - Services: {{ 'Removed' if rabbitmq_service_check.rc == 0 else 'Not found' }}
+          - PVCs: {{ 'Removed' if rabbitmq_pvc_check.rc == 0 else 'Not found' }}
+          - Secret: {{ 'Removed' if rabbitmq_secret_check.rc == 0 else 'Not found' }}
+          - All RabbitMQ pods terminated
+          - urbalurba-secrets and namespace preserved
+
+          Verification: {{ rabbitmq_cleanup_verification.stdout_lines | join('\n          ') }}
+
+    - name: 20. Final success message
+      ansible.builtin.debug:
+        msg: |
+          🎉 RabbitMQ removal completed successfully!
+
+          📋 What was removed:
+          - RabbitMQ Helm release
+          - RabbitMQ pods and StatefulSet
+          - RabbitMQ services (AMQP and Management UI)
+          - RabbitMQ persistent volume claims
+          - RabbitMQ configuration secrets
+
+          🔐 What was preserved:
+          - urbalurba-secrets (for future deployments)
+          - Kubernetes namespace structure
+          - Other services and applications
+
+          ℹ️  To redeploy RabbitMQ, run: ./08-setup-rabbitmq.sh {{ kube_context }}

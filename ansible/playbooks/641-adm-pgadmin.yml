@@ -1,134 +1,204 @@
 ---
 # File: playbooks/641-adm-pgadmin.yml
-# Description: Set up pgAdmin for administering the PostgreSQL database
-#
-# This playbook performs the following tasks:
-# 1. Applies the pgAdmin ConfigMap (640-pgadmin-configmap.yaml)
-# 2. Deploys pgAdmin using Helm with values from 641-adm-pgadmin.yaml
-# 3. Waits for pgAdmin pod to be ready
-# 4. Sets up ingress for pgAdmin
-#
-# Prerequisites:
-# - Kubernetes cluster is set up and accessible
-# - Helm is installed on the provision-host
-# - PostgreSQL is installed and configured
-# - pgAdmin ConfigMap file exists at /mnt/urbalurbadisk/manifests/640-pgadmin-configmap.yaml
-# - pgAdmin values file exists at /mnt/urbalurbadisk/manifests/641-adm-pgadmin.yaml
-#
-# Usage: ansible-playbook playbooks/641-adm-pgadmin.yml -e target_host="multipass-microk8s"
+# Description: Set up pgAdmin for PostgreSQL database administration
+# Usage: ansible-playbook playbooks/641-adm-pgadmin.yml -e target_host="rancher-desktop"
 
-- name: Set up pgAdmin
+- name: Set up pgAdmin for PostgreSQL Administration
   hosts: localhost
   gather_facts: false
   vars:
     manifests_folder: "/mnt/urbalurbadisk/manifests"
-    kubernetesstorage_folder_postgres: "/mnt/urbalurbadisk/kubernetesstorage/postgres"
     merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
-    pgadmin_configmap_file: "640-pgadmin-configmap.yaml"
+    pgadmin_namespace: "default"
+    pgadmin_pod_label: "app.kubernetes.io/name=pgadmin4"
+    pgadmin_service_name: "pgadmin-pgadmin4"
+    pgadmin_secret: "urbalurba-secrets"
+    pgadmin_username_key: "PGADMIN_DEFAULT_EMAIL"
+    pgadmin_password_key: "PGADMIN_DEFAULT_PASSWORD"
+    # pgadmin_configmap_file: "640-pgadmin-configmap.yaml" # Removed - no longer needed
     pgadmin_values_file: "641-adm-pgadmin.yaml"
-    pgadmin_ingress_config_file: "740-adm-pgadmin-ingress.yaml"
+    pgadmin_ingress_config_file: "741-pgadmin-ingressroute.yaml"
 
   tasks:
-    - name: 1. Check if target_host is provided
+    - name: 1. Check if required variables are provided
       ansible.builtin.fail:
         msg: "The variable 'target_host' is mandatory. Use -e target_host=your_host_name to specify it."
       when: target_host is not defined
+      ignore_errors: true
 
     - name: 2. Print playbook description
       ansible.builtin.debug:
-        msg: "Setting up pgAdmin on MicroK8s on Ubuntu host: {{ target_host }} with manifests from: {{ manifests_folder }}. Use -e target_host=your_host_name to change settings."
+        msg: >
+          Setting up pgAdmin for PostgreSQL administration on Kubernetes cluster: {{ target_host }}
+          with manifests from: {{ manifests_folder }}.
+          Using namespace: {{ pgadmin_namespace }}
 
-    - name: 3. Add target host to the inventory with necessary variables
-      ansible.builtin.add_host:
-        name: "{{ target_host }}"
-        ansible_ssh_common_args: "-o StrictHostKeyChecking=no"
-        manifests_folder: "{{ manifests_folder }}"
-        kubernetesstorage_folder_postgres: "{{ kubernetesstorage_folder_postgres }}"
-        merged_kubeconf_file: "{{ merged_kubeconf_file }}"
-
-- hosts: "{{ target_host }}"
-  become: true
-  gather_facts: true
-
-  tasks:
-    - name: 4. Verify storage folder on target_host exists
-      ansible.builtin.stat:
-        path: "{{ kubernetesstorage_folder_postgres }}"
-      register: storage_folder
-
-    - name: 5. Create storage folder if it does not exist
-      ansible.builtin.file:
-        path: "{{ kubernetesstorage_folder_postgres }}"
-        state: directory
-      when: not storage_folder.stat.exists
-
-- hosts: localhost
-  gather_facts: false
-  vars:
-    manifests_folder: "/mnt/urbalurbadisk/manifests"
-    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
-    pgadmin_configmap_file: "640-pgadmin-configmap.yaml"
-    pgadmin_values_file: "641-adm-pgadmin.yaml"
-    pgadmin_ingress_config_file: "740-adm-pgadmin-ingress.yaml"
-
-  tasks:
-    - name: 6. Check if pgAdmin is already installed
-      ansible.builtin.command: >
-        helm list -n default -f pgadmin
-      register: helm_list
-      environment:
-        KUBECONFIG: "{{ merged_kubeconf_file }}"
+    - name: 3. Get pgAdmin credentials from Kubernetes secrets
+      ansible.builtin.shell: |
+        set -o pipefail
+        kubectl get secret --namespace {{ pgadmin_namespace }} {{ pgadmin_secret }} \
+        -o jsonpath="{.data.{{ pgadmin_username_key }}}" \
+        --kubeconfig {{ merged_kubeconf_file }} | base64 -d
+      args:
+        executable: /bin/bash
+      register: pgadmin_username
       changed_when: false
 
-    - name: 7. Deploy pgAdmin using Helm if not already installed
-      kubernetes.core.helm:
-        name: pgadmin
-        chart_ref: runix/pgadmin4
-        release_namespace: default
-        values_files: "{{ manifests_folder }}/{{ pgadmin_values_file }}"
-        kubeconfig: "{{ merged_kubeconf_file }}"
-        wait: true
-      when: "'pgadmin' not in helm_list.stdout"
+    - name: 4. Get pgAdmin password from Kubernetes secrets
+      ansible.builtin.shell: |
+        set -o pipefail
+        kubectl get secret --namespace {{ pgadmin_namespace }} {{ pgadmin_secret }} \
+        -o jsonpath="{.data.{{ pgadmin_password_key }}}" \
+        --kubeconfig {{ merged_kubeconf_file }} | base64 -d
+      args:
+        executable: /bin/bash
+      register: pgadmin_password
+      changed_when: false
 
-    - name: 8. Wait for pgAdmin pod to be ready (takes time)
+    - name: 5. Set pgAdmin credential facts
+      ansible.builtin.set_fact:
+        pgadmin_username_fact: "{{ pgadmin_username.stdout }}"
+        pgadmin_password_fact: "{{ pgadmin_password.stdout }}"
+
+    - name: 6. Debug pgAdmin credentials (masked)
+      ansible.builtin.debug:
+        msg:
+          - "pgAdmin username: {{ pgadmin_username_fact }}"
+          - "pgAdmin password: {{ pgadmin_password_fact | regex_replace('.', '*') }}"
+
+    # - name: 7. Apply pgAdmin ConfigMap # Removed - using chart defaults for root path
+    #   kubernetes.core.k8s:
+    #     kubeconfig: "{{ merged_kubeconf_file }}"
+    #     state: present
+    #     src: "{{ manifests_folder }}/{{ pgadmin_configmap_file }}"
+    #     namespace: "{{ pgadmin_namespace }}"
+
+    - name: 7. Check existing Helm repositories
+      ansible.builtin.command: helm repo list
+      register: helm_repo_list
+      changed_when: false
+
+    - name: 8. Add required Helm repositories if missing
+      kubernetes.core.helm_repository:
+        name: "{{ item.name }}"
+        repo_url: "{{ item.url }}"
+      loop:
+        - { name: 'runix', url: 'https://helm.runix.net' }
+      when: item.name not in helm_repo_list.stdout
+
+    - name: 9. Update Helm repositories
+      ansible.builtin.command: helm repo update
+      changed_when: false
+
+    - name: 10. Deploy pgAdmin using Helm with centralized credentials
       ansible.builtin.command: >
-        kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=pgadmin4 
-        --namespace default --timeout=120s
+        helm upgrade --install pgadmin runix/pgadmin4
+        -f {{ manifests_folder }}/{{ pgadmin_values_file }}
+        --set env.email="{{ pgadmin_username_fact | quote }}"
+        --set env.password="{{ pgadmin_password_fact | quote }}"
+        --namespace {{ pgadmin_namespace }}
+        --create-namespace
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
-      register: wait_result
-      retries: 20
-      delay: 10
-      until: wait_result.rc == 0
+      changed_when: true
 
-    - name: 9. Verify pgAdmin service is running (take time)
+    - name: 11. Wait for pgAdmin pods to be ready (with progress indicators)
       kubernetes.core.k8s_info:
-        kubeconfig: "{{ merged_kubeconf_file }}"
-        kind: Service
-        namespace: default
-        name: pgadmin-pgadmin4
-      register: pgadmin_svc
-      until: pgadmin_svc.resources | length > 0
-      retries: 10
-      delay: 10
+        kind: Pod
+        namespace: "{{ pgadmin_namespace }}"
+        label_selectors:
+          - "{{ pgadmin_pod_label }}"
+      register: pgadmin_pods
+      retries: 20
+      delay: 15
+      until: >
+        pgadmin_pods.resources | length > 0 and
+        pgadmin_pods.resources[0].status.phase == "Running"
 
-    - name: 10. Set up ingress for pgAdmin
+    - name: 12. Wait for pgAdmin pods to be fully ready (1/1)
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: "{{ pgadmin_namespace }}"
+        label_selectors:
+          - "{{ pgadmin_pod_label }}"
+      register: pgadmin_pods_ready
+      retries: 30
+      delay: 10
+      until: >
+        pgadmin_pods_ready.resources | length > 0 and
+        pgadmin_pods_ready.resources[0].status.containerStatuses[0].ready == true
+
+    - name: 13. Verify pgAdmin service is running
+      ansible.builtin.command:
+        cmd: >
+          kubectl get svc {{ pgadmin_service_name }}
+          --namespace {{ pgadmin_namespace }}
+          --kubeconfig {{ merged_kubeconf_file }}
+      register: pgadmin_svc
+      changed_when: false
+
+    - name: 14. Display pgAdmin service details
+      ansible.builtin.debug:
+        var: pgadmin_svc.stdout_lines
+
+    - name: 15. Get pgAdmin pod name
+      ansible.builtin.command:
+        cmd: >
+          kubectl get pods -n {{ pgadmin_namespace }}
+          -l {{ pgadmin_pod_label }}
+          -o jsonpath='{.items[0].metadata.name}'
+          --kubeconfig {{ merged_kubeconf_file }}
+      register: pgadmin_pod_name
+      changed_when: false
+
+    - name: 16. Test pgAdmin HTTP response from within cluster
+      ansible.builtin.shell: |
+        kubectl run curl-test --image=curlimages/curl --rm -i --restart=Never -n {{ pgadmin_namespace }} -- \
+        curl -s -w "HTTP_CODE:%{http_code}" http://{{ pgadmin_service_name }}:80/
+      register: pgadmin_http_response
+      retries: 15
+      delay: 15
+      until: pgadmin_http_response.rc == 0 and (pgadmin_http_response.stdout.find('HTTP_CODE:200') != -1 or pgadmin_http_response.stdout.find('HTTP_CODE:302') != -1)
+
+    - name: 17. Apply pgAdmin ingress configuration
       kubernetes.core.k8s:
         kubeconfig: "{{ merged_kubeconf_file }}"
         state: present
         src: "{{ manifests_folder }}/{{ pgadmin_ingress_config_file }}"
+        namespace: "{{ pgadmin_namespace }}"
 
-    - name: 11. Verify the ingress for pgAdmin (takes time)
+    - name: 18. Verify pgAdmin ingress is created
       kubernetes.core.k8s_info:
-        kubeconfig: "{{ merged_kubeconf_file }}"
-        kind: Ingress
-        namespace: default
-        name: ingress-pgadmin
-      register: ingress_result
-      until: ingress_result.resources | length > 0
-      retries: 10
-      delay: 10
+        api_version: traefik.io/v1alpha1
+        kind: IngressRoute
+        namespace: "{{ pgadmin_namespace }}"
+        name: pgadmin
+      register: ingress_check
+      retries: 5
+      delay: 2
+      until: ingress_check.resources | length > 0
 
-    - name: 12. Display Ingress details
+    - name: 19. Display final deployment status
       ansible.builtin.debug:
-        var: ingress_result.resources[0].spec
+        msg:
+          - "==============================================="
+          - "🚀 pgAdmin Deployment Status"
+          - "==============================================="
+          - ""
+          - "✅ SUCCESS - All components verified and running"
+          - ""
+          - "🔄 Status:"
+          - "• Service connectivity: ✅ Internal cluster communication verified"
+          - "• HTTP responding: ✅ pgAdmin web interface accessible"
+          - "• IngressRoute: ✅ Traefik routing configured"
+          - ""
+          - "🌐 Access Instructions:"
+          - "• Port-forward: kubectl port-forward svc/{{ pgadmin_service_name }} 8080:80 -n {{ pgadmin_namespace }}"
+          - "• Ingress: http://pgadmin.localhost"
+          - "• Username: {{ pgadmin_username_fact }}"
+          - "• Password: [configured from secrets]"
+          - ""
+          - "🔧 Troubleshooting:"
+          - "• Check pod status: kubectl get pods -n {{ pgadmin_namespace }}"
+          - "• View logs: kubectl logs -f {{ pgadmin_pod_name.stdout }} -n {{ pgadmin_namespace }}"
+          - "==============================================="

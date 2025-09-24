@@ -25,7 +25,7 @@
 # - Helm manages all RBAC resources with proper ownership
 #
 # Usage:
-# ansible-playbook playbooks/300-setup-data-science.yml -e kube_context="rancher-desktop"
+# ansible-playbook playbooks/300-setup-data-science.yml -e target_host="rancher-desktop"
 
 - name: Set up Databricks Replacement Data Science stack on Kubernetes
   hosts: localhost
@@ -57,7 +57,7 @@
           🚀 Setting up Databricks Replacement Data Science Stack
           📊 Phase 1: Apache Spark Kubernetes Operator (Processing Engine)
           📊 Phase 2: JupyterHub (Notebook Interface with Secret Authentication)
-          🎯 Target: {{ kube_context | default('rancher-desktop') }}
+          🎯 Target: {{ target_host | default('rancher-desktop') }}
           📁 Namespaces: {{ spark_namespace }}, {{ jupyterhub_namespace }}
           🔧 RBAC: Managed by Helm (no manual RBAC files)
           🔐 Authentication: Password from urbalurba-secrets

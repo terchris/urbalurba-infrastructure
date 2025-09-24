@@ -1,0 +1,136 @@
+---
+# file: playbooks/060-remove-elasticsearch.yml
+# Remove Elasticsearch from Kubernetes cluster
+# Usage:
+# ansible-playbook playbooks/060-remove-elasticsearch.yml -e target_host="rancher-desktop" -e elasticsearch_namespace="elasticsearch"
+
+- name: Remove Elasticsearch from Kubernetes
+  hosts: localhost
+  gather_facts: false
+  vars:
+    manifests_folder: "/mnt/urbalurbadisk/manifests"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    elasticsearch_namespace_default: "{{ elasticsearch_namespace | default('default') }}"
+    elasticsearch_pod_label: "app.kubernetes.io/name=elasticsearch"
+
+  tasks:
+    - name: 1. Check if required variables are provided
+      ansible.builtin.fail:
+        msg: "The variable 'target_host' is mandatory. Use -e target_host=your_host_name to specify it."
+      when: target_host is not defined
+
+    - name: 2. Set Elasticsearch namespace
+      ansible.builtin.set_fact:
+        elasticsearch_namespace: "{{ elasticsearch_namespace_default }}"
+
+    - name: 3. Print playbook description
+      ansible.builtin.debug:
+        msg: >
+          Removing Elasticsearch from Kubernetes cluster: {{ target_host }}
+          with namespace: {{ elasticsearch_namespace }}
+
+    - name: 4. Check if Elasticsearch Helm release exists
+      ansible.builtin.command: >
+        helm list --namespace {{ elasticsearch_namespace }} --kubeconfig {{ merged_kubeconf_file }}
+      register: helm_list_result
+      changed_when: false
+      failed_when: false
+
+    - name: 5. Remove Elasticsearch using Helm (if exists)
+      ansible.builtin.command: >
+        helm uninstall elasticsearch --namespace {{ elasticsearch_namespace }} --kubeconfig {{ merged_kubeconf_file }}
+      when: "'elasticsearch' in helm_list_result.stdout"
+      register: helm_uninstall_result
+      changed_when: true
+
+    - name: 6. Display Helm uninstall result
+      ansible.builtin.debug:
+        var: helm_uninstall_result.stdout_lines
+      when: helm_uninstall_result is defined and helm_uninstall_result.stdout_lines is defined
+
+    - name: 7. Wait for Elasticsearch pods to be terminated
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: "{{ elasticsearch_namespace }}"
+        label_selectors:
+          - "{{ elasticsearch_pod_label }}"
+      register: elasticsearch_pods_terminating
+      retries: 20
+      delay: 10
+      until: elasticsearch_pods_terminating.resources | length == 0
+
+    - name: 8. Wait for Elasticsearch services to be removed
+      kubernetes.core.k8s_info:
+        kind: Service
+        namespace: "{{ elasticsearch_namespace }}"
+        label_selectors:
+          - "{{ elasticsearch_pod_label }}"
+      register: elasticsearch_services_terminating
+      retries: 10
+      delay: 5
+      until: elasticsearch_services_terminating.resources | length == 0
+
+    - name: 9. Remove any remaining Elasticsearch resources (ConfigMaps)
+      kubernetes.core.k8s:
+        state: absent
+        api_version: v1
+        kind: ConfigMap
+        namespace: "{{ elasticsearch_namespace }}"
+        label_selectors:
+          - "{{ elasticsearch_pod_label }}"
+      ignore_errors: true
+
+    - name: 10. Remove any remaining Elasticsearch resources (Secrets) - except urbalurba-secrets
+      kubernetes.core.k8s:
+        state: absent
+        api_version: v1
+        kind: Secret
+        namespace: "{{ elasticsearch_namespace }}"
+        label_selectors:
+          - "{{ elasticsearch_pod_label }}"
+      ignore_errors: true
+
+    - name: 11. Remove any remaining Elasticsearch resources (PersistentVolumeClaims)
+      kubernetes.core.k8s:
+        state: absent
+        api_version: v1
+        kind: PersistentVolumeClaim
+        namespace: "{{ elasticsearch_namespace }}"
+        label_selectors:
+          - "{{ elasticsearch_pod_label }}"
+      ignore_errors: true
+
+    - name: 12. Remove namespace if it's not default and empty
+      kubernetes.core.k8s:
+        state: absent
+        api_version: v1
+        kind: Namespace
+        name: "{{ elasticsearch_namespace }}"
+      when: elasticsearch_namespace != "default"
+      ignore_errors: true
+
+    - name: 13. Verify Elasticsearch removal
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: "{{ elasticsearch_namespace }}"
+        label_selectors:
+          - "{{ elasticsearch_pod_label }}"
+      register: final_elasticsearch_check
+      changed_when: false
+
+    - name: 14. Display final removal status
+      ansible.builtin.debug:
+        msg:
+          - "Elasticsearch removal completed successfully."
+          - "Elasticsearch pods remaining: {{ final_elasticsearch_check.resources | length }}"
+          - "Namespace processed: {{ elasticsearch_namespace }}"
+          - "Note: urbalurba-secrets preserved for future deployments"
+      when: final_elasticsearch_check.resources | length == 0
+
+    - name: 15. Warning if resources still exist
+      ansible.builtin.debug:
+        msg:
+          - "Warning: Some Elasticsearch resources may still exist:"
+          - "Pods remaining: {{ final_elasticsearch_check.resources | length }}"
+          - "Check manually with: kubectl get all -n {{ elasticsearch_namespace }} -l {{ elasticsearch_pod_label }}"
+      when: final_elasticsearch_check.resources | length > 0

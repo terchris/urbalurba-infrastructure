@@ -8,6 +8,9 @@
 
 The provision-host container provides a complete automated deployment system for Kubernetes applications. Simply run `./install-rancher.sh` and all active services deploy automatically in the correct order.
 
+
+See also [overview-system-architecture.md](./overview-system-architecture.md) 
+
 **Key Benefits**:
 - ✅ **Fully Automated**: One command deploys entire cluster
 - ✅ **Dependency Management**: Services deploy in correct order automatically
@@ -24,7 +27,7 @@ Services are organized by category to ensure proper deployment order. Each categ
 
 ```plaintext
 /mnt/urbalurbadisk/provision-host/kubernetes/
-├── 01-core-systems/
+├── 01-core/
 │   ├── 020-setup-nginx.sh
 │   └── not-in-use
 ├── 02-databases/
