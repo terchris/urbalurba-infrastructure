@@ -1,5 +1,5 @@
 #!/bin/bash
-# filename: 01-tailscale-net-start.sh
+# filename: 01-setup-tailscale.sh
 # description: Start Tailscale network on a cluster using the unified deployment script.
 # 
 # This script is a wrapper that calls 802-tailscale-tunnel-deploy.sh to set up

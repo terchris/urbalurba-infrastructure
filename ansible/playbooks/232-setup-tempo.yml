@@ -1,0 +1,151 @@
+---
+# File: ansible/playbooks/242-setup-tempo.yml
+# Description: Deploy Grafana Tempo for Urbalurba Infrastructure
+# Usage: ansible-playbook 242-setup-tempo.yml -e "target_host=rancher-desktop"
+
+- name: Deploy Grafana Tempo for Urbalurba Infrastructure
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    target_host: "{{ target_host | default('rancher-desktop') }}"
+    namespace: "monitoring"
+    component_name: "tempo"
+
+    helm_repos:
+      - name: grafana
+        url: https://grafana.github.io/helm-charts
+
+  tasks:
+    - name: 1. Display deployment information
+      ansible.builtin.debug:
+        msg:
+          - "====================================="
+          - "Grafana Tempo Deployment"
+          - "====================================="
+          - "Target Host: {{ target_host }}"
+          - "Namespace: {{ namespace }}"
+          - "Component: {{ component_name }}"
+
+    - name: 2. Create monitoring namespace
+      kubernetes.core.k8s:
+        name: "{{ namespace }}"
+        api_version: v1
+        kind: Namespace
+        state: present
+        context: "{{ target_host }}"
+
+    - name: 3. Apply monitoring secrets
+      ansible.builtin.shell: |
+        kubectl apply -f "/mnt/urbalurbadisk/topsecret/kubernetes/kubernetes-secrets.yml" --context="{{ target_host }}"
+      register: secrets_apply
+      failed_when: secrets_apply.rc != 0
+      changed_when: "'configured' in secrets_apply.stdout or 'created' in secrets_apply.stdout"
+
+    - name: 4. Add/update Helm repositories
+      kubernetes.core.helm_repository:
+        name: "{{ item.name }}"
+        repo_url: "{{ item.url }}"
+      loop: "{{ helm_repos }}"
+
+    - name: 5. Update Helm repositories
+      ansible.builtin.command: helm repo update
+      changed_when: false
+
+    - name: 6. Install/upgrade Tempo
+      kubernetes.core.helm:
+        name: tempo
+        chart_ref: grafana/tempo
+        release_namespace: "{{ namespace }}"
+        create_namespace: true
+        state: present
+        context: "{{ target_host }}"
+        values:
+          persistence:
+            enabled: true
+            size: 10Gi
+          tempo:
+            retention: "24h"
+          service:
+            type: ClusterIP
+          serviceMonitor:
+            enabled: false
+
+    - name: 7. Wait for Tempo to be ready
+      ansible.builtin.command: >
+        kubectl wait --for=condition=Ready pod/tempo-0
+        --namespace {{ namespace }} --timeout=300s --context {{ target_host }}
+      register: tempo_wait
+      retries: 3
+      delay: 30
+      until: tempo_wait.rc == 0
+
+    - name: 8. Test Tempo HTTP API endpoint from within cluster
+      ansible.builtin.command: >
+        kubectl run curl-test-tempo-api --image=curlimages/curl --rm -i --restart=Never
+        -n {{ namespace }} --context {{ target_host }} --
+        curl -s -o /dev/null -w "HTTP_CODE:%{http_code}"
+        http://tempo.{{ namespace }}.svc.cluster.local:3200/api/echo
+      register: tempo_api_test
+      retries: 15
+      delay: 15
+      until: tempo_api_test.rc == 0 and (tempo_api_test.stdout.find('HTTP_CODE:200') != -1)
+      failed_when: false
+
+    - name: 9. Test Tempo ready endpoint from within cluster
+      ansible.builtin.command: >
+        kubectl run curl-test-tempo-ready --image=curlimages/curl --rm -i --restart=Never
+        -n {{ namespace }} --context {{ target_host }} --
+        curl -s -o /dev/null -w "HTTP_CODE:%{http_code}"
+        http://tempo.{{ namespace }}.svc.cluster.local:3200/ready
+      register: tempo_ready_test
+      retries: 15
+      delay: 15
+      until: tempo_ready_test.rc == 0 and (tempo_ready_test.stdout.find('HTTP_CODE:200') != -1)
+      failed_when: false
+
+    - name: 10. Integration test - Send test trace via OTel Collector to Tempo
+      ansible.builtin.command: >
+        kubectl run curl-test-integration --image=curlimages/curl --rm -i --restart=Never
+        -n {{ namespace }} --context {{ target_host }} --
+        curl -X POST "http://otel-collector.{{ namespace }}.svc.cluster.local:4318/v1/traces"
+        -H "Content-Type: application/json"
+        --data '{"resourceSpans":[{"resource":{"attributes":[{"key":"service.name","value":{"stringValue":"test-service"}}]},"instrumentationLibrarySpans":[{"instrumentationLibrary":{"name":"test"},"spans":[{"traceId":"12345678901234567890123456789012","spanId":"1234567890123456","name":"test-span","kind":"SPAN_KIND_CLIENT","startTimeUnixNano":"1600000000000000000","endTimeUnixNano":"1600000001000000000"}]}]}]}'
+        -w "HTTP_CODE:%{http_code}"
+      register: integration_test
+      retries: 10
+      delay: 10
+      until: integration_test.rc == 0 and (integration_test.stdout.find('HTTP_CODE:200') != -1)
+      failed_when: false
+
+    - name: 11. Wait for trace to be processed
+      ansible.builtin.pause:
+        seconds: 5
+
+    - name: 12. Verify OTel Collector logs show successful Tempo connection
+      ansible.builtin.command: >
+        kubectl logs -n {{ namespace }} -l app.kubernetes.io/name=otel-collector --context={{ target_host }} --tail=20
+      register: otel_logs
+      failed_when: false
+
+    - name: 13. Display deployment status
+      ansible.builtin.debug:
+        msg:
+          - "✅ Grafana Tempo deployment completed successfully!"
+          - ""
+          - "Service endpoints:"
+          - "  🔍 Tempo endpoint: tempo.monitoring.svc.cluster.local:3200"
+          - "  📊 Traces API: tempo.monitoring.svc.cluster.local:3200/api/traces"
+          - "  🏥 Ready endpoint: tempo.monitoring.svc.cluster.local:3200/ready"
+          - ""
+          - "Cluster-internal tests:"
+          - "  📊 API endpoint: {{ 'PASS' if tempo_api_test.stdout.find('HTTP_CODE:200') != -1 else 'FAIL' }}"
+          - "  🏥 Ready endpoint: {{ 'PASS' if tempo_ready_test.stdout.find('HTTP_CODE:200') != -1 else 'FAIL' }}"
+          - ""
+          - "Integration tests:"
+          - "  🔗 OTel -> Tempo trace: {{ 'PASS' if integration_test.stdout.find('HTTP_CODE:200') != -1 else 'FAIL' }}"
+          - "  🔌 OTel connection: {{ 'PASS' if 'no such host' not in otel_logs.stdout else 'FAIL - DNS issues detected' }}"
+          - ""
+          - "Manual verification:"
+          - "  kubectl get pods -n {{ namespace }} -l app.kubernetes.io/name=tempo --context={{ target_host }}"
+          - "  kubectl logs -n {{ namespace }} -l app.kubernetes.io/name=tempo --context={{ target_host }}"

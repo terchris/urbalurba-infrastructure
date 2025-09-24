@@ -93,7 +93,7 @@ provision-host/kubernetes/
 ├── 07-ai/              # AI/ML services (OpenWebUI, LiteLLM, etc.)
 ├── 08-development/     # CI/CD tools (ArgoCD, Jenkins, etc.)
 ├── 09-network/         # VPN, tunnels, network tools
-├── 10-data-science/    # Jupyter, Unity Catalog, analytics
+├── 10-datascience/    # Jupyter, Unity Catalog, analytics
 ├── 11-monitoring/      # Prometheus, Grafana, observability
 └── 12-auth/            # Authentication services (Authentik, Keycloak)
 ```

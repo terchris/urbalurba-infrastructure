@@ -20,7 +20,7 @@ A production-ready, on-premises Databricks replacement using open-source compone
 ## 🏗️ Architecture Overview
 
 ### Phase 1: Processing Engine + Notebook Interface ✅ **COMPLETE**
-### Phase 2: Business Intelligence + Data Catalog 🔄 **NEXT**
+### Phase 2: Business Intelligence + Data Catalog ⚠️ **PARTIAL** (Unity Catalog broken)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -45,7 +45,7 @@ A production-ready, on-premises Databricks replacement using open-source compone
 │  ├── Automatic resource management                         │
 │  └── ARM64 compatibility                                   │
 ├─────────────────────────────────────────────────────────────┤
-│  Hive Metastore (Data Catalog) - PLANNED                   │
+│  Unity Catalog (Data Catalog) - BROKEN (container issues)  │
 │  ├── Centralized metadata management                       │
 │  ├── Table discovery and schema management                 │
 │  ├── Integration with Spark and Metabase                   │

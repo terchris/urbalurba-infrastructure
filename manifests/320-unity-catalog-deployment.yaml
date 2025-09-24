@@ -158,7 +158,7 @@ spec:
                   key: UNITY_CATALOG_DATABASE_PASSWORD
       containers:
         - name: unity-catalog-server
-          image: unitycatalog/unitycatalog:latest
+          image: godatadriven/unity-catalog:latest
           imagePullPolicy: Always
           ports:
             - name: http

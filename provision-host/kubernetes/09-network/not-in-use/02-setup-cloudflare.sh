@@ -1,5 +1,5 @@
 #!/bin/bash
-# filename: 02-cloudflare-net-start.sh
+# filename: 02-setup-cloudflare.sh
 # description: Deploy Cloudflare tunnel connector to Kubernetes cluster.
 # 
 # This script is a wrapper that calls 821-cloudflare-tunnel-deploy.sh to deploy

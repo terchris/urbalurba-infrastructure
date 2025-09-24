@@ -58,7 +58,7 @@ Services are organized by category to ensure proper deployment order. Each categ
 ├── 09-network/
 │   ├── 01-tailscale-net-start.sh
 │   └── not-in-use
-├── 10-data-science/
+├── 10-datascience/
 │   └── not-in-use/
 │       ├── unity-catalog setup scripts
 │       └── jupyter setup scripts

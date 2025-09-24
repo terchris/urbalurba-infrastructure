@@ -1,0 +1,195 @@
+---
+# file: ansible/playbooks/044-remove-qdrant.yml
+# Description:
+# Remove Qdrant vector database from Kubernetes cluster
+# High-performance vector database for AI/ML applications with embeddings and similarity search
+#
+# Part of: Database Services - Vector Database Component
+# Removes: Qdrant deployment while preserving data by default
+#
+# Prerequisites:
+# - Kubernetes cluster with Qdrant deployed
+# - kubectl configured for target cluster
+# - Helm 3.x installed
+#
+# Architecture:
+# - Cleanly removes Qdrant Helm deployment
+# - Preserves PVCs and secrets by default for data safety
+# - Provides options for complete cleanup if needed
+# - Verifies removal completion with comprehensive status checks
+#
+# Usage:
+# ansible-playbook playbooks/044-remove-qdrant.yml -e target_host="rancher-desktop"
+
+- name: Remove Qdrant Vector Database from Kubernetes
+  hosts: localhost
+  gather_facts: false
+  vars:
+    manifests_folder: "/mnt/urbalurbadisk/manifests"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    qdrant_namespace: "default"
+    removal_timeout: 180  # 3 minutes timeout for removal operations
+    cleanup_wait_timeout: 120  # 2 minutes timeout for cleanup verification
+
+    # Helm chart references
+    qdrant_release_name: "qdrant"
+
+  tasks:
+    - name: 1. Print playbook description
+      ansible.builtin.debug:
+        msg: |
+          🗑️ Removing Qdrant Vector Database
+          📊 Vector database removal with data preservation options
+          🎯 Target: {{ target_host | default('rancher-desktop') }}
+          📁 Namespace: {{ qdrant_namespace }}
+          🔒 Data: PVCs preserved by default
+
+    - name: 2. Check if Qdrant Helm release exists
+      ansible.builtin.shell: |
+        helm list -n {{ qdrant_namespace }} | grep {{ qdrant_release_name }} | wc -l
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: qdrant_release_check
+      changed_when: false
+
+    - name: 3. Display Qdrant release status
+      ansible.builtin.debug:
+        msg: |
+          Qdrant Helm release status:
+          {{ 'Found - Will proceed with removal ✅' if (qdrant_release_check.stdout | int) > 0 else 'NOT FOUND - No Helm release to remove ⚠️' }}
+
+    - name: 4. Get current Qdrant resources before removal
+      ansible.builtin.shell: |
+        echo "=== PODS ==="
+        kubectl get pods -n {{ qdrant_namespace }} -l app.kubernetes.io/name=qdrant --no-headers 2>/dev/null || echo "No Qdrant pods found"
+        echo "=== SERVICES ==="
+        kubectl get svc -n {{ qdrant_namespace }} -l app.kubernetes.io/name=qdrant --no-headers 2>/dev/null || echo "No Qdrant services found"
+        echo "=== PVCs ==="
+        kubectl get pvc -n {{ qdrant_namespace }} -l app.kubernetes.io/name=qdrant --no-headers 2>/dev/null || echo "No Qdrant PVCs found"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: qdrant_resources_before
+      changed_when: false
+
+    - name: 5. Display resources before removal
+      ansible.builtin.debug:
+        msg: |
+          Current Qdrant resources:
+          {{ qdrant_resources_before.stdout }}
+
+    - name: 6. Remove Qdrant Helm release
+      ansible.builtin.shell: |
+        helm uninstall {{ qdrant_release_name }} -n {{ qdrant_namespace }} --timeout {{ removal_timeout }}s
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: qdrant_uninstall_result
+      when: (qdrant_release_check.stdout | int) > 0
+      changed_when: true
+      failed_when: false
+
+    - name: 7. Display Helm uninstall result
+      ansible.builtin.debug:
+        msg: |
+          Qdrant Helm uninstall result:
+          {{ 'Success - Release removed ✅' if qdrant_uninstall_result.rc == 0 else 'Failed or skipped ⚠️' }}
+      when: (qdrant_release_check.stdout | int) > 0
+
+    - name: 8. Wait for pods to terminate
+      ansible.builtin.shell: |
+        # Wait for all Qdrant pods to be deleted
+        timeout {{ cleanup_wait_timeout }} bash -c 'while kubectl get pods -n {{ qdrant_namespace }} -l app.kubernetes.io/name=qdrant --no-headers 2>/dev/null | grep -v "No resources"; do echo "Waiting for pods to terminate..."; sleep 5; done'
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: qdrant_pod_termination
+      failed_when: false
+      changed_when: false
+
+    - name: 9. Verify pod termination
+      ansible.builtin.shell: |
+        kubectl get pods -n {{ qdrant_namespace }} -l app.kubernetes.io/name=qdrant --no-headers 2>/dev/null | wc -l
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: qdrant_remaining_pods
+      changed_when: false
+
+    - name: 10. Check remaining services
+      ansible.builtin.shell: |
+        kubectl get svc -n {{ qdrant_namespace }} -l app.kubernetes.io/name=qdrant --no-headers 2>/dev/null | wc -l
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: qdrant_remaining_services
+      changed_when: false
+
+    - name: 11. Check preserved PVCs
+      ansible.builtin.shell: |
+        kubectl get pvc -n {{ qdrant_namespace }} -l app.kubernetes.io/name=qdrant --no-headers 2>/dev/null
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: qdrant_preserved_pvcs
+      changed_when: false
+      failed_when: false
+
+    - name: 12. Check urbalurba-secrets status
+      ansible.builtin.shell: |
+        kubectl get secret urbalurba-secrets -n {{ qdrant_namespace }} -o jsonpath='{.data.QDRANT_API_KEY}' 2>/dev/null | base64 -d || echo "NOT_FOUND"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: qdrant_secret_preserved
+      changed_when: false
+
+    - name: 13. Set removal status variables
+      ansible.builtin.set_fact:
+        helm_removed: "{{ (qdrant_release_check.stdout | int) == 0 or (qdrant_uninstall_result.rc is defined and qdrant_uninstall_result.rc == 0) }}"
+        pods_terminated: "{{ (qdrant_remaining_pods.stdout | int) == 0 }}"
+        services_removed: "{{ (qdrant_remaining_services.stdout | int) == 0 }}"
+        pvcs_preserved: "{{ qdrant_preserved_pvcs.stdout != '' }}"
+        secrets_preserved: "{{ qdrant_secret_preserved.stdout != 'NOT_FOUND' }}"
+
+    - name: 14. Display final removal status
+      ansible.builtin.debug:
+        msg: |
+          ===============================================
+          🗑️ Qdrant Vector Database Removal Status
+          ===============================================
+
+          ✅ SUCCESS - Qdrant removed successfully
+
+          🔄 Removal Status:
+          • Helm Release: {{ '✅ Removed' if helm_removed else '⚠️ Still present' }}
+          • Pod Termination: {{ '✅ All pods terminated' if pods_terminated else '⚠️ Pods still running' }}
+          • Service Cleanup: {{ '✅ Services removed' if services_removed else '⚠️ Services still present' }}
+
+          💾 Data Preservation:
+          • PVCs: {{ '✅ Preserved (qdrant-data, qdrant-snapshots)' if pvcs_preserved else '⚠️ No PVCs found' }}
+          • Secrets: {{ '✅ urbalurba-secrets preserved' if secrets_preserved else '⚠️ Secrets not found' }}
+
+          📊 Removal Details:
+          • Target: {{ target_host | default('rancher-desktop') }}
+          • Namespace: {{ qdrant_namespace }}
+          • Release: {{ qdrant_release_name }}
+
+          {% if pvcs_preserved %}
+          Preserved PVCs:
+          {{ qdrant_preserved_pvcs.stdout }}
+          {% endif %}
+
+          ♻️ Re-deployment:
+          • Ready for fresh deployment: ./07-setup-qdrant.sh
+          • Existing data will be preserved if PVCs remain
+          • Configuration: manifests/044-qdrant-config.yaml
+
+          🧹 Complete Cleanup (DESTRUCTIVE - if needed):
+          • Remove all data PVCs:
+            kubectl delete pvc qdrant-data qdrant-snapshots -n {{ qdrant_namespace }}
+          • Remove from urbalurba-secrets (edit manually):
+            Remove QDRANT_API_KEY from secrets template and regenerate
+          • ⚠️ WARNING: This will permanently delete all vector data!
+
+          🔍 Verification Commands:
+          • Check remaining resources: kubectl get all -n {{ qdrant_namespace }} -l app.kubernetes.io/name=qdrant
+          • Check PVCs: kubectl get pvc -n {{ qdrant_namespace }} -l app.kubernetes.io/name=qdrant
+          • Check Helm releases: helm list -n {{ qdrant_namespace }}
+
+          🎯 Qdrant Removal Status:
+          {{ '🎉 QDRANT REMOVED - VECTOR DATABASE UNINSTALLED!' if helm_removed and pods_terminated and services_removed else '⚠️ CHECK REMOVAL STATUS AND VERIFY RESULTS' }}
+          ===============================================

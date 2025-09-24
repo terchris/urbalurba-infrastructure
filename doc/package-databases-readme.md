@@ -3,7 +3,7 @@
 **File**: `doc/package-databases-readme.md`
 **Purpose**: Overview of all database services in Urbalurba infrastructure
 **Target Audience**: Database administrators, developers, architects
-**Last Updated**: September 22, 2024
+**Last Updated**: September 24, 2025
 
 ## 📋 Overview
 
@@ -13,6 +13,7 @@ Urbalurba infrastructure provides a comprehensive suite of database services sup
 - **PostgreSQL**: Primary SQL database with AI/ML and geospatial extensions
 - **MySQL**: Alternative SQL database for traditional relational workloads
 - **MongoDB**: Document-based NoSQL database for flexible schemas
+- **Qdrant**: Vector database for AI/ML embeddings and similarity search
 
 ## 🗄️ Database Services
 
@@ -62,6 +63,21 @@ Document-based NoSQL database for applications requiring flexible schemas and JS
 
 📚 **[Complete Documentation →](./package-databases-mongodb.md)**
 
+---
+
+### **Qdrant - Vector Database for AI/ML** 🎯
+**Status**: Optional (not-in-use) | **Port**: 6333 HTTP, 6334 gRPC | **Type**: Vector Database
+
+High-performance vector database designed for AI/ML applications requiring fast similarity search over high-dimensional vectors. Optimized for embeddings storage and semantic search capabilities.
+
+**Key Features**:
+- **Vector Search**: Optimized similarity search for embeddings
+- **AI/ML Integration**: Perfect for recommendation systems and semantic search
+- **API Authentication**: Secure access with API key-based authentication
+- **Persistent Storage**: Separate storage for vector data and snapshots
+
+📚 **[Complete Documentation →](./package-databases-qdrant.md)**
+
 ## 🏗️ Deployment Architecture
 
 ### **Service Activation**
@@ -69,7 +85,8 @@ Document-based NoSQL database for applications requiring flexible schemas and JS
 Database Deployment Status:
 ├── PostgreSQL (ACTIVE) - Primary database service
 ├── MySQL (OPTIONAL) - Available for activation
-└── MongoDB (INACTIVE) - Located in not-in-use/ folder
+├── MongoDB (INACTIVE) - Located in not-in-use/ folder
+└── Qdrant (INACTIVE) - Located in not-in-use/ folder
 ```
 
 ### **Storage & Persistence**
@@ -77,6 +94,7 @@ All database services use Kubernetes PersistentVolumeClaims for data persistence
 - **PostgreSQL**: 8GB persistent storage
 - **MySQL**: 8GB persistent storage
 - **MongoDB**: 8GB persistent storage
+- **Qdrant**: 12GB data storage + 5GB snapshots
 
 ### **Secret Management**
 Database authentication managed through `urbalurba-secrets`:
@@ -84,7 +102,8 @@ Database authentication managed through `urbalurba-secrets`:
 Database Credentials:
 ├── PGPASSWORD / PGHOST (PostgreSQL)
 ├── MYSQL_ROOT_PASSWORD / MYSQL_PASSWORD (MySQL)
-└── MONGODB_ROOT_PASSWORD / GRAVITEE_MONGODB_* (MongoDB)
+├── MONGODB_ROOT_PASSWORD / GRAVITEE_MONGODB_* (MongoDB)
+└── QDRANT_API_KEY (Qdrant)
 ```
 
 ## 🚀 Quick Start
@@ -108,6 +127,10 @@ cd provision-host/kubernetes/02-databases/
 # Activate MongoDB
 mv not-in-use/04-setup-mongodb.sh ./
 ./04-setup-mongodb.sh rancher-desktop
+
+# Activate Qdrant Vector Database
+cd provision-host/kubernetes/02-databases/not-in-use/
+./07-setup-qdrant.sh rancher-desktop
 ```
 
 ## 🔍 Database Selection Guide
@@ -132,22 +155,32 @@ mv not-in-use/04-setup-mongodb.sh ./
 - Gravitee API Management platform
 - Applications requiring horizontal scaling
 
+### **When to Use Qdrant** 🎯
+- AI/ML applications with embeddings and vector search
+- Semantic search and similarity matching
+- Recommendation systems and content discovery
+- Image similarity and visual search applications
+- Building RAG (Retrieval-Augmented Generation) systems
+
 ## 🛠️ Management Operations
 
 ### **Common Operations**
 ```bash
 # Check database status
 kubectl get pods -l app.kubernetes.io/component=database
+kubectl get pods -l app.kubernetes.io/name=qdrant
 
 # View database logs
 kubectl logs -l app.kubernetes.io/name=postgresql
 kubectl logs -l app.kubernetes.io/name=mysql
 kubectl logs -l app=mongodb
+kubectl logs -l app.kubernetes.io/name=qdrant
 
 # Connect to databases
 kubectl exec -it postgresql-0 -- psql -U postgres
 kubectl exec -it mysql-0 -- mysql -u root -p
 kubectl exec -it mongodb-0 -- mongosh --username root --password
+# Qdrant uses HTTP API - test with: curl -H "api-key: KEY" http://localhost:6333/collections
 ```
 
 ### **Backup Procedures**
@@ -160,6 +193,10 @@ kubectl exec mysql-0 -- mysqldump -u root -p --all-databases > backup.sql
 
 # MongoDB backup
 kubectl exec mongodb-0 -- mongodump --authenticationDatabase admin --username root --password
+
+# Qdrant backup (snapshots)
+curl -X POST -H "api-key: YOUR_API_KEY" \
+  http://localhost:6333/collections/COLLECTION_NAME/snapshots
 ```
 
 ## 🔧 Troubleshooting
@@ -173,14 +210,19 @@ kubectl exec mongodb-0 -- mongodump --authenticationDatabase admin --username ro
 ### **Diagnostic Commands**
 ```bash
 # Check service endpoints
-kubectl get endpoints postgresql mysql mongodb
+kubectl get endpoints postgresql mysql mongodb qdrant
 
 # Verify storage
 kubectl get pvc -l app.kubernetes.io/component=database
+kubectl get pvc -l app.kubernetes.io/name=qdrant
 
 # Test connectivity
 kubectl run test-pod --image=postgres:16 --rm -it -- \
   psql postgresql://postgres:password@postgresql:5432/postgres
+
+# Test Qdrant connectivity
+kubectl run test-pod --image=curlimages/curl --rm -it -- \
+  curl -H "api-key: YOUR_API_KEY" http://qdrant:6333/collections
 ```
 
 ## 📋 Maintenance
@@ -199,6 +241,7 @@ cd provision-host/kubernetes/02-databases/not-in-use/
 ./05-remove-postgres.sh rancher-desktop
 ./06-remove-mysql.sh rancher-desktop
 ./04-remove-mongodb.sh rancher-desktop
+./07-remove-qdrant.sh rancher-desktop
 ```
 
 ## 📚 Related Documentation
@@ -207,9 +250,10 @@ cd provision-host/kubernetes/02-databases/not-in-use/
 - **[PostgreSQL Container](./package-databases-postgresql-container.md)** - Custom container details
 - **[MySQL Documentation](./package-databases-mysql.md)** - Alternative SQL database
 - **[MongoDB Documentation](./package-databases-mongodb.md)** - NoSQL document database
+- **[Qdrant Documentation](./package-databases-qdrant.md)** - Vector database for AI/ML applications
 - **[Secrets Management](./secrets-management-readme.md)** - Database credential configuration
 - **[Troubleshooting Guide](./troubleshooting-readme.md)** - Database troubleshooting procedures
 
 ---
 
-**💡 Key Insight**: The database layer provides comprehensive data storage solutions with PostgreSQL as the primary choice due to its advanced features, AI/ML capabilities, and extensive extension ecosystem. MySQL and MongoDB serve as specialized alternatives for specific use cases and legacy requirements.
+**💡 Key Insight**: The database layer provides comprehensive data storage solutions with PostgreSQL as the primary choice due to its advanced features, AI/ML capabilities, and extensive extension ecosystem. MySQL, MongoDB, and Qdrant serve as specialized alternatives for specific use cases - traditional SQL, document storage, and vector search respectively.

@@ -1,0 +1,58 @@
+# file: /mnt/urbalurbadisk/manifests/235-grafana-dashboards.yaml
+# Grafana dashboards as ConfigMaps for sidecar auto-discovery
+#
+# Description:
+# - Creates ConfigMaps containing Grafana dashboard JSON files
+# - Uses label 'grafana_dashboard: "1"' for sidecar discovery
+# - Dashboards will be automatically loaded by Grafana sidecar
+#
+# Usage:
+#   kubectl apply -f manifests/235-grafana-dashboards.yaml
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-structuredlog
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  structuredlog-dashboard.json: |
+    DASHBOARD_CONTENT_PLACEHOLDER_1
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-observability-stack
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  observability-stack-dashboard.json: |
+    DASHBOARD_CONTENT_PLACEHOLDER_2
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-structuredlog-improved
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  structuredlog-dashboard-improved.json: |
+    DASHBOARD_CONTENT_PLACEHOLDER_3
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-structuredlog-basic
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  structuredlog-dashboard-basic.json: |
+    DASHBOARD_CONTENT_PLACEHOLDER_4

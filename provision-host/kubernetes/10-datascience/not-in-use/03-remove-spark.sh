@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# File: provision-host/kubernetes/10-data-science/not-in-use/03-remove-spark.sh
+# File: provision-host/kubernetes/10-datascience/not-in-use/03-remove-spark.sh
 # Description: Remove Spark Kubernetes Operator from Kubernetes cluster
 # Usage: ./03-remove-spark.sh [target-host]
 # Example: ./03-remove-spark.sh rancher-desktop

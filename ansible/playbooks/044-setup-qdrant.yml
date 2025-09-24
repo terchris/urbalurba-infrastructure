@@ -1,0 +1,256 @@
+---
+# file: ansible/playbooks/044-setup-qdrant.yml
+# Description:
+# Set up Qdrant vector database on Kubernetes cluster
+# High-performance vector database for AI/ML applications with embeddings and similarity search
+#
+# Part of: Database Services - Vector Database Component
+# Replaces: Previous AI-specific vector storage solutions
+#
+# Prerequisites:
+# - Kubernetes cluster with sufficient resources (1+ CPUs, 1+ GB RAM)
+# - kubectl configured for target cluster
+# - Helm 3.x installed
+# - urbalurba-secrets applied to default namespace (contains QDRANT_API_KEY)
+# - Required manifests: 044-qdrant-config.yaml
+#
+# Architecture:
+# - Qdrant provides high-performance vector search capabilities
+# - Integrates with AI/ML services for embeddings storage and retrieval
+# - Persistent storage for vector data and snapshots
+# - API key authentication for secure access
+# - Helm manages all resources with proper ownership
+#
+# Usage:
+# ansible-playbook playbooks/044-setup-qdrant.yml -e target_host="rancher-desktop"
+
+- name: Set up Qdrant Vector Database on Kubernetes
+  hosts: localhost
+  gather_facts: false
+  vars:
+    include_verification: "{{ include_verification | default(false) }}"
+    manifests_folder: "/mnt/urbalurbadisk/manifests"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    qdrant_namespace: "default"
+    installation_timeout: 300  # 5 minutes timeout for installations
+    pod_readiness_timeout: 180  # 3 minutes timeout for pod readiness
+
+    # Helm chart references
+    qdrant_chart: "qdrant/qdrant"
+    qdrant_repo_url: "https://qdrant.github.io/qdrant-helm"
+
+    # Config files
+    qdrant_config_file: "{{ manifests_folder }}/044-qdrant-config.yaml"
+
+  tasks:
+    - name: 1. Print playbook description
+      ansible.builtin.debug:
+        msg: |
+          🚀 Setting up Qdrant Vector Database
+          📊 Vector database for AI/ML embeddings and similarity search
+          🎯 Target: {{ target_host | default('rancher-desktop') }}
+          📁 Namespace: {{ qdrant_namespace }}
+          🔐 Authentication: API key from urbalurba-secrets
+
+    - name: 2. Check existing Helm repositories
+      ansible.builtin.command: helm repo list
+      register: helm_repo_list
+      changed_when: false
+
+    - name: 3. Add Qdrant Helm repository if needed
+      kubernetes.core.helm_repository:
+        name: "qdrant"
+        repo_url: "{{ qdrant_repo_url }}"
+      when: "'qdrant' not in helm_repo_list.stdout"
+      register: qdrant_helm_repo_result
+
+    - name: 4. Update Helm repositories for Qdrant
+      ansible.builtin.command: helm repo update
+      changed_when: false
+
+    - name: 5. Check if urbalurba-secrets exists in default namespace
+      ansible.builtin.shell: |
+        kubectl get secret urbalurba-secrets -n {{ qdrant_namespace }} \
+        -o jsonpath='{.data.QDRANT_API_KEY}' 2>/dev/null | base64 -d || echo "NOT_FOUND"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: qdrant_secret_check
+      changed_when: false
+
+    - name: 6. Display Qdrant secret status
+      ansible.builtin.debug:
+        msg: |
+          Qdrant authentication secret status:
+          {{ 'Found - API key configured ✅' if qdrant_secret_check.stdout != 'NOT_FOUND' else 'NOT FOUND ⚠️ - Apply urbalurba-secrets to default namespace' }}
+
+    - name: 7. Create required PVCs for Qdrant data storage
+      kubernetes.core.k8s:
+        definition:
+          apiVersion: v1
+          kind: PersistentVolumeClaim
+          metadata:
+            name: "{{ item.name }}"
+            namespace: "{{ qdrant_namespace }}"
+            labels:
+              app.kubernetes.io/name: qdrant
+              app.kubernetes.io/component: storage
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: "{{ item.size }}"
+            storageClassName: "{{ item.storage_class | default('local-path') }}"
+        state: present
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      loop:
+        - name: "qdrant-data"
+          size: "12Gi"
+        - name: "qdrant-snapshots"
+          size: "5Gi"
+
+    - name: 8. Deploy Qdrant vector database with authentication and persistence
+      ansible.builtin.shell: |
+        helm upgrade --install qdrant {{ qdrant_chart }} \
+        -f {{ qdrant_config_file }} \
+        --namespace {{ qdrant_namespace }} \
+        --timeout {{ installation_timeout }}s
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: qdrant_result
+      changed_when: true
+
+    - name: 9. Display Qdrant deployment result
+      ansible.builtin.debug:
+        msg: "Qdrant deployment initiated. Waiting for readiness..."
+
+    - name: 10. Wait for Qdrant pod to be ready
+      ansible.builtin.shell: |
+        kubectl wait --for=condition=ready pod \
+        -l app.kubernetes.io/name=qdrant \
+        -n {{ qdrant_namespace }} --timeout={{ pod_readiness_timeout }}s
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: qdrant_wait_result
+      retries: 3
+      delay: 10
+
+    - name: 11. Display Qdrant readiness status
+      ansible.builtin.debug:
+        msg: |
+          Qdrant readiness status:
+          - Pod: {{ 'Ready' if qdrant_wait_result.rc == 0 else 'Not ready yet' }}
+
+    - name: 12. Check Qdrant service exists
+      ansible.builtin.shell: |
+        kubectl get service qdrant -n {{ qdrant_namespace }} --no-headers 2>/dev/null | wc -l
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: qdrant_service_check
+      changed_when: false
+
+    - name: 13. Test Qdrant API connectivity
+      ansible.builtin.shell: |
+        kubectl run curl-test --image=curlimages/curl --rm -i --restart=Never -n {{ qdrant_namespace }} -- \
+        curl -s -w "HTTP_CODE:%{http_code}" -H "api-key: $(kubectl get secret urbalurba-secrets -n {{ qdrant_namespace }} -o jsonpath='{.data.QDRANT_API_KEY}' | base64 -d)" \
+        http://qdrant:6333/collections
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: qdrant_api_test
+      retries: 3
+      delay: 10
+      until: qdrant_api_test.rc == 0 and (qdrant_api_test.stdout.find('HTTP_CODE:200') != -1 or qdrant_api_test.stdout.find('[]') != -1)
+
+    - name: 14. Get Qdrant pods
+      ansible.builtin.shell: kubectl get pods -n {{ qdrant_namespace }} -l app.kubernetes.io/name=qdrant
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: qdrant_pods
+      changed_when: false
+
+    - name: 15. Get Qdrant service details
+      ansible.builtin.shell: kubectl get svc qdrant -n {{ qdrant_namespace }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: qdrant_service
+      changed_when: false
+
+    - name: 16. Get Qdrant PVCs
+      ansible.builtin.shell: kubectl get pvc -n {{ qdrant_namespace }} -l app.kubernetes.io/name=qdrant
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: qdrant_pvcs
+      changed_when: false
+
+    - name: 17. Set deployment status variables
+      ansible.builtin.set_fact:
+        qdrant_running: "{{ qdrant_pods.stdout.find('Running') != -1 }}"
+        secret_configured: "{{ qdrant_secret_check.stdout != 'NOT_FOUND' }}"
+        qdrant_service_healthy: "{{ (qdrant_service_check.stdout | int) > 0 }}"
+        qdrant_api_working: "{{ qdrant_api_test.rc == 0 }}"
+
+    - name: 18. Display final deployment status
+      ansible.builtin.debug:
+        msg: |
+          ===============================================
+          🚀 Qdrant Vector Database Deployment Status
+          ===============================================
+
+          ✅ SUCCESS - Qdrant deployed and ready
+
+          🔄 Status:
+          • Vector Database: {{ '✅ Running' if qdrant_running else '⚠️ Not running' }}
+          • API Connectivity: {{ '✅ Working' if qdrant_api_working else '⚠️ Issues detected' }}
+          • Storage: ✅ Persistent volumes configured
+          • Authentication: {{ '✅ API key configured' if secret_configured else '⚠️ Missing API key' }}
+
+          📊 Deployment Details:
+          • Namespace: {{ qdrant_namespace }}
+          • Chart: {{ qdrant_chart }}
+          • API Endpoint: http://qdrant:6333 (cluster internal)
+          • gRPC Endpoint: http://qdrant:6334 (cluster internal)
+          • Service: {{ 'Healthy ✅' if qdrant_service_healthy else 'Not responding ⚠️' }}
+
+          Qdrant pods:
+          {{ qdrant_pods.stdout }}
+
+          Qdrant service:
+          {{ qdrant_service.stdout }}
+
+          Storage (PVCs):
+          {{ qdrant_pvcs.stdout }}
+
+          🌐 Access Instructions:
+          • Cluster internal: http://qdrant:6333
+          • Port forward: kubectl port-forward svc/qdrant 6333:6333 -n {{ qdrant_namespace }}
+          • Local access: http://localhost:6333 (after port forward)
+          • API Key: {{ 'from urbalurba-secrets' if secret_configured else 'NOT CONFIGURED' }}
+
+          🚀 Usage Examples:
+          • List collections: curl -H "api-key: YOUR_KEY" http://localhost:6333/collections
+          • Create collection: curl -X PUT -H "api-key: YOUR_KEY" -H "Content-Type: application/json" \
+            --data '{"vectors": {"size": 384, "distance": "Cosine"}}' \
+            http://localhost:6333/collections/my_collection
+          • Insert vector: curl -X PUT -H "api-key: YOUR_KEY" -H "Content-Type: application/json" \
+            --data '{"points": [{"id": 1, "vector": [0.1, 0.2, ...], "payload": {"text": "sample"}}]}' \
+            http://localhost:6333/collections/my_collection/points
+
+          🔧 Troubleshooting:
+          • Check Qdrant pods: kubectl get pods -n {{ qdrant_namespace }} -l app.kubernetes.io/name=qdrant
+          • View logs: kubectl logs -n {{ qdrant_namespace }} -l app.kubernetes.io/name=qdrant
+          • Check API: kubectl port-forward svc/qdrant 6333:6333 -n {{ qdrant_namespace }}
+          • Test connectivity: curl -H "api-key: YOUR_KEY" http://localhost:6333/collections
+          • Check PVCs: kubectl get pvc -n {{ qdrant_namespace }} -l app.kubernetes.io/name=qdrant
+
+          {{ '⚠️ ACTION REQUIRED: Apply urbalurba-secrets to default namespace with QDRANT_API_KEY before using Qdrant!' if not secret_configured else '' }}
+
+          🎯 Vector Database Status:
+          {{ '🎉 QDRANT READY - VECTOR DATABASE DEPLOYED!' if qdrant_running and secret_configured and qdrant_service_healthy else '⚠️ CHECK DEPLOYMENT STATUS AND VERIFICATION RESULTS' }}
+          ===============================================
+
+    # ================================================================
+    # VERIFICATION SECTION (when include_verification=true)
+    # ================================================================
+    - name: 19. Run verification tests (when enabled)
+      include_tasks: utility/u07-verify-qdrant-tasks.yml
+      when: include_verification | bool

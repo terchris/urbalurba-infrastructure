@@ -1,0 +1,193 @@
+---
+# File: utility/u10-verify-observability-tasks.yml
+# Description: Verification tasks for observability stack - adapted from Docker test scripts
+#
+# This file contains verification tasks that test:
+# 1. Service availability and health checks
+# 2. OTLP endpoint connectivity (HTTP and gRPC)
+# 3. Trace ingestion pipeline (OTLP -> Tempo)
+# 4. Log ingestion pipeline (OTLP -> Loki)
+# 5. Grafana dashboard accessibility
+# 6. Data correlation between traces and logs
+#
+# These tasks are adapted from the Docker test scripts:
+# - verify-stack.sh -> Service health checks
+# - test-raw-traces.sh -> Trace pipeline testing
+# - test-raw-logs.sh -> Log pipeline testing
+
+# Variables for verification
+- name: Set verification variables
+  ansible.builtin.set_fact:
+    otel_traces_endpoint: "http://otel-collector.{{ namespace }}.svc.cluster.local:4318/v1/traces"
+    otel_logs_endpoint: "http://otel-collector.{{ namespace }}.svc.cluster.local:4318/v1/logs"
+    tempo_query_url: "http://tempo.{{ namespace }}.svc.cluster.local:3200"
+    loki_query_url: "http://loki.{{ namespace }}.svc.cluster.local:3100"
+    grafana_url: "http://grafana.{{ namespace }}.svc.cluster.local"
+    test_service_traces: "urb-k8s-test-traces"
+    test_service_logs: "urb-k8s-test-logs"
+
+# === SERVICE HEALTH CHECKS ===
+- name: VERIFY 1. Check OpenTelemetry Collector health
+  ansible.builtin.command: >
+    kubectl exec -n {{ namespace }} deployment/otel-collector --context {{ target_host }} --
+    curl -s http://localhost:13133/
+  register: otel_health
+  failed_when: otel_health.rc != 0
+
+- name: VERIFY 2. Check Tempo API availability
+  ansible.builtin.command: >
+    kubectl run curl-test-tempo --image=curlimages/curl --rm -i --restart=Never -n {{ namespace }} --context {{ target_host }} --
+    curl -s "{{ tempo_query_url }}/api/search"
+  register: tempo_api
+  failed_when: tempo_api.rc != 0
+
+- name: VERIFY 3. Check Loki API availability
+  ansible.builtin.command: >
+    kubectl run curl-test-loki --image=curlimages/curl --rm -i --restart=Never -n {{ namespace }} --context {{ target_host }} --
+    curl -s "{{ loki_query_url }}/loki/api/v1/labels"
+  register: loki_api
+  failed_when: loki_api.rc != 0
+
+- name: VERIFY 4. Check Grafana accessibility
+  ansible.builtin.command: >
+    kubectl run curl-test-grafana --image=curlimages/curl --rm -i --restart=Never -n {{ namespace }} --context {{ target_host }} --
+    curl -s -o /dev/null -w "%{http_code}" "{{ grafana_url }}"
+  register: grafana_health
+  failed_when: grafana_health.stdout != "200"
+
+# === TRACE PIPELINE TESTING ===
+- name: VERIFY 5. Send test trace to OpenTelemetry Collector
+  ansible.builtin.command: >
+    kubectl run curl-test-trace --image=curlimages/curl --rm -i --restart=Never -n {{ namespace }} --context {{ target_host }} --
+    curl -X POST "{{ otel_traces_endpoint }}"
+    -H "Content-Type: application/json"
+    --data '{
+      "resourceSpans": [{
+        "resource": {
+          "attributes": [{
+            "key": "service.name",
+            "value": {"stringValue": "{{ test_service_traces }}"}
+          }]
+        },
+        "instrumentationLibrarySpans": [{
+          "spans": [{
+            "traceId": "12345678901234567890123456789012",
+            "spanId": "1234567890123456",
+            "name": "urbalurba-k8s-test-span",
+            "kind": 1,
+            "startTimeUnixNano": "{{ ansible_date_time.epoch }}000000000",
+            "endTimeUnixNano": "{{ (ansible_date_time.epoch | int + 1) }}000000000",
+            "status": {"code": 1}
+          }]
+        }]
+      }]
+    }'
+  register: trace_sent
+  failed_when: trace_sent.rc != 0
+
+- name: VERIFY 6. Wait for trace to be indexed
+  ansible.builtin.pause:
+    seconds: 5
+
+- name: VERIFY 7. Query Tempo for test trace
+  ansible.builtin.command: >
+    kubectl run curl-test-query-trace --image=curlimages/curl --rm -i --restart=Never -n {{ namespace }} --context {{ target_host }} --
+    curl -s "{{ tempo_query_url }}/api/search?tags=service.name={{ test_service_traces }}&limit=1"
+  register: trace_query
+  failed_when: trace_query.rc != 0 or test_service_traces not in trace_query.stdout
+
+# === LOG PIPELINE TESTING ===
+- name: VERIFY 8. Send test log to OpenTelemetry Collector
+  ansible.builtin.command: >
+    kubectl run curl-test-log --image=curlimages/curl --rm -i --restart=Never -n {{ namespace }} --context {{ target_host }} --
+    curl -X POST "{{ otel_logs_endpoint }}"
+    -H "Content-Type: application/json"
+    --data '{
+      "resourceLogs": [{
+        "resource": {
+          "attributes": [{
+            "key": "service.name",
+            "value": {"stringValue": "{{ test_service_logs }}"}
+          }]
+        },
+        "instrumentationLibraryLogs": [{
+          "logRecords": [{
+            "timeUnixNano": "{{ ansible_date_time.epoch }}000000000",
+            "severityNumber": 9,
+            "severityText": "INFO",
+            "body": {"stringValue": "Urbalurba K8s observability test log entry"},
+            "attributes": [{
+              "key": "test.type",
+              "value": {"stringValue": "kubernetes-verification"}
+            }]
+          }]
+        }]
+      }]
+    }'
+  register: log_sent
+  failed_when: log_sent.rc != 0
+
+- name: VERIFY 9. Wait for log to be indexed
+  ansible.builtin.pause:
+    seconds: 5
+
+- name: VERIFY 10. Query Loki for test log
+  ansible.builtin.command: >
+    kubectl run curl-test-query-log --image=curlimages/curl --rm -i --restart=Never -n {{ namespace }} --context {{ target_host }} --
+    curl -s -G "{{ loki_query_url }}/loki/api/v1/query"
+    --data-urlencode 'query={service_name="{{ test_service_logs }}"}'
+    --data-urlencode 'limit=1'
+  register: log_query
+  failed_when: log_query.rc != 0 or test_service_logs not in log_query.stdout
+
+# === OTLP ENDPOINT TESTING ===
+- name: VERIFY 11. Test OTLP HTTP endpoint accessibility
+  ansible.builtin.command: >
+    kubectl run curl-test-otlp-http --image=curlimages/curl --rm -i --restart=Never -n {{ namespace }} --context {{ target_host }} --
+    curl -s -o /dev/null -w "%{http_code}" "{{ otel_traces_endpoint }}"
+  register: otlp_http_test
+  # OTLP endpoint returns 405 Method Not Allowed for GET requests, which is expected
+  failed_when: otlp_http_test.stdout not in ["200", "405"]
+
+- name: VERIFY 12. Test OTLP gRPC endpoint accessibility
+  ansible.builtin.command: >
+    kubectl exec -n {{ namespace }} deployment/otel-collector --context {{ target_host }} --
+    netstat -tlnp | grep :4317
+  register: otlp_grpc_test
+  failed_when: otlp_grpc_test.rc != 0
+
+# === INTEGRATION TESTING ===
+- name: VERIFY 13. Check Grafana datasource configuration
+  ansible.builtin.command: >
+    kubectl run curl-test-datasources --image=curlimages/curl --rm -i --restart=Never -n {{ namespace }} --context {{ target_host }} --
+    curl -s -u admin:admin "{{ grafana_url }}/api/datasources"
+  register: grafana_datasources
+  failed_when: grafana_datasources.rc != 0 or 'tempo' not in grafana_datasources.stdout or 'loki' not in grafana_datasources.stdout
+
+# === VERIFICATION SUMMARY ===
+- name: VERIFY 14. Display verification results
+  ansible.builtin.debug:
+    msg:
+      - "🎉 Observability stack verification completed successfully!"
+      - ""
+      - "✅ Service Health Checks:"
+      - "  - OpenTelemetry Collector: Healthy"
+      - "  - Tempo API: Available"
+      - "  - Loki API: Available"
+      - "  - Grafana: Accessible ({{ grafana_health.stdout }})"
+      - ""
+      - "✅ Pipeline Testing:"
+      - "  - Trace Pipeline: OTLP -> Tempo ✅"
+      - "  - Log Pipeline: OTLP -> Loki ✅"
+      - "  - OTLP Endpoints: HTTP ({{ otlp_http_test.stdout }}) & gRPC ✅"
+      - ""
+      - "✅ Integration:"
+      - "  - Grafana Datasources: Tempo & Loki configured"
+      - ""
+      - "🚀 Your observability stack is fully operational!"
+      - "📊 Access Grafana at: http://grafana.localhost"
+      - "📤 Send telemetry to: http://localhost:4318/v1/traces | http://localhost:4318/v1/logs"
+
+- name: VERIFY 15. Verification completed successfully
+  ansible.builtin.debug:
+    msg: "All verification tests passed! The observability stack is ready for use."

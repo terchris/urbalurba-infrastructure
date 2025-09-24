@@ -210,7 +210,7 @@ graph TB
 ./provision-host/kubernetes/08-observability/01-setup-prometheus-grafana.sh
 
 # Data Platform
-./provision-host/kubernetes/10-data-science/01-setup-jupyterhub.sh
+./provision-host/kubernetes/10-datascience/01-setup-jupyterhub.sh
 ```
 
 ## 📈 Service Statistics

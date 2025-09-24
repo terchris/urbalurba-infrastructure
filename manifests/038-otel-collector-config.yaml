@@ -1,0 +1,246 @@
+# file: /mnt/urbalurbadisk/manifests/038-otel-collector-config.yaml
+# OpenTelemetry Collector configuration for Kubernetes deployment
+#
+# Description:
+# - Configures OTLP receivers for both gRPC (4317) and HTTP (4318) protocols
+# - Routes traces to Tempo and logs to Loki within Kubernetes cluster
+# - Uses internal Kubernetes service names for backend connections
+# - Includes batch processing and debug output for development
+#
+# Usage:
+#   This ConfigMap is automatically applied when deploying the observability stack
+#   Manual application: kubectl apply -f manifests/038-otel-collector-config.yaml
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-collector-config
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: otel-collector
+    app.kubernetes.io/component: config
+    app.kubernetes.io/part-of: observability-stack
+data:
+  otel-collector-config.yaml: |
+    # OpenTelemetry Collector Configuration for Kubernetes
+    # Adapted from Docker Compose setup for internal service discovery
+
+    receivers:
+      # OTLP receiver configuration - accepts both gRPC and HTTP protocols
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+            # Accept requests from all interfaces within the cluster
+          http:
+            endpoint: 0.0.0.0:4318
+            # HTTP endpoint for applications using HTTP/JSON OTLP
+
+    processors:
+      # Batch processor - improves performance by batching telemetry data
+      batch:
+        timeout: 1s
+        send_batch_size: 1024
+        send_batch_max_size: 2048
+
+      # Resource processor - adds deployment and cluster context
+      resource:
+        attributes:
+          - key: deployment.environment
+            value: "kubernetes-local"
+            action: upsert
+          - key: k8s.cluster.name
+            value: "urbalurba-local"
+            action: upsert
+
+    exporters:
+      # Tempo exporter - for distributed tracing
+      otlp/tempo:
+        endpoint: tempo.monitoring.svc.cluster.local:4317
+        tls:
+          insecure: true
+        # Use internal Kubernetes service DNS for Tempo
+
+      # Loki exporter - for log aggregation
+      loki:
+        endpoint: "http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push"
+        # Direct HTTP API endpoint to Loki within cluster
+
+      # Debug exporter - for development and troubleshooting
+      debug:
+        verbosity: detailed
+        # Enable for troubleshooting, disable in production
+
+    extensions:
+      # Health check extension
+      health_check:
+        endpoint: 0.0.0.0:13133
+
+    service:
+      extensions: [health_check]
+
+      pipelines:
+        # Traces pipeline - OTLP -> Tempo
+        traces:
+          receivers: [otlp]
+          processors: [batch, resource]
+          exporters: [otlp/tempo, debug]
+
+        # Logs pipeline - OTLP -> Loki
+        logs:
+          receivers: [otlp]
+          processors: [batch, resource]
+          exporters: [loki, debug]
+
+      telemetry:
+        logs:
+          level: "info"
+        metrics:
+          # Internal metrics endpoint
+          level: detailed
+
+---
+# Deployment for OpenTelemetry Collector
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: otel-collector
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: otel-collector
+    app.kubernetes.io/version: "0.130.0"
+    app.kubernetes.io/part-of: observability-stack
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: otel-collector
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: otel-collector
+        app.kubernetes.io/version: "0.130.0"
+        app.kubernetes.io/part-of: observability-stack
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8888"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+      - name: otel-collector
+        image: otel/opentelemetry-collector-contrib:0.130.0
+        command:
+          - "/otelcol-contrib"
+          - "--config=/conf/otel-collector-config.yaml"
+        ports:
+        - name: otlp-grpc
+          containerPort: 4317
+          protocol: TCP
+        - name: otlp-http
+          containerPort: 4318
+          protocol: TCP
+        - name: health-check
+          containerPort: 13133
+          protocol: TCP
+        - name: metrics
+          containerPort: 8888
+          protocol: TCP
+
+        # Resource configuration
+        resources:
+          requests:
+            memory: 128Mi
+            cpu: 100m
+          limits:
+            memory: 512Mi
+            cpu: 500m
+
+        # Health checks
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 13133
+          initialDelaySeconds: 30
+          periodSeconds: 30
+
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 13133
+          initialDelaySeconds: 5
+          periodSeconds: 10
+
+        # Volume mounts
+        volumeMounts:
+        - name: config-volume
+          mountPath: /conf
+          readOnly: true
+
+        # Security context
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 10001
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+
+      # Service account
+      serviceAccountName: otel-collector
+
+      # Volumes
+      volumes:
+      - name: config-volume
+        configMap:
+          name: otel-collector-config
+          items:
+          - key: otel-collector-config.yaml
+            path: otel-collector-config.yaml
+
+      # Node selection and tolerations
+      nodeSelector: {}
+      tolerations: []
+      affinity: {}
+
+---
+# Service Account for OpenTelemetry Collector
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: otel-collector
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: otel-collector
+    app.kubernetes.io/part-of: observability-stack
+
+---
+# Service for OpenTelemetry Collector
+apiVersion: v1
+kind: Service
+metadata:
+  name: otel-collector
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: otel-collector
+    app.kubernetes.io/part-of: observability-stack
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: otel-collector
+  ports:
+  - name: otlp-grpc
+    port: 4317
+    targetPort: 4317
+    protocol: TCP
+  - name: otlp-http
+    port: 4318
+    targetPort: 4318
+    protocol: TCP
+  - name: health-check
+    port: 13133
+    targetPort: 13133
+    protocol: TCP
+  - name: metrics
+    port: 8888
+    targetPort: 8888
+    protocol: TCP

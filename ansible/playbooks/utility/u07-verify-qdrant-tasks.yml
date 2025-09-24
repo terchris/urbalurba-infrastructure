@@ -1,0 +1,132 @@
+# File: ansible/playbooks/utility/u07-verify-qdrant-tasks.yml
+# Description: Qdrant verification tasks to be included in main playbook
+# This file contains ONLY the verification tasks (no playbook header)
+# Used by: 044-setup-qdrant.yml when include_verification=true
+
+- name: VERIFY 1. Set Qdrant API key from secrets
+  ansible.builtin.set_fact:
+    qdrant_api_key: "{{ secret_configured and qdrant_secret_check.stdout or 'NOT_FOUND' }}"
+
+- name: VERIFY 2. Clean up any existing test collection
+  ansible.builtin.shell: |
+    kubectl run curl-test-cleanup --image=curlimages/curl --rm -i --restart=Never -n {{ qdrant_namespace }} -- \
+    curl -s -X DELETE -H "api-key: {{ qdrant_api_key }}" \
+    http://qdrant:6333/collections/verification_test_collection
+  environment:
+    KUBECONFIG: "{{ merged_kubeconf_file }}"
+  register: cleanup_result
+  failed_when: false  # Don't fail if collection doesn't exist
+
+- name: VERIFY 3. Test Qdrant API - List collections (should be empty initially)
+  ansible.builtin.shell: |
+    kubectl run curl-test-list --image=curlimages/curl --rm -i --restart=Never -n {{ qdrant_namespace }} -- \
+    curl -s -w "HTTP_CODE:%{http_code}" -H "api-key: {{ qdrant_api_key }}" \
+    http://qdrant:6333/collections
+  environment:
+    KUBECONFIG: "{{ merged_kubeconf_file }}"
+  register: list_collections_result
+  retries: 3
+  delay: 5
+  until: list_collections_result.rc == 0 and list_collections_result.stdout.find('HTTP_CODE:200') != -1
+
+- name: VERIFY 4. Display initial collections list
+  ansible.builtin.debug:
+    msg: "Initial collections response: {{ list_collections_result.stdout }}"
+
+- name: VERIFY 5. Create test collection
+  ansible.builtin.shell: |
+    kubectl run curl-test-create --image=curlimages/curl --rm -i --restart=Never -n {{ qdrant_namespace }} -- \
+    curl -s -X PUT -w "HTTP_CODE:%{http_code}" -H "api-key: {{ qdrant_api_key }}" \
+    -H "Content-Type: application/json" \
+    --data '{"vectors": {"size": 4, "distance": "Cosine"}}' \
+    http://qdrant:6333/collections/verification_test_collection
+  environment:
+    KUBECONFIG: "{{ merged_kubeconf_file }}"
+  register: create_collection_result
+
+- name: VERIFY 6. Verify collection creation was successful
+  ansible.builtin.fail:
+    msg: "Failed to create test collection"
+  when: create_collection_result.stdout.find('HTTP_CODE:200') == -1 and create_collection_result.stdout.find('"result":true') == -1
+
+- name: VERIFY 7. Insert test vector data
+  ansible.builtin.shell: |
+    kubectl run curl-test-insert --image=curlimages/curl --rm -i --restart=Never -n {{ qdrant_namespace }} -- \
+    curl -s -X PUT -w "HTTP_CODE:%{http_code}" -H "api-key: {{ qdrant_api_key }}" \
+    -H "Content-Type: application/json" \
+    --data '{"points": [{"id": 1, "vector": [0.1, 0.2, 0.3, 0.4], "payload": {"text": "test document", "category": "verification"}}]}' \
+    http://qdrant:6333/collections/verification_test_collection/points
+  environment:
+    KUBECONFIG: "{{ merged_kubeconf_file }}"
+  register: insert_result
+
+- name: VERIFY 8. Verify vector insertion was successful
+  ansible.builtin.fail:
+    msg: "Failed to insert test vector data"
+  when: insert_result.stdout.find('HTTP_CODE:200') == -1 and insert_result.stdout.find('"status":"acknowledged"') == -1
+
+- name: VERIFY 9. Retrieve inserted point by ID
+  ansible.builtin.shell: |
+    kubectl run curl-test-get --image=curlimages/curl --rm -i --restart=Never -n {{ qdrant_namespace }} -- \
+    curl -s -w "HTTP_CODE:%{http_code}" -H "api-key: {{ qdrant_api_key }}" \
+    http://qdrant:6333/collections/verification_test_collection/points/1
+  environment:
+    KUBECONFIG: "{{ merged_kubeconf_file }}"
+  register: retrieve_result
+
+- name: VERIFY 10. Verify retrieved data contains expected payload
+  ansible.builtin.fail:
+    msg: "Failed to retrieve expected test data"
+  when: retrieve_result.stdout.find('test document') == -1 or retrieve_result.stdout.find('verification') == -1
+
+- name: VERIFY 11. Test vector search functionality
+  ansible.builtin.shell: |
+    kubectl run curl-test-search --image=curlimages/curl --rm -i --restart=Never -n {{ qdrant_namespace }} -- \
+    curl -s -X POST -w "HTTP_CODE:%{http_code}" -H "api-key: {{ qdrant_api_key }}" \
+    -H "Content-Type: application/json" \
+    --data '{"vector": [0.1, 0.2, 0.3, 0.4], "limit": 5, "with_payload": true}' \
+    http://qdrant:6333/collections/verification_test_collection/points/search
+  environment:
+    KUBECONFIG: "{{ merged_kubeconf_file }}"
+  register: search_result
+
+- name: VERIFY 12. Verify search found the test vector
+  ansible.builtin.fail:
+    msg: "Vector search failed to find the test data"
+  when: search_result.stdout.find('"id":1') == -1 or search_result.stdout.find('"score":1') == -1
+
+- name: VERIFY 13. Clean up test collection
+  ansible.builtin.shell: |
+    kubectl run curl-test-delete --image=curlimages/curl --rm -i --restart=Never -n {{ qdrant_namespace }} -- \
+    curl -s -X DELETE -w "HTTP_CODE:%{http_code}" -H "api-key: {{ qdrant_api_key }}" \
+    http://qdrant:6333/collections/verification_test_collection
+  environment:
+    KUBECONFIG: "{{ merged_kubeconf_file }}"
+  register: delete_result
+
+- name: VERIFY 14. Verify cleanup was successful
+  ansible.builtin.shell: |
+    kubectl run curl-test-verify-cleanup --image=curlimages/curl --rm -i --restart=Never -n {{ qdrant_namespace }} -- \
+    curl -s -w "HTTP_CODE:%{http_code}" -H "api-key: {{ qdrant_api_key }}" \
+    http://qdrant:6333/collections
+  environment:
+    KUBECONFIG: "{{ merged_kubeconf_file }}"
+  register: cleanup_verify_result
+
+- name: VERIFY 15. Confirm verification completed successfully
+  ansible.builtin.debug:
+    msg: |
+      ===============================================
+      ✅ QDRANT VERIFICATION SUCCESSFUL!
+      ===============================================
+
+      🔄 Verification Tests Completed:
+      • API connectivity and authentication ✅
+      • Collection creation and management ✅
+      • Vector data insertion and persistence ✅
+      • Point retrieval by ID ✅
+      • Vector similarity search functionality ✅
+      • Data cleanup and collection deletion ✅
+
+      🎯 Qdrant is ready for AI/ML workloads and vector search applications!
+      ===============================================

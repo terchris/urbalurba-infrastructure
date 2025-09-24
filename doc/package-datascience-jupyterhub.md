@@ -38,7 +38,7 @@ JupyterHub Service Stack:
 
 ### **File Structure**
 ```
-10-data-science/
+10-datascience/
 ├── not-in-use/
     ├── 05-setup-jupyterhub.sh         # Main deployment script
     └── 05-remove-jupyterhub.sh        # Removal script
@@ -68,11 +68,11 @@ Phase 2: Notebook Interface ← THIS COMPONENT
 ## 🚀 Deployment
 
 ### **Manual Deployment**
-JupyterHub is currently in the `10-data-science/not-in-use` category and can be deployed manually:
+JupyterHub is currently in the `10-datascience/not-in-use` category and can be deployed manually:
 
 ```bash
 # Deploy JupyterHub with default settings
-cd provision-host/kubernetes/10-data-science/not-in-use/
+cd provision-host/kubernetes/10-datascience/not-in-use/
 ./05-setup-jupyterhub.sh rancher-desktop
 
 # Deploy to specific Kubernetes context
@@ -383,7 +383,7 @@ kubectl exec -n jupyterhub <user-pod-name> -- pip list | grep -E 'pyspark|findsp
 ### **Service Removal**
 ```bash
 # Remove JupyterHub service (preserves user data by default)
-cd provision-host/kubernetes/10-data-science/not-in-use/
+cd provision-host/kubernetes/10-datascience/not-in-use/
 ./05-remove-jupyterhub.sh rancher-desktop
 
 # Completely remove including user data

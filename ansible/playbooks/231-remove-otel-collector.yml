@@ -1,0 +1,55 @@
+---
+# File: ansible/playbooks/241-remove-otel-collector.yml
+# Description: Remove OpenTelemetry Collector from Urbalurba Infrastructure
+# Usage: ansible-playbook 241-remove-otel-collector.yml -e "target_host=rancher-desktop"
+
+- name: Remove OpenTelemetry Collector from Urbalurba Infrastructure
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    target_host: "{{ target_host | default('rancher-desktop') }}"
+    namespace: "monitoring"
+    component_name: "otel-collector"
+
+  tasks:
+    - name: 1. Display removal information
+      ansible.builtin.debug:
+        msg:
+          - "====================================="
+          - "OpenTelemetry Collector Removal"
+          - "====================================="
+          - "Target Host: {{ target_host }}"
+          - "Namespace: {{ namespace }}"
+          - "Component: {{ component_name }}"
+
+    - name: 2. Remove OpenTelemetry Collector manifest
+      kubernetes.core.k8s:
+        state: absent
+        src: "/mnt/urbalurbadisk/manifests/038-otel-collector-config.yaml"
+        context: "{{ target_host }}"
+      ignore_errors: true
+      register: otel_remove
+
+    - name: 3. Wait for OpenTelemetry Collector to be removed
+      ansible.builtin.command: >
+        kubectl wait --for=delete deployment/otel-collector
+        --namespace {{ namespace }} --timeout=120s --context {{ target_host }}
+      register: otel_wait
+      ignore_errors: true
+      retries: 2
+      delay: 10
+
+    - name: 4. Display removal status
+      ansible.builtin.debug:
+        msg:
+          - "✅ OpenTelemetry Collector removal completed!"
+          - ""
+          - "Removed components:"
+          - "  📊 OpenTelemetry Collector deployment and service"
+          - "  ⚙️ Configuration ConfigMap"
+          - "  🔐 ServiceAccount and RBAC"
+          - ""
+          - "Verification:"
+          - "  kubectl get pods -n {{ namespace }} -l app=otel-collector --context={{ target_host }}"
+          - "  (Should show 'No resources found')"

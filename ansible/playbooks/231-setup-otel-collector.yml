@@ -1,0 +1,97 @@
+---
+# File: ansible/playbooks/241-setup-otel-collector.yml
+# Description: Deploy OpenTelemetry Collector for Urbalurba Infrastructure
+# Usage: ansible-playbook 241-setup-otel-collector.yml -e "target_host=rancher-desktop"
+
+- name: Deploy OpenTelemetry Collector for Urbalurba Infrastructure
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    target_host: "{{ target_host | default('rancher-desktop') }}"
+    namespace: "monitoring"
+    component_name: "otel-collector"
+
+  tasks:
+    - name: 1. Display deployment information
+      ansible.builtin.debug:
+        msg:
+          - "====================================="
+          - "OpenTelemetry Collector Deployment"
+          - "====================================="
+          - "Target Host: {{ target_host }}"
+          - "Namespace: {{ namespace }}"
+          - "Component: {{ component_name }}"
+
+    - name: 2. Create monitoring namespace
+      kubernetes.core.k8s:
+        name: "{{ namespace }}"
+        api_version: v1
+        kind: Namespace
+        state: present
+        context: "{{ target_host }}"
+
+    - name: 3. Apply monitoring secrets
+      ansible.builtin.shell: |
+        kubectl apply -f "/mnt/urbalurbadisk/topsecret/kubernetes/kubernetes-secrets.yml" --context="{{ target_host }}"
+      register: secrets_apply
+      failed_when: secrets_apply.rc != 0
+      changed_when: "'configured' in secrets_apply.stdout or 'created' in secrets_apply.stdout"
+
+    - name: 4. Deploy OpenTelemetry Collector
+      kubernetes.core.k8s:
+        state: present
+        src: "/mnt/urbalurbadisk/manifests/038-otel-collector-config.yaml"
+        context: "{{ target_host }}"
+      register: otel_deploy
+
+    - name: 5. Wait for OpenTelemetry Collector to be ready
+      ansible.builtin.command: >
+        kubectl wait --for=condition=available deployment/otel-collector
+        --namespace {{ namespace }} --timeout=120s --context {{ target_host }}
+      register: otel_wait
+      retries: 3
+      delay: 10
+      until: otel_wait.rc == 0
+
+    - name: 6. Test OTLP HTTP endpoint connectivity from within cluster
+      ansible.builtin.command: >
+        kubectl run curl-test-otlp-http --image=curlimages/curl --rm -i --restart=Never
+        -n {{ namespace }} --context {{ target_host }} --
+        curl -s -o /dev/null -w "HTTP_CODE:%{http_code}"
+        http://otel-collector.{{ namespace }}.svc.cluster.local:4318/v1/traces
+      register: otlp_http_test
+      retries: 15
+      delay: 15
+      until: otlp_http_test.rc == 0 and (otlp_http_test.stdout.find('HTTP_CODE:405') != -1)
+      failed_when: false
+
+    - name: 7. Test OTLP health check endpoint from within cluster
+      ansible.builtin.command: >
+        kubectl run curl-test-health --image=curlimages/curl --rm -i --restart=Never
+        -n {{ namespace }} --context {{ target_host }} --
+        curl -s -o /dev/null -w "HTTP_CODE:%{http_code}"
+        http://otel-collector.{{ namespace }}.svc.cluster.local:13133/
+      register: health_test
+      retries: 15
+      delay: 15
+      until: health_test.rc == 0 and (health_test.stdout.find('HTTP_CODE:200') != -1)
+      failed_when: false
+
+    - name: 8. Display deployment status
+      ansible.builtin.debug:
+        msg:
+          - "✅ OpenTelemetry Collector deployment completed successfully!"
+          - ""
+          - "Service endpoints:"
+          - "  📊 OTLP gRPC: otel-collector.monitoring.svc.cluster.local:4317"
+          - "  📊 OTLP HTTP: otel-collector.monitoring.svc.cluster.local:4318"
+          - "  🏥 Health Check: otel-collector.monitoring.svc.cluster.local:13133"
+          - ""
+          - "Cluster-internal tests:"
+          - "  📊 OTLP HTTP endpoint: {{ 'PASS' if otlp_http_test.stdout.find('HTTP_CODE:405') != -1 else 'FAIL' }}"
+          - "  🏥 Health check endpoint: {{ 'PASS' if health_test.stdout.find('HTTP_CODE:200') != -1 else 'FAIL' }}"
+          - ""
+          - "Manual verification:"
+          - "  kubectl get pods -n {{ namespace }} -l app.kubernetes.io/name=otel-collector --context={{ target_host }}"
+          - "  kubectl logs -n {{ namespace }} -l app.kubernetes.io/name=otel-collector --context={{ target_host }}"

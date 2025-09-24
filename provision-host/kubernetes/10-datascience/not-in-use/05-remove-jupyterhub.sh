@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# File: provision-host/kubernetes/10-data-science/not-in-use/05-remove-jupyterhub.sh
+# File: provision-host/kubernetes/10-datascience/not-in-use/05-remove-jupyterhub.sh
 # Description: Remove JupyterHub from Kubernetes cluster
 # Usage: ./05-remove-jupyterhub.sh [target-host]
 # Example: ./05-remove-jupyterhub.sh rancher-desktop

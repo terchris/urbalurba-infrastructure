@@ -34,7 +34,7 @@ This table shows the comprehensive services available in Urbalurba Infrastructur
 | **API Gateway** | Azure API Management | Gravitee | ✅ Available |
 | **Data Processing** | Azure Databricks | Apache Spark | ✅ Available |
 | **Notebook Environment** | Azure Machine Learning | JupyterHub | ✅ Available |
-| **Data Catalog** | Microsoft Purview | Unity Catalog | ✅ Available |
+| **Data Catalog** | Microsoft Purview | Unity Catalog | ❌ **Container Broken** |
 | **VPN Connectivity** | Azure VPN Gateway | Tailscale | ✅ Available |
 | **GitOps & CD** | Azure DevOps | ArgoCD | ✅ Available |
 | **Prometheus Stack** | Azure Monitor | Prometheus + Grafana Stack | ✅ Available |
@@ -66,7 +66,7 @@ This table shows the comprehensive services available in Urbalurba Infrastructur
 ### Data Platform (Available)
 - **Apache Spark** - Distributed data processing
 - **JupyterHub** - Multi-user notebook environment
-- **Unity Catalog** - Data governance and cataloging
+- **Unity Catalog** - Data governance and cataloging ❌ **NOT WORKING** (container permission issues)
 - **MongoDB** - Document database
 - **MySQL** - Alternative SQL database
 - **Elasticsearch** - Full-text search engine
@@ -82,6 +82,7 @@ This table shows the comprehensive services available in Urbalurba Infrastructur
 
 - **✅ Active** - Deployed by default, ready to use
 - **✅ Available** - Can be deployed on-demand via scripts
+- **❌ Container Broken** - Service exists but Docker images have permission/startup issues
 - **🔧 Manual** - Requires manual configuration
 - **⚠️ Beta** - Experimental or testing phase
 
