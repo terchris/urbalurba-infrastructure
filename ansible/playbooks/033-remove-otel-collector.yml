@@ -1,0 +1,71 @@
+---
+# File: ansible/playbooks/033-remove-otel-collector.yml
+# Description: Remove OpenTelemetry Collector from Urbalurba Infrastructure
+# Usage: ansible-playbook 033-remove-otel-collector.yml -e "target_host=rancher-desktop"
+
+- name: Remove OpenTelemetry Collector from Urbalurba Infrastructure
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    target_host: "{{ target_host | default('rancher-desktop') }}"
+    namespace: "monitoring"
+    component_name: "otel-collector"
+    manifests_folder: "/mnt/urbalurbadisk/manifests"
+
+  tasks:
+    - name: 1. Display removal information
+      ansible.builtin.debug:
+        msg:
+          - "====================================="
+          - "OpenTelemetry Collector Removal"
+          - "====================================="
+          - "Target Host: {{ target_host }}"
+          - "Namespace: {{ namespace }}"
+          - "Component: {{ component_name }}"
+
+    - name: 2. Remove OTEL Collector IngressRoute
+      kubernetes.core.k8s:
+        state: absent
+        src: "{{ manifests_folder }}/039-otel-collector-ingress.yaml"
+        context: "{{ target_host }}"
+      failed_when: false
+
+    - name: 3. Remove OTEL Collector Helm chart
+      kubernetes.core.helm:
+        name: otel-collector
+        release_namespace: "{{ namespace }}"
+        state: absent
+        context: "{{ target_host }}"
+      register: otel_removal
+      failed_when: false
+
+    - name: 4. Wait for OTEL Collector to be removed
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: "{{ namespace }}"
+        label_selectors:
+          - app.kubernetes.io/name=opentelemetry-collector
+        context: "{{ target_host }}"
+      register: otel_pods
+      retries: 10
+      delay: 5
+      until: otel_pods.resources | length == 0
+
+    - name: 5. Display removal status
+      ansible.builtin.debug:
+        msg:
+          - "✅ OpenTelemetry Collector removal completed!"
+          - ""
+          - "Removed components:"
+          - "  🔍 OTEL Collector telemetry pipeline"
+          - "  📡 OTLP receivers (gRPC 4317, HTTP 4318)"
+          - "  📊 Exporters (Tempo, Loki, Prometheus)"
+          - "  🏥 Health check endpoint"
+          - "  🌐 IngressRoute (otel.localhost)"
+          - ""
+          - "Verification:"
+          - "  kubectl get pods -n {{ namespace }} -l app.kubernetes.io/name=opentelemetry-collector --context={{ target_host }}"
+          - "  (Should show 'No resources found')"
+          - "  kubectl get ingressroute -n {{ namespace }} otel-collector --context={{ target_host }}"
+          - "  (Should show 'Error from server (NotFound)')"

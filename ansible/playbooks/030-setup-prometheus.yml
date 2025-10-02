@@ -1,0 +1,150 @@
+---
+# File: ansible/playbooks/030-setup-prometheus.yml
+# Description: Deploy Prometheus for Urbalurba Infrastructure
+# Usage: ansible-playbook 030-setup-prometheus.yml -e "target_host=rancher-desktop"
+
+- name: Deploy Prometheus for Urbalurba Infrastructure
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    target_host: "{{ target_host | default('rancher-desktop') }}"
+    namespace: "monitoring"
+    component_name: "prometheus"
+    manifests_folder: "/mnt/urbalurbadisk/manifests"
+    prometheus_config_file: "{{ manifests_folder }}/030-prometheus-config.yaml"
+
+    helm_repos:
+      - name: prometheus-community
+        url: https://prometheus-community.github.io/helm-charts
+
+  tasks:
+    - name: 1. Display deployment information
+      ansible.builtin.debug:
+        msg:
+          - "====================================="
+          - "Prometheus Deployment"
+          - "====================================="
+          - "Target Host: {{ target_host }}"
+          - "Namespace: {{ namespace }}"
+          - "Component: {{ component_name }}"
+          - "Config File: {{ prometheus_config_file }}"
+
+    - name: 2. Create monitoring namespace
+      kubernetes.core.k8s:
+        name: "{{ namespace }}"
+        api_version: v1
+        kind: Namespace
+        state: present
+        context: "{{ target_host }}"
+
+    - name: 3. Add/update Helm repositories
+      kubernetes.core.helm_repository:
+        name: "{{ item.name }}"
+        repo_url: "{{ item.url }}"
+      loop: "{{ helm_repos }}"
+
+    - name: 4. Update Helm repositories
+      ansible.builtin.command: helm repo update
+      changed_when: false
+
+    - name: 5. Install/upgrade Prometheus via Helm
+      ansible.builtin.command: >
+        helm upgrade --install prometheus prometheus-community/prometheus
+        -f {{ prometheus_config_file }}
+        --namespace {{ namespace }}
+        --create-namespace
+        --timeout 600s
+        --kube-context {{ target_host }}
+      register: prometheus_helm_result
+      changed_when: true
+
+    - name: 6. Wait for Prometheus server to be ready
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: "{{ namespace }}"
+        label_selectors:
+          - app.kubernetes.io/name=prometheus
+          - app.kubernetes.io/component=server
+        context: "{{ target_host }}"
+      register: prometheus_pods
+      retries: 20
+      delay: 15
+      until: >
+        prometheus_pods.resources | length > 0 and
+        prometheus_pods.resources[0].status.phase == "Running" and
+        prometheus_pods.resources[0].status.containerStatuses[0].ready == true
+
+    - name: 7. Test Prometheus server endpoint from within cluster
+      ansible.builtin.command: >
+        kubectl run curl-test-prometheus-server --image=curlimages/curl --rm -i --restart=Never
+        -n {{ namespace }} --context {{ target_host }} --timeout=10s --
+        curl -s -o /dev/null -w "%{http_code}"
+        http://prometheus-server.{{ namespace }}.svc.cluster.local:80/api/v1/status/runtimeinfo
+      register: prometheus_test
+      retries: 15
+      delay: 15
+      until: prometheus_test.rc == 0 and (prometheus_test.stdout.find('200') != -1 or prometheus_test.stdout.find('404') != -1)
+      failed_when: false
+
+    - name: 8. Test Prometheus metrics endpoint from within cluster
+      ansible.builtin.command: >
+        kubectl run curl-test-prometheus-metrics --image=curlimages/curl --rm -i --restart=Never
+        -n {{ namespace }} --context {{ target_host }} --timeout=10s --
+        curl -s -o /dev/null -w "%{http_code}"
+        http://prometheus-server.{{ namespace }}.svc.cluster.local:80/metrics
+      register: prometheus_metrics_test
+      retries: 15
+      delay: 15
+      until: prometheus_metrics_test.rc == 0 and (prometheus_metrics_test.stdout.find('200') != -1)
+      failed_when: false
+
+    - name: 9. Test Prometheus data ingestion via pushgateway
+      ansible.builtin.command: >
+        kubectl run prometheus-data-test --image=curlimages/curl --rm -i --restart=Never
+        -n {{ namespace }} --context {{ target_host }} --timeout=30s --
+        /bin/sh -c 'echo "prometheus_validation_test 42" | curl -X POST --data-binary @- http://prometheus-prometheus-pushgateway.{{ namespace }}.svc.cluster.local:9091/metrics/job/validation-test/instance/test'
+      register: prometheus_push_test
+      retries: 3
+      delay: 10
+      until: prometheus_push_test.rc == 0
+      failed_when: false
+
+    - name: 10. Wait for Prometheus to scrape the test metric
+      ansible.builtin.pause:
+        seconds: 15
+
+    - name: 11. Query Prometheus for the test metric
+      ansible.builtin.command: >
+        kubectl run prometheus-query-test --image=curlimages/curl --rm -i --restart=Never
+        -n {{ namespace }} --context {{ target_host }} --timeout=15s --
+        curl -s --data-urlencode 'query=prometheus_validation_test'
+        "http://prometheus-server.{{ namespace }}.svc.cluster.local:80/api/v1/query"
+      register: prometheus_query_test
+      retries: 5
+      delay: 10
+      until: prometheus_query_test.rc == 0 and (prometheus_query_test.stdout.find('"status":"success"') != -1) and (prometheus_query_test.stdout.find('prometheus_validation_test') != -1) and (prometheus_query_test.stdout.find('"value"') != -1)
+      failed_when: false
+
+    - name: 12. Display deployment status
+      ansible.builtin.debug:
+        msg:
+          - "✅ Prometheus deployment completed successfully!"
+          - ""
+          - "Service endpoints:"
+          - "  📊 Prometheus server: prometheus-server.monitoring.svc.cluster.local:80"
+          - "  🚨 Alertmanager: prometheus-alertmanager.monitoring.svc.cluster.local:9093"
+          - "  📤 Pushgateway: prometheus-prometheus-pushgateway.monitoring.svc.cluster.local:9091"
+          - "  📈 Node exporter: prometheus-prometheus-node-exporter.monitoring.svc.cluster.local:9100"
+          - ""
+          - "Health tests (ping tests):"
+          - "  📊 Server API: {{ 'PASS' if prometheus_test.stdout.find('200') != -1 or prometheus_test.stdout.find('404') != -1 else 'FAIL' }}"
+          - "  📈 Metrics endpoint: {{ 'PASS' if prometheus_metrics_test.stdout.find('200') != -1 else 'FAIL' }}"
+          - ""
+          - "Data ingestion tests (real data flow):"
+          - "  📤 Push to Pushgateway: {{ 'PASS' if prometheus_push_test.rc == 0 else 'FAIL' }}"
+          - "  📊 Query test metric: {{ 'PASS' if prometheus_query_test.stdout.find('\"status\":\"success\"') != -1 and prometheus_query_test.stdout.find('prometheus_validation_test') != -1 and prometheus_query_test.stdout.find('\"value\"') != -1 else 'FAIL' }}"
+          - ""
+          - "Manual verification:"
+          - "  kubectl get pods -n {{ namespace }} -l app.kubernetes.io/name=prometheus --context={{ target_host }}"
+          - "  kubectl logs -n {{ namespace }} -l app.kubernetes.io/name=prometheus --context={{ target_host }}"

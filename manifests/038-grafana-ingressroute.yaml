@@ -1,0 +1,42 @@
+# File: manifests/038-grafana-ingressroute.yaml
+# Description: Traefik IngressRoute for Grafana web UI
+# Component: Grafana ingress
+# Namespace: monitoring
+#
+# Purpose:
+# - Routes HTTP traffic to Grafana web UI
+# - Supports multiple domains via HostRegexp pattern
+# - Public access (no authentication required)
+#
+# Features:
+# - Domain pattern: grafana.* (grafana.localhost, grafana.urbalurba.no, etc.)
+# - HTTP only (web entrypoint)
+# - Routes to Grafana service port 80
+#
+# Usage:
+#   kubectl apply -f manifests/038-grafana-ingressroute.yaml
+#
+# Verification:
+#   kubectl get ingressroute -n monitoring grafana
+#   curl -H "Host: grafana.localhost" http://localhost/
+#   Open browser: http://grafana.localhost
+
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: grafana
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/component: observability-dashboard
+    protection: public
+    routing: unified
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: HostRegexp(`grafana\..+`)
+      kind: Rule
+      services:
+        - name: grafana
+          port: 80

@@ -215,9 +215,90 @@ auth.username: "root"
 
 **All of these MUST be overridden with values from `urbalurba-secrets`.**
 
+### **Rule 7: ConfigMap Management Pattern**
+ConfigMaps follow the same template pattern as secrets but for **non-sensitive configuration data**:
+
+#### **✅ ConfigMap Directory Structure**:
+```bash
+secrets-templates/
+├── configmaps/
+│   ├── [namespace]/
+│   │   ├── [category]/
+│   │   │   └── [config-name].[ext].template
+│   │   └── dashboards/     # Special: Auto-labeled
+│   │       └── my-dashboard.json.template
+```
+
+#### **✅ Auto-Discovery Pattern**:
+- **Templates**: Place files in `secrets-templates/configmaps/[namespace]/[category]/`
+- **Processing**: Any `*.template` file is automatically discovered
+- **Variables**: Use same `${VARIABLE}` pattern as secrets
+- **Labeling**: Automatic based on directory conventions
+
+#### **✅ Directory Conventions & Auto-Labeling**:
+```yaml
+# dashboards/ → Label: grafana_dashboard: "1"
+configmaps/monitoring/dashboards/*.json.template
+
+# nginx/ → Label: app: nginx
+configmaps/[namespace]/nginx/*.conf.template
+
+# otel/ → Label: app.kubernetes.io/name: otel-collector
+configmaps/monitoring/otel/*.yaml.template
+
+# Default → Label: managed-by: secrets-pipeline
+configmaps/[namespace]/configs/*.yaml.template
+```
+
+#### **✅ Developer Workflow**:
+```bash
+# 1. Add new ConfigMap template
+echo 'server: ${MY_SERVER}' > secrets-templates/configmaps/myapp/configs/app.conf.template
+
+# 2. Run generation (discovers automatically)
+./create-kubernetes-secrets.sh
+
+# 3. Deploy everything together
+kubectl apply -f kubernetes/kubernetes-secrets.yml
+```
+
+#### **✅ Customization Pattern**:
+```bash
+# Templates copied to secrets-config/ on first run
+secrets-config/configmaps/monitoring/dashboards/my-dashboard.json.template
+
+# Edit for customization (variables substituted, file preserved)
+nano secrets-config/configmaps/monitoring/configs/custom.yaml.template
+
+# Regenerate (preserves edits, updates variables)
+./create-kubernetes-secrets.sh
+```
+
+#### **❌ ConfigMap Anti-Patterns**:
+- **NEVER** put sensitive data in ConfigMaps (use Secrets instead)
+- **NEVER** create ConfigMaps outside the pipeline (use template system)
+- **NEVER** hardcode values (use `${VARIABLES}` for dynamic data)
+- **NEVER** edit generated YAML directly (edit templates instead)
+
+#### **ConfigMap vs Secret Decision Matrix**:
+```bash
+# ✅ ConfigMaps (Non-sensitive)
+- Application configuration files
+- Dashboard definitions (JSON/YAML)
+- Service discovery settings
+- Public certificates
+- Database connection hosts/ports
+
+# ❌ Secrets (Sensitive)
+- Passwords, API keys, tokens
+- Private certificates/keys
+- Database connection strings with passwords
+- OAuth client secrets
+```
+
 ## 🔧 **Operational Rules**
 
-### **Rule 7: Testing and Validation**
+### **Rule 8: Testing and Validation**
 ALL secret changes MUST be validated before deployment:
 
 #### **✅ Required Testing Steps**:
@@ -238,7 +319,7 @@ grep -c "PGPASSWORD\|REDIS_PASSWORD\|AUTHENTIK_SECRET_KEY" kubernetes/kubernetes
 - Not checking for unresolved variables
 - Missing verification that critical secrets are present
 
-### **Rule 8: Backup and Recovery Pattern**
+### **Rule 9: Backup and Recovery Pattern**
 Secret backups MUST follow secure patterns:
 
 #### **✅ Correct Backup**:

@@ -1,0 +1,59 @@
+---
+# File: ansible/playbooks/031-remove-tempo.yml
+# Description: Remove Grafana Tempo from Urbalurba Infrastructure
+# Usage: ansible-playbook 031-remove-tempo.yml -e "target_host=rancher-desktop"
+
+- name: Remove Grafana Tempo from Urbalurba Infrastructure
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    target_host: "{{ target_host | default('rancher-desktop') }}"
+    namespace: "monitoring"
+    component_name: "tempo"
+
+  tasks:
+    - name: 1. Display removal information
+      ansible.builtin.debug:
+        msg:
+          - "====================================="
+          - "Grafana Tempo Removal"
+          - "====================================="
+          - "Target Host: {{ target_host }}"
+          - "Namespace: {{ namespace }}"
+          - "Component: {{ component_name }}"
+
+    - name: 2. Remove Tempo Helm chart
+      kubernetes.core.helm:
+        name: tempo
+        release_namespace: "{{ namespace }}"
+        state: absent
+        context: "{{ target_host }}"
+      register: tempo_removal
+      failed_when: false
+
+    - name: 3. Wait for Tempo to be removed
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: "{{ namespace }}"
+        label_selectors:
+          - app.kubernetes.io/name=tempo
+        context: "{{ target_host }}"
+      register: tempo_pods
+      retries: 10
+      delay: 5
+      until: tempo_pods.resources | length == 0
+
+    - name: 4. Display removal status
+      ansible.builtin.debug:
+        msg:
+          - "✅ Grafana Tempo removal completed!"
+          - ""
+          - "Removed components:"
+          - "  🔍 Tempo distributed tracing backend"
+          - "  📡 OTLP receivers (gRPC and HTTP)"
+          - "  💾 Persistent storage"
+          - ""
+          - "Verification:"
+          - "  kubectl get pods -n {{ namespace }} -l app.kubernetes.io/name=tempo --context={{ target_host }}"
+          - "  (Should show 'No resources found')"

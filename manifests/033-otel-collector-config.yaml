@@ -1,0 +1,168 @@
+# File: manifests/033-otel-collector-config.yaml
+# Description: Helm values file for deploying OpenTelemetry Collector
+# Usage: Referenced by ansible/playbooks/033-setup-otel-collector.yml
+# Prerequisites: Prometheus, Tempo, and Loki must be deployed first
+#
+# Features:
+# - Receives OTLP telemetry on gRPC (4317) and HTTP (4318)
+# - Exports traces to Tempo
+# - Exports logs to Loki
+# - Exports metrics to Prometheus
+# - Debug exporter for troubleshooting
+# - Resource and transform processors for enrichment
+
+# Deployment mode
+mode: deployment
+
+# Container image
+image:
+  repository: otel/opentelemetry-collector-contrib
+
+# Resource limits
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# Service configuration
+service:
+  type: ClusterIP
+
+# Port configuration
+ports:
+  otlp:
+    enabled: true
+    containerPort: 4317
+    servicePort: 4317
+    protocol: TCP
+  otlp-http:
+    enabled: true
+    containerPort: 4318
+    servicePort: 4318
+    protocol: TCP
+  metrics:
+    enabled: true
+    containerPort: 8888
+    servicePort: 8888
+    protocol: TCP
+  prometheus:
+    enabled: true
+    containerPort: 8889
+    servicePort: 8889
+    protocol: TCP
+  health-check:
+    enabled: true
+    containerPort: 13133
+    servicePort: 13133
+    protocol: TCP
+
+# OpenTelemetry Collector configuration
+config:
+  # Extensions
+  extensions:
+    health_check:
+      endpoint: 0.0.0.0:13133
+
+  # Receivers
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+
+  # Processors
+  processors:
+    batch:
+      timeout: 10s
+      send_batch_size: 1024
+
+    resource:
+      attributes:
+        - key: cluster.name
+          value: urbalurba-local
+          action: upsert
+        - key: service_name
+          from_attribute: service.name
+          action: insert
+
+    transform:
+      log_statements:
+        - context: log
+          statements:
+            - set(attributes["service_name"], resource.attributes["service_name"])
+
+  # Exporters
+  exporters:
+    # Traces to Tempo
+    otlp/tempo:
+      endpoint: tempo.monitoring.svc.cluster.local:4317
+      tls:
+        insecure: true
+
+    # Logs to Loki
+    otlphttp/loki:
+      endpoint: http://loki-gateway.monitoring.svc.cluster.local:80/otlp
+      tls:
+        insecure: true
+
+    # Metrics to Prometheus
+    prometheusremotewrite:
+      endpoint: http://prometheus-server.monitoring.svc.cluster.local:80/api/v1/write
+      tls:
+        insecure: true
+
+    # Debug exporter for troubleshooting
+    debug:
+      verbosity: detailed
+      sampling_initial: 5
+      sampling_thereafter: 200
+
+  # Service pipelines
+  service:
+    extensions:
+      - health_check
+
+    pipelines:
+      # Traces pipeline
+      traces:
+        receivers:
+          - otlp
+        processors:
+          - batch
+        exporters:
+          - otlp/tempo
+          - debug
+
+      # Logs pipeline
+      logs:
+        receivers:
+          - otlp
+        processors:
+          - resource
+          - transform
+          - batch
+        exporters:
+          - otlphttp/loki
+          - debug
+
+      # Metrics pipeline
+      metrics:
+        receivers:
+          - otlp
+        processors:
+          - batch
+        exporters:
+          - prometheusremotewrite
+          - debug
+
+    # Telemetry configuration
+    telemetry:
+      logs:
+        level: debug
+      metrics:
+        level: detailed

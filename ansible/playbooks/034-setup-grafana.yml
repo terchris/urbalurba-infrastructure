@@ -1,0 +1,352 @@
+---
+# File: ansible/playbooks/034-setup-grafana.yml
+# Description: Deploy Grafana for Urbalurba Infrastructure
+# Usage: ansible-playbook 034-setup-grafana.yml -e "target_host=rancher-desktop"
+
+- name: Deploy Grafana for Urbalurba Infrastructure
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    target_host: "{{ target_host | default('rancher-desktop') }}"
+    namespace: "monitoring"
+    component_name: "grafana"
+    manifests_folder: "/mnt/urbalurbadisk/manifests"
+    grafana_config_file: "{{ manifests_folder }}/034-grafana-config.yaml"
+
+    helm_repos:
+      - name: grafana
+        url: https://grafana.github.io/helm-charts
+
+  tasks:
+    - name: 1. Display deployment information
+      ansible.builtin.debug:
+        msg:
+          - "======================================"
+          - "Grafana Deployment"
+          - "File: ansible/playbooks/034-setup-grafana.yml"
+          - "======================================"
+          - "Target Host: {{ target_host }}"
+          - "Namespace: {{ namespace }}"
+          - "Component: {{ component_name }}"
+          - "Config File: {{ grafana_config_file }}"
+
+    - name: 2. Create monitoring namespace
+      kubernetes.core.k8s:
+        name: "{{ namespace }}"
+        api_version: v1
+        kind: Namespace
+        state: present
+        context: "{{ target_host }}"
+
+    - name: 3. Add/update Helm repositories
+      kubernetes.core.helm_repository:
+        name: "{{ item.name }}"
+        repo_url: "{{ item.url }}"
+      loop: "{{ helm_repos }}"
+
+    - name: 4. Update Helm repositories
+      ansible.builtin.command: helm repo update
+      changed_when: false
+
+    - name: 5. Check if Grafana values file exists
+      ansible.builtin.stat:
+        path: "{{ grafana_config_file }}"
+      register: grafana_values_file
+
+    - name: 6. Fail if config file doesn't exist
+      ansible.builtin.fail:
+        msg: "Grafana config file not found: {{ grafana_config_file }}"
+      when: not grafana_values_file.stat.exists
+
+    - name: 7. Install/upgrade Grafana with datasources
+      kubernetes.core.helm:
+        name: grafana
+        chart_ref: grafana/grafana
+        release_namespace: "{{ namespace }}"
+        create_namespace: true
+        state: present
+        context: "{{ target_host }}"
+        values_files:
+          - "{{ grafana_config_file }}"
+
+    - name: 8. Wait for Grafana pods to be ready
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: "{{ namespace }}"
+        label_selectors:
+          - app.kubernetes.io/name=grafana
+        context: "{{ target_host }}"
+      register: grafana_pods
+      retries: 20
+      delay: 15
+      until: >
+        grafana_pods.resources | length > 0 and
+        grafana_pods.resources[0].status.phase == "Running" and
+        grafana_pods.resources[0].status.containerStatuses[0].ready == true
+
+    - name: 9. Test Grafana health endpoint
+      ansible.builtin.command: >
+        kubectl run curl-test-grafana-health --image=curlimages/curl --rm -i --restart=Never
+        -n {{ namespace }} --context {{ target_host }} --timeout=10s --
+        curl -s -o /dev/null -w "HTTP_CODE:%{http_code}"
+        http://grafana.{{ namespace }}.svc.cluster.local:80/api/health
+      register: grafana_health_test
+      retries: 10
+      delay: 10
+      until: grafana_health_test.rc == 0 and (grafana_health_test.stdout.find('HTTP_CODE:200') != -1)
+      failed_when: false
+
+    - name: 10. Test Prometheus datasource connectivity
+      ansible.builtin.command: >
+        kubectl run curl-test-grafana-prometheus --image=curlimages/curl --rm -i --restart=Never
+        -n {{ namespace }} --context {{ target_host }} --timeout=10s --
+        curl -s -u admin:SecretPassword1 -o /dev/null -w "HTTP_CODE:%{http_code}"
+        "http://grafana.{{ namespace }}.svc.cluster.local:80/api/datasources/proxy/1/api/v1/status/runtimeinfo"
+      register: grafana_prometheus_test
+      retries: 5
+      delay: 5
+      until: grafana_prometheus_test.rc == 0 and (grafana_prometheus_test.stdout.find('HTTP_CODE:200') != -1)
+      failed_when: false
+
+    - name: 11. Test Loki datasource connectivity
+      ansible.builtin.command: >
+        kubectl run curl-test-grafana-loki --image=curlimages/curl --rm -i --restart=Never
+        -n {{ namespace }} --context {{ target_host }} --timeout=10s --
+        curl -s -u admin:SecretPassword1 -o /dev/null -w "HTTP_CODE:%{http_code}"
+        "http://grafana.{{ namespace }}.svc.cluster.local:80/api/datasources/proxy/2/loki/api/v1/labels"
+      register: grafana_loki_test
+      retries: 5
+      delay: 5
+      until: grafana_loki_test.rc == 0 and (grafana_loki_test.stdout.find('HTTP_CODE:200') != -1)
+      failed_when: false
+
+    - name: 12. Test Tempo datasource connectivity
+      ansible.builtin.command: >
+        kubectl run curl-test-grafana-tempo --image=curlimages/curl --rm -i --restart=Never
+        -n {{ namespace }} --context {{ target_host }} --timeout=10s --
+        curl -s -u admin:SecretPassword1 -o /dev/null -w "HTTP_CODE:%{http_code}"
+        "http://grafana.{{ namespace }}.svc.cluster.local:80/api/datasources/proxy/3/ready"
+      register: grafana_tempo_test
+      retries: 5
+      delay: 5
+      until: grafana_tempo_test.rc == 0 and (grafana_tempo_test.stdout.find('HTTP_CODE:200') != -1)
+      failed_when: false
+
+    - name: 13. Test Prometheus data query via Grafana
+      ansible.builtin.command: >
+        kubectl run curl-test-grafana-prometheus-data --image=curlimages/curl --rm -i --restart=Never
+        -n {{ namespace }} --context {{ target_host }} --timeout=15s --
+        curl -s -u admin:SecretPassword1 -w "HTTP_CODE:%{http_code}"
+        --data-urlencode 'query=up'
+        "http://grafana.{{ namespace }}.svc.cluster.local:80/api/datasources/proxy/1/api/v1/query"
+      register: grafana_prometheus_data_test
+      retries: 3
+      delay: 10
+      until: grafana_prometheus_data_test.rc == 0 and (grafana_prometheus_data_test.stdout.find('HTTP_CODE:200') != -1) and (grafana_prometheus_data_test.stdout.find('"status":"success"') != -1)
+      failed_when: false
+
+    - name: 14. E2E TEST - Send test logs via OTEL to Loki
+      ansible.builtin.command: >
+        kubectl run grafana-e2e-logs --image=ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:latest --rm -i --restart=Never
+        -n {{ namespace }} --context {{ target_host }} --timeout=60s --
+        logs --otlp-endpoint=otel-collector-opentelemetry-collector.{{ namespace }}.svc.cluster.local:4318
+        --otlp-insecure --otlp-http --duration=3s --logs=10
+        --telemetry-attributes service.name=\"grafana-e2e-validation\" --telemetry-attributes test.type=\"grafana-datasource-test\"
+        --body="E2E: OTEL → Loki → Grafana query validation"
+      register: grafana_e2e_logs
+      retries: 2
+      delay: 5
+      until: grafana_e2e_logs.rc == 0
+      failed_when: false
+
+    - name: 15. Wait for logs to be indexed in Loki
+      ansible.builtin.pause:
+        seconds: 5
+      when: grafana_e2e_logs.rc == 0
+
+    - name: 16. VERIFY - Query Loki via Grafana for E2E test logs
+      ansible.builtin.command: >
+        kubectl run grafana-verify-loki-e2e --image=curlimages/curl --rm -i --restart=Never
+        -n {{ namespace }} --context {{ target_host }} --timeout=20s --
+        /bin/sh -c 'NOW=$(date +%s); START=$((NOW-120)); curl -s -u admin:SecretPassword1 -G --data-urlencode "query={service_name=\"telemetrygen\"}" --data-urlencode "start=${START}000000000" --data-urlencode "end=${NOW}000000000" --data-urlencode "limit=5" "http://grafana.{{ namespace }}.svc.cluster.local:80/api/datasources/proxy/2/loki/api/v1/query_range"'
+      register: grafana_loki_e2e_verify
+      retries: 3
+      delay: 5
+      until: grafana_loki_e2e_verify.rc == 0 and (grafana_loki_e2e_verify.stdout.find('"status":"success"') != -1) and (grafana_loki_e2e_verify.stdout.find('grafana-datasource-test') != -1)
+      failed_when: false
+      when: grafana_e2e_logs.rc == 0
+
+    - name: 17. E2E TEST - Send test traces via OTEL to Tempo
+      ansible.builtin.command: >
+        kubectl run grafana-e2e-traces --image=ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:latest --rm -i --restart=Never
+        -n {{ namespace }} --context {{ target_host }} --timeout=60s --
+        traces --otlp-endpoint=otel-collector-opentelemetry-collector.{{ namespace }}.svc.cluster.local:4317
+        --otlp-insecure --duration=3s --traces=5
+        --telemetry-attributes service.name=\"grafana-e2e-validation\" --telemetry-attributes test.type=\"grafana-datasource-test\"
+      register: grafana_e2e_traces
+      retries: 2
+      delay: 5
+      until: grafana_e2e_traces.rc == 0
+      failed_when: false
+
+    - name: 18. Wait for traces to be indexed in Tempo
+      ansible.builtin.pause:
+        seconds: 10
+      when: grafana_e2e_traces.rc == 0
+
+    - name: 19. VERIFY - Query Tempo via Grafana for E2E test traces
+      ansible.builtin.command: >
+        kubectl run grafana-verify-tempo-e2e --image=curlimages/curl --rm -i --restart=Never
+        -n {{ namespace }} --context {{ target_host }} --timeout=20s --
+        /bin/sh -c 'NOW=$(date +%s); START=$((NOW-120)); curl -s -u admin:SecretPassword1 -G --data-urlencode "q={.service.name=\"grafana-e2e-validation\"}" --data-urlencode "start=$START" --data-urlencode "end=$NOW" --data-urlencode "limit=5" "http://grafana.{{ namespace }}.svc.cluster.local:80/api/datasources/proxy/3/api/search"'
+      register: grafana_tempo_e2e_verify
+      retries: 3
+      delay: 5
+      until: grafana_tempo_e2e_verify.rc == 0 and (grafana_tempo_e2e_verify.stdout.find('"traces"') != -1) and (grafana_tempo_e2e_verify.stdout.find('grafana-e2e-validation') != -1)
+      failed_when: false
+      when: grafana_e2e_traces.rc == 0
+
+    - name: 20. FAIL deployment if core tests did not pass
+      ansible.builtin.fail:
+        msg: |
+          ❌ GRAFANA DATASOURCE VALIDATION FAILED!
+
+          Connectivity tests:
+          Health endpoint: {{ 'PASS' if grafana_health_test.stdout.find('HTTP_CODE:200') != -1 else 'FAIL' }}
+          Prometheus datasource: {{ 'PASS' if grafana_prometheus_test.stdout.find('HTTP_CODE:200') != -1 else 'FAIL' }}
+          Loki datasource: {{ 'PASS' if grafana_loki_test.stdout.find('HTTP_CODE:200') != -1 else 'FAIL' }}
+          Tempo datasource: {{ 'PASS' if grafana_tempo_test.stdout.find('HTTP_CODE:200') != -1 else 'FAIL' }}
+          Prometheus data query: {{ 'PASS' if grafana_prometheus_data_test.stdout.find('HTTP_CODE:200') != -1 and grafana_prometheus_data_test.stdout.find('"status":"success"') != -1 else 'FAIL' }}
+
+          E2E datasource tests:
+          Loki (OTEL→Loki→Grafana query): {{ 'PASS' if grafana_loki_e2e_verify is defined and grafana_loki_e2e_verify.stdout is defined and grafana_loki_e2e_verify.stdout.find('"status":"success"') != -1 and grafana_loki_e2e_verify.stdout.find('grafana-datasource-test') != -1 else 'FAIL' }}
+          Tempo (OTEL→Tempo→Grafana query): {{ 'PASS' if grafana_tempo_e2e_verify is defined and grafana_tempo_e2e_verify.stdout is defined and grafana_tempo_e2e_verify.stdout.find('"traces"') != -1 and grafana_tempo_e2e_verify.stdout.find('grafana-e2e-validation') != -1 else 'FAIL' }}
+
+          All datasources MUST be configured and queryable for successful deployment!
+      when: >
+        not (grafana_health_test.stdout.find('HTTP_CODE:200') != -1) or
+        not (grafana_prometheus_test.stdout.find('HTTP_CODE:200') != -1) or
+        not (grafana_loki_test.stdout.find('HTTP_CODE:200') != -1) or
+        not (grafana_tempo_test.stdout.find('HTTP_CODE:200') != -1) or
+        not (grafana_prometheus_data_test.stdout.find('HTTP_CODE:200') != -1 and grafana_prometheus_data_test.stdout.find('"status":"success"') != -1) or
+        not (grafana_loki_e2e_verify is defined and grafana_loki_e2e_verify.stdout is defined and grafana_loki_e2e_verify.stdout.find('"status":"success"') != -1 and grafana_loki_e2e_verify.stdout.find('grafana-datasource-test') != -1) or
+        not (grafana_tempo_e2e_verify is defined and grafana_tempo_e2e_verify.stdout is defined and grafana_tempo_e2e_verify.stdout.find('"traces"') != -1 and grafana_tempo_e2e_verify.stdout.find('grafana-e2e-validation') != -1)
+
+    - name: 21. Deploy Installation Test Suite dashboards
+      kubernetes.core.k8s:
+        state: present
+        src: "{{ manifests_folder }}/034-grafana-test-dashboards.yaml"
+        context: "{{ target_host }}"
+
+    - name: 22. Wait for dashboard ConfigMaps to be created
+      kubernetes.core.k8s_info:
+        kind: ConfigMap
+        namespace: "{{ namespace }}"
+        label_selectors:
+          - grafana_dashboard=1
+        context: "{{ target_host }}"
+      register: dashboard_configmaps
+      retries: 5
+      delay: 2
+      until: dashboard_configmaps.resources | length >= 3
+
+    - name: 23. Generate test data - Send logs for dashboard
+      ansible.builtin.command: >
+        kubectl run telemetrygen-dashboard-logs --image=ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:latest --rm -i --restart=Never
+        -n {{ namespace }} --context {{ target_host }} --timeout=60s --
+        logs --otlp-endpoint=otel-collector-opentelemetry-collector.{{ namespace }}.svc.cluster.local:4318
+        --otlp-insecure --otlp-http --duration=10s --logs=100 --service telemetrygen-logs
+        --body "Test log entry for Installation Test Suite dashboard"
+      register: test_logs
+      retries: 2
+      delay: 3
+      until: test_logs.rc == 0
+      failed_when: false
+
+    - name: 24. Generate test data - Send traces for dashboard
+      ansible.builtin.command: >
+        kubectl run telemetrygen-dashboard-traces --image=ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:latest --rm -i --restart=Never
+        -n {{ namespace }} --context {{ target_host }} --timeout=60s --
+        traces --otlp-endpoint=otel-collector-opentelemetry-collector.{{ namespace }}.svc.cluster.local:4317
+        --otlp-insecure --duration=5s --traces=20 --service telemetrygen-traces
+      register: test_traces
+      retries: 2
+      delay: 3
+      until: test_traces.rc == 0
+      failed_when: false
+
+    - name: 25. Wait for test data to be indexed
+      ansible.builtin.pause:
+        seconds: 5
+
+    - name: 26. Deploy Grafana IngressRoute
+      kubernetes.core.k8s:
+        state: present
+        src: "{{ manifests_folder }}/038-grafana-ingressroute.yaml"
+        context: "{{ target_host }}"
+
+    - name: 27. Wait for IngressRoute to be ready
+      kubernetes.core.k8s_info:
+        kind: IngressRoute
+        name: grafana
+        namespace: "{{ namespace }}"
+        api_version: traefik.io/v1alpha1
+        context: "{{ target_host }}"
+      register: grafana_ingressroute
+      retries: 5
+      delay: 2
+      until: grafana_ingressroute.resources | length > 0
+
+    - name: 28. Display deployment status
+      ansible.builtin.debug:
+        msg:
+          - "✅ Grafana deployment completed successfully!"
+          - ""
+          - "Service endpoints:"
+          - "  📊 Grafana UI: grafana.monitoring.svc.cluster.local:80"
+          - "  🔗 Health check: grafana.monitoring.svc.cluster.local:80/api/health"
+          - "  👤 Credentials: admin / SecretPassword1"
+          - ""
+          - "Datasource connectivity tests:"
+          - "  🏥 Health endpoint: {{ 'PASS ✅' if grafana_health_test.stdout.find('HTTP_CODE:200') != -1 else 'FAIL ❌' }}"
+          - "  📈 Prometheus datasource: {{ 'PASS ✅' if grafana_prometheus_test.stdout.find('HTTP_CODE:200') != -1 else 'FAIL ❌' }}"
+          - "  📋 Loki datasource: {{ 'PASS ✅' if grafana_loki_test.stdout.find('HTTP_CODE:200') != -1 else 'FAIL ❌' }}"
+          - "  🔍 Tempo datasource: {{ 'PASS ✅' if grafana_tempo_test.stdout.find('HTTP_CODE:200') != -1 else 'FAIL ❌' }}"
+          - ""
+          - "Data query validation:"
+          - "  📊 Prometheus data query: {{ 'PASS ✅' if grafana_prometheus_data_test.stdout.find('HTTP_CODE:200') != -1 and grafana_prometheus_data_test.stdout.find('\"status\":\"success\"') != -1 else 'FAIL ❌' }}"
+          - ""
+          - "END-TO-END Grafana Datasource Validation:"
+          - "  📋 Loki (OTEL→Loki→Grafana query): {{ 'PASS ✅' if grafana_loki_e2e_verify is defined and grafana_loki_e2e_verify.stdout is defined and grafana_loki_e2e_verify.stdout.find('\"status\":\"success\"') != -1 and grafana_loki_e2e_verify.stdout.find('grafana-datasource-test') != -1 else 'FAIL ❌' }}"
+          - "  🔍 Tempo (OTEL→Tempo→Grafana query): {{ 'PASS ✅' if grafana_tempo_e2e_verify is defined and grafana_tempo_e2e_verify.stdout is defined and grafana_tempo_e2e_verify.stdout.find('\"traces\"') != -1 and grafana_tempo_e2e_verify.stdout.find('grafana-e2e-validation') != -1 else 'FAIL ❌' }}"
+          - ""
+          - "Datasource configuration:"
+          - "  1. Prometheus: http://prometheus-server.monitoring.svc.cluster.local:80 (default)"
+          - "  2. Loki: http://loki-gateway.monitoring.svc.cluster.local:80"
+          - "  3. Tempo: http://tempo.monitoring.svc.cluster.local:3200"
+          - ""
+          - "Installation Test Suite dashboards:"
+          - "  📊 {{ dashboard_configmaps.resources | length }} dashboards deployed"
+          - "  🏷️  Label: grafana_dashboard=1"
+          - "  📁 Dashboards: Test Data - Logs, Test Data - Traces, Test Data - Metrics"
+          - ""
+          - "Test data generation:"
+          - "  📋 Logs: {{ 'Sent ✅' if test_logs is defined and test_logs.rc == 0 else 'Failed ❌' }} (service: telemetrygen-logs)"
+          - "  🔍 Traces: {{ 'Sent ✅' if test_traces is defined and test_traces.rc == 0 else 'Failed ❌' }} (service: telemetrygen-traces)"
+          - "  📊 Metrics: Available from Prometheus 'up' query"
+          - ""
+          - "Ingress configuration:"
+          - "  🌐 IngressRoute: {{ 'Ready ✅' if grafana_ingressroute.resources | length > 0 else 'Not found ❌' }}"
+          - "  🔗 Access URL: http://grafana.localhost"
+          - "  🌍 Pattern: grafana.* (supports multiple domains)"
+          - ""
+          - "Access Grafana UI:"
+          - "  http://grafana.localhost (via ingress)"
+          - "  kubectl port-forward -n {{ namespace }} svc/grafana 3000:80 --context={{ target_host }}"
+          - "  Open: http://localhost:3000"
+          - ""
+          - "Manual verification:"
+          - "  kubectl get pods -n {{ namespace }} -l app.kubernetes.io/name=grafana --context={{ target_host }}"
+          - "  kubectl get configmaps -n {{ namespace }} -l grafana_dashboard=1 --context={{ target_host }}"
+          - "  kubectl get ingressroute -n {{ namespace }} grafana --context={{ target_host }}"

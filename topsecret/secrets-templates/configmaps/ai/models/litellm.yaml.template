@@ -1,0 +1,58 @@
+# General settings
+general_settings:
+  master_key: os.environ/LITELLM_PROXY_MASTER_KEY
+
+# Model list configuration
+model_list:
+  # Mac Ollama models with different temperature settings
+  - model_name: mac-gpt-oss-balanced
+    litellm_params:
+      model: ollama/gpt-oss:20b
+      api_base: "http://host.lima.internal:11434"
+      temperature: 0.7
+
+  - model_name: mac-gpt-oss-creative
+    litellm_params:
+      model: ollama/gpt-oss:20b
+      api_base: "http://host.lima.internal:11434"
+      temperature: 0.9
+
+  - model_name: mac-gpt-oss-precise
+    litellm_params:
+      model: ollama/gpt-oss:20b
+      api_base: "http://host.lima.internal:11434"
+      temperature: 0.3
+
+  # External Ollama models (Mac with fixed IP)
+  - model_name: external-ollama-gemma3
+    litellm_params:
+      model: ollama/gemma3:4b
+      api_base: "http://192.168.68.61:11434"
+      temperature: 0.7
+
+  # Cloud provider models with Mac fallbacks
+  - model_name: gpt-4o
+    litellm_params:
+      model: gpt-4o
+      api_key: "os.environ/OPENAI_API_KEY"
+      fallbacks:
+        - model: ollama/gpt-oss:20b
+          api_base: "http://host.lima.internal:11434"
+
+  - model_name: azure-gpt-4
+    litellm_params:
+      model: azure/gpt-4
+      api_key: "os.environ/AZURE_API_KEY"
+      api_base: "os.environ/AZURE_API_BASE"
+      api_version: "2023-12-01-preview"
+      fallbacks:
+        - model: ollama/gpt-oss:20b
+          api_base: "http://host.lima.internal:11434"
+
+  - model_name: claude-3-opus
+    litellm_params:
+      model: anthropic/claude-3-opus-20240229
+      api_key: "os.environ/ANTHROPIC_API_KEY"
+      fallbacks:
+        - model: ollama/gpt-oss:20b
+          api_base: "http://host.lima.internal:11434"

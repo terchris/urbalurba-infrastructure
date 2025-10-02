@@ -87,6 +87,77 @@ if [ -d "$SECRETS_TEMPLATES_DIR" ]; then
     # Use envsubst to substitute variables in the master template
     envsubst < "$MASTER_TEMPLATE" > "$TEMP_SECRETS_FILE" || error_exit "Failed to generate secrets file"
 
+    # Step 6b: Process ConfigMaps
+    echo "Processing ConfigMaps..."
+    CONFIGMAPS_TEMPLATES_DIR="$SECRETS_TEMPLATES_DIR/configmaps"
+    CONFIGMAPS_CONFIG_DIR="$SECRETS_CONFIG_DIR/configmaps"
+
+    # Initialize configmaps directory if templates exist but config doesn't
+    if [ -d "$CONFIGMAPS_TEMPLATES_DIR" ] && [ ! -d "$CONFIGMAPS_CONFIG_DIR" ]; then
+        echo "Initializing ConfigMaps from templates..."
+        cp -r "$CONFIGMAPS_TEMPLATES_DIR" "$CONFIGMAPS_CONFIG_DIR" || error_exit "Failed to copy configmap templates"
+        echo "✅ Created configmaps/ - you can now customize your ConfigMaps there"
+    fi
+
+    # Process ConfigMaps if directory exists
+    if [ -d "$CONFIGMAPS_CONFIG_DIR" ]; then
+        echo "Discovering ConfigMaps..."
+
+        # Find all template files in configmaps directory
+        find "$CONFIGMAPS_CONFIG_DIR" -name "*.template" -type f | while read -r template_file; do
+            # Get relative path from configmaps dir
+            rel_path="${template_file#$CONFIGMAPS_CONFIG_DIR/}"
+            echo "  Found: $rel_path"
+
+            # Extract namespace and category from path
+            # Example: monitoring/dashboards/my-dashboard.json.template
+            namespace=$(echo "$rel_path" | cut -d'/' -f1)
+            category=$(echo "$rel_path" | cut -d'/' -f2)
+            filename=$(basename "$template_file" .template)
+            base_name=$(basename "$filename" | sed 's/\.[^.]*$//')
+
+            # Generate ConfigMap name
+            configmap_name="${namespace}-${category}-${base_name}"
+            # Sanitize name (lowercase, replace special chars)
+            configmap_name=$(echo "$configmap_name" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g')
+
+            echo "  Generating ConfigMap: $configmap_name in namespace $namespace"
+
+            # Process template with envsubst for variable substitution
+            content=$(envsubst < "$template_file")
+
+            # Determine labels based on directory conventions
+            labels=""
+            if [[ "$category" == "dashboards" ]]; then
+                labels="    grafana_dashboard: \"1\""
+            elif [[ "$category" == "nginx" ]]; then
+                labels="    app: nginx"
+            elif [[ "$category" == "otel" ]]; then
+                labels="    app.kubernetes.io/name: otel-collector"
+            else
+                labels="    managed-by: secrets-pipeline"
+            fi
+
+            # Append ConfigMap to temporary file
+            cat >> "$TEMP_SECRETS_FILE" << EOF
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: $configmap_name
+  namespace: $namespace
+  labels:
+$labels
+data:
+  $filename: |
+$(echo "$content" | sed 's/^/    /')
+EOF
+        done
+
+        echo "✅ ConfigMaps processing completed"
+    fi
+
     # Step 7: Validate BEFORE overwriting
     echo "Validating generated secrets file..."
     VALIDATION_PASSED=true

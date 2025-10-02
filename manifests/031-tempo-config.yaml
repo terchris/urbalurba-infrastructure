@@ -1,0 +1,65 @@
+# File: manifests/031-tempo-config.yaml
+#
+# Description:
+# Helm values file for deploying Tempo with the official Helm chart.
+# Tempo is a distributed tracing backend for storing and querying traces.
+# It provides the traces storage backend for Grafana dashboards and integrates
+# with OpenTelemetry Collector for trace ingestion.
+#
+# Features:
+# - Distributed tracing storage with 24-hour retention
+# - Persistent volume for trace data durability (10Gi)
+# - OTLP receivers for both gRPC (4317) and HTTP (4318) protocols
+# - ClusterIP service for internal cluster access
+# - Native integration with OpenTelemetry Collector
+# - Efficient trace storage and query capabilities
+#
+# Usage:
+#   helm upgrade --install tempo grafana/tempo \
+#     -n monitoring -f manifests/031-tempo-config.yaml
+#
+# Prerequisites:
+# - The 'monitoring' namespace must exist
+# - PersistentVolume support in the cluster
+# - Helm repository: https://grafana.github.io/helm-charts
+#
+# Integration:
+# - Receives traces from OpenTelemetry Collector via OTLP protocol
+# - Provides traces datasource for Grafana
+# - Accessible at: tempo.monitoring.svc.cluster.local:4317 (gRPC)
+# - Accessible at: tempo.monitoring.svc.cluster.local:4318 (HTTP)
+#
+# Access:
+# - Internal cluster: tempo.monitoring.svc.cluster.local:4317 (gRPC)
+# - Internal cluster: tempo.monitoring.svc.cluster.local:4318 (HTTP)
+# - No external access required (internal service only)
+
+# Tempo configuration
+tempo:
+  # OTLP receivers configuration
+  receivers:
+    otlp:
+      protocols:
+        # gRPC endpoint for OTLP traces
+        grpc:
+          endpoint: 0.0.0.0:4317
+        # HTTP endpoint for OTLP traces
+        http:
+          endpoint: 0.0.0.0:4318
+
+  # Trace retention period
+  retention: 24h
+
+# Persistence configuration
+persistence:
+  enabled: true
+  size: 10Gi
+
+# Service configuration
+service:
+  type: ClusterIP
+
+# ServiceMonitor configuration
+# Disabled as Prometheus scraping is not required for Tempo
+serviceMonitor:
+  enabled: false

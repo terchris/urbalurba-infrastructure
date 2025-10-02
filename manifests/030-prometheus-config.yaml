@@ -1,0 +1,92 @@
+# File: manifests/030-prometheus-config.yaml
+#
+# Description:
+# Helm values file for deploying Prometheus with the official Helm chart.
+# Prometheus is a metrics collection and storage system for monitoring the Kubernetes cluster
+# and applications. It provides the metrics backend for Grafana dashboards.
+#
+# Features:
+# - Time-series metrics storage with 15-day retention
+# - Persistent volume for data durability (8Gi)
+# - Alertmanager for alert processing and routing
+# - Pushgateway for batch job metrics
+# - Node exporter for host-level metrics
+# - Kube-state-metrics for Kubernetes object metrics
+# - ServiceMonitor support for automatic service discovery
+# - Remote write endpoint for OTLP integration
+#
+# Usage:
+#   helm upgrade --install prometheus prometheus-community/prometheus \
+#     -n monitoring -f manifests/030-prometheus-config.yaml
+#
+# Prerequisites:
+# - The 'monitoring' namespace must exist
+# - PersistentVolume support in the cluster
+# - Helm repository: https://prometheus-community.github.io/helm-charts
+#
+# Integration:
+# - Receives metrics from OpenTelemetry Collector via remote write API
+# - Provides metrics datasource for Grafana
+# - Scrapes Kubernetes services with ServiceMonitor annotations
+#
+# Access:
+# - Internal cluster: prometheus-server.monitoring.svc.cluster.local:80
+# - External access: Via IngressRoute (see 039-prometheus-ingressroute.yaml)
+
+# Prometheus server configuration
+server:
+  retention: 15d
+  persistentVolume:
+    enabled: true
+    size: 8Gi
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
+# Alertmanager configuration
+alertmanager:
+  enabled: true
+  persistentVolume:
+    enabled: true
+    size: 2Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# Node exporter configuration
+# Collects hardware and OS metrics from nodes
+nodeExporter:
+  enabled: true
+  hostNetwork: false
+
+# Pushgateway configuration
+# Allows batch jobs to push metrics
+pushgateway:
+  enabled: true
+  persistentVolume:
+    enabled: false
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+# Kube-state-metrics configuration
+# Exposes Kubernetes object state as metrics
+kubeStateMetrics:
+  enabled: true
+
+# ServiceMonitor configuration for auto-discovery
+# Enables automatic scraping of services with ServiceMonitor CRDs
+serviceMonitors:
+  enabled: true

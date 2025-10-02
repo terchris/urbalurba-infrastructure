@@ -1,0 +1,4 @@
+# Test configuration with variables
+server: ${DEFAULT_ADMIN_EMAIL}
+password: ${DEFAULT_ADMIN_PASSWORD}
+host: ${PGHOST}

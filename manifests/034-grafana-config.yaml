@@ -1,0 +1,77 @@
+# File: manifests/034-grafana-config.yaml
+# Description: Grafana Helm chart values configuration
+# Component: Grafana visualization and dashboards
+# Namespace: monitoring
+#
+# Purpose:
+# - Web UI for visualizing metrics, logs, and traces
+# - Pre-configured datasources (Prometheus, Loki, Tempo)
+# - Sidecar for automatic dashboard loading from ConfigMaps
+# - Persistent storage for Grafana configuration
+#
+# Features:
+# - Admin credentials: admin/SecretPassword1
+# - Datasources: Prometheus (default), Loki, Tempo
+# - Dashboard sidecar enabled for ConfigMap-based dashboards
+# - 10Gi persistent volume for configuration
+#
+# Prerequisites:
+# - Prometheus deployed (030-prometheus-config.yaml)
+# - Loki deployed (032-loki-config.yaml)
+# - Tempo deployed (031-tempo-config.yaml)
+#
+# Usage:
+#   helm install grafana grafana/grafana -n monitoring -f manifests/034-grafana-config.yaml
+#
+# Verification:
+#   kubectl get pods -n monitoring -l app.kubernetes.io/name=grafana
+#   kubectl get svc -n monitoring grafana
+#   Access UI: http://grafana.localhost (after IngressRoute deployment)
+
+adminUser: admin
+adminPassword: SecretPassword1
+
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        uid: prometheus
+        url: http://prometheus-server.monitoring.svc.cluster.local:80
+        access: proxy
+        isDefault: true
+        editable: true
+      - name: Loki
+        type: loki
+        uid: loki
+        url: http://loki-gateway.monitoring.svc.cluster.local:80
+        access: proxy
+        editable: true
+      - name: Tempo
+        type: tempo
+        uid: tempo
+        url: http://tempo.monitoring.svc.cluster.local:3200
+        access: proxy
+        editable: true
+
+persistence:
+  enabled: true
+  size: 10Gi
+
+service:
+  type: ClusterIP
+
+sidecar:
+  dashboards:
+    enabled: true
+    label: grafana_dashboard
+    labelValue: "1"
+    folder: /tmp/dashboards
+    searchNamespace: monitoring
+    folderAnnotation: grafana_folder
+    provider:
+      foldersFromFilesStructure: true
+
+initChownData:
+  enabled: false

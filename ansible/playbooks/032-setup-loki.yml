@@ -1,0 +1,162 @@
+---
+# File: ansible/playbooks/032-setup-loki.yml
+# Description: Deploy Grafana Loki for Urbalurba Infrastructure
+# Usage: ansible-playbook 032-setup-loki.yml -e "target_host=rancher-desktop"
+
+- name: Deploy Grafana Loki for Urbalurba Infrastructure
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    target_host: "{{ target_host | default('rancher-desktop') }}"
+    namespace: "monitoring"
+    component_name: "loki"
+    manifests_folder: "/mnt/urbalurbadisk/manifests"
+    loki_config_file: "{{ manifests_folder }}/032-loki-config.yaml"
+
+    helm_repos:
+      - name: grafana
+        url: https://grafana.github.io/helm-charts
+
+  tasks:
+    - name: 1. Display deployment information
+      ansible.builtin.debug:
+        msg:
+          - "====================================="
+          - "Grafana Loki Deployment"
+          - "====================================="
+          - "Target Host: {{ target_host }}"
+          - "Namespace: {{ namespace }}"
+          - "Component: {{ component_name }}"
+          - "Config File: {{ loki_config_file }}"
+
+    - name: 2. Create monitoring namespace
+      kubernetes.core.k8s:
+        name: "{{ namespace }}"
+        api_version: v1
+        kind: Namespace
+        state: present
+        context: "{{ target_host }}"
+
+    - name: 3. Add/update Helm repositories
+      kubernetes.core.helm_repository:
+        name: "{{ item.name }}"
+        repo_url: "{{ item.url }}"
+      loop: "{{ helm_repos }}"
+
+    - name: 4. Update Helm repositories
+      ansible.builtin.command: helm repo update
+      changed_when: false
+
+    - name: 5. Install/upgrade Loki via Helm
+      ansible.builtin.command: >
+        helm upgrade --install loki grafana/loki
+        -f {{ loki_config_file }}
+        --namespace {{ namespace }}
+        --create-namespace
+        --timeout 600s
+        --kube-context {{ target_host }}
+      register: loki_helm_result
+      changed_when: true
+
+    - name: 6. Wait for Loki pods to be ready
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: "{{ namespace }}"
+        label_selectors:
+          - app.kubernetes.io/name=loki
+        context: "{{ target_host }}"
+      register: loki_pods
+      retries: 20
+      delay: 15
+      until: >
+        loki_pods.resources | length > 0 and
+        loki_pods.resources[0].status.phase == "Running" and
+        loki_pods.resources[0].status.containerStatuses[0].ready == true
+
+    - name: 7. Test Loki ready endpoint from within cluster
+      ansible.builtin.command: >
+        kubectl run curl-test-loki-ready --image=curlimages/curl --rm -i --restart=Never
+        -n {{ namespace }} --context {{ target_host }} --
+        curl -s -o /dev/null -w "HTTP_CODE:%{http_code}"
+        http://loki.{{ namespace }}.svc.cluster.local:3100/ready
+      register: loki_ready_test
+      retries: 15
+      delay: 15
+      until: loki_ready_test.rc == 0 and (loki_ready_test.stdout.find('HTTP_CODE:200') != -1)
+      failed_when: false
+
+    - name: 8. Test Loki metrics endpoint
+      ansible.builtin.command: >
+        kubectl run curl-test-loki-metrics --image=curlimages/curl --rm -i --restart=Never
+        -n {{ namespace }} --context {{ target_host }} --timeout=15s --
+        curl -s http://loki.{{ namespace }}.svc.cluster.local:3100/metrics
+      register: loki_metrics_test
+      retries: 3
+      delay: 10
+      until: loki_metrics_test.rc == 0 and (loki_metrics_test.stdout.find('# TYPE') != -1) and (loki_metrics_test.stdout.find('loki_') != -1)
+      failed_when: false
+
+    - name: 9. Test Loki labels API
+      ansible.builtin.command: >
+        kubectl run curl-test-loki-labels --image=curlimages/curl --rm -i --restart=Never
+        -n {{ namespace }} --context {{ target_host }} --timeout=15s --
+        curl -s http://loki.{{ namespace }}.svc.cluster.local:3100/loki/api/v1/labels
+      register: loki_labels_test
+      retries: 8
+      delay: 10
+      until: loki_labels_test.rc == 0 and (loki_labels_test.stdout.find('"status":"success"') != -1)
+      failed_when: false
+
+    - name: 10. Test Loki data ingestion - push test log entry
+      ansible.builtin.command: >
+        kubectl run loki-push-test --image=curlimages/curl --rm -i --restart=Never
+        -n {{ namespace }} --context {{ target_host }} --timeout=15s --
+        /bin/sh -c 'TIMESTAMP=$(date +%s); curl -X POST -H "Content-Type: application/json" -s
+        -d "{\"streams\": [{\"stream\": {\"job\": \"loki-validation\", \"instance\": \"test-pod\"}, \"values\": [[\"${TIMESTAMP}000000000\", \"Loki validation test: deployment successful at $(date -Iseconds)\"]]}]}"
+        "http://loki.{{ namespace }}.svc.cluster.local:3100/loki/api/v1/push"'
+      register: loki_push_test
+      retries: 3
+      delay: 10
+      until: loki_push_test.rc == 0
+      failed_when: false
+
+    - name: 11. Wait for Loki to index the test log
+      ansible.builtin.pause:
+        seconds: 5
+
+    - name: 12. Test Loki data retrieval - query test log entry
+      ansible.builtin.command: >
+        kubectl run loki-query-test --image=curlimages/curl --rm -i --restart=Never
+        -n {{ namespace }} --context {{ target_host }} --timeout=15s --
+        /bin/sh -c 'NOW=$(date +%s); START=$((NOW-300)); curl -s -G --data-urlencode "query={job=\"loki-validation\"}" --data-urlencode "start=${START}000000000" --data-urlencode "end=${NOW}000000000" "http://loki.{{ namespace }}.svc.cluster.local:3100/loki/api/v1/query_range"'
+      register: loki_query_test
+      retries: 5
+      delay: 5
+      until: loki_query_test.rc == 0 and (loki_query_test.stdout.find('"status":"success"') != -1) and (loki_query_test.stdout.find('deployment successful') != -1)
+      failed_when: false
+
+    - name: 13. Display deployment status
+      ansible.builtin.debug:
+        msg:
+          - "✅ Grafana Loki deployment completed successfully!"
+          - ""
+          - "Service endpoints:"
+          - "  🔍 Loki HTTP API: loki.monitoring.svc.cluster.local:3100"
+          - "  📡 gRPC API: loki.monitoring.svc.cluster.local:9095"
+          - "  📊 Push API: loki.monitoring.svc.cluster.local:3100/loki/api/v1/push"
+          - "  🔍 Query API: loki.monitoring.svc.cluster.local:3100/loki/api/v1/query_range"
+          - "  🏥 Ready endpoint: loki.monitoring.svc.cluster.local:3100/ready"
+          - ""
+          - "Health tests:"
+          - "  🏥 Ready endpoint: {{ 'PASS' if loki_ready_test.stdout.find('HTTP_CODE:200') != -1 else 'FAIL' }}"
+          - "  📊 Metrics endpoint: {{ 'PASS' if loki_metrics_test.stdout.find('# TYPE') != -1 and loki_metrics_test.stdout.find('loki_') != -1 else 'FAIL' }}"
+          - "  📋 Labels API: {{ 'PASS' if loki_labels_test.stdout.find('\"status\":\"success\"') != -1 else 'FAIL' }}"
+          - ""
+          - "Data flow tests:"
+          - "  📤 Push test log: {{ 'PASS' if loki_push_test.rc == 0 else 'FAIL' }}"
+          - "  📥 Query test log: {{ 'PASS' if loki_query_test.stdout.find('\"status\":\"success\"') != -1 and loki_query_test.stdout.find('deployment successful') != -1 else 'FAIL' }}"
+          - ""
+          - "Manual verification:"
+          - "  kubectl get pods -n {{ namespace }} -l app.kubernetes.io/name=loki --context={{ target_host }}"
+          - "  kubectl logs -n {{ namespace }} -l app.kubernetes.io/name=loki --context={{ target_host }}"

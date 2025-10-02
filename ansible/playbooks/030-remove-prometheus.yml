@@ -1,0 +1,61 @@
+---
+# File: ansible/playbooks/030-remove-prometheus.yml
+# Description: Remove Prometheus from Urbalurba Infrastructure
+# Usage: ansible-playbook 030-remove-prometheus.yml -e "target_host=rancher-desktop"
+
+- name: Remove Prometheus from Urbalurba Infrastructure
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    target_host: "{{ target_host | default('rancher-desktop') }}"
+    namespace: "monitoring"
+    component_name: "prometheus"
+
+  tasks:
+    - name: 1. Display removal information
+      ansible.builtin.debug:
+        msg:
+          - "====================================="
+          - "Prometheus Removal"
+          - "====================================="
+          - "Target Host: {{ target_host }}"
+          - "Namespace: {{ namespace }}"
+          - "Component: {{ component_name }}"
+
+    - name: 2. Remove Prometheus Helm chart
+      kubernetes.core.helm:
+        name: prometheus
+        release_namespace: "{{ namespace }}"
+        state: absent
+        context: "{{ target_host }}"
+      register: prometheus_removal
+      failed_when: false
+
+    - name: 3. Wait for Prometheus to be removed
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: "{{ namespace }}"
+        label_selectors:
+          - app.kubernetes.io/name=prometheus
+        context: "{{ target_host }}"
+      register: prometheus_pods
+      retries: 10
+      delay: 5
+      until: prometheus_pods.resources | length == 0
+
+    - name: 4. Display removal status
+      ansible.builtin.debug:
+        msg:
+          - "✅ Prometheus removal completed!"
+          - ""
+          - "Removed components:"
+          - "  📊 Prometheus server"
+          - "  🚨 Alertmanager"
+          - "  📤 Pushgateway"
+          - "  📈 Node exporter"
+          - "  📊 Kube-state-metrics"
+          - ""
+          - "Verification:"
+          - "  kubectl get pods -n {{ namespace }} -l app.kubernetes.io/name=prometheus --context={{ target_host }}"
+          - "  (Should show 'No resources found')"

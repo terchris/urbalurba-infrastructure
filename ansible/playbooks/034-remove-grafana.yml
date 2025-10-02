@@ -1,0 +1,87 @@
+---
+# File: ansible/playbooks/034-remove-grafana.yml
+# Description: Remove Grafana from Urbalurba Infrastructure
+# Usage: ansible-playbook 034-remove-grafana.yml -e "target_host=rancher-desktop"
+
+- name: Remove Grafana from Urbalurba Infrastructure
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    target_host: "{{ target_host | default('rancher-desktop') }}"
+    namespace: "monitoring"
+    component_name: "grafana"
+    manifests_folder: "/mnt/urbalurbadisk/manifests"
+
+  tasks:
+    - name: 1. Display removal information
+      ansible.builtin.debug:
+        msg:
+          - "====================================="
+          - "Grafana Removal"
+          - "File: ansible/playbooks/034-remove-grafana.yml"
+          - "====================================="
+          - "Target Host: {{ target_host }}"
+          - "Namespace: {{ namespace }}"
+          - "Component: {{ component_name }}"
+
+    - name: 2. Remove Grafana IngressRoute
+      kubernetes.core.k8s:
+        state: absent
+        src: "{{ manifests_folder }}/038-grafana-ingressroute.yaml"
+        context: "{{ target_host }}"
+      failed_when: false
+
+    - name: 3. Remove Installation Test Suite dashboards manifest
+      kubernetes.core.k8s:
+        state: absent
+        src: "{{ manifests_folder }}/034-grafana-test-dashboards.yaml"
+        context: "{{ target_host }}"
+      failed_when: false
+
+    - name: 4. Remove ALL dashboard ConfigMaps (cleanup any leftovers)
+      ansible.builtin.command: >
+        kubectl delete configmap -n {{ namespace }} -l grafana_dashboard=1 --context={{ target_host }} --ignore-not-found=true
+      register: dashboard_cleanup
+      failed_when: false
+
+    - name: 5. Remove Grafana Helm chart
+      kubernetes.core.helm:
+        name: grafana
+        release_namespace: "{{ namespace }}"
+        state: absent
+        context: "{{ target_host }}"
+      register: grafana_removal
+      failed_when: false
+
+    - name: 6. Wait for Grafana to be removed
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: "{{ namespace }}"
+        label_selectors:
+          - app.kubernetes.io/name=grafana
+        context: "{{ target_host }}"
+      register: grafana_pods
+      retries: 10
+      delay: 5
+      until: grafana_pods.resources | length == 0
+
+    - name: 7. Display removal status
+      ansible.builtin.debug:
+        msg:
+          - "✅ Grafana removal completed!"
+          - ""
+          - "Removed components:"
+          - "  📊 Grafana UI and API"
+          - "  📈 Prometheus datasource"
+          - "  📋 Loki datasource"
+          - "  🔍 Tempo datasource"
+          - "  🌐 IngressRoute (grafana.*)"
+          - "  📊 All dashboard ConfigMaps (cleaned up with label grafana_dashboard=1)"
+          - "  💾 Persistent volume claim (data retained)"
+          - ""
+          - "Verification:"
+          - "  kubectl get pods -n {{ namespace }} -l app.kubernetes.io/name=grafana --context={{ target_host }}"
+          - "  kubectl get configmaps -n {{ namespace }} -l grafana_dashboard=1 --context={{ target_host }}"
+          - "  kubectl get ingressroute -n {{ namespace }} grafana --context={{ target_host }}"
+          - "  (All should show 'No resources found')"

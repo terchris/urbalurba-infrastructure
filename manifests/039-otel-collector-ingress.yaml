@@ -1,0 +1,34 @@
+# file: /mnt/urbalurbadisk/manifests/039-otel-collector-ingress.yaml
+# OpenTelemetry Collector Traefik IngressRoute for external access
+#
+# Description:
+# - Exposes OTel collector OTLP HTTP endpoint (4318) via Traefik ingress
+# - Uses HostRegexp pattern for unified internal/external domain support
+# - Enables external applications to send logs/traces without port forwarding
+# - Follows cluster standard routing patterns
+#
+# Usage:
+#   External apps: http://otel.localhost:4318/v1/logs
+#   Future external: http://otel.urbalurba.no:4318/v1/traces
+#   Apply: kubectl apply -f manifests/039-otel-collector-ingress.yaml
+
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: otel-collector
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: otel-collector
+    app.kubernetes.io/component: telemetry-ingress
+    app.kubernetes.io/part-of: observability-stack
+    protection: public
+    routing: unified
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: HostRegexp(`otel\..+`)
+      kind: Rule
+      services:
+        - name: otel-collector-opentelemetry-collector
+          port: 4318

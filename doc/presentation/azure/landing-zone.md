@@ -1,62 +1,72 @@
 # Landing Zone Architecture
 
+This is the production Landing Zone
+
 ```mermaid
 graph TB
     subgraph "Internet"
         CLOUD["☁️ Internet"]
     end
     
-    subgraph "Azure Front Door"
-        FIREWALL["🛡️ Azure Front Door<br/>Firewall"]
+    subgraph "Azure Firewall"
+        FIREWALL["🛡️ Azure Firewall"]
     end
     
-    subgraph "API Management"
-        APIM["🔧 APIM<br/>(API Management)"]
-        PORTAL["👨‍💻 Developer Portal"]
+    SERVICENOW["🎫 ServiceNow Incident"]
+    
+    subgraph "Shared Landing Zone"
+        FRONTDOOR["🚪 Azure Front Door"]
+        SERVICEBUS["🚌 Service Bus"]
+        REGISTRY["📦 Container Registry"]
+        DANIELLOG["📊 Log Alert Processor"]
+        CERTRENEW["🔐 Certificate Renew"]
+        
+        subgraph "API Management"
+            APIM["🔧 APIM<br/>(API Management)"]
+            PORTAL["👨‍💻 Developer Portal"]
+        end
     end
     
-    subgraph "Landing Zone"
-        API1["📡 API 1"]
-        API2["📡 API 2"]
+    subgraph "Application Landing Zone"
+        subgraph "API1 Resource Group"
+            API1["📡 API 1"]
+            INSIGHTS1["📊 Application Insights"]
+            VAULT1["🔐 Key Vault"]
+            STORAGE1["💾 Storage Account"]
+        end
+        
+        subgraph "API2 Resource Group"
+            API2["📡 API 2<br/>📊 Application Insights<br/>🔐 Key Vault<br/>💾 Storage Account"]
+        end
         
         subgraph "Common Services"
             POSTGRES["🗄️ Azure PostgreSQL"]
             COSMOS["🌌 Cosmos DB"]
-            SERVICEBUS["🚌 Service Bus"]
-            INSIGHTS["📊 Application Insights"]
             PLAN["📋 App Service Plan<br/>(Function Apps)"]
             CONTAINER["🐳 Container App<br/>Environment"]
-            VAULT["🔐 Key Vault"]
             LOGS["📝 Log Analytics"]
+            ALERTS["🚨 Log Search Alert Rule"]
             SENDGRID["📧 SendGrid"]
         end
     end
     
     %% Connections
     CLOUD --> FIREWALL
-    FIREWALL --> APIM
+    FIREWALL --> FRONTDOOR
+    FRONTDOOR --> APIM
     APIM --> PORTAL
     APIM --> API1
     APIM --> API2
     
-    API1 --> POSTGRES
-    API1 --> COSMOS
-    API1 --> SERVICEBUS
-    API1 --> INSIGHTS
-    API1 --> PLAN
-    API1 --> CONTAINER
-    API1 --> VAULT
-    API1 --> LOGS
-    API1 --> SENDGRID
-    API2 --> POSTGRES
-    API2 --> COSMOS
-    API2 --> SERVICEBUS
-    API2 --> INSIGHTS
-    API2 --> PLAN
-    API2 --> CONTAINER
-    API2 --> VAULT
-    API2 --> LOGS
-    API2 --> SENDGRID
+    API1 -.-> POSTGRES
+    API1 -.-> COSMOS
+    API1 -.-> SERVICEBUS
+    API1 --> INSIGHTS1
+    INSIGHTS1 --> LOGS
+    LOGS --> ALERTS
+    ALERTS --> DANIELLOG
+    DANIELLOG --> SERVICENOW
+    API1 -.-> SENDGRID
 ```
 
 ## Alternative Flow Diagram Version
@@ -64,51 +74,59 @@ graph TB
 ```mermaid
 flowchart LR
     CLOUD["☁️ Internet"]
-    FIREWALL["🛡️ Azure Front Door<br/>Firewall"]
-    APIM["🔧 APIM"]
-    PORTAL["👨‍💻 Developer<br/>Portal"]
+    FIREWALL["🛡️ Azure Firewall"]
+    SERVICENOW["🎫 ServiceNow Incident"]
     
-    subgraph LZ["🏢 Landing Zone"]
+    subgraph SLZ["🏢 Shared Landing Zone"]
         direction TB
-        API1["📡 API 1"]
-        API2["📡 API 2"]
+        FRONTDOOR["🚪 Azure Front Door"]
+        SERVICEBUS["🚌 Service Bus"]
+        REGISTRY["📦 Container Registry"]
+        DANIELLOG["📊 Log Alert Processor"]
+        CERTRENEW["🔐 Certificate Renew"]
+        APIM["🔧 APIM"]
+        PORTAL["👨‍💻 Developer<br/>Portal"]
+    end
+    
+    subgraph ALZ["🏢 Application Landing Zone"]
+        direction TB
+        subgraph "API1 Resource Group"
+            API1["📡 API 1"]
+            INSIGHTS1["📊 Application Insights"]
+            VAULT1["🔐 Key Vault"]
+            STORAGE1["💾 Storage Account"]
+        end
+        
+        subgraph "API2 Resource Group"
+            API2["📡 API 2<br/>📊 Application Insights<br/>🔐 Key Vault<br/>💾 Storage Account"]
+        end
         
         subgraph SS["🔧 Common Services"]
             direction TB
             POSTGRES["🗄️ Azure PostgreSQL"]
             COSMOS["🌌 Cosmos DB"]
-            SERVICEBUS["🚌 Service Bus"]
-            INSIGHTS["📊 Application Insights"]
             PLAN["📋 App Service Plan<br/>(Function Apps)"]
             CONTAINER["🐳 Container App<br/>Environment"]
-            VAULT["🔐 Key Vault"]
             LOGS["📝 Log Analytics"]
+            ALERTS["🚨 Log Search Alert Rule"]
             SENDGRID["📧 SendGrid"]
         end
     end
     
     CLOUD --> FIREWALL
-    FIREWALL --> APIM
+    FIREWALL --> FRONTDOOR
+    FRONTDOOR --> APIM
     APIM --> PORTAL
     APIM --> API1
     APIM --> API2
     
-    API1 --> POSTGRES
-    API1 --> COSMOS
-    API1 --> SERVICEBUS
-    API1 --> INSIGHTS
-    API1 --> PLAN
-    API1 --> CONTAINER
-    API1 --> VAULT
-    API1 --> LOGS
-    API1 --> SENDGRID
-    API2 --> POSTGRES
-    API2 --> COSMOS
-    API2 --> SERVICEBUS
-    API2 --> INSIGHTS
-    API2 --> PLAN
-    API2 --> CONTAINER
-    API2 --> VAULT
-    API2 --> LOGS
-    API2 --> SENDGRID
+    API1 -.-> POSTGRES
+    API1 -.-> COSMOS
+    API1 -.-> SERVICEBUS
+    API1 --> INSIGHTS1
+    INSIGHTS1 --> LOGS
+    LOGS --> ALERTS
+    ALERTS --> DANIELLOG
+    DANIELLOG --> SERVICENOW
+    API1 -.-> SENDGRID
 ```

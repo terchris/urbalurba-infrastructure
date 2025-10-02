@@ -414,6 +414,67 @@ All Ansible tasks MUST follow consistent naming and numbering conventions:
 
 **Refactoring Rule**: When adding/removing tasks, renumber all subsequent tasks to maintain sequence.
 
+### **Rule 8B: First Task MUST Display Deployment Information**
+
+**MANDATORY**: Every Ansible playbook MUST start with Task 1 that displays deployment context information.
+
+**Required Format**:
+```yaml
+- name: 1. Display deployment information
+  ansible.builtin.debug:
+    msg:
+      - "======================================"
+      - "[Service Name] Deployment"
+      - "File: ansible/playbooks/[nnn]-setup-[service].yml"
+      - "======================================"
+      - "Target Host: {{ target_host }}"
+      - "Namespace: {{ namespace }}"
+      - "Component: {{ component_name }}"
+      - "[Additional context as needed]"
+```
+
+**Why This Matters**:
+- ✅ **Immediate Context**: User sees what playbook is running and where
+- ✅ **Debugging**: Log files clearly show which playbook generated output
+- ✅ **Parameter Verification**: Confirms correct target host and namespace before deployment
+- ✅ **Documentation**: File path shows exact source for troubleshooting
+- ✅ **Consistency**: Uniform format across all playbooks
+
+**Real Example from Grafana Setup**:
+```yaml
+tasks:
+  - name: 1. Display deployment information
+    ansible.builtin.debug:
+      msg:
+        - "======================================"
+        - "Grafana Deployment"
+        - "File: ansible/playbooks/034-setup-grafana.yml"
+        - "======================================"
+        - "Target Host: {{ target_host }}"
+        - "Namespace: {{ namespace }}"
+        - "Component: {{ component_name }}"
+        - "Config File: {{ grafana_config_file }}"
+```
+
+**Output Example**:
+```
+TASK [1. Display deployment information] ***********************
+ok: [localhost] => {
+    "msg": [
+        "======================================",
+        "Grafana Deployment",
+        "File: ansible/playbooks/034-setup-grafana.yml",
+        "======================================",
+        "Target Host: rancher-desktop",
+        "Namespace: monitoring",
+        "Component: grafana",
+        "Config File: /mnt/urbalurbadisk/manifests/034-grafana-config.yaml"
+    ]
+}
+```
+
+**Removal Playbooks**: Use the same format but with "[Service Name] Removal" as the title and file path pointing to the remove playbook.
+
 ### **Rule 9: Status Reporting Standards**
 
 Every playbook MUST end with a comprehensive status report:

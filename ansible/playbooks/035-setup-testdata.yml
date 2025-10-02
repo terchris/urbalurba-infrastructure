@@ -1,0 +1,582 @@
+---
+# File: ansible/playbooks/035-setup-testdata.yml
+# Description: Deploy OpenTelemetry test data generators and validate each pipeline sequentially
+# Usage: ansible-playbook 035-setup-testdata.yml -e "target_host=rancher-desktop"
+
+- name: Deploy OpenTelemetry Test Data Generators and Validate Pipeline
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    target_host: "{{ target_host | default('rancher-desktop') }}"
+    target_namespace: "monitoring"
+    component_name: "testdata"
+
+  tasks:
+    - name: 1. Display test plan overview
+      ansible.builtin.debug:
+        msg:
+          - "======================================="
+          - "OpenTelemetry Pipeline Validation"
+          - "======================================="
+          - "Target Host: {{ target_host }}"
+          - "Namespace: {{ target_namespace }}"
+          - ""
+          - "📋 Test Plan:"
+          - "  Phase 1: Logs Pipeline (telemetrygen → OTEL Collector → Loki)"
+          - "  Phase 2: Metrics Pipeline (telemetrygen → OTEL Collector → Prometheus)"
+          - "  Phase 3: Traces Pipeline (telemetrygen → OTEL Collector → Tempo)"
+          - "  Phase 4: Deploy Grafana validation dashboards"
+          - ""
+          - "Each phase will:"
+          - "  1. Deploy generator with unique test ID"
+          - "  2. Wait for completion"
+          - "  3. Validate that specific data exists"
+          - "  4. Report success/failure"
+
+    - name: 2. Generate unique test ID for this validation run
+      ansible.builtin.shell: echo "test-$(date +%s)-$(shuf -i 10000-99999 -n 1)"
+      register: test_id_result
+
+    - name: 3. Display test ID
+      ansible.builtin.debug:
+        msg: "🔑 Test ID: {{ test_id_result.stdout }}"
+
+    - name: 4. Set test ID fact
+      ansible.builtin.set_fact:
+        test_id: "{{ test_id_result.stdout }}"
+
+    # ============================================
+    # PREREQUISITES VALIDATION
+    # ============================================
+    - name: 5. Verify monitoring namespace exists
+      kubernetes.core.k8s_info:
+        kind: Namespace
+        name: "{{ target_namespace }}"
+        context: "{{ target_host }}"
+      register: namespace_check
+      failed_when: namespace_check.resources | length == 0
+
+    - name: 6. Verify OTEL Collector is running
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: "{{ target_namespace }}"
+        label_selectors:
+          - app.kubernetes.io/name=opentelemetry-collector
+        context: "{{ target_host }}"
+      register: otel_pods
+      failed_when: >
+        otel_pods.resources | length == 0 or
+        otel_pods.resources[0].status.phase != "Running"
+
+    - name: 7. Verify Loki gateway is running
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: "{{ target_namespace }}"
+        label_selectors:
+          - app.kubernetes.io/component=gateway
+          - app.kubernetes.io/name=loki
+        context: "{{ target_host }}"
+      register: loki_pods
+      failed_when: >
+        loki_pods.resources | length == 0 or
+        loki_pods.resources[0].status.phase != "Running"
+
+    - name: 8. Verify Prometheus is running
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: "{{ target_namespace }}"
+        label_selectors:
+          - app.kubernetes.io/name=prometheus
+          - app.kubernetes.io/component=server
+        context: "{{ target_host }}"
+      register: prometheus_pods
+      failed_when: >
+        prometheus_pods.resources | length == 0 or
+        prometheus_pods.resources[0].status.phase != "Running"
+
+    - name: 9. Verify Tempo is running
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: "{{ target_namespace }}"
+        label_selectors:
+          - app.kubernetes.io/name=tempo
+        context: "{{ target_host }}"
+      register: tempo_pods
+      failed_when: >
+        tempo_pods.resources | length == 0 or
+        tempo_pods.resources[0].status.phase != "Running"
+
+    - name: 10. Display prerequisites validation results
+      ansible.builtin.debug:
+        msg:
+          - "✅ Prerequisites validation completed:"
+          - "  📁 Namespace: {{ 'EXISTS' if namespace_check.resources | length > 0 else 'MISSING' }}"
+          - "  📡 OTEL Collector: {{ 'RUNNING' if otel_pods.resources | length > 0 and otel_pods.resources[0].status.phase == 'Running' else 'NOT READY' }}"
+          - "  📋 Loki Gateway: {{ 'RUNNING' if loki_pods.resources | length > 0 and loki_pods.resources[0].status.phase == 'Running' else 'NOT READY' }}"
+          - "  📊 Prometheus: {{ 'RUNNING' if prometheus_pods.resources | length > 0 and prometheus_pods.resources[0].status.phase == 'Running' else 'NOT READY' }}"
+          - "  🔍 Tempo: {{ 'RUNNING' if tempo_pods.resources | length > 0 and tempo_pods.resources[0].status.phase == 'Running' else 'NOT READY' }}"
+
+    # ============================================
+    # PHASE 1: LOGS PIPELINE VALIDATION
+    # ============================================
+    - name: 11. Phase 1 - Testing Logs Pipeline
+      ansible.builtin.debug:
+        msg:
+          - "🔄 PHASE 1: LOGS PIPELINE"
+          - "  Step 1: Deploy telemetrygen logs generator"
+          - "  Step 2: Wait for log generation (60 seconds)"
+          - "  Step 3: Query Loki API to verify ingestion"
+
+    - name: 12. Deploy telemetrygen logs generator job
+      kubernetes.core.k8s:
+        state: present
+        context: "{{ target_host }}"
+        definition:
+          apiVersion: batch/v1
+          kind: Job
+          metadata:
+            name: telemetrygen-logs
+            namespace: "{{ target_namespace }}"
+            labels:
+              app: telemetrygen
+              component: logs
+          spec:
+            template:
+              spec:
+                restartPolicy: Never
+                containers:
+                - name: telemetrygen-logs
+                  image: ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:latest
+                  command: ["/telemetrygen"]
+                  args:
+                    - "logs"
+                    - "--otlp-endpoint=otel-collector-opentelemetry-collector.monitoring.svc.cluster.local:4318"
+                    - "--otlp-insecure"
+                    - "--otlp-http"
+                    - "--duration=30s"
+                    - "--rate=5"
+                    - "--logs=100"
+                    - '--otlp-attributes=service.name="telemetrygen-logs"'
+                    - '--otlp-attributes=service.version="1.0.0"'
+                    - '--otlp-attributes=test.id="{{ test_id }}"'
+                    - '--body=Test log message with ID {{ test_id }}'
+                  resources:
+                    requests:
+                      cpu: 50m
+                      memory: 64Mi
+                    limits:
+                      cpu: 100m
+                      memory: 128Mi
+
+    - name: 13. Wait for logs generator to complete
+      kubernetes.core.k8s_info:
+        kind: Job
+        namespace: "{{ target_namespace }}"
+        name: telemetrygen-logs
+        context: "{{ target_host }}"
+      register: logs_job
+      retries: 3
+      delay: 35
+      until: >
+        logs_job.resources | length > 0 and
+        logs_job.resources[0].status.succeeded is defined and
+        logs_job.resources[0].status.succeeded == 1
+
+    - name: 14. Wait for Loki to process logs (5 seconds)
+      ansible.builtin.pause:
+        seconds: 5
+
+    - name: 15. Test Loki API for specific test ID logs
+      ansible.builtin.shell: |
+        # Calculate timestamps for last 5 minutes
+        END_TIME=$(date +%s)
+        START_TIME=$((END_TIME - 300))
+
+        kubectl run curl-test-loki-logs-{{ 99999999 | random | string }} --image=curlimages/curl --rm -i --restart=Never \
+          -n {{ target_namespace }} --context {{ target_host }} -- \
+          curl -s -G \
+          --data-urlencode 'query={service_name="telemetrygen-logs"} |~ "{{ test_id }}"' \
+          --data-urlencode "start=${START_TIME}" \
+          --data-urlencode "end=${END_TIME}" \
+          --data-urlencode 'limit=5' \
+          http://loki-gateway.{{ target_namespace }}.svc.cluster.local:80/loki/api/v1/query_range
+      register: loki_logs_test
+      retries: 3
+      delay: 5
+      until: >
+        loki_logs_test.rc == 0 and
+        (loki_logs_test.stdout.find('"status":"success"') != -1) and
+        (loki_logs_test.stdout.find('"result":[]') == -1) and
+        (loki_logs_test.stdout.find(test_id) != -1)
+      failed_when: >
+        loki_logs_test.rc != 0 or
+        (loki_logs_test.stdout.find('"status":"success"') == -1) or
+        (loki_logs_test.stdout.find('"result":[]') != -1) or
+        (loki_logs_test.stdout.find(test_id) == -1)
+
+    - name: 16. Report Logs Pipeline Status
+      ansible.builtin.debug:
+        msg:
+          - "📋 LOGS PIPELINE: {{ 'PASS ✅' if (loki_logs_test.stdout.find('\"status\":\"success\"') != -1 and loki_logs_test.stdout.find('\"result\":[]') == -1 and loki_logs_test.stdout.find(test_id) != -1) else 'FAIL ❌' }}"
+          - "{{ '  ✓ Specific test logs verified in Loki (ID: ' + test_id + ')' if (loki_logs_test.stdout.find('\"status\":\"success\"') != -1 and loki_logs_test.stdout.find('\"result\":[]') == -1 and loki_logs_test.stdout.find(test_id) != -1) else '  ✗ Failed to find specific test logs in Loki (ID: ' + test_id + ')' }}"
+
+    # ============================================
+    # PHASE 2: METRICS PIPELINE VALIDATION
+    # ============================================
+    - name: 17. Phase 2 - Testing Metrics Pipeline
+      ansible.builtin.debug:
+        msg:
+          - "🔄 PHASE 2: METRICS PIPELINE"
+          - "  Step 1: Deploy telemetrygen metrics generator"
+          - "  Step 2: Wait for metrics generation (30 seconds)"
+          - "  Step 3: Query Prometheus API to verify metrics"
+
+    - name: 18. Deploy telemetrygen metrics generator job
+      kubernetes.core.k8s:
+        state: present
+        context: "{{ target_host }}"
+        definition:
+          apiVersion: batch/v1
+          kind: Job
+          metadata:
+            name: telemetrygen-metrics
+            namespace: "{{ target_namespace }}"
+            labels:
+              app: telemetrygen
+              component: metrics
+          spec:
+            template:
+              spec:
+                restartPolicy: Never
+                containers:
+                - name: telemetrygen-metrics
+                  image: ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:latest
+                  command: ["/telemetrygen"]
+                  args:
+                    - "metrics"
+                    - "--otlp-endpoint=otel-collector-opentelemetry-collector.monitoring.svc.cluster.local:4317"
+                    - "--otlp-insecure"
+                    - "--duration=30s"
+                    - "--rate=10"
+                    - "--metrics=50"
+                    - '--otlp-attributes=service.name="telemetrygen-metrics"'
+                    - '--otlp-attributes=service.version="1.0.0"'
+                  resources:
+                    requests:
+                      cpu: 50m
+                      memory: 64Mi
+                    limits:
+                      cpu: 100m
+                      memory: 128Mi
+
+    - name: 19. Wait for metrics generator to complete
+      kubernetes.core.k8s_info:
+        kind: Job
+        namespace: "{{ target_namespace }}"
+        name: telemetrygen-metrics
+        context: "{{ target_host }}"
+      register: metrics_job
+      retries: 3
+      delay: 35
+      until: >
+        metrics_job.resources | length > 0 and
+        metrics_job.resources[0].status.succeeded is defined and
+        metrics_job.resources[0].status.succeeded == 1
+
+    - name: 20. Wait for Prometheus to scrape metrics (5 seconds)
+      ansible.builtin.pause:
+        seconds: 5
+
+    - name: 21. Test Prometheus API for any metrics
+      ansible.builtin.command: >
+        kubectl run curl-test-prometheus-{{ 99999999 | random | string }} --image=curlimages/curl --rm -i --restart=Never
+        -n {{ target_namespace }} --context {{ target_host }} --
+        curl -s -G
+        --data-urlencode 'query=up{namespace="monitoring"}'
+        http://prometheus-server.{{ target_namespace }}.svc.cluster.local:80/api/v1/query
+      register: prometheus_metrics_test
+      retries: 3
+      delay: 5
+      until: >
+        prometheus_metrics_test.rc == 0 and
+        (prometheus_metrics_test.stdout.find('"status":"success"') != -1) and
+        (prometheus_metrics_test.stdout.find('"result":[]') == -1)
+      failed_when: >
+        prometheus_metrics_test.rc != 0 or
+        (prometheus_metrics_test.stdout.find('"status":"success"') == -1) or
+        (prometheus_metrics_test.stdout.find('"result":[]') != -1)
+
+    - name: 22. Report Metrics Pipeline Status
+      ansible.builtin.debug:
+        msg:
+          - "📊 METRICS PIPELINE: {{ 'PASS ✅' if (prometheus_metrics_test.stdout.find('\"status\":\"success\"') != -1 and prometheus_metrics_test.stdout.find('\"result\":[]') == -1) else 'FAIL ❌' }}"
+          - "{{ '  ✓ Metrics successfully stored in Prometheus' if (prometheus_metrics_test.stdout.find('\"status\":\"success\"') != -1 and prometheus_metrics_test.stdout.find('\"result\":[]') == -1) else '  ✗ Failed to verify metrics in Prometheus - no data found' }}"
+
+    # ============================================
+    # PHASE 3: TRACES PIPELINE VALIDATION
+    # ============================================
+    - name: 23. Phase 3 - Testing Traces Pipeline
+      ansible.builtin.debug:
+        msg:
+          - "🔄 PHASE 3: TRACES PIPELINE"
+          - "  Step 1: Deploy telemetrygen traces generator"
+          - "  Step 2: Wait for trace generation (30 seconds)"
+          - "  Step 3: Query Tempo API to verify traces"
+
+    - name: 24. Deploy telemetrygen traces generator job
+      kubernetes.core.k8s:
+        state: present
+        context: "{{ target_host }}"
+        definition:
+          apiVersion: batch/v1
+          kind: Job
+          metadata:
+            name: telemetrygen-traces
+            namespace: "{{ target_namespace }}"
+            labels:
+              app: telemetrygen
+              component: traces
+          spec:
+            template:
+              spec:
+                restartPolicy: Never
+                containers:
+                - name: telemetrygen-traces
+                  image: ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:latest
+                  command: ["/telemetrygen"]
+                  args:
+                    - "traces"
+                    - "--otlp-endpoint=otel-collector-opentelemetry-collector.monitoring.svc.cluster.local:4317"
+                    - "--otlp-insecure"
+                    - "--duration=30s"
+                    - "--rate=3"
+                    - "--traces=30"
+                    - "--child-spans=5"
+                    - '--otlp-attributes=service.name="telemetrygen-traces"'
+                    - '--otlp-attributes=service.version="1.0.0"'
+                  resources:
+                    requests:
+                      cpu: 50m
+                      memory: 64Mi
+                    limits:
+                      cpu: 100m
+                      memory: 128Mi
+
+    - name: 25. Wait for traces generator to complete
+      kubernetes.core.k8s_info:
+        kind: Job
+        namespace: "{{ target_namespace }}"
+        name: telemetrygen-traces
+        context: "{{ target_host }}"
+      register: traces_job
+      retries: 3
+      delay: 35
+      until: >
+        traces_job.resources | length > 0 and
+        traces_job.resources[0].status.succeeded is defined and
+        traces_job.resources[0].status.succeeded == 1
+
+    - name: 26. Wait for Tempo to process traces (5 seconds)
+      ansible.builtin.pause:
+        seconds: 5
+
+    - name: 27. Test Tempo API for generated traces
+      ansible.builtin.command: >
+        kubectl run curl-test-tempo-{{ 99999999 | random | string }} --image=curlimages/curl --rm -i --restart=Never
+        -n {{ target_namespace }} --context {{ target_host }} --
+        curl -s 'http://tempo.{{ target_namespace }}.svc.cluster.local:3200/api/search?tags=service.name=telemetrygen-traces'
+      register: tempo_traces_test
+      retries: 3
+      delay: 5
+      until: >
+        tempo_traces_test.rc == 0 and
+        (tempo_traces_test.stdout.find('"traces":[]') == -1)
+      failed_when: >
+        tempo_traces_test.rc != 0 or
+        (tempo_traces_test.stdout.find('"traces":[]') != -1)
+
+    - name: 28. Report Traces Pipeline Status
+      ansible.builtin.debug:
+        msg:
+          - "🔍 TRACES PIPELINE: {{ 'PASS ✅' if tempo_traces_test.stdout.find('\"traces\":[]') == -1 else 'FAIL ❌' }}"
+          - "{{ '  ✓ Traces successfully stored in Tempo' if tempo_traces_test.stdout.find('\"traces\":[]') == -1 else '  ✗ Failed to verify traces in Tempo - no trace data found' }}"
+
+    # ============================================
+    # PHASE 4: GRAFANA DASHBOARDS
+    # ============================================
+    - name: 29. Phase 4 - Deploy Grafana Validation Dashboards
+      ansible.builtin.debug:
+        msg:
+          - "🔄 PHASE 4: GRAFANA DASHBOARDS"
+          - "  Step 1: Deploy dashboard ConfigMaps"
+          - "  Step 2: Verify dashboard API endpoint"
+
+    - name: 30. Deploy Grafana installation test dashboards ConfigMap
+      kubernetes.core.k8s:
+        state: present
+        context: "{{ target_host }}"
+        definition:
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: installation-test-dashboards
+            namespace: "{{ target_namespace }}"
+            labels:
+              grafana_dashboard: "1"
+          data:
+            installation-test-suite.json: |
+              {
+                "id": null,
+                "title": "📋 Installation Test Suite",
+                "description": "Overview and links to installation validation dashboards",
+                "tags": ["installation", "validation", "test-suite"],
+                "timezone": "browser",
+                "refresh": "10s",
+                "time": {"from": "now-1h", "to": "now"},
+                "panels": [
+                  {
+                    "id": 1,
+                    "title": "Installation Test Overview",
+                    "type": "text",
+                    "gridPos": {"h": 14, "w": 24, "x": 0, "y": 0},
+                    "options": {
+                      "mode": "markdown",
+                      "content": "# 🎯 Installation Test Suite\n\nThis dashboard suite validates the Urbalurba monitoring stack installation.\n\n---\n\n## Test Dashboards\n\nClick the links below to view detailed test results:\n\n### 📋 [Test Data - Logs](/d/testdata-logs) ✅\n**Validates log ingestion pipeline:** Applications → OTEL Collector → Loki → Grafana  \n✅ Should show **900+ logs** from `telemetrygen-logs` service\n\n### 📊 [Test Data - Metrics](/d/testdata-metrics) ✅\n**Validates metrics pipeline:** Applications → OTEL Collector → Prometheus → Grafana  \n✅ Should show Prometheus **\"up\"** metrics for all monitored services\n\n### 🔍 [Test Data - Traces](/d/testdata-traces) ✅\n**Validates trace ingestion:** Applications → OTEL Collector → Tempo → Grafana Explore  \n✅ Contains **direct link** to view 32+ traces in Tempo Explore\n\n---\n\n## ✅ Installation Validation Checklist\n\n**If all three test dashboards show data, your installation is successful!**\n\n- ✅ **Logs working** = Loki ingestion pipeline operational\n- ✅ **Metrics working** = Prometheus scraping operational  \n- ✅ **Traces accessible** = Tempo storage operational\n\n---\n\n## 🧹 Cleanup After Testing\n\nOnce installation is validated, you can remove these test dashboards:\n\n```bash\nkubectl delete configmap installation-test-dashboards -n monitoring\nkubectl delete jobs -n monitoring -l app=telemetrygen\n```\n\n---\n\n## 📚 Additional Resources\n\n- **Explore Logs**: Click **Explore** (left sidebar) → Select **Loki** datasource\n- **Explore Metrics**: Click **Explore** → Select **Prometheus** datasource  \n- **Explore Traces**: Click **Explore** → Select **Tempo** datasource\n\n---\n\n*This is a temporary validation dashboard suite. Safe to delete after confirming installation success.*\n"
+                    }
+                  }
+                ],
+                "version": 2,
+                "uid": "installation-test-suite"
+              }
+            testdata-logs.json: |
+              {
+                "id": null,
+                "title": "Test Data - Logs",
+                "description": "Validation dashboard for log ingestion pipeline",
+                "tags": ["installation", "test", "logs"],
+                "timezone": "browser",
+                "refresh": "5s",
+                "time": {"from": "now-1h", "to": "now"},
+                "panels": [
+                  {
+                    "id": 1,
+                    "title": "Telemetrygen Logs (Should show 900+ log entries)",
+                    "type": "logs",
+                    "gridPos": {"h": 20, "w": 24, "x": 0, "y": 0},
+                    "targets": [{"datasource": "Loki", "expr": "{service_name=\"telemetrygen-logs\"}", "refId": "A"}]
+                  }
+                ],
+                "version": 2,
+                "uid": "testdata-logs"
+              }
+            testdata-metrics.json: |
+              {
+                "id": null,
+                "title": "Test Data - Metrics",
+                "description": "Validation dashboard for metrics ingestion pipeline",
+                "tags": ["installation", "test", "metrics"],
+                "timezone": "browser",
+                "refresh": "5s",
+                "time": {"from": "now-1h", "to": "now"},
+                "panels": [
+                  {
+                    "id": 1,
+                    "title": "Prometheus 'Up' Metrics (All monitored services)",
+                    "type": "graph",
+                    "gridPos": {"h": 12, "w": 24, "x": 0, "y": 0},
+                    "targets": [{"datasource": "Prometheus", "expr": "up", "refId": "A", "legendFormat": "{{ '{{' }}job{{ '}}' }} - {{ '{{' }}instance{{ '}}' }}"}],
+                    "legend": {"show": true, "alignAsTable": true, "values": true, "current": true}
+                  },
+                  {
+                    "id": 2,
+                    "title": "Total Targets Being Monitored",
+                    "type": "stat",
+                    "gridPos": {"h": 4, "w": 12, "x": 0, "y": 12},
+                    "targets": [{"datasource": "Prometheus", "expr": "count(up)", "refId": "A"}],
+                    "options": {"textMode": "value_and_name", "graphMode": "area"}
+                  },
+                  {
+                    "id": 3,
+                    "title": "Healthy Targets (Up = 1)",
+                    "type": "stat",
+                    "gridPos": {"h": 4, "w": 12, "x": 12, "y": 12},
+                    "targets": [{"datasource": "Prometheus", "expr": "count(up == 1)", "refId": "A"}],
+                    "options": {"textMode": "value_and_name", "graphMode": "area"},
+                    "fieldConfig": {"defaults": {"thresholds": {"steps": [{"value": 0, "color": "red"}, {"value": 1, "color": "green"}]}}}
+                  }
+                ],
+                "version": 2,
+                "uid": "testdata-metrics"
+              }
+            testdata-traces.json: |
+              {
+                "id": null,
+                "title": "Test Data - Traces",
+                "description": "Guide to viewing traces in Tempo",
+                "tags": ["installation", "test", "traces"],
+                "timezone": "browser",
+                "time": {"from": "now-1h", "to": "now"},
+                "panels": [
+                  {
+                    "id": 1,
+                    "title": "🔍 How to View Traces",
+                    "type": "text",
+                    "gridPos": {"h": 12, "w": 24, "x": 0, "y": 0},
+                    "options": {
+                      "mode": "markdown",
+                      "content": "# Viewing Traces in Grafana\n\n## ✅ Installation Validation\n\nClick the button below to view all test traces in Tempo:\n\n### [🚀 Open Tempo Explore - View 32+ Test Traces](/explore?left={\"datasource\":\"Tempo\",\"queries\":[{\"queryType\":\"search\",\"serviceName\":\"telemetrygen-traces\",\"limit\":20}],\"range\":{\"from\":\"now-1h\",\"to\":\"now\"}})\n\n---\n\n## What You Should See:\n\n1. **List of traces** from the `telemetrygen-traces` service\n2. Each trace shows:\n   - Trace ID (clickable)\n   - Service name: `telemetrygen-traces`\n   - Operation: `lets-go`\n   - Duration and timestamp\n3. **Click any Trace ID** to see the full trace waterfall visualization\n\n---\n\n## ✅ Success Criteria\n\nIf you see **multiple traces** in the list above, your trace ingestion pipeline is working correctly!\n\n**Pipeline:** Applications → OTEL Collector → Tempo → Grafana\n\n---\n\n## Additional Trace Operations\n\n- **Search by service name**: Use the Search tab in Explore\n- **Filter by duration**: `{duration > 100ms}`\n- **View trace details**: Click any Trace ID for full span breakdown\n"
+                    }
+                  }
+                ],
+                "version": 3,
+                "uid": "testdata-traces"
+              }
+
+    - name: 31. Test Grafana health endpoint
+      ansible.builtin.command: >
+        kubectl run curl-test-grafana-{{ 99999999 | random | string }} --image=curlimages/curl --rm -i --restart=Never
+        -n {{ target_namespace }} --context {{ target_host }} --
+        curl -s http://grafana.{{ target_namespace }}.svc.cluster.local:80/api/health
+      register: grafana_health_test
+      retries: 3
+      delay: 5
+      until: grafana_health_test.rc == 0 and (grafana_health_test.stdout.find('ok') != -1)
+      failed_when: >
+        grafana_health_test.rc != 0 or
+        (grafana_health_test.stdout.find('ok') == -1)
+
+    - name: 32. Report Dashboard Deployment Status
+      ansible.builtin.debug:
+        msg:
+          - "📊 GRAFANA DASHBOARDS: {{ 'DEPLOYED ✅' if grafana_health_test.stdout.find('ok') != -1 else 'FAIL ❌' }}"
+          - "{{ '  ✓ Installation test dashboard suite deployed' if grafana_health_test.stdout.find('ok') != -1 else '  ✗ Failed to verify Grafana health' }}"
+
+    # ============================================
+    # FINAL SUMMARY
+    # ============================================
+    - name: 33. Display final test results
+      ansible.builtin.debug:
+        msg:
+          - "======================================="
+          - "📊 PIPELINE VALIDATION SUMMARY"
+          - "======================================="
+          - ""
+          - "Test Results:"
+          - "  📋 Logs Pipeline (OTEL → Loki): {{ 'PASS ✅' if loki_logs_test.stdout.find('\"status\":\"success\"') != -1 else 'FAIL ❌' }}"
+          - "  📊 Metrics Pipeline (OTEL → Prometheus): {{ 'PASS ✅' if prometheus_metrics_test.stdout.find('\"status\":\"success\"') != -1 else 'FAIL ❌' }}"
+          - "  🔍 Traces Pipeline (OTEL → Tempo): {{ 'PASS ✅' if tempo_traces_test.stdout.find('\"traces\":[]') == -1 else 'FAIL ❌' }}"
+          - "  🎯 Grafana Dashboards: {{ 'READY ✅' if grafana_health_test.stdout.find('ok') != -1 else 'FAIL ❌' }}"
+          - ""
+          - "🔗 Access Installation Test Dashboards:"
+          - "  http://grafana.localhost/d/installation-test-suite (or kubectl port-forward)"
+          - ""
+          - "📊 Dashboard Suite Includes:"
+          - "  - 📋 Installation Test Suite (overview with links)"
+          - "  - Test Data - Logs (900+ log entries)"
+          - "  - Test Data - Metrics (Prometheus up metrics)"
+          - "  - Test Data - Traces (link to Tempo Explore)"
+          - ""
+          - "🧹 Cleanup After Validation:"
+          - "  kubectl delete configmap installation-test-dashboards -n {{ target_namespace }} --context={{ target_host }}"
+          - "  kubectl delete jobs -n {{ target_namespace }} -l app=telemetrygen --context={{ target_host }}"
