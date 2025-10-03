@@ -90,16 +90,69 @@ Professional Git workflow standards for maintaining code quality and enabling co
 
 ---
 
+### **Development Workflow Rules**
+**💻 [Development Workflow Rules Guide](rules-development-workflow.md)**
+
+Standards for working with the urbalurba-infrastructure codebase, covering file operations, command execution, and project conventions:
+
+- **Path Conventions**: Relative paths from repository root for consistency
+- **Workflow Types**: Claude Code AI vs. human developer workflows
+- **File Operations**: Read, write, edit patterns for different contexts
+- **Command Execution**: Mac host vs. provision-host container operations
+- **Kubernetes Operations**: kubectl commands and resource management
+- **Testing Patterns**: Verification and validation approaches
+
+**When to use**: Daily development work, AI assistant operations, file management, command execution
+
+---
+
+### **Naming Conventions Rules**
+**🏷️ [Naming Conventions Rules Guide](rules-naming-conventions.md)**
+
+Standardized naming patterns for files, manifests, scripts, and resources across the infrastructure:
+
+- **Manifest Numbering**: Sequential numbering scheme (000-999) by service category
+- **File Naming**: Consistent patterns for YAML, scripts, and documentation
+- **Resource Naming**: Kubernetes resources, namespaces, and labels
+- **Script Naming**: Shell scripts and Ansible playbooks conventions
+- **Service Categories**: Numbered ranges for different infrastructure layers
+
+**When to use**: Creating new manifests, scripts, services, or any infrastructure resources
+
+---
+
+### **Documentation Standards**
+**📝 [Documentation Standards Guide](rules-howtodoc.md)**
+
+Comprehensive guide for writing consistent, high-quality documentation across the infrastructure:
+
+- **Documentation Structure**: Standardized sections and formatting
+- **Metadata Headers**: File, purpose, audience, last updated fields
+- **Writing Style**: Clarity, conciseness, and technical accuracy
+- **Examples and Code Blocks**: Proper formatting and syntax highlighting
+- **Cross-References**: Linking between related documentation
+- **Update Requirements**: Keeping documentation synchronized with code
+
+**When to use**: Writing or updating any documentation files, README files, or inline comments
+
+---
+
 ## 🎯 **Quick Reference**
 
 ### **For New Developers**
 1. **Start with**: [Git Workflow Rules](rules-git-workflow.md) - Learn development workflow and collaboration
-2. **Then read**: [Secrets Management Rules](rules-secrets-management.md) - Learn secure secrets handling
-3. **Next**: [Provisioning Rules](rules-provisioning.md) - Learn infrastructure deployment patterns
-4. **Finally**: [Ingress Rules](rules-ingress-traefik.md) - Understand service exposure
+2. **Then read**: [Development Workflow Rules](rules-development-workflow.md) - Learn daily development practices
+3. **Next**: [Naming Conventions Rules](rules-naming-conventions.md) - Learn file and resource naming
+4. **Then**: [Documentation Standards](rules-howtodoc.md) - Learn documentation practices
+5. **Next**: [Secrets Management Rules](rules-secrets-management.md) - Learn secure secrets handling
+6. **Then**: [Provisioning Rules](rules-provisioning.md) - Learn infrastructure deployment patterns
+7. **Finally**: [Ingress Rules](rules-ingress-traefik.md) - Understand service exposure
 
 ### **For Development Work**
 - **Making code changes**: Follow [Git Workflow Rules](rules-git-workflow.md)
+- **Daily development**: Follow [Development Workflow Rules](rules-development-workflow.md)
+- **Naming files/resources**: Follow [Naming Conventions Rules](rules-naming-conventions.md)
+- **Writing documentation**: Follow [Documentation Standards](rules-howtodoc.md)
 - **Managing secrets**: Follow [Secrets Management Rules](rules-secrets-management.md)
 - **Deploying services**: Follow [Provisioning Rules](rules-provisioning.md)
 - **Exposing services**: Follow [Ingress Rules](rules-ingress-traefik.md)

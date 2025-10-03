@@ -475,14 +475,17 @@ spec:
 ## 📁 **Working Examples**
 
 ### **File Organization**:
-All ingress configuration files are located in the **`manifests/`** folder and follow a consistent naming convention:
+All ingress configuration files are located in the **`manifests/`** folder.
 
-- **File Naming**: Ingress files should end with `-ingress.yaml`
-- **Examples**: 
-  - `020-nginx-root-ingress.yaml`
+**⚠️ See [doc/rules-naming-conventions.md](rules-naming-conventions.md#manifest-files) for complete naming patterns.**
+
+**Quick Reference**:
+- **File Naming**: IngressRoute files end with `-ingressroute.yaml`
+- **Examples**:
+  - `038-grafana-ingressroute.yaml`
+  - `039-otel-collector-ingressroute.yaml`
   - `071-whoami-public-ingressroute.yaml`
-  - `091-gravitee-ingress.yaml`
-- **Numbering**: Files are numbered to indicate deployment order and dependencies
+- **Numbering**: Files numbered to indicate deployment order and component grouping
 
 ### **Example 1: Nginx Catch-All**
 ```yaml

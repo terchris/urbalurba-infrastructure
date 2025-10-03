@@ -35,7 +35,7 @@
     - name: 3. Remove Installation Test Suite dashboards manifest
       kubernetes.core.k8s:
         state: absent
-        src: "{{ manifests_folder }}/034-grafana-test-dashboards.yaml"
+        src: "{{ manifests_folder }}/035-grafana-test-dashboards.yaml"
         context: "{{ target_host }}"
       failed_when: false
 

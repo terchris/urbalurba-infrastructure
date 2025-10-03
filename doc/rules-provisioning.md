@@ -64,10 +64,11 @@ echo "✅ LiteLLM deployment complete"
 
 ### **Rule 1B: Script Naming Convention**
 
-All deployment scripts MUST follow this naming pattern:
-- **Setup Script**: `[NN]-setup-[service-name].sh` where NN is a two-digit number
+**⚠️ See [doc/rules-naming-conventions.md](rules-naming-conventions.md#shell-scripts) for complete naming patterns.**
+
+**Quick Reference:**
+- **Setup Script**: `[NN]-setup-[service-name].sh` (e.g., `05-setup-postgres.sh`)
 - **Remove Script**: `[NN]-remove-[service-name].sh` (same number prefix)
-- **Examples**: `05-setup-postgres.sh` and `05-remove-postgres.sh`
 
 **MANDATORY**: Every setup script MUST have a corresponding remove script for clean uninstallation.
 
@@ -382,7 +383,9 @@ ok: [localhost]
 
 ### **Rule 8: Task Naming and Numbering Standards**
 
-All Ansible tasks MUST follow consistent naming and numbering conventions:
+All Ansible tasks MUST follow consistent naming and numbering conventions.
+
+**⚠️ See [doc/rules-naming-conventions.md](rules-naming-conventions.md#ansible-playbooks) for complete patterns.**
 
 **Mandatory Requirements**:
 - ✅ **Sequential numbering**: Tasks numbered 1, 2, 3... in execution order

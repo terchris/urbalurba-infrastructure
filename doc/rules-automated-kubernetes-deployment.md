@@ -102,7 +102,9 @@ provision-host/kubernetes/
 
 ### Script Naming Convention
 
-Scripts must follow standard naming patterns. For **implementation details** (naming conventions, script structure), see:
+**⚠️ See [doc/rules-naming-conventions.md](rules-naming-conventions.md#shell-scripts) for complete naming patterns.**
+
+Scripts must follow standard naming patterns. For **implementation details** (script structure, error handling), see:
 → [Rules for Provisioning](rules-provisioning.md) - Script Template Pattern section
 
 ### Active vs Inactive Management

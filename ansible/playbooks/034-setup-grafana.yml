@@ -236,7 +236,7 @@
     - name: 21. Deploy Installation Test Suite dashboards
       kubernetes.core.k8s:
         state: present
-        src: "{{ manifests_folder }}/034-grafana-test-dashboards.yaml"
+        src: "{{ manifests_folder }}/035-grafana-test-dashboards.yaml"
         context: "{{ target_host }}"
 
     - name: 22. Wait for dashboard ConfigMaps to be created
