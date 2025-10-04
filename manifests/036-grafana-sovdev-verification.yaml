@@ -1,6 +1,6 @@
 ---
 # File: manifests/036-grafana-sovdev-verification.yaml
-# Purpose: Quick verification dashboard for sovdev-logger integration testing
+# Purpose: sovdev-logger verification dashboard with traceId correlation
 # Used by: ansible/playbooks/234-setup-grafana.yml
 # Manifest: 036-grafana-sovdev-verification.yaml
 # Number Range: 030-039 (Monitoring and observability)
@@ -46,7 +46,7 @@ data:
             "uid": "loki"
           },
           "gridPos": {
-            "h": 20,
+            "h": 10,
             "w": 24,
             "x": 0,
             "y": 0
@@ -57,10 +57,10 @@ data:
             "enableLogDetails": true,
             "prettifyLogMessage": false,
             "showCommonLabels": false,
-            "showLabels": false,
+            "showLabels": true,
             "showTime": true,
             "sortOrder": "Descending",
-            "wrapLogMessage": false
+            "wrapLogMessage": true
           },
           "targets": [
             {
@@ -74,14 +74,345 @@ data:
               "refId": "A"
             }
           ],
-          "title": "sovdev-logger Test Logs (All Languages)",
+          "title": "All Logs (Grouped by traceId) - Click to expand correlation fields",
           "type": "logs"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "inspect": false
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "traceId"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 250
+                  },
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "blue"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "inputJSON"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 300
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "responseJSON"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 300
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "logType"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 120
+                  },
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "orange"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 12,
+            "w": 24,
+            "x": 0,
+            "y": 10
+          },
+          "id": 2,
+          "options": {
+            "cellHeight": "sm",
+            "footer": {
+              "countRows": false,
+              "fields": "",
+              "reducer": ["sum"],
+              "show": false
+            },
+            "showHeader": true,
+            "sortBy": [
+              {
+                "desc": true,
+                "displayName": "timestamp"
+              }
+            ]
+          },
+          "pluginVersion": "12.1.1",
+          "targets": [
+            {
+              "datasource": {
+                "type": "loki",
+                "uid": "loki"
+              },
+              "editorMode": "code",
+              "expr": "{service_name=~\"sovdev-test.*\"} | line_format \"{{.timestamp}}|{{.traceId}}|{{.eventId}}|{{.logType}}|{{.systemId}}|{{.functionName}}|{{__line__}}|{{.inputJSON}}|{{.responseJSON}}\"",
+              "queryType": "range",
+              "refId": "A"
+            }
+          ],
+          "title": "Transaction Correlation Table (traceId links related logs)",
+          "transformations": [
+            {
+              "id": "extractFields",
+              "options": {
+                "format": "auto",
+                "source": "Line",
+                "separator": "|"
+              }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {},
+                "indexByName": {
+                  "Field 1": 1,
+                  "Field 2": 2,
+                  "Field 3": 3,
+                  "Field 4": 4,
+                  "Field 5": 5,
+                  "Field 6": 6,
+                  "Field 7": 7,
+                  "Field 8": 8,
+                  "Field 9": 9
+                },
+                "renameByName": {
+                  "Field 1": "timestamp",
+                  "Field 2": "traceId",
+                  "Field 3": "eventId",
+                  "Field 4": "logType",
+                  "Field 5": "systemId",
+                  "Field 6": "functionName",
+                  "Field 7": "message",
+                  "Field 8": "inputJSON",
+                  "Field 9": "responseJSON"
+                }
+              }
+            }
+          ],
+          "type": "table"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "inspect": false
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 10,
+            "w": 24,
+            "x": 0,
+            "y": 22
+          },
+          "id": 3,
+          "options": {
+            "cellHeight": "sm",
+            "footer": {
+              "countRows": false,
+              "fields": "",
+              "reducer": ["sum"],
+              "show": false
+            },
+            "showHeader": true
+          },
+          "pluginVersion": "12.1.1",
+          "targets": [
+            {
+              "datasource": {
+                "type": "loki",
+                "uid": "loki"
+              },
+              "editorMode": "code",
+              "expr": "{service_name=~\"sovdev-test.*\"} |~ \"Processing .* \\\\([0-9]+/[0-9]+\\\\)\" | line_format \"{{.timestamp}}|{{.traceId}}|{{.systemId}}|{{__line__}}|{{.inputJSON}}\"",
+              "queryType": "range",
+              "refId": "A"
+            }
+          ],
+          "title": "Batch Job Progress (filtered by traceId)",
+          "transformations": [
+            {
+              "id": "extractFields",
+              "options": {
+                "format": "auto",
+                "source": "Line",
+                "separator": "|"
+              }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {},
+                "indexByName": {},
+                "renameByName": {
+                  "Field 1": "timestamp",
+                  "Field 2": "traceId (batch job)",
+                  "Field 3": "systemId",
+                  "Field 4": "message",
+                  "Field 5": "inputJSON"
+                }
+              }
+            }
+          ],
+          "type": "table"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "inspect": false
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 1
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "exceptionType"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "red"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 10,
+            "w": 24,
+            "x": 0,
+            "y": 32
+          },
+          "id": 4,
+          "options": {
+            "cellHeight": "sm",
+            "footer": {
+              "countRows": false,
+              "fields": "",
+              "reducer": ["sum"],
+              "show": false
+            },
+            "showHeader": true
+          },
+          "pluginVersion": "12.1.1",
+          "targets": [
+            {
+              "datasource": {
+                "type": "loki",
+                "uid": "loki"
+              },
+              "editorMode": "code",
+              "expr": "{service_name=~\"sovdev-test.*\",exceptionType!=\"\"}",
+              "queryType": "range",
+              "refId": "A"
+            }
+          ],
+          "title": "Errors and Exceptions (with traceId for correlation)",
+          "type": "table"
         }
       ],
       "refresh": "5s",
       "schemaVersion": 38,
       "style": "dark",
-      "tags": ["sovdev", "testing", "verification"],
+      "tags": ["sovdev", "testing", "verification", "traceId", "correlation"],
       "templating": {
         "list": []
       },
@@ -91,7 +422,7 @@ data:
       },
       "timepicker": {},
       "timezone": "",
-      "title": "sovdev-logger - Quick Verification",
+      "title": "sovdev-logger - Correlated Transaction View",
       "uid": "sovdev-verification",
       "version": 0,
       "weekStart": ""
