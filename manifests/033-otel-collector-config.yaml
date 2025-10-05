@@ -89,12 +89,16 @@ config:
         - key: service_name
           from_attribute: service.name
           action: insert
+        - key: session_id
+          from_attribute: session.id
+          action: insert
 
     transform:
       log_statements:
         - context: log
           statements:
             - set(attributes["service_name"], resource.attributes["service_name"])
+            - set(attributes["session_id"], resource.attributes["session.id"]) where resource.attributes["session.id"] != nil
 
   # Exporters
   exporters:

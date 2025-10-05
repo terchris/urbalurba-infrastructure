@@ -5,7 +5,49 @@
 **File**: `doc/package-monitoring-sovdev-logger.md`
 **Purpose**: Complete integration guide for sovdev-logger library across TypeScript, Python, C#, PHP, Go, and Rust
 **Target Audience**: Application developers, backend engineers, integration teams
-**Last Updated**: October 3, 2025
+**Last Updated**: October 5, 2025
+
+## 🎯 Zero-Effort Observability
+
+**sovdev-logger** transforms every log entry into complete observability by **automatically generating logs, metrics, and traces** without code changes.
+
+### **Key Features**
+
+#### **1. Automatic Prometheus Metrics**
+Every `sovdevLog()` call automatically creates Prometheus metrics:
+- `sovdev_operations_total` - Total operations counter
+- `sovdev_errors_total` - Error counter (ERROR/FATAL levels)
+- `sovdev_operation_duration_milliseconds` - Duration histogram
+- `sovdev_operations_active` - Active operations gauge
+
+**All metrics include dimensional labels**: `service_name`, `peer_service`, `log_level`, `log_type`
+
+#### **2. Automatic Distributed Tracing**
+Every `sovdevLog()` call automatically creates a trace span:
+- Span name format: `{functionName} [{logType}]`
+- Full attributes: service.name, peer.service, log.level, log.type, function.name
+- Automatic span events for input/response data
+- Automatic error status based on exceptions and log levels
+- Enables service dependency graphs in Tempo/Grafana
+
+#### **3. Session Grouping**
+Each application execution gets a unique `session.id`:
+- Groups all logs, metrics, and traces from single run
+- Filter specific execution: `{service_name="my-service"} | session_id="abc123"`
+- Simplifies debugging and testing by isolating runs
+- Session ID printed at startup: `🔑 Session ID: abc123-def456-ghi789`
+
+### **Benefits**
+- **Zero Developer Effort**: Write logs once, get full observability (logs + metrics + traces)
+- **Fast Queries**: Prometheus metrics enable sub-second dashboard responses
+- **Service Graphs**: Automatic dependency visualization from trace relationships
+- **Session Filtering**: Debug specific runs without time-based filtering
+- **Full Correlation**: Link logs, metrics, and traces via traceId and session.id
+
+### **Grafana Dashboards**
+Pre-built dashboards included:
+- **Fast Metrics Dashboard** (`037-grafana-sovdev-metrics.yaml`) - Prometheus-based with sub-second queries
+- **Verification Dashboard** (`036-grafana-sovdev-verification.yaml`) - TraceId correlation and debugging
 
 ## 📋 Overview
 
@@ -196,8 +238,10 @@ await flushSovdevLogs();
 **Environment Configuration**:
 ```bash
 # Required
-SYSTEM_ID=my-service-name                       # Your application identifier
-OTEL_EXPORTER_OTLP_LOGS_ENDPOINT=http://127.0.0.1/v1/logs  # OTLP endpoint
+SYSTEM_ID=my-service-name                                   # Your application identifier
+OTEL_EXPORTER_OTLP_LOGS_ENDPOINT=http://127.0.0.1/v1/logs   # OTLP logs endpoint
+OTEL_EXPORTER_OTLP_METRICS_ENDPOINT=http://127.0.0.1/v1/metrics  # OTLP metrics endpoint
+OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://127.0.0.1/v1/traces   # OTLP traces endpoint
 OTEL_EXPORTER_OTLP_HEADERS='{"Host":"otel.localhost"}'     # Host header for Traefik routing
 
 # Optional
@@ -251,11 +295,16 @@ cd terchris/grafana1/sovdev-logger/typescript/examples/basic
 # Set environment variables
 export SYSTEM_ID=sovdev-test-typescript
 export OTEL_EXPORTER_OTLP_LOGS_ENDPOINT=http://127.0.0.1/v1/logs
+export OTEL_EXPORTER_OTLP_METRICS_ENDPOINT=http://127.0.0.1/v1/metrics
+export OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://127.0.0.1/v1/traces
 export OTEL_EXPORTER_OTLP_HEADERS='{"Host":"otel.localhost"}'
 export LOG_TO_CONSOLE=true
 
 # Run
 npx tsx simple-logging.ts
+
+# You'll see console output with session ID:
+# 🔑 Session ID: abc123-def456-ghi789
 ```
 
 **Official TypeScript Documentation**: https://opentelemetry.io/docs/languages/js/
@@ -299,6 +348,8 @@ flush_sovdev_logs()
 ```bash
 SYSTEM_ID=my-service-name
 OTEL_EXPORTER_OTLP_LOGS_ENDPOINT=http://127.0.0.1/v1/logs
+OTEL_EXPORTER_OTLP_METRICS_ENDPOINT=http://127.0.0.1/v1/metrics
+OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://127.0.0.1/v1/traces
 OTEL_EXPORTER_OTLP_HEADERS='{"Host":"otel.localhost"}'
 ```
 
@@ -343,6 +394,8 @@ await SovdevLogger.FlushAsync();
 ```bash
 SYSTEM_ID=my-service-name
 OTEL_EXPORTER_OTLP_LOGS_ENDPOINT=http://127.0.0.1/v1/logs
+OTEL_EXPORTER_OTLP_METRICS_ENDPOINT=http://127.0.0.1/v1/metrics
+OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://127.0.0.1/v1/traces
 OTEL_EXPORTER_OTLP_HEADERS={"Host":"otel.localhost"}
 ```
 
@@ -390,6 +443,8 @@ Logger::flush();
 ```bash
 SYSTEM_ID=my-service-name
 OTEL_EXPORTER_OTLP_LOGS_ENDPOINT=http://127.0.0.1/v1/logs
+OTEL_EXPORTER_OTLP_METRICS_ENDPOINT=http://127.0.0.1/v1/metrics
+OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://127.0.0.1/v1/traces
 OTEL_EXPORTER_OTLP_HEADERS='{"Host":"otel.localhost"}'
 ```
 
@@ -440,6 +495,8 @@ func main() {
 ```bash
 SYSTEM_ID=my-service-name
 OTEL_EXPORTER_OTLP_LOGS_ENDPOINT=http://127.0.0.1/v1/logs
+OTEL_EXPORTER_OTLP_METRICS_ENDPOINT=http://127.0.0.1/v1/metrics
+OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://127.0.0.1/v1/traces
 OTEL_EXPORTER_OTLP_HEADERS='{"Host":"otel.localhost"}'
 ```
 
@@ -495,6 +552,8 @@ fn main() {
 ```bash
 SYSTEM_ID=my-service-name
 OTEL_EXPORTER_OTLP_LOGS_ENDPOINT=http://127.0.0.1/v1/logs
+OTEL_EXPORTER_OTLP_METRICS_ENDPOINT=http://127.0.0.1/v1/metrics
+OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://127.0.0.1/v1/traces
 OTEL_EXPORTER_OTLP_HEADERS='{"Host":"otel.localhost"}'
 ```
 
@@ -509,7 +568,9 @@ OTEL_EXPORTER_OTLP_HEADERS='{"Host":"otel.localhost"}'
 **Required**:
 ```bash
 SYSTEM_ID=<your-service-name>                   # Identifies your application in logs
-OTEL_EXPORTER_OTLP_LOGS_ENDPOINT=<otlp-url>     # OTLP Collector endpoint
+OTEL_EXPORTER_OTLP_LOGS_ENDPOINT=<otlp-url>     # OTLP logs endpoint
+OTEL_EXPORTER_OTLP_METRICS_ENDPOINT=<otlp-url>  # OTLP metrics endpoint
+OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=<otlp-url>   # OTLP traces endpoint
 OTEL_EXPORTER_OTLP_HEADERS='{"Host":"<host>"}'  # Traefik routing header
 ```
 
@@ -525,6 +586,8 @@ OTEL_LOG_LEVEL=debug                            # OpenTelemetry SDK debug loggin
 ```bash
 export SYSTEM_ID=my-service-dev
 export OTEL_EXPORTER_OTLP_LOGS_ENDPOINT=http://127.0.0.1/v1/logs
+export OTEL_EXPORTER_OTLP_METRICS_ENDPOINT=http://127.0.0.1/v1/metrics
+export OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://127.0.0.1/v1/traces
 export OTEL_EXPORTER_OTLP_HEADERS='{"Host":"otel.localhost"}'
 export LOG_TO_CONSOLE=true
 ```
@@ -544,6 +607,10 @@ spec:
           value: "my-service-prod"
         - name: OTEL_EXPORTER_OTLP_LOGS_ENDPOINT
           value: "http://otel-collector-opentelemetry-collector.monitoring.svc.cluster.local:4318/v1/logs"
+        - name: OTEL_EXPORTER_OTLP_METRICS_ENDPOINT
+          value: "http://otel-collector-opentelemetry-collector.monitoring.svc.cluster.local:4318/v1/metrics"
+        - name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
+          value: "http://otel-collector-opentelemetry-collector.monitoring.svc.cluster.local:4318/v1/traces"
         - name: LOG_TO_CONSOLE
           value: "false"
 ```
@@ -558,6 +625,8 @@ services:
     environment:
       SYSTEM_ID: my-service-prod
       OTEL_EXPORTER_OTLP_LOGS_ENDPOINT: http://otel-collector:4318/v1/logs
+      OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: http://otel-collector:4318/v1/metrics
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://otel-collector:4318/v1/traces
       LOG_TO_CONSOLE: "false"
 ```
 

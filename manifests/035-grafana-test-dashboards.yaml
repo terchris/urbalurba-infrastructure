@@ -76,10 +76,41 @@ data:
             "sortOrder": "Descending"
           },
           "gridPos": {
-            "h": 16,
+            "h": 8,
             "w": 24,
             "x": 0,
             "y": 0
+          }
+        },
+        {
+          "id": 2,
+          "title": "Company Lookup Service Logs (OTEL Standard Fields)",
+          "type": "logs",
+          "targets": [
+            {
+              "datasource": {
+                "type": "loki",
+                "uid": "loki"
+              },
+              "expr": "{service_name=\"company-lookup-service\"}",
+              "refId": "A"
+            }
+          ],
+          "options": {
+            "showTime": true,
+            "showLabels": true,
+            "showCommonLabels": false,
+            "wrapLogMessage": true,
+            "prettifyLogMessage": false,
+            "enableLogDetails": true,
+            "dedupStrategy": "none",
+            "sortOrder": "Descending"
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 8
           }
         }
       ],

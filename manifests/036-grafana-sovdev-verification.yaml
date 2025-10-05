@@ -69,7 +69,7 @@ data:
                 "uid": "loki"
               },
               "editorMode": "code",
-              "expr": "{service_name=~\"sovdev-test.*\"}",
+              "expr": "{service_name=~\"sovdev-test.*|company-lookup-service\"}",
               "queryType": "range",
               "refId": "A"
             }
@@ -198,7 +198,7 @@ data:
                 "uid": "loki"
               },
               "editorMode": "code",
-              "expr": "{service_name=~\"sovdev-test.*\"} | line_format \"{{.timestamp}}|{{.traceId}}|{{.eventId}}|{{.logType}}|{{.systemId}}|{{.functionName}}|{{__line__}}|{{.inputJSON}}|{{.responseJSON}}\"",
+              "expr": "{service_name=~\"sovdev-test.*|company-lookup-service\"} | logType=\"transaction\"",
               "queryType": "range",
               "refId": "A"
             }
@@ -209,35 +209,43 @@ data:
               "id": "extractFields",
               "options": {
                 "format": "auto",
-                "source": "Line",
-                "separator": "|"
+                "source": "labels"
               }
             },
             {
               "id": "organize",
               "options": {
-                "excludeByName": {},
-                "indexByName": {
-                  "Field 1": 1,
-                  "Field 2": 2,
-                  "Field 3": 3,
-                  "Field 4": 4,
-                  "Field 5": 5,
-                  "Field 6": 6,
-                  "Field 7": 7,
-                  "Field 8": 8,
-                  "Field 9": 9
+                "excludeByName": {
+                  "Time": false,
+                  "cluster_name": true,
+                  "deployment_environment": true,
+                  "detected_level": true,
+                  "observed_timestamp": true,
+                  "scope_name": true,
+                  "scope_version": true,
+                  "service_name_extracted": true,
+                  "severity_number": true,
+                  "severity_text": true,
+                  "spanId": true,
+                  "telemetry_sdk_language": true,
+                  "telemetry_sdk_name": true,
+                  "telemetry_sdk_version": true,
+                  "Line": true,
+                  "labels": true,
+                  "tsNs": true,
+                  "id": true
                 },
+                "indexByName": {},
                 "renameByName": {
-                  "Field 1": "timestamp",
-                  "Field 2": "traceId",
-                  "Field 3": "eventId",
-                  "Field 4": "logType",
-                  "Field 5": "systemId",
-                  "Field 6": "functionName",
-                  "Field 7": "message",
-                  "Field 8": "inputJSON",
-                  "Field 9": "responseJSON"
+                  "timestamp": "Timestamp",
+                  "traceId": "Trace ID",
+                  "eventId": "Event ID",
+                  "logType": "Log Type",
+                  "service_name": "Service",
+                  "peer_service": "Peer Service",
+                  "functionName": "Function",
+                  "inputJSON": "Input",
+                  "responseJSON": "Response"
                 }
               }
             }
@@ -296,7 +304,7 @@ data:
                 "uid": "loki"
               },
               "editorMode": "code",
-              "expr": "{service_name=~\"sovdev-test.*\"} |~ \"Processing .* \\\\([0-9]+/[0-9]+\\\\)\" | line_format \"{{.timestamp}}|{{.traceId}}|{{.systemId}}|{{__line__}}|{{.inputJSON}}\"",
+              "expr": "{service_name=~\"sovdev-test.*|company-lookup-service\"} | logType=\"job.progress\"",
               "queryType": "range",
               "refId": "A"
             }
@@ -307,21 +315,43 @@ data:
               "id": "extractFields",
               "options": {
                 "format": "auto",
-                "source": "Line",
-                "separator": "|"
+                "source": "labels"
               }
             },
             {
               "id": "organize",
               "options": {
-                "excludeByName": {},
+                "excludeByName": {
+                  "cluster_name": true,
+                  "deployment_environment": true,
+                  "detected_level": true,
+                  "observed_timestamp": true,
+                  "scope_name": true,
+                  "scope_version": true,
+                  "service_name_extracted": true,
+                  "severity_number": true,
+                  "severity_text": true,
+                  "spanId": true,
+                  "telemetry_sdk_language": true,
+                  "telemetry_sdk_name": true,
+                  "telemetry_sdk_version": true,
+                  "Line": true,
+                  "labels": true,
+                  "tsNs": true,
+                  "id": true,
+                  "Time": false,
+                  "eventId": true,
+                  "functionName": true,
+                  "responseJSON": true,
+                  "service_version": true
+                },
                 "indexByName": {},
                 "renameByName": {
-                  "Field 1": "timestamp",
-                  "Field 2": "traceId (batch job)",
-                  "Field 3": "systemId",
-                  "Field 4": "message",
-                  "Field 5": "inputJSON"
+                  "timestamp": "Timestamp",
+                  "traceId": "Batch Trace ID",
+                  "service_name": "Service",
+                  "peer_service": "Peer Service",
+                  "inputJSON": "Progress Details"
                 }
               }
             }
@@ -400,7 +430,7 @@ data:
                 "uid": "loki"
               },
               "editorMode": "code",
-              "expr": "{service_name=~\"sovdev-test.*\",exceptionType!=\"\"}",
+              "expr": "{service_name=~\"sovdev-test.*|company-lookup-service\"} | exceptionType!=\"\"",
               "queryType": "range",
               "refId": "A"
             }

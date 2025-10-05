@@ -224,6 +224,65 @@ persistence:
   size: 10Gi                         # Adjust based on trace volume
 ```
 
+**4. Metrics Generator** (Automatic Service Graphs):
+```yaml
+tempo:
+  metricsGenerator:
+    enabled: true
+    remoteWriteUrl: "http://prometheus-server.monitoring.svc.cluster.local:80/api/v1/write"
+
+  structuredConfig:
+    metrics_generator:
+      registry:
+        external_labels:
+          source: tempo
+      storage:
+        path: /var/tempo/generator/wal
+        remote_write:
+          - url: http://prometheus-server.monitoring.svc.cluster.local:80/api/v1/write
+            send_exemplars: true
+      traces_storage:
+        path: /var/tempo/generator/traces
+      processor:
+        service_graphs:
+          dimensions:
+            - service.name
+            - peer.service
+          histogram_buckets: [0.1, 0.2, 0.5, 1, 2, 5, 10]
+        span_metrics:
+          dimensions:
+            - service.name
+            - peer.service
+            - log.type
+    overrides:
+      defaults:
+        metrics_generator:
+          processors: [service-graphs, span-metrics]
+```
+
+**Key Features**:
+- **Service Graphs**: Automatically generate service dependency metrics from traces
+- **Span Metrics**: Create Prometheus metrics for trace calls, latency, and errors
+- **Remote Write**: Send generated metrics to Prometheus for visualization
+- **Dimensions**: Track service.name, peer.service, and log.type for detailed filtering
+
+**Generated Prometheus Metrics**:
+- `traces_spanmetrics_calls_total` - Total calls between services
+- `traces_spanmetrics_latency_bucket` - Latency histogram distribution
+- `traces_spanmetrics_size_total` - Span size tracking
+
+**Example Prometheus Queries**:
+```promql
+# Service dependency graph
+traces_spanmetrics_calls_total{service_name="my-service"}
+
+# Average latency between services
+rate(traces_spanmetrics_latency_sum[1m]) / rate(traces_spanmetrics_latency_count[1m])
+
+# Error rate by service
+rate(traces_spanmetrics_calls_total{status_code="STATUS_CODE_ERROR"}[1m])
+```
+
 ### **Resource Configuration**
 
 **Storage Requirements**:

@@ -235,7 +235,7 @@ config:
       timeout: 10s
       send_batch_size: 1024
 
-    # Add cluster metadata
+    # Add cluster metadata and extract resource attributes
     resource:
       attributes:
         - key: cluster.name
@@ -244,13 +244,17 @@ config:
         - key: service_name
           from_attribute: service.name
           action: insert
+        - key: session_id
+          from_attribute: session.id
+          action: insert
 
-    # Transform log attributes
+    # Transform log attributes to make them available in Loki
     transform:
       log_statements:
         - context: log
           statements:
             - set(attributes["service_name"], resource.attributes["service_name"])
+            - set(attributes["session_id"], resource.attributes["session.id"]) where resource.attributes["session.id"] != nil
 ```
 
 **Official Processor Docs**: https://opentelemetry.io/docs/collector/configuration/#processors
