@@ -1,0 +1,256 @@
+openapi: 3.0.0
+info:
+  title: My Red Cross API
+  version: 1.0.0
+  description: |
+    TODO: Replace this with your project description
+    
+    🚨 IMPORTANT FOR CONSULTANTS:
+    - This is your API specification - edit this file to design your API
+    - Always use shared schemas from ../shared-schemas/
+    - See ../shared-schemas/examples/how-to-reference.yaml for patterns
+    - Don't create custom versions of existing Red Cross types
+    - Run ./tools/validate.ps1 to check your changes
+
+servers:
+  - url: https://localhost:7001
+    description: Development server
+  - url: https://api-dev.redcross.no/my-project
+    description: Development environment
+  - url: https://api.redcross.no/my-project
+    description: Production environment
+
+# TODO: Replace these example paths with your actual API endpoints
+paths:
+  /example:
+    get:
+      summary: Example endpoint - replace with your actual endpoint
+      description: |
+        TODO: Replace this with your actual endpoint description
+        This is just an example to show you the structure.
+      operationId: GetExample
+      tags:
+        - Example
+      responses:
+        '200':
+          description: Example successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExampleResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /example/{id}:
+    get:
+      summary: Get example by ID - replace with your actual endpoint
+      operationId: GetExampleById
+      tags:
+        - Example
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Example ID
+          schema:
+            type: string
+            pattern: '^[A-Z][0-9]{3}$'
+            example: "A123"
+      responses:
+        '200':
+          description: Example found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExampleDetail'
+        '404':
+          description: Example not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      summary: Create new example - replace with your actual endpoint
+      operationId: CreateExample
+      tags:
+        - Example
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateExampleRequest'
+      responses:
+        '201':
+          description: Example created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExampleDetail'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    # TODO: Replace these example schemas with your actual data models
+    # REMEMBER: Always use shared Red Cross schemas when possible!
+    
+    ExampleResponse:
+      type: object
+      description: Example response showing how to use shared schemas
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExampleSummary'
+        totalCount:
+          type: integer
+          minimum: 0
+          example: 42
+
+    ExampleSummary:
+      type: object
+      description: Example showing mixed shared and custom fields
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+          pattern: '^[A-Z][0-9]{3}$'
+          example: "A123"
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          example: "Example item"
+        # ✅ EXAMPLE: Use shared Red Cross schemas when possible
+        contactEmail:
+          $ref: '../../shared-schemas/fields/v1/email.yaml#/components/schemas/Email'
+        phone:
+          $ref: '../../shared-schemas/fields/v1/norwegian-phone.yaml#/components/schemas/NorwegianPhoneNumber'
+        
+    ExampleDetail:
+      allOf:
+        - $ref: '#/components/schemas/ExampleSummary'
+        - type: object
+          properties:
+            description:
+              type: string
+              maxLength: 500
+              nullable: true
+              example: "Detailed description of the example item"
+            # ✅ EXAMPLE: Using composite address schema
+            address:
+              $ref: '../../shared-schemas/schemas/v1/address.yaml#/components/schemas/Address'
+            # ✅ EXAMPLE: Using communication channels schema
+            communication:
+              $ref: '../../shared-schemas/schemas/v1/communication-channels.yaml#/components/schemas/CommunicationChannels'
+            # ✅ EXAMPLE: Using individual location fields
+            county:
+              $ref: '../../shared-schemas/fields/v1/county.yaml#/components/schemas/County'
+            municipality:
+              $ref: '../../shared-schemas/fields/v1/municipality.yaml#/components/schemas/Municipality'
+            location:
+              $ref: '../../shared-schemas/fields/v1/geo-location.yaml#/components/schemas/GeoLocation'
+            createdAt:
+              type: string
+              format: date-time
+              readOnly: true
+              example: "2025-01-09T10:30:00Z"
+            updatedAt:
+              type: string
+              format: date-time
+              readOnly: true
+              example: "2025-01-09T14:45:00Z"
+
+    CreateExampleRequest:
+      type: object
+      description: Request for creating a new example
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          example: "New example item"
+        description:
+          type: string
+          maxLength: 500
+          nullable: true
+          example: "Description of the new item"
+        # ✅ EXAMPLE: Using shared schemas in request objects
+        contactEmail:
+          $ref: '../../shared-schemas/fields/v1/email.yaml#/components/schemas/Email'
+        phone:
+          $ref: '../../shared-schemas/fields/v1/norwegian-phone.yaml#/components/schemas/NorwegianPhoneNumber'
+
+    ErrorResponse:
+      type: object
+      description: Standard error response format
+      required:
+        - message
+        - code
+        - timestamp
+      properties:
+        message:
+          type: string
+          description: Human-readable error message
+          example: "Validation failed"
+        code:
+          type: string
+          description: Machine-readable error code
+          pattern: '^[A-Z_]+$'
+          example: "VALIDATION_ERROR"
+        timestamp:
+          type: string
+          format: date-time
+          description: When the error occurred
+          example: "2025-01-09T10:30:00Z"
+        details:
+          type: array
+          description: Detailed validation errors (optional)
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+                example: "email"
+              message:
+                type: string
+                example: "Invalid email format"
+              code:
+                type: string
+                example: "INVALID_FORMAT"
+
+  securitySchemes:
+    # TODO: Configure authentication if needed
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token for authentication
+
+# TODO: Add security requirements if your API needs authentication
+# security:
+#   - bearerAuth: []
+
+tags:
+  - name: Example
+    description: Example operations - replace with your actual tags

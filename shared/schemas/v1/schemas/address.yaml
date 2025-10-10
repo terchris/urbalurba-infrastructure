@@ -1,0 +1,32 @@
+# file: _shared/schemas/v1/address.yaml
+components:
+  schemas:
+    Address:
+      type: object
+      description: Norwegian postal address format
+      additionalProperties: false  
+      properties:
+        addressLine1:
+          type: string
+          maxLength: 100
+          pattern: '^[a-zA-ZæøåÆØÅ0-9\s\-\.,]+$'
+          description: |
+            Primary address line. Should contain the street name and number 
+            for street addresses, or box number for postal addresses.
+          example: "Boks 246"
+        addressLine2:
+          type: string
+          maxLength: 100
+          pattern: '^[a-zA-ZæøåÆØÅ0-9\s\-\.,]+$'
+          nullable: true
+          description: |
+            Secondary address line for additional address information 
+            such as building name, floor number, or unit identifier.
+        postalCode:
+          $ref: '../../fields/v1/postal-code.yaml#/components/schemas/NorwegianPostalCode'
+        postOffice:
+          type: string
+          maxLength: 50
+          pattern: '^[A-ZÆØÅ\s\-]+$'
+          description: Norwegian post office name
+          example: "VIKERSUND"

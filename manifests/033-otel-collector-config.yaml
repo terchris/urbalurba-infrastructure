@@ -9,7 +9,7 @@
 # - Exports logs to Loki
 # - Exports metrics to Prometheus
 # - Debug exporter for troubleshooting
-# - Resource and transform processors for enrichment
+# - Resource processor adds cluster.name attribute
 
 # Deployment mode
 mode: deployment
@@ -86,19 +86,27 @@ config:
         - key: cluster.name
           value: urbalurba-local
           action: upsert
-        - key: service_name
-          from_attribute: service.name
-          action: insert
-        - key: session_id
-          from_attribute: session.id
-          action: insert
+        # LEGACY: Commented out dot-to-underscore transformations (2025-10-09)
+        # Applications now send underscores directly (service_name, session_id)
+        # No transformation needed - fields pass through unchanged
+        # - key: service_name
+        #   from_attribute: service.name
+        #   action: insert
+        # - key: session_id
+        #   from_attribute: session.id
+        #   action: insert
 
     transform:
       log_statements:
         - context: log
           statements:
-            - set(attributes["service_name"], resource.attributes["service_name"])
-            - set(attributes["session_id"], resource.attributes["session.id"]) where resource.attributes["session.id"] != nil
+            # LEGACY: Commented out transformations (2025-10-09)
+            # Applications send snake_case fields directly
+            # - set(attributes["service_name"], resource.attributes["service_name"])
+            # - set(attributes["session_id"], resource.attributes["session.id"]) where resource.attributes["session.id"] != nil
+
+            # Application fields (function_name, log_type, trace_id, etc.) already use underscores
+            # They pass through unchanged - no transformation needed
 
   # Exporters
   exporters:
@@ -148,7 +156,7 @@ config:
           - otlp
         processors:
           - resource
-          - transform
+          # transform removed - no longer needed (all transformation statements commented out 2025-10-09)
           - batch
         exporters:
           - otlphttp/loki

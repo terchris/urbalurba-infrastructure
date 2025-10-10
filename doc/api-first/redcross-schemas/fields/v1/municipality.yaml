@@ -1,0 +1,9 @@
+# file: _shared/fields/v1/municipality.yaml
+components:
+  schemas:
+    Municipality:
+      type: string
+      description: Norwegian municipality (kommune)
+      maxLength: 50
+      pattern: '^[a-zA-ZæøåÆØÅ\s\-]+$'
+      example: "Modum"

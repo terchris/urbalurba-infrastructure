@@ -1,0 +1,8 @@
+# file: _shared/fields/v1/branch-number.yaml
+components:
+  schemas:
+    BranchNumber:
+      type: string
+      description: Organization number used in Red Cross systems
+      pattern: '^[0-9]{7}$'
+      example: "0600070"

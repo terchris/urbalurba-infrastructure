@@ -1,0 +1,10 @@
+# file: _shared/fields/v1/branch-name.yaml
+components:
+  schemas:
+    BranchName:
+      type: string
+      description: Official name of the branch
+      minLength: 1
+      maxLength: 100
+      pattern: '^[a-zA-ZæøåÆØÅ0-9\s\-\.]+$'
+      example: "Drammen Røde Kors"

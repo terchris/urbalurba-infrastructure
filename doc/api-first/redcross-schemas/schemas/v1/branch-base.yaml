@@ -1,0 +1,24 @@
+# file: schemas/v1/branch-base.yaml
+components:
+  schemas:
+    BranchBase:
+      type: object
+      additionalProperties: true  # Required for allOf inheritance
+      required:
+        - branchId
+        - branchNumber
+        - branchName
+        - branchType
+      properties:
+        branchId:
+          $ref: '../../fields/v1/branch-id.yaml#/components/schemas/BranchId'
+        branchNumber:
+          $ref: '../../fields/v1/branch-number.yaml#/components/schemas/BranchNumber'
+        branchName:
+          $ref: '../../fields/v1/branch-name.yaml#/components/schemas/BranchName'
+        branchType:
+          $ref: '../../fields/v1/branch-type.yaml#/components/schemas/BranchType'
+      description: |
+        Base schema for branch information.
+        additionalProperties is set to true to allow inheritance through allOf.
+        Core branch identifiers and type information are enforced through required properties.

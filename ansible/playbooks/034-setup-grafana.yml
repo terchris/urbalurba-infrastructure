@@ -239,7 +239,13 @@
         src: "{{ manifests_folder }}/035-grafana-test-dashboards.yaml"
         context: "{{ target_host }}"
 
-    - name: 22. Wait for dashboard ConfigMaps to be created
+    - name: 22. Deploy sovdev-logger Overview dashboard
+      kubernetes.core.k8s:
+        state: present
+        src: "{{ manifests_folder }}/036-grafana-sovdev-metrics.yaml"
+        context: "{{ target_host }}"
+
+    - name: 23. Wait for dashboard ConfigMaps to be created
       kubernetes.core.k8s_info:
         kind: ConfigMap
         namespace: "{{ namespace }}"
@@ -249,9 +255,9 @@
       register: dashboard_configmaps
       retries: 5
       delay: 2
-      until: dashboard_configmaps.resources | length >= 3
+      until: dashboard_configmaps.resources | length >= 4
 
-    - name: 23. Generate test data - Send logs for dashboard
+    - name: 24. Generate test data - Send logs for dashboard
       ansible.builtin.command: >
         kubectl run telemetrygen-dashboard-logs --image=ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:latest --rm -i --restart=Never
         -n {{ namespace }} --context {{ target_host }} --timeout=60s --
@@ -264,7 +270,7 @@
       until: test_logs.rc == 0
       failed_when: false
 
-    - name: 24. Generate test data - Send traces for dashboard
+    - name: 25. Generate test data - Send traces for dashboard
       ansible.builtin.command: >
         kubectl run telemetrygen-dashboard-traces --image=ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:latest --rm -i --restart=Never
         -n {{ namespace }} --context {{ target_host }} --timeout=60s --
@@ -276,17 +282,17 @@
       until: test_traces.rc == 0
       failed_when: false
 
-    - name: 25. Wait for test data to be indexed
+    - name: 26. Wait for test data to be indexed
       ansible.builtin.pause:
         seconds: 5
 
-    - name: 26. Deploy Grafana IngressRoute
+    - name: 27. Deploy Grafana IngressRoute
       kubernetes.core.k8s:
         state: present
         src: "{{ manifests_folder }}/038-grafana-ingressroute.yaml"
         context: "{{ target_host }}"
 
-    - name: 27. Wait for IngressRoute to be ready
+    - name: 28. Wait for IngressRoute to be ready
       kubernetes.core.k8s_info:
         kind: IngressRoute
         name: grafana
@@ -298,7 +304,7 @@
       delay: 2
       until: grafana_ingressroute.resources | length > 0
 
-    - name: 28. Display deployment status
+    - name: 29. Display deployment status
       ansible.builtin.debug:
         msg:
           - "✅ Grafana deployment completed successfully!"
@@ -326,10 +332,11 @@
           - "  2. Loki: http://loki-gateway.monitoring.svc.cluster.local:80"
           - "  3. Tempo: http://tempo.monitoring.svc.cluster.local:3200"
           - ""
-          - "Installation Test Suite dashboards:"
+          - "Dashboards deployed:"
           - "  📊 {{ dashboard_configmaps.resources | length }} dashboards deployed"
           - "  🏷️  Label: grafana_dashboard=1"
-          - "  📁 Dashboards: Test Data - Logs, Test Data - Traces, Test Data - Metrics"
+          - "  📁 Installation Test Suite: Test Data - Logs, Test Data - Traces, Test Data - Metrics"
+          - "  📁 Sovdev Logger: Sovdev Logger - Overview"
           - ""
           - "Test data generation:"
           - "  📋 Logs: {{ 'Sent ✅' if test_logs is defined and test_logs.rc == 0 else 'Failed ❌' }} (service: telemetrygen-logs)"

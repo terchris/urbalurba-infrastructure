@@ -1,0 +1,11 @@
+# file: _shared/fields/v1/email.yaml
+components:
+  schemas:
+    Email:
+      type: string
+      format: email
+      nullable: true
+      maxLength: 254  # RFC 5321 maximum length for email addresses
+      pattern: ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$
+      description: Email address
+      example: "anne.ingvoldstad@rodekors.org"

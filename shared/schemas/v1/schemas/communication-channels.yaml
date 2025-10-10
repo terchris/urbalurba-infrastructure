@@ -1,0 +1,16 @@
+# file: _shared/schemas/v1/communication-channels.yaml
+components:
+  schemas:
+    CommunicationChannels:
+      type: object
+      additionalProperties: false
+      properties:
+        phone:
+          type: string
+          description: |
+            Comma-separated list of contact phone numbers for the organization unit.
+          example: "+47 41929488,+47 12345678"
+        email:
+          $ref: '../../fields/v1/email.yaml#/components/schemas/Email'
+        web:
+          $ref: '../../fields/v1/web.yaml#/components/schemas/Web'

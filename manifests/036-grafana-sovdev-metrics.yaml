@@ -1,11 +1,12 @@
 ---
-# File: manifests/037-grafana-sovdev-metrics.yaml
-# Purpose: sovdev-logger Prometheus metrics dashboard (FAST queries)
-# Used by: ansible/playbooks/234-setup-grafana.yml
-# Manifest: 037-grafana-sovdev-metrics.yaml
+# File: manifests/036-grafana-sovdev-metrics.yaml
+# Purpose: sovdev-logger Overview dashboard - Prometheus metrics + log details
+# Used by: ansible/playbooks/034-setup-grafana.yml
+# Manifest: 036-grafana-sovdev-metrics.yaml
 # Number Range: 030-039 (Monitoring and observability)
 # Component: Grafana dashboard ConfigMap
 # Auto-loaded by: Grafana sidecar (label: grafana_dashboard: "1")
+# Note: Combines fast Prometheus metrics with detailed Loki log views
 
 apiVersion: v1
 kind: ConfigMap
@@ -156,7 +157,7 @@ data:
                   }
                 ]
               },
-              "unit": "ops"
+              "unit": "short"
             }
           },
           "gridPos": {
@@ -188,12 +189,12 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "sum by (service_name, peer_service) (rate(sovdev_operations_total[1m]))",
+              "expr": "sum by (service_name, peer_service) (sovdev_operations_total)",
               "legendFormat": "{{service_name}} → {{peer_service}}",
               "refId": "A"
             }
           ],
-          "title": "Operations Rate by Service",
+          "title": "Total Operations (cumulative)",
           "type": "timeseries"
         },
         {
@@ -282,12 +283,12 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "sum by (service_name, peer_service) (rate(sovdev_errors_total[1m])) / sum by (service_name, peer_service) (rate(sovdev_operations_total[1m]))",
+              "expr": "sum by (service_name, peer_service) (sovdev_errors_total) / sum by (service_name, peer_service) (sovdev_operations_total)",
               "legendFormat": "{{service_name}} → {{peer_service}}",
               "refId": "A"
             }
           ],
-          "title": "Error Rate (errors / operations)",
+          "title": "Error Rate (cumulative)",
           "type": "timeseries"
         },
         {
@@ -373,12 +374,12 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "sum by (service_name, peer_service) (rate(sovdev_operation_duration_milliseconds_sum[1m])) / sum by (service_name, peer_service) (rate(sovdev_operation_duration_milliseconds_count[1m]))",
+              "expr": "sum by (service_name, peer_service) (sovdev_operation_duration_milliseconds_sum) / sum by (service_name, peer_service) (sovdev_operation_duration_milliseconds_count)",
               "legendFormat": "{{service_name}} → {{peer_service}}",
               "refId": "A"
             }
           ],
-          "title": "Average Operation Duration",
+          "title": "Average Operation Duration (cumulative)",
           "type": "timeseries"
         },
         {
@@ -484,7 +485,7 @@ data:
                 "uid": "loki"
               },
               "editorMode": "code",
-              "expr": "{service_name=~\"sovdev-test-.*\"} | exceptionType!=\"\" | logType=\"transaction\"",
+              "expr": "{service_name=~\"sovdev-test.*|company-lookup-service\"} | exception_type!=\"\" | log_type=\"transaction\"",
               "queryType": "range",
               "refId": "A"
             }
@@ -503,11 +504,11 @@ data:
               "options": {
                 "excludeByName": {
                   "Time": false,
-                  "eventId": true,
+                  "event_id": true,
                   "id": true,
                   "labels": true,
                   "Line": true,
-                  "spanId": true,
+                  "span_id": false,
                   "tsNs": true
                 },
                 "indexByName": {
@@ -515,19 +516,21 @@ data:
                   "timestamp": 1,
                   "service_name": 2,
                   "peer_service": 3,
-                  "functionName": 4,
-                  "exceptionType": 5,
-                  "exceptionMessage": 6,
-                  "traceId": 7
+                  "function_name": 4,
+                  "exception_type": 5,
+                  "exception_message": 6,
+                  "trace_id": 7,
+                  "span_id": 8
                 },
                 "renameByName": {
                   "timestamp": "Timestamp",
                   "service_name": "Service",
                   "peer_service": "Peer Service",
-                  "functionName": "Function",
-                  "exceptionType": "Exception Type",
-                  "exceptionMessage": "Error Message",
-                  "traceId": "Trace ID"
+                  "function_name": "Function",
+                  "exception_type": "Exception Type",
+                  "exception_message": "Error Message",
+                  "trace_id": "Trace ID",
+                  "span_id": "Span ID"
                 }
               }
             }
@@ -563,7 +566,7 @@ data:
                 "uid": "loki"
               },
               "editorMode": "code",
-              "expr": "{service_name=~\"sovdev-test-.*\"} | logType=\"transaction\"",
+              "expr": "{service_name=~\"sovdev-test.*|company-lookup-service\"} | log_type=\"transaction\"",
               "queryType": "range",
               "refId": "A"
             }
@@ -589,7 +592,7 @@ data:
       },
       "timepicker": {},
       "timezone": "browser",
-      "title": "Sovdev Logger - Prometheus Metrics (FAST)",
+      "title": "Sovdev Logger - Overview",
       "uid": "sovdev-metrics",
       "version": 1,
       "weekStart": ""

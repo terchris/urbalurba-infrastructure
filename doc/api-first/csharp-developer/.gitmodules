@@ -1,0 +1,4 @@
+[submodule "shared-schemas"]
+	path = shared-schemas
+	url = https://github.com/redcross/redcross-schemas.git
+	branch = main

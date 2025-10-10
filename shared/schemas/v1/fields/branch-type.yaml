@@ -1,0 +1,11 @@
+# file: _shared/fields/v1/branch-type.yaml
+components:
+  schemas:
+    BranchType:
+      type: string
+      description: Type of organization unit
+      enum:
+        - Lokalforening
+        - Distrikt
+        - Nasjonalkontor
+      example: "Lokalforening"

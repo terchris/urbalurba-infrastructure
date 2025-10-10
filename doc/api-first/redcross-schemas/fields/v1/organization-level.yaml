@@ -1,0 +1,8 @@
+# file: _shared/fields/v1/organization-level.yaml
+components:
+  schemas:
+    OrganizationLevel:
+      type: string
+      description: Internal organization level code used in Red Cross systems
+      pattern: '^[0-9]{9}$'
+      example: "875880002"

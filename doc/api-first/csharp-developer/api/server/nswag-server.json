@@ -1,0 +1,25 @@
+{
+  "runtime": "Net80",
+  "documentGenerator": {
+    "fromDocument": {
+      "url": "../specs/my-api-v1.yaml",
+      "output": null
+    }
+  },
+  "codeGenerators": {
+    "openApiToCSharpController": {
+      "className": "{controller}",
+      "namespace": "MyProject.Server.Controllers",
+      "controllerBaseClass": "Microsoft.AspNetCore.Mvc.ControllerBase",
+      "generateModelValidationAttributes": true,
+      "routeNamingStrategy": "OperationId",
+      "generateAsyncActions": true,
+      "aspNetCoreEnvironment": "AspNetCore80",
+      "controllerStyle": "Partial",
+      "generateOptionalParameters": false,
+      "generateJsonMethods": false,
+      "generateModelValidationAttributes": true,
+      "output": "src/Controllers/GeneratedControllers.cs"
+    }
+  }
+}
