@@ -187,6 +187,8 @@ server:
     limits:
       cpu: 500m
       memory: 1Gi
+  extraArgs:
+    web.enable-remote-write-receiver: ""  # REQUIRED: Enables /api/v1/write endpoint for OTLP Collector
 ```
 
 **Key Configuration Sections**:
@@ -481,6 +483,19 @@ kubectl logs -n monitoring -l app.kubernetes.io/name=opentelemetry-collector | g
 kubectl run curl-test --image=curlimages/curl --rm -i --restart=Never \
   -n monitoring -- \
   curl -v http://prometheus-server.monitoring.svc.cluster.local:80/api/v1/write
+```
+
+**IMPORTANT**: If Prometheus returns 404 or error "remote write receiver needs to be enabled", check that the remote-write-receiver flag is enabled:
+```bash
+# Check Prometheus startup flags
+kubectl get pod -n monitoring -l app.kubernetes.io/name=prometheus,app.kubernetes.io/component=server \
+  -o jsonpath='{.items[0].spec.containers[?(@.name=="prometheus-server")].args}' | jq -r '.[]' | grep "remote-write"
+
+# Should see: --web.enable-remote-write-receiver
+# If missing, add to manifests/030-prometheus-config.yaml:
+#   server:
+#     extraArgs:
+#       web.enable-remote-write-receiver: ""
 ```
 
 **Alertmanager Not Firing Alerts**:
