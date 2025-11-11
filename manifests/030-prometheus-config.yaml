@@ -46,6 +46,11 @@ server:
     limits:
       cpu: 500m
       memory: 1Gi
+  # Enable remote write receiver for OTLP Collector metrics ingestion
+  # This flag allows Prometheus to accept metrics via the /api/v1/write endpoint
+  # Required for: OpenTelemetry Collector → Prometheus metrics pipeline
+  extraArgs:
+    web.enable-remote-write-receiver: ""
 
 # Alertmanager configuration
 alertmanager:
