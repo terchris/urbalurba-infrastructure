@@ -125,6 +125,10 @@ config:
     # Metrics to Prometheus
     prometheusremotewrite:
       endpoint: http://prometheus-server.monitoring.svc.cluster.local:80/api/v1/write
+      # Convert resource attributes to Prometheus labels for better querying
+      # Enables filtering by developer_id, project_name, service_name, etc.
+      resource_to_telemetry_conversion:
+        enabled: true
       tls:
         insecure: true
 
@@ -167,6 +171,7 @@ config:
         receivers:
           - otlp
         processors:
+          - resource  # Preserves resource attributes (developer_id, project_name, etc.)
           - batch
         exporters:
           - prometheusremotewrite
