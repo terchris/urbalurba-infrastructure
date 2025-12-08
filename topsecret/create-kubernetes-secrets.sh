@@ -124,12 +124,19 @@ if [ -d "$SECRETS_TEMPLATES_DIR" ]; then
             echo "  Generating ConfigMap: $configmap_name in namespace $namespace"
 
             # Process template with envsubst for variable substitution
-            content=$(envsubst < "$template_file")
+            # Skip envsubst for dashboard JSON files - they contain Grafana template variables like $node, $namespace
+            if [[ "$category" == "dashboards" && "$filename" == *.json ]]; then
+                content=$(cat "$template_file")
+            else
+                content=$(envsubst < "$template_file")
+            fi
 
-            # Determine labels based on directory conventions
+            # Determine labels and annotations based on directory conventions
             labels=""
+            annotations=""
             if [[ "$category" == "dashboards" ]]; then
                 labels="    grafana_dashboard: \"1\""
+                annotations="    grafana_folder: \"Devcontainer\""
             elif [[ "$category" == "nginx" ]]; then
                 labels="    app: nginx"
             elif [[ "$category" == "otel" ]]; then
@@ -139,7 +146,25 @@ if [ -d "$SECRETS_TEMPLATES_DIR" ]; then
             fi
 
             # Append ConfigMap to temporary file
-            cat >> "$TEMP_SECRETS_FILE" << EOF
+            if [[ -n "$annotations" ]]; then
+                cat >> "$TEMP_SECRETS_FILE" << EOF
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: $configmap_name
+  namespace: $namespace
+  annotations:
+$annotations
+  labels:
+$labels
+data:
+  $filename: |
+$(echo "$content" | sed 's/^/    /')
+EOF
+            else
+                cat >> "$TEMP_SECRETS_FILE" << EOF
 
 ---
 apiVersion: v1
@@ -153,6 +178,7 @@ data:
   $filename: |
 $(echo "$content" | sed 's/^/    /')
 EOF
+            fi
         done
 
         echo "✅ ConfigMaps processing completed"
