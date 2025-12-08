@@ -1,43 +1,78 @@
+# LiteLLM configuration with Claude Code integration
+# This template uses ${VARIABLE} substitution from 00-common-values.env.template
+#
 # General settings
 general_settings:
   master_key: os.environ/LITELLM_PROXY_MASTER_KEY
 
+  # CRITICAL: Forward Claude Code headers to Anthropic API
+  # Enables anthropic-beta and other headers for Claude Code features
+  forward_client_headers_to_llm_api: true
+
+# LiteLLM settings
+litellm_settings:
+  # Claude Code can make long requests (extended thinking, etc.)
+  request_timeout: 300
+
+  # Structured logging
+  json_logs: true
+
 # Model list configuration
 model_list:
-  # Mac Ollama models with different temperature settings
-  - model_name: mac-gpt-oss-balanced
-    litellm_params:
-      model: ollama/gpt-oss:20b
-      api_base: "http://host.lima.internal:11434"
-      temperature: 0.7
+  # ================================================================
+  # CLAUDE MODELS (For Claude Code Integration)
+  # ================================================================
+  # Both short names and full names for compatibility
 
-  - model_name: mac-gpt-oss-creative
+  # Claude Sonnet 4.5 - SHORT NAME (for compatibility)
+  - model_name: claude-sonnet-4.5
     litellm_params:
-      model: ollama/gpt-oss:20b
-      api_base: "http://host.lima.internal:11434"
-      temperature: 0.9
+      model: anthropic/claude-sonnet-4-5-20250929
+      api_key: "os.environ/ANTHROPIC_API_KEY"
 
-  - model_name: mac-gpt-oss-precise
+  # Claude Sonnet 4.5 - FULL NAME (what Claude Code requests)
+  - model_name: claude-sonnet-4-5-20250929
     litellm_params:
-      model: ollama/gpt-oss:20b
-      api_base: "http://host.lima.internal:11434"
-      temperature: 0.3
+      model: anthropic/claude-sonnet-4-5-20250929
+      api_key: "os.environ/ANTHROPIC_API_KEY"
 
-  # External Ollama models (Mac with fixed IP)
-  - model_name: external-ollama-gemma3
+  # Claude 3 Opus - SHORT NAME (for compatibility)
+  - model_name: claude-3-opus
     litellm_params:
-      model: ollama/gemma3:4b
-      api_base: "http://192.168.68.61:11434"
-      temperature: 0.7
+      model: anthropic/claude-3-opus-20240229
+      api_key: "os.environ/ANTHROPIC_API_KEY"
 
-  # Cloud provider models with Mac fallbacks
+  # Claude 3 Opus - FULL NAME (what Claude Code requests)
+  - model_name: claude-3-opus-20240229
+    litellm_params:
+      model: anthropic/claude-3-opus-20240229
+      api_key: "os.environ/ANTHROPIC_API_KEY"
+
+  # ================================================================
+  # MAC OLLAMA MODELS (Local Development)
+  # ================================================================
+  # Models running on Mac via Ollama, accessible from cluster
+
+  # Qwen2.5 Coder: Detailed coding assistant (4.7GB)
+  - model_name: qwen2.5-coder:7b
+    litellm_params:
+      model: ollama_chat/qwen2.5-coder:7b
+      api_base: "http://host.docker.internal:11434"
+
+  # DeepSeek Coder: Concise code generation (3.8GB)
+  - model_name: deepseek-coder:6.7b
+    litellm_params:
+      model: ollama_chat/deepseek-coder:6.7b
+      api_base: "http://host.docker.internal:11434"
+
+  # ================================================================
+  # CLOUD PROVIDER MODELS
+  # ================================================================
+
   - model_name: gpt-4o
     litellm_params:
       model: gpt-4o
       api_key: "os.environ/OPENAI_API_KEY"
-      fallbacks:
-        - model: ollama/gpt-oss:20b
-          api_base: "http://host.lima.internal:11434"
 
   - model_name: azure-gpt-4
     litellm_params:
@@ -45,14 +80,3 @@ model_list:
       api_key: "os.environ/AZURE_API_KEY"
       api_base: "os.environ/AZURE_API_BASE"
       api_version: "2023-12-01-preview"
-      fallbacks:
-        - model: ollama/gpt-oss:20b
-          api_base: "http://host.lima.internal:11434"
-
-  - model_name: claude-3-opus
-    litellm_params:
-      model: anthropic/claude-3-opus-20240229
-      api_key: "os.environ/ANTHROPIC_API_KEY"
-      fallbacks:
-        - model: ollama/gpt-oss:20b
-          api_base: "http://host.lima.internal:11434"

@@ -278,6 +278,11 @@ config:
     # Metrics to Prometheus
     prometheusremotewrite:
       endpoint: http://prometheus-server.monitoring.svc.cluster.local:80/api/v1/write
+      # Convert resource attributes to Prometheus labels
+      # IMPORTANT: This enables filtering metrics by developer_id, project_name, service_name, etc.
+      # Without this, resource attributes are dropped and metrics only show job label
+      resource_to_telemetry_conversion:
+        enabled: true
       tls:
         insecure: true
 
@@ -310,7 +315,7 @@ config:
       # Metrics pipeline
       metrics:
         receivers: [otlp]
-        processors: [batch]
+        processors: [resource, batch]  # resource processor preserves attributes
         exporters: [prometheusremotewrite, debug]
 ```
 
