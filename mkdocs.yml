@@ -146,7 +146,8 @@ nav:
     - Naming Conventions: rules-naming-conventions.md
     - Git Workflow: rules-git-workflow.md
     - Development Workflow: rules-development-workflow.md
-    - Documentation: rules-howtodoc.md
+    - Documentation Guide: rules-documentation.md
+    - Documentation (Legacy): rules-howtodoc.md
   - Reference:
     - Documentation Index: README.md
     - Manifests: manifests-readme.md
