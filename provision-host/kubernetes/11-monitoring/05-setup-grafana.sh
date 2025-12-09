@@ -25,7 +25,7 @@ echo ""
 
 # Call Ansible playbook for heavy lifting
 echo "🚀 Deploying Grafana via Ansible..."
-ansible-playbook "$PROJECT_ROOT/ansible/playbooks/234-setup-grafana.yml" -e "target_host=$TARGET_HOST"
+ansible-playbook "$PROJECT_ROOT/ansible/playbooks/034-setup-grafana.yml" -e "target_host=$TARGET_HOST"
 
 echo ""
 echo "✅ Grafana deployment completed!"
