@@ -1,7 +1,7 @@
 # File: manifests/073-authentik-1-test-users-groups-blueprint.yaml
 #
 # Description:
-# Complete Authentik blueprint for creating Red Cross test users with full Okta field compatibility
+# Complete Authentik blueprint for creating Urbalurba test users with full Okta field compatibility
 # Creates 11 test users with all Okta fields and organizational relationships
 # Based on the complete user specification in package-authentication-testusers.md
 #
@@ -59,7 +59,7 @@ data:
     # yaml-language-server: $schema=https://goauthentik.io/blueprints/schema.json
     version: 1
     metadata:
-      name: "Complete Okta-Compatible Test Users - Red Cross Development Environment"
+      name: "Complete Okta-Compatible Test Users - Urbalurba Development Environment"
       labels:
         blueprints.goauthentik.io/instantiate: "true"
     

@@ -73,19 +73,19 @@ graph TD
 - Modify the test path from printing "Hello World" to "Hello My World"
 - Deploy infrastructure to Dev environment
 - Deploy to APIM
-- Verify functionality at: `https://api-dev.redcross.no/<API-path>/helloworld`
-  - Example: `https://api-dev.redcross.no/organizations/helloworld`
+- Verify functionality at: `https://api-dev.urbalurba.no/<API-path>/helloworld`
+  - Example: `https://api-dev.urbalurba.no/organizations/helloworld`
 - Continue development iterations
 
 ### 7. Developer: Test Deployment (Merge to Main)
 - Merge feature branch to main in DevOps portal
 - Pipelines automatically deploy to Test environment
-- Verify functionality at: `https://api-test.redcross.no/<API-path>/helloworld`
+- Verify functionality at: `https://api-test.urbalurba.no/<API-path>/helloworld`
 
 ### 8. Developer: Production Deployment
 - Tag main commit with semantic version (e.g., 1.0.2)
 - Pipelines automatically deploy to Production
-- Verify functionality at: `https://api.redcross.no/<API-path>/helloworld`
+- Verify functionality at: `https://api.urbalurba.no/<API-path>/helloworld`
 
 ## Key Principles
 - Infrastructure as Code for all deployments

@@ -1,6 +1,6 @@
-# Red Cross Shared Schemas
+# Urbalurba Shared Schemas
 
-This directory contains the shared schema definitions for Red Cross APIs following the API-First development approach.
+This directory contains the shared schema definitions for Urbalurba APIs following the API-First development approach.
 
 ## Directory Structure
 
@@ -37,7 +37,7 @@ Complex objects combining multiple field types:
 - `address.yaml` - Norwegian postal address format
 - `branch-base.yaml` - Core branch information
 - `communication-channels.yaml` - Contact information
-- `global-activity.yaml` - Red Cross activity definitions
+- `global-activity.yaml` - Activity definitions
 
 ## Usage in APIs
 
@@ -97,4 +97,4 @@ nswag validate /input:schemas/v1/fields/branch-id.yaml
 find schemas -name "*.yaml" -exec nswag validate /input:{} \;
 ```
 
-For questions or changes, contact the Red Cross API team.
+For questions or changes, contact the Urbalurba API team.

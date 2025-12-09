@@ -3,7 +3,7 @@ components:
   schemas:
     GlobalActivityName:
       type: string
-      description: Standard name for the activity type as defined by Red Cross centrally
+      description: Standard name for the activity type as defined centrally
       minLength: 1
       maxLength: 50
       example: "BesÃ¸k med hund"

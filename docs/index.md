@@ -142,4 +142,4 @@ Contributions are welcome! Please read the [development workflow](rules-developm
 
 ## License
 
-This project is maintained by the Norwegian Red Cross development team.
+This project is maintained by the Urbalurba development team.

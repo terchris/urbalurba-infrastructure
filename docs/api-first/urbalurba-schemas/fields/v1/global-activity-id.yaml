@@ -6,5 +6,5 @@ components:
       format: uuid
       maxLength: 36
       pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
-      description: Globally unique identifier for a standard Red Cross activity type
+      description: Globally unique identifier for a standard activity type
       example: "c04238b8-4202-ef11-9f8a-0022489fd50c"

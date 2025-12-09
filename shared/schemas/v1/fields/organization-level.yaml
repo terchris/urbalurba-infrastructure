@@ -3,6 +3,6 @@ components:
   schemas:
     OrganizationLevel:
       type: string
-      description: Internal organization level code used in Red Cross systems
+      description: Internal organization level code used in internal systems
       pattern: '^[0-9]{9}$'
       example: "875880002"

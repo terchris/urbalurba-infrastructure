@@ -1,7 +1,7 @@
 #!/usr/bin/env pwsh
-# Red Cross API Project Setup Script
+# Urbalurba API Project Setup Script
 
-Write-Host "🔄 Setting up Red Cross API project..." -ForegroundColor Green
+Write-Host "🔄 Setting up Urbalurba API project..." -ForegroundColor Green
 Write-Host ""
 
 # Check prerequisites
@@ -52,16 +52,16 @@ try {
 Write-Host ""
 
 # Initialize git submodule for shared schemas
-Write-Host "📥 Setting up Red Cross shared schemas..." -ForegroundColor Yellow
+Write-Host "📥 Setting up Urbalurba shared schemas..." -ForegroundColor Yellow
 
 if (!(Test-Path "shared-schemas")) {
     Write-Host "   Initializing git submodule..." -ForegroundColor Gray
-    git submodule add https://github.com/redcross/redcross-schemas.git shared-schemas
+    git submodule add https://github.com/urbalurba/urbalurba-schemas.git shared-schemas
     if ($LASTEXITCODE -eq 0) {
         Write-Host "✅ Shared schemas cloned successfully" -ForegroundColor Green
     } else {
         Write-Host "❌ Failed to clone shared schemas" -ForegroundColor Red
-        Write-Host "   Make sure you have access to the Red Cross schemas repository" -ForegroundColor Yellow
+        Write-Host "   Make sure you have access to the Urbalurba schemas repository" -ForegroundColor Yellow
         exit 1
     }
 } else {
@@ -144,5 +144,5 @@ Write-Host "   2. Look at examples: shared-schemas/examples/how-to-reference.yam
 Write-Host "   3. Validate your changes: ./tools/validate.ps1" -ForegroundColor White
 Write-Host "   4. Generate code: ./tools/generate.ps1" -ForegroundColor White
 Write-Host ""
-Write-Host "🆘 Need help? Check docs/GETTING-STARTED.md or contact api-team@redcross.no" -ForegroundColor Cyan
+Write-Host "🆘 Need help? Check docs/GETTING-STARTED.md or contact api-team@urbalurba.no" -ForegroundColor Cyan
 Write-Host ""

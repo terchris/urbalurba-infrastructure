@@ -3,7 +3,7 @@ components:
   schemas:
     Branch:
       type: object
-      description: A Red Cross branch (lokalforening) with complete information
+      description: A branch (lokalforening) with complete information
       required:
         - id
         - name

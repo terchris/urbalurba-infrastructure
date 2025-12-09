@@ -107,6 +107,6 @@ Instead of spending months on infrastructure setup and approval processes, our t
 
 Ready to see this platform in action? Let's explore how it can accelerate your next integration project.
 
-**For Developers**: Check out the Developer Portal at `developer.redcross.no`
+**For Developers**: Check out the Developer Portal at `developer.urbalurba.no`
 **For Management**: Review the deployment benefits and cost savings
 **For IT**: Examine the operational monitoring and security features

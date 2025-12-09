@@ -1,7 +1,7 @@
 #!/usr/bin/env pwsh
-# Red Cross API Validation Script
+# Urbalurba API Validation Script
 
-Write-Host "🔍 Validating your Red Cross API specification..." -ForegroundColor Green
+Write-Host "🔍 Validating your Urbalurba API specification..." -ForegroundColor Green
 Write-Host ""
 
 # Update shared schemas to latest version
@@ -87,7 +87,7 @@ $specContent = Get-Content $apiSpecFile -Raw
 
 # Check if using shared schemas
 if ($specContent -match '\$ref.*shared-schemas') {
-    Write-Host "✅ Using shared Red Cross schemas - good!" -ForegroundColor Green
+    Write-Host "✅ Using shared Urbalurba schemas - good!" -ForegroundColor Green
 } else {
     Write-Host "⚠️  No shared schema references found" -ForegroundColor Yellow
     Write-Host "   Consider using shared schemas from shared-schemas/ folder" -ForegroundColor Gray

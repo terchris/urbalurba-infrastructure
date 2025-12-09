@@ -3,5 +3,5 @@ components:
   schemas:
     VolunteerStatus:
       type: boolean
-      description: Indicates if the person is a registered volunteer in the Red Cross
+      description: Indicates if the person is a registered volunteer in the organization
       example: true

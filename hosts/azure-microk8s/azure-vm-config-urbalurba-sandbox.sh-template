@@ -1,7 +1,7 @@
 #!/bin/bash
 # filename: azure-vm-config-redcross-sandbox.sh-template
-# description: Template configuration file for Azure VM scripts for Red Cross Sandbox
-# NOTE: Copy this file to azure-vm-config-redcross-sandbox.sh and replace placeholder values
+# description: Template configuration file for Azure VM scripts for Urbalurba Sandbox
+# NOTE: Copy this file to azure-vm-config-urbalurba-sandbox.sh and replace placeholder values
 
 # Azure configuration variables
 TENANT_ID="your-tenant-id"

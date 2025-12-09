@@ -1,5 +1,5 @@
 #!/usr/bin/env pwsh
-# Red Cross API Code Generation Script
+# Urbalurba API Code Generation Script
 
 Write-Host "🏗️ Generating server and client code from your API specification..." -ForegroundColor Green
 Write-Host ""
