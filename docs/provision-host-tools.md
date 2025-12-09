@@ -38,7 +38,45 @@ After the container is created, it's provisioned with additional tools through a
 
 ### 2. Cloud Provider Tools (`provision-host-01-cloudproviders.sh`)
 
-The container supports ALL major cloud providers with their official CLIs:
+The container supports ALL major cloud providers with their official CLIs. You can select which cloud provider tools to install during setup:
+
+#### Cloud Provider Selection
+
+When running `./install-rancher.sh` or the container creation script, you can specify which cloud provider tools to install:
+
+```bash
+# Install Azure CLI only (default)
+./install-rancher.sh
+./install-rancher.sh az
+
+# Install AWS CLI only
+./install-rancher.sh aws
+
+# Install Google Cloud SDK only
+./install-rancher.sh gcp
+
+# Install Oracle Cloud CLI only
+./install-rancher.sh oci
+
+# Install Terraform only
+./install-rancher.sh tf
+
+# Install ALL cloud provider tools
+./install-rancher.sh all
+```
+
+#### Tools Installed Per Selection
+
+| Selection | Tools Installed |
+|-----------|-----------------|
+| `az` / `azure` (default) | Azure CLI |
+| `aws` | AWS CLI v2 |
+| `gcp` / `google` | Google Cloud SDK (gcloud, bq, gsutil) |
+| `oci` / `oracle` | Oracle Cloud Infrastructure CLI |
+| `tf` / `terraform` | Terraform |
+| `all` | All of the above |
+
+#### Available Cloud Provider Tools
 
 #### Azure CLI
 - **Resource Management**: VMs, Storage, Networking, AKS
@@ -222,8 +260,18 @@ docker run -d \
 ```bash
 # Inside the container or via docker exec
 cd /mnt/urbalurbadisk/provision-host/
+
+# Run all provisioning scripts with Azure CLI (default)
+./provision-host-provision.sh
+
+# Or specify a different cloud provider
+./provision-host-provision.sh aws    # AWS only
+./provision-host-provision.sh gcp    # Google Cloud only
+./provision-host-provision.sh all    # All cloud providers
+
+# Or run individual scripts manually
 ./provision-host-00-coresw.sh
-./provision-host-01-cloudproviders.sh all
+./provision-host-01-cloudproviders.sh aws  # Specify cloud provider
 ./provision-host-02-kubetools.sh
 ./provision-host-03-net.sh
 ./provision-host-04-helmrepo.sh
