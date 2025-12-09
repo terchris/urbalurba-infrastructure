@@ -386,6 +386,12 @@ Choose your tunnel type and follow the setup guide:
 1. **🔵 [Tailscale Funnel Setup](networking-tailscale-setup.md)** - Get online in 15 minutes (free)
 2. **⚡ [Cloudflare Tunnel Setup](networking-cloudflare-setup.md)** - Professional setup with custom domain
 
+### Internal Developer Access (SovereignSky)
+
+For internal-only access from within the Tailnet (no public internet):
+
+3. **🔒 [Tailscale Internal Access](networking-tailscale-internal-ingress.md)** - HTTP access for SovereignSky developers via Tailnet VPN
+
 
 
 

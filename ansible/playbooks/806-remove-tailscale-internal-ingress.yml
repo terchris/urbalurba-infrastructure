@@ -1,0 +1,116 @@
+---
+# file: playbooks/806-remove-tailscale-internal-ingress.yml
+# Description: Remove Tailscale internal ingress from Kubernetes cluster
+#
+# This removes:
+# - Tailscale internal ingress resource
+# - Optionally: Tailscale operator (if no other ingresses exist)
+#
+# Usage:
+#   ansible-playbook playbooks/806-remove-tailscale-internal-ingress.yml
+#
+#   # To also remove the operator:
+#   ansible-playbook playbooks/806-remove-tailscale-internal-ingress.yml -e remove_operator=true
+
+- name: Remove Tailscale internal ingress from Kubernetes cluster
+  hosts: localhost
+  gather_facts: false
+  vars:
+    kubeconfig_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    operator_namespace: "tailscale"
+    operator_release_name: "tailscale-operator"
+    remove_operator: false
+
+  tasks:
+    - name: "01 Verify kubeconfig file exists"
+      ansible.builtin.stat:
+        path: "{{ kubeconfig_file }}"
+      register: kubeconfig_stat
+
+    - name: "02 Fail if kubeconfig file does not exist"
+      ansible.builtin.fail:
+        msg: "Kubeconfig file not found at {{ kubeconfig_file }}"
+      when: not kubeconfig_stat.stat.exists
+
+    - name: "03 Check if internal ingress exists"
+      kubernetes.core.k8s_info:
+        kind: Ingress
+        name: tailscale-internal-ingress
+        namespace: kube-system
+        kubeconfig: "{{ kubeconfig_file }}"
+      register: internal_ingress
+      failed_when: false
+
+    - name: "04 Delete Tailscale internal ingress"
+      kubernetes.core.k8s:
+        kind: Ingress
+        name: tailscale-internal-ingress
+        namespace: kube-system
+        kubeconfig: "{{ kubeconfig_file }}"
+        state: absent
+      when: internal_ingress.resources | length > 0
+
+    - name: "05 Display ingress removal status"
+      ansible.builtin.debug:
+        msg: "{{ 'Tailscale internal ingress removed' if internal_ingress.resources | length > 0 else 'Tailscale internal ingress was not found (already removed)' }}"
+
+    - name: "06 Wait for Tailscale to clean up resources"
+      ansible.builtin.pause:
+        seconds: 10
+        prompt: "Waiting for Tailscale operator to clean up ingress pod..."
+      when: internal_ingress.resources | length > 0
+
+    - name: "07 Check for other Tailscale ingresses"
+      kubernetes.core.k8s_info:
+        kind: Ingress
+        kubeconfig: "{{ kubeconfig_file }}"
+      register: all_ingresses
+
+    - name: "08 Filter Tailscale ingresses"
+      ansible.builtin.set_fact:
+        tailscale_ingresses: "{{ all_ingresses.resources | selectattr('spec.ingressClassName', 'defined') | selectattr('spec.ingressClassName', 'equalto', 'tailscale') | list }}"
+
+    - name: "09 Display remaining Tailscale ingresses"
+      ansible.builtin.debug:
+        msg:
+          - "Remaining Tailscale ingresses: {{ tailscale_ingresses | length }}"
+          - "{{ tailscale_ingresses | map(attribute='metadata.name') | list if tailscale_ingresses | length > 0 else ['None'] }}"
+
+    - name: "10 Remove Tailscale operator (if requested and no other ingresses)"
+      kubernetes.core.helm:
+        name: "{{ operator_release_name }}"
+        release_namespace: "{{ operator_namespace }}"
+        kubeconfig: "{{ kubeconfig_file }}"
+        state: absent
+      when:
+        - remove_operator | bool
+        - tailscale_ingresses | length == 0
+
+    - name: "11 Display operator removal status"
+      ansible.builtin.debug:
+        msg: "Tailscale operator removed"
+      when:
+        - remove_operator | bool
+        - tailscale_ingresses | length == 0
+
+    - name: "11a Skip operator removal message"
+      ansible.builtin.debug:
+        msg:
+          - "Tailscale operator NOT removed"
+          - "{{ 'Reason: Other Tailscale ingresses still exist' if tailscale_ingresses | length > 0 else 'Reason: remove_operator flag not set' }}"
+          - "To remove operator: ansible-playbook ... -e remove_operator=true"
+      when: not (remove_operator | bool and tailscale_ingresses | length == 0)
+
+    - name: "12 Final summary"
+      ansible.builtin.debug:
+        msg:
+          - "==================================================="
+          - "Tailscale internal ingress removal complete!"
+          - "==================================================="
+          - ""
+          - "Internal ingress: {{ 'Removed' if internal_ingress.resources | length > 0 else 'Was not present' }}"
+          - "Operator: {{ 'Removed' if (remove_operator | bool and tailscale_ingresses | length == 0) else 'Still running' }}"
+          - ""
+          - "Note: The cluster is no longer accessible via internal Tailnet."
+          - "SovereignSky developers will NOT be able to access services"
+          - "until internal ingress is redeployed."

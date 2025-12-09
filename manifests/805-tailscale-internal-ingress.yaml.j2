@@ -1,0 +1,46 @@
+# 805-tailscale-internal-ingress.yaml.j2
+# Creates a Tailscale LoadBalancer Service for INTERNAL Tailnet access only
+# NOT accessible from public internet - only from devices on the same Tailnet
+#
+# This uses loadBalancerClass: tailscale which:
+# - Works with HTTP traffic (no HTTPS requirement on tailnet)
+# - Does NOT require Funnel
+# - Exposes the service only to Tailnet members
+#
+# Usage: This file is used by the Ansible playbook 805-deploy-tailscale-internal-ingress.yml
+# with variable substitution for the hostname
+#
+# The TAILSCALE_INTERNAL_HOSTNAME value will be used as the Tailscale device name
+# and will be accessible at http://[hostname].[tailnet-domain].ts.net (HTTP, not HTTPS!)
+# but ONLY from devices on the same Tailnet
+#
+# Developer Access:
+# Developers use SovereignSky containers with Tailscale VPN to access services:
+# - grafana.sovereignsky.no -> resolves to this cluster's Tailscale IP
+# - otel.sovereignsky.no -> same
+# - litellm.sovereignsky.no -> same
+# Traefik routes based on HostRegexp patterns (e.g., `grafana\..+`)
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: traefik-tailscale
+  namespace: kube-system
+  annotations:
+    tailscale.com/hostname: "{{ TAILSCALE_INTERNAL_HOSTNAME }}"  # Device name in Tailscale admin
+    tailscale.com/tags: "tag:k8s-operator"                       # Tags for ACL
+spec:
+  type: LoadBalancer
+  loadBalancerClass: tailscale
+  selector:
+    app.kubernetes.io/name: traefik
+    app.kubernetes.io/instance: traefik-kube-system
+  ports:
+    - name: http
+      port: 80
+      targetPort: web
+      protocol: TCP
+    - name: https
+      port: 443
+      targetPort: websecure
+      protocol: TCP  # Route to Traefik's HTTP port for internal routing
