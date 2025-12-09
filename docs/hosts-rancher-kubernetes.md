@@ -45,7 +45,23 @@ The Rancher Desktop cluster is automatically set up when you start Urbalurba:
    - Start Rancher Desktop and enable Kubernetes
    - The `./install-rancher.sh` script will automatically configure everything else
 
-2. **What's Included Automatically**
+2. **Linux Users: Enable Privileged Ports**
+
+   On Linux, port 80 and 443 are "privileged" and require extra configuration. Without this, `http://localhost` won't work.
+
+   ```bash
+   # Enable port 80/443 access (temporary - until reboot)
+   sudo sysctl -w net.ipv4.ip_unprivileged_port_start=80
+
+   # Make permanent (survives reboot)
+   echo "net.ipv4.ip_unprivileged_port_start=80" | sudo tee -a /etc/sysctl.conf
+   ```
+
+   After running this command, **restart Rancher Desktop** for port forwarding to take effect.
+
+   > See [Rancher Desktop Installation docs](https://docs.rancherdesktop.io/getting-started/installation/) for more details on "Traefik Port Binding Access".
+
+3. **What's Included Automatically**
    - kubectl (included with Rancher Desktop)
    - Helm (for package management)
    - Docker (included with Rancher Desktop)

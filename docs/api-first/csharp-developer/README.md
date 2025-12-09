@@ -1,10 +1,10 @@
-# Red Cross API Project - Quick Start Template
+# Urbalurba API Project - Quick Start Template
 
-🚀 **Get your Red Cross API project running in 5 minutes!**
+🚀 **Get your Urbalurba API project running in 5 minutes!**
 
 ## 🎯 For External Consultants
 
-This template provides everything you need to build a Red Cross API following our **API-First** approach. You don't need to know API-First development - just follow these steps!
+This template provides everything you need to build an Urbalurba API following our **API-First** approach. You don't need to know API-First development - just follow these steps!
 
 ## 📋 Prerequisites
 
@@ -24,13 +24,13 @@ cd my-project-name
 
 ### Step 2: Run One-Command Setup
 ```bash
-# This installs tools and pulls Red Cross shared schemas
+# This installs tools and pulls Urbalurba shared schemas
 ./tools/setup.ps1
 ```
 
 ### Step 3: Design Your API
 ```bash
-# Edit your API specification using shared Red Cross schemas
+# Edit your API specification using shared Urbalurba schemas
 code api/specs/my-api-v1.yaml
 ```
 
@@ -57,7 +57,7 @@ code api/server/src/Controllers/
 my-project/
 ├── README.md                   # This file
 ├── .gitmodules                 # Git submodule configuration
-├── shared-schemas/             # Red Cross shared schemas (READ-ONLY)
+├── shared-schemas/             # Urbalurba shared schemas (READ-ONLY)
 │   ├── fields/v1/              # Individual field types
 │   ├── entities/v1/            # Complete business entities  
 │   └── examples/               # Usage examples
@@ -110,7 +110,7 @@ git commit -m "Implemented feature X"
 - ✅ Use shared schemas from `shared-schemas/` folder
 - ✅ Follow examples in `shared-schemas/examples/`
 - ✅ Run `./tools/validate.ps1` before committing
-- ✅ Ask Red Cross team before creating new field types
+- ✅ Ask Urbalurba team before creating new field types
 - ✅ Read the documentation in `docs/` folder
 
 ### ❌ DON'T:
@@ -124,14 +124,14 @@ git commit -m "Implemented feature X"
 
 1. **First:** Check `docs/TROUBLESHOOTING.md`
 2. **Second:** Look at `shared-schemas/examples/how-to-reference.yaml`
-3. **Still stuck?** Contact Red Cross API Team:
-   - 📧 Email: api-team@redcross.no
-   - 💬 Teams: Red Cross API Support
+3. **Still stuck?** Contact Urbalurba API Team:
+   - 📧 Email: api-team@urbalurba.no
+   - 💬 Teams: Urbalurba API Support
 
 ## 🎯 What You'll Build
 
 Following this template, you'll create:
-- 📋 **OpenAPI specification** using Red Cross standards
+- 📋 **OpenAPI specification** using Urbalurba standards
 - 🖥️ **ASP.NET Core server** with generated controllers
 - 📱 **C# client library** for consuming your API
 - ✅ **Automated validation** to prevent mistakes
@@ -142,8 +142,8 @@ Following this template, you'll create:
 💡 **Start Simple:** Begin with just 1-2 endpoints, then expand  
 💡 **Use Examples:** Copy patterns from `shared-schemas/examples/`  
 💡 **Validate Often:** Run `./tools/validate.ps1` frequently  
-💡 **Ask Questions:** The Red Cross team is here to help!
+💡 **Ask Questions:** The Urbalurba team is here to help!
 
 ---
 
-**🎉 Happy coding! You're building APIs the Red Cross way!**
+**🎉 Happy coding! You're building APIs the Urbalurba way!**

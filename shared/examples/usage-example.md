@@ -1,14 +1,14 @@
-# Example: How to Use Red Cross Shared Schemas
+# Example: How to Use Urbalurba Shared Schemas
 
 This example shows all the common patterns for using the shared schemas in your APIs.
 
 ```yaml
 openapi: 3.0.0
 info:
-  title: Red Cross Branch Management API - Example
+  title: Branch Management API - Example
   version: 1.0.0
   description: |
-    Complete example showing how to use Red Cross shared schemas.
+    Complete example showing how to use Urbalurba shared schemas.
     
     📚 Schema Reference:
     - Basic fields: ../schemas/v1/fields/

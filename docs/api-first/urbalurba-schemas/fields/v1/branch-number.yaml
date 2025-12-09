@@ -3,6 +3,6 @@ components:
   schemas:
     BranchNumber:
       type: string
-      description: Organization number used in Red Cross systems
+      description: Organization number used in internal systems
       pattern: '^[0-9]{7}$'
       example: "0600070"

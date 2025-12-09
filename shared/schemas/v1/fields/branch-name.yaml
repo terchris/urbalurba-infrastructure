@@ -7,4 +7,4 @@ components:
       minLength: 1
       maxLength: 100
       pattern: '^[a-zA-ZæøåÆØÅ0-9\s\-\.]+$'
-      example: "Drammen Røde Kors"
+      example: "Drammen Branch"

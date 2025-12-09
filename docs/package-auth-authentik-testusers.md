@@ -1,12 +1,12 @@
-# Red Cross Authentik Test Users Package
+# Urbalurba Authentik Test Users Package
 
 ## Overview
 
-This document provides a complete guide for creating and managing test users in Authentik that mirror the Red Cross organizational structure found in production Okta. The goal is to provide developers with a realistic test environment that includes all Okta fields and organizational relationships while maintaining data anonymity.
+This document provides a complete guide for creating and managing test users in Authentik that mirror the organizational structure found in production Okta. The goal is to provide developers with a realistic test environment that includes all Okta fields and organizational relationships while maintaining data anonymity.
 
 This package includes:
 - **Complete user specification** with all Okta fields
-- **Organizational structure** mirroring Red Cross departments
+- **Organizational structure** mirroring organizational departments
 - **Blueprint conversion methodology** for automated deployment
 - **Implementation guide** for Authentik integration
 
@@ -121,7 +121,7 @@ The user specification includes all fields found in production Okta, organized i
 - **BankID Data**: Valid Norwegian format but invalid numbers
 
 #### Organizational Data
-- **Department Names**: Real Red Cross department names (not sensitive)
+- **Department Names**: Real department names (not sensitive)
 - **Cost Centers**: Realistic codes but generic
 - **Employee IDs**: Sequential numbers starting from 25001
 - **Manager Relationships**: Realistic hierarchy for testing
@@ -136,7 +136,7 @@ The user specification includes all fields found in production Okta, organized i
 - This creates a realistic organizational hierarchy for testing
 
 ### Department Structure
-- **HQ Departments**: 9 departments covering all major Red Cross functions
+- **HQ Departments**: 9 departments covering all major functions
 - **District Offices**: 2 districts representing regional operations
 - **Cost Centers**: Unique codes for each department/unit
 - **Geographic Distribution**: Oslo (HQ), Drammen (Buskerud), Bergen (Hordaland)
@@ -169,7 +169,7 @@ data:
     # yaml-language-server: $schema=https://goauthentik.io/blueprints/schema.json
     version: 1
     metadata:
-      name: "Complete Okta-Compatible Test Users - Red Cross Development Environment"
+      name: "Complete Okta-Compatible Test Users - Urbalurba Development Environment"
       labels:
         blueprints.goauthentik.io/instantiate: "true"
     

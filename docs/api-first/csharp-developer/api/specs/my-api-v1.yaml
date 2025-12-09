@@ -1,6 +1,6 @@
 openapi: 3.0.0
 info:
-  title: My Red Cross API
+  title: My Urbalurba API
   version: 1.0.0
   description: |
     TODO: Replace this with your project description
@@ -9,15 +9,15 @@ info:
     - This is your API specification - edit this file to design your API
     - Always use shared schemas from ../shared-schemas/
     - See ../shared-schemas/examples/how-to-reference.yaml for patterns
-    - Don't create custom versions of existing Red Cross types
+    - Don't create custom versions of existing Urbalurba types
     - Run ./tools/validate.ps1 to check your changes
 
 servers:
   - url: https://localhost:7001
     description: Development server
-  - url: https://api-dev.redcross.no/my-project
+  - url: https://api-dev.urbalurba.no/my-project
     description: Development environment
-  - url: https://api.redcross.no/my-project
+  - url: https://api.urbalurba.no/my-project
     description: Production environment
 
 # TODO: Replace these example paths with your actual API endpoints
@@ -108,7 +108,7 @@ paths:
 components:
   schemas:
     # TODO: Replace these example schemas with your actual data models
-    # REMEMBER: Always use shared Red Cross schemas when possible!
+    # REMEMBER: Always use shared Urbalurba schemas when possible!
     
     ExampleResponse:
       type: object
@@ -139,7 +139,7 @@ components:
           minLength: 1
           maxLength: 100
           example: "Example item"
-        # ✅ EXAMPLE: Use shared Red Cross schemas when possible
+        # ✅ EXAMPLE: Use shared Urbalurba schemas when possible
         contactEmail:
           $ref: '../../shared-schemas/fields/v1/email.yaml#/components/schemas/Email'
         phone:

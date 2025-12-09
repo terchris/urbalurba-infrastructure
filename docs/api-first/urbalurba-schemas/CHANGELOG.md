@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to the Red Cross shared schemas will be documented in this file.
+All notable changes to the Urbalurba shared schemas will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.0] - 2025-01-09
 
 ### Added
-- Initial release of Red Cross shared OpenAPI schemas
+- Initial release of Urbalurba shared OpenAPI schemas
 - **Field types (v1):**
   - `BranchId` - Unique branch identifier with L### pattern
   - `BranchName` - Official branch name with Norwegian character support
@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `County` - Norwegian county (fylke) with character validation
   - `Municipality` - Norwegian municipality (kommune) with character validation
   - `GeoLocation` - GeoJSON Feature format for coordinates
-  - `GlobalActivityId` - UUID for standard Red Cross activities
+  - `GlobalActivityId` - UUID for standard activities
   - `GlobalActivityName` - Standard activity name (max 50 chars)
   - `MemberStatus` - Boolean member status indicator
   - `VolunteerStatus` - Boolean volunteer status indicator

@@ -1,6 +1,6 @@
-# Red Cross Shared OpenAPI Schemas
+# Urbalurba Shared OpenAPI Schemas
 
-This repository contains the official shared OpenAPI schema definitions for Red Cross Norway APIs.
+This repository contains the official shared OpenAPI schema definitions for Urbalurba APIs.
 
 ## 🚨 Important for Consultants
 
@@ -8,17 +8,17 @@ This repository contains the official shared OpenAPI schema definitions for Red 
 
 - ✅ **DO:** Reference these schemas in your API specifications
 - ❌ **DON'T:** Modify, copy, or create custom versions of these schemas
-- 🆘 **Need a new field type?** Contact the Red Cross API team
+- 🆘 **Need a new field type?** Contact the Urbalurba API team
 
 ## Repository Structure
 
 ```
-redcross-schemas/
+urbalurba-schemas/
 ├── fields/v1/              # Individual field type definitions
 │   ├── branch-id.yaml      # Branch identifier
 │   ├── email.yaml          # Email address
 │   ├── geo-location.yaml   # Geographic coordinates
-│   └── ...                 # All standard Red Cross field types
+│   └── ...                 # All standard field types
 ├── entities/v1/            # Complete entity schemas
 │   ├── branch.yaml         # Branch entity with all properties
 │   └── ...                 # Other business entities
@@ -34,7 +34,7 @@ redcross-schemas/
 
 ```bash
 # Add as submodule to your project
-git submodule add https://github.com/redcross/redcross-schemas.git shared-schemas
+git submodule add https://github.com/urbalurba/urbalurba-schemas.git shared-schemas
 
 # Update to latest version
 git submodule update --remote
@@ -126,12 +126,12 @@ See `examples/how-to-reference.yaml` for complete examples showing:
 ## Support
 
 For questions about these schemas:
-- 📧 Email: api-team@redcross.no
-- 📖 Documentation: [Red Cross API Guidelines](../api-first-csharp.md)
+- 📧 Email: api-team@urbalurba.no
+- 📖 Documentation: [Urbalurba API Guidelines](../api-first-csharp.md)
 - 🐛 Issues: Contact the API team
 
 ## Contributing
 
-**External consultants:** Contact the Red Cross API team for schema changes or additions.
+**External consultants:** Contact the Urbalurba API team for schema changes or additions.
 
-**Red Cross team members:** Follow the internal schema change process documented in the team wiki.
+**Urbalurba team members:** Follow the internal schema change process documented in the team wiki.

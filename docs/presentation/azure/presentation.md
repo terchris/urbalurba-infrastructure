@@ -6,23 +6,23 @@ backgroundColor: #fff
 ---
 
 # 1-Azure Integration Platform
-**The Red Cross API integration platform**
+**The Urbalurba API integration platform**
 
 
 
 **Environment-Specific URLs**
 
 ## Development
-- **API Base**: `https://api-dev.redcross.no`
-- **Developer Portal**: `https://developer-dev.redcross.no`
+- **API Base**: `https://api-dev.urbalurba.no`
+- **Developer Portal**: `https://developer-dev.urbalurba.no`
 
 ## Test
-- **API Base**: `https://api-test.redcross.no`
-- **Developer Portal**: `https://developer-test.redcross.no`
+- **API Base**: `https://api-test.urbalurba.no`
+- **Developer Portal**: `https://developer-test.urbalurba.no`
 
 ## Production
-- **API Base**: `https://api.redcross.no`
-- **Developer Portal**: `https://developer.redcross.no`
+- **API Base**: `https://api.urbalurba.no`
+- **Developer Portal**: `https://developer.urbalurba.no`
 
 
 ---
@@ -273,7 +273,7 @@ A centralized platform providing developers with tools, documentation, and resou
 **Ready to Get Started?**
 
 ## For Developers
-1. Access Developer Portal: `https://developer.redcross.no`
+1. Access Developer Portal: `https://developer.urbalurba.no`
 2. Review development guidelines
 3. Set up DevContainer environment
 4. Start building integrations

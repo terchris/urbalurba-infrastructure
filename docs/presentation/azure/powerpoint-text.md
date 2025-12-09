@@ -1,13 +1,13 @@
-# 1- Red Cross Integration Platform  
+# 1- Urbalurba Integration Platform
 _From ClickOps to DevOps_
 
 **API Endpoints**  
-- Production API Base: https://api.redcross.no  
-  Developer portal: https://developer.redcross.no  
-- Test API Base: https://api.redcross.no  
-  Developer portal: https://developer.redcross.no  
-- Development API Base: https://api.redcross.no  
-  Developer portal: https://developer.redcross.no  
+- Production API Base: https://api.urbalurba.no  
+  Developer portal: https://developer.urbalurba.no  
+- Test API Base: https://api.urbalurba.no  
+  Developer portal: https://developer.urbalurba.no  
+- Development API Base: https://api.urbalurba.no  
+  Developer portal: https://developer.urbalurba.no  
 
 ---
 
@@ -110,19 +110,19 @@ graph TD
 - Modify the test path from printing "Hello World" to "Hello My World"
 - Deploy infrastructure to Dev environment
 - Deploy to APIM
-- Verify functionality at: `https://api-dev.redcross.no/<API-path>/helloworld`
-  - Example: `https://api-dev.redcross.no/organizations/helloworld`
+- Verify functionality at: `https://api-dev.urbalurba.no/<API-path>/helloworld`
+  - Example: `https://api-dev.urbalurba.no/organizations/helloworld`
 - Continue development iterations
 
 ### 7. Developer: Test Deployment (Merge to Main)
 - Merge feature branch to main in DevOps portal
 - Pipelines automatically deploy to Test environment
-- Verify functionality at: `https://api-test.redcross.no/<API-path>/helloworld`
+- Verify functionality at: `https://api-test.urbalurba.no/<API-path>/helloworld`
 
 ### 8. Developer: Production Deployment
 - Tag main commit with semantic version (e.g., 1.0.2)
 - Pipelines automatically deploy to Production
-- Verify functionality at: `https://api.redcross.no/<API-path>/helloworld`
+- Verify functionality at: `https://api.urbalurba.no/<API-path>/helloworld`
 
 ### Key Principles
 - Infrastructure as Code for all deployments

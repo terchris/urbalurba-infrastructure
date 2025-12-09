@@ -3,5 +3,5 @@ components:
   schemas:
     MemberStatus:
       type: boolean
-      description: Indicates if the person is a member of the Red Cross
+      description: Indicates if the person is a member of the organization
       example: true

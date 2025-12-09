@@ -1,4 +1,4 @@
-# Red Cross OpenAPI Schema Reference Examples
+# Urbalurba OpenAPI Schema Reference Examples
 
 # This file shows consultants how to properly reference shared schemas
 # in their API specifications.
@@ -9,7 +9,7 @@ info:
   version: 1.0.0
   description: |
     🚨 IMPORTANT FOR CONSULTANTS:
-    This example shows you how to reference Red Cross shared schemas.
+    This example shows you how to reference Urbalurba shared schemas.
     - Always use $ref to point to shared schemas
     - Never create custom versions of existing types
     - See the patterns below for correct usage

@@ -15,4 +15,4 @@ components:
           type: string
           nullable: true
           description: General description of the activity type
-      description: Represents a standard activity type defined by Red Cross centrally
+      description: Represents a standard activity type defined centrally
