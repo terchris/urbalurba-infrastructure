@@ -117,6 +117,10 @@ main() {
     sudo pip3 install --upgrade pip
     sudo pip3 install psycopg2-binary
 
+    # Install MkDocs with Material theme for documentation generation
+    echo "Installing MkDocs and Material theme for documentation"
+    sudo pip3 install mkdocs-material mkdocs-tags-plugin
+
     install_github_cli || return 1
 
     print_summary

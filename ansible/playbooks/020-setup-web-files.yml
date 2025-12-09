@@ -27,6 +27,7 @@
     manifests_folder: "/mnt/urbalurbadisk/manifests"
     merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
     website_source: "/mnt/urbalurbadisk/testdata/website"
+    docs_source: "/mnt/urbalurbadisk/testdata/docs"
     nginx_content_title: "Welcome to Nginx"
     nginx_content_message: "Your Nginx server is running successfully!"
     nginx_content_filename: "urbalurba-test.html"
@@ -190,7 +191,43 @@
         KUBECONFIG: "{{ merged_kubeconf_file }}"
       changed_when: true
       when: copy_result.rc != 0
-      
+
+    - name: 17a. Check if docs source folder exists
+      ansible.builtin.stat:
+        path: "{{ docs_source }}"
+      register: docs_folder
+
+    - name: 17b. Create docs directory in pod
+      ansible.builtin.shell: |
+        kubectl exec web-files-pod --context {{ kube_context }} -- \
+        sh -c "mkdir -p /content/docs"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      changed_when: true
+      when: docs_folder.stat.exists and docs_folder.stat.isdir
+
+    - name: 17c. Copy docs content to pod using tar
+      ansible.builtin.shell: |
+        cd {{ docs_source }} && \
+        tar cf - . | kubectl exec -i web-files-pod --context {{ kube_context }} -- \
+        sh -c "cd /content/docs && tar xf -"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      changed_when: true
+      when: docs_folder.stat.exists and docs_folder.stat.isdir
+      register: docs_copy_result
+      ignore_errors: true
+
+    - name: 17d. Display docs copy status
+      ansible.builtin.debug:
+        msg: "Documentation copied to /content/docs/ - will be available at /docs/ path"
+      when: docs_folder.stat.exists and docs_folder.stat.isdir and docs_copy_result.rc == 0
+
+    - name: 17e. Display docs skip message
+      ansible.builtin.debug:
+        msg: "Documentation source not found at {{ docs_source }} - skipping docs deployment"
+      when: not docs_folder.stat.exists or not docs_folder.stat.isdir
+
     - name: 18. Verify files in pod
       ansible.builtin.shell: |
         kubectl exec web-files-pod --context {{ kube_context }} -- \
@@ -216,14 +253,18 @@
       ansible.builtin.debug:
         msg: |
           WEB FILES SETUP COMPLETE
-          
+
           The website content from {{ website_source }} has been copied to the persistent volume.
           A test file named "{{ nginx_content_filename }}" has been created in the storage.
-          
+          {% if docs_folder.stat.exists and docs_folder.stat.isdir %}
+          Documentation from {{ docs_source }} has been copied to /docs/ subdirectory.
+          Access documentation at: http://localhost/docs/ (after nginx deployment)
+          {% endif %}
+
           PVC Status: {{ pvc_status_after_pod.stdout | default(pvc_status.stdout) }}
-          
+
           The files are stored in the persistent volume claim "nginx-content-pvc"
-          
+
           This playbook can be run again at any time to refresh the content from the source location.
           
 

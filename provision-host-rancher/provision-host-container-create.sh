@@ -163,6 +163,17 @@ main() {
     create_and_copy "../topsecret" "/mnt/urbalurbadisk/topsecret" "topsecret directory"
     create_and_copy "../testdata" "/mnt/urbalurbadisk/testdata" "testdata directory"
     create_and_copy "../scripts" "/mnt/urbalurbadisk/scripts" "scripts directory"
+    create_and_copy "../docs" "/mnt/urbalurbadisk/docs" "docs directory"
+
+    # Copy mkdocs.yml configuration file
+    if [ -f "../mkdocs.yml" ]; then
+        echo "Copying mkdocs.yml to container"
+        docker cp "../mkdocs.yml" "provision-host:/mnt/urbalurbadisk/mkdocs.yml"
+        add_status "Transferring mkdocs.yml" "OK"
+    else
+        echo "Warning: mkdocs.yml does not exist. Skipping transfer."
+        add_status "Transferring mkdocs.yml" "Skipped"
+    fi
 
     # Fix ownership
     docker exec -u root provision-host chown -R ansible:ansible /mnt/urbalurbadisk
