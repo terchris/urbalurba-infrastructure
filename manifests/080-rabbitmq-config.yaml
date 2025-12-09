@@ -1,9 +1,14 @@
 ---
 # 080-rabbitmq-config.yaml
 # Installs RabbitMQ message broker using Bitnami Helm chart
-# Usage: 
+# Usage:
 # installing: helm install rabbitmq bitnami/rabbitmq -f 080-rabbitmq-config.yaml
 # uninstalling: helm uninstall rabbitmq
+
+# Allow legacy Bitnami images (required since Aug 2025 subscription changes)
+global:
+  security:
+    allowInsecureImages: true
 
 ## RabbitMQ service type - using ClusterIP for consistency with other services
 service:
@@ -57,7 +62,7 @@ extraConfiguration: |
 ## Reduce Java heap size
 livenessProbe:
   enabled: true
-  initialDelaySeconds: 120
+  initialDelaySeconds: 240
   timeoutSeconds: 20
   periodSeconds: 30
   failureThreshold: 6
@@ -71,4 +76,10 @@ readinessProbe:
   failureThreshold: 3
   successThreshold: 1
   
-# Using default image settings from the chart
+# Use Bitnami Legacy images (free versioned images after Aug 2025 subscription change)
+# See: https://github.com/bitnami/containers/issues/83267
+image:
+  registry: docker.io
+  repository: bitnamilegacy/rabbitmq
+  tag: "3.13.7-debian-12-r5"
+  pullPolicy: IfNotPresent
