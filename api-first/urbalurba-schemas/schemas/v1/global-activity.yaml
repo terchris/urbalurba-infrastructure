@@ -1,0 +1,18 @@
+# file: schemas/v1/global-activity.yaml
+components:
+  schemas:
+    GlobalActivity:
+      type: object
+      required:
+        - globalActivityId
+        - globalActivityName
+      properties:
+        globalActivityId:
+          $ref: '../../fields/v1/global-activity-id.yaml#/components/schemas/GlobalActivityId'
+        globalActivityName:
+          $ref: '../../fields/v1/global-activity-name.yaml#/components/schemas/GlobalActivityName'
+        description:
+          type: string
+          nullable: true
+          description: General description of the activity type
+      description: Represents a standard activity type defined centrally

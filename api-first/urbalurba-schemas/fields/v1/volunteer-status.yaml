@@ -1,0 +1,7 @@
+# file: _shared/fields/v1/volunteer-status.yaml
+components:
+  schemas:
+    VolunteerStatus:
+      type: boolean
+      description: Indicates if the person is a registered volunteer in the organization
+      example: true

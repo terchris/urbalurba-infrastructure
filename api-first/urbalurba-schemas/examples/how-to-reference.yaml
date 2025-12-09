@@ -1,0 +1,197 @@
+# Urbalurba OpenAPI Schema Reference Examples
+
+# This file shows consultants how to properly reference shared schemas
+# in their API specifications.
+
+openapi: 3.0.0
+info:
+  title: Example API for Consultants
+  version: 1.0.0
+  description: |
+    🚨 IMPORTANT FOR CONSULTANTS:
+    This example shows you how to reference Urbalurba shared schemas.
+    - Always use $ref to point to shared schemas
+    - Never create custom versions of existing types
+    - See the patterns below for correct usage
+
+servers:
+  - url: https://localhost:7001
+    description: Development server
+
+paths:
+  /branches:
+    get:
+      summary: Get all branches
+      operationId: GetBranches
+      responses:
+        '200':
+          description: List of branches
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  # ✅ CORRECT: Reference the complete entity
+                  $ref: '../entities/v1/branch.yaml#/components/schemas/Branch'
+
+    post:
+      summary: Create a new branch
+      operationId: CreateBranch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              # ✅ CORRECT: Reference the request schema
+              $ref: '../entities/v1/branch.yaml#/components/schemas/CreateBranchRequest'
+      responses:
+        '201':
+          description: Branch created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '../entities/v1/branch.yaml#/components/schemas/Branch'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /branches/{branchId}:
+    get:
+      summary: Get branch by ID
+      operationId: GetBranch
+      parameters:
+        - name: branchId
+          in: path
+          required: true
+          schema:
+            # ✅ CORRECT: Reference individual field types
+            $ref: '../fields/v1/branch-id.yaml#/components/schemas/BranchId'
+      responses:
+        '200':
+          description: Branch details
+          content:
+            application/json:
+              schema:
+                $ref: '../entities/v1/branch.yaml#/components/schemas/Branch'
+        '404':
+          description: Branch not found
+
+    put:
+      summary: Update a branch
+      operationId: UpdateBranch
+      parameters:
+        - name: branchId
+          in: path
+          required: true
+          schema:
+            $ref: '../fields/v1/branch-id.yaml#/components/schemas/BranchId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../entities/v1/branch.yaml#/components/schemas/UpdateBranchRequest'
+      responses:
+        '200':
+          description: Branch updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '../entities/v1/branch.yaml#/components/schemas/Branch'
+
+  /members:
+    get:
+      summary: Example endpoint using individual field types
+      operationId: GetMembers
+      parameters:
+        - name: email
+          in: query
+          schema:
+            # ✅ CORRECT: Reference individual field for query parameters
+            $ref: '../fields/v1/email.yaml#/components/schemas/Email'
+        - name: memberStatus
+          in: query
+          schema:
+            $ref: '../fields/v1/member-status.yaml#/components/schemas/MemberStatus'
+        - name: volunteerStatus
+          in: query
+          schema:
+            $ref: '../fields/v1/volunteer-status.yaml#/components/schemas/VolunteerStatus'
+      responses:
+        '200':
+          description: List of members
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MemberSummary'
+
+components:
+  schemas:
+    # Example of creating your own schemas while using shared field types
+    MemberSummary:
+      type: object
+      description: Summary information about a member
+      properties:
+        email:
+          $ref: '../fields/v1/email.yaml#/components/schemas/Email'
+        phone:
+          $ref: '../fields/v1/norwegian-phone.yaml#/components/schemas/NorwegianPhoneNumber'
+        memberStatus:
+          $ref: '../fields/v1/member-status.yaml#/components/schemas/MemberStatus'
+        volunteerStatus:
+          $ref: '../fields/v1/volunteer-status.yaml#/components/schemas/VolunteerStatus'
+        # Your custom fields can go here
+        customField:
+          type: string
+          description: Only add custom fields if no shared schema exists
+
+    ErrorResponse:
+      type: object
+      description: Standard error response format
+      required:
+        - message
+        - code
+      properties:
+        message:
+          type: string
+          description: Human-readable error message
+          example: "Validation failed"
+        code:
+          type: string
+          description: Machine-readable error code
+          example: "VALIDATION_ERROR"
+        details:
+          type: array
+          description: Detailed validation errors
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+                example: "email"
+              message:
+                type: string
+                example: "Invalid email format"
+
+# ❌ WRONG PATTERNS - DON'T DO THIS:
+
+# DON'T create custom versions of existing types:
+# customBranchId:
+#   type: string
+#   description: "Don't do this - use shared BranchId instead"
+
+# DON'T copy/paste shared schema content:
+# email:
+#   type: string
+#   format: email
+#   # This duplicates the shared Email schema
+
+# DON'T ignore validation patterns:
+# phoneNumber:
+#   type: string
+#   # Missing Norwegian phone validation - use shared schema instead

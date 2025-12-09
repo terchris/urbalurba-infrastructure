@@ -1,0 +1,11 @@
+# file: _shared/fields/v1/web.yaml
+components:
+  schemas:
+    Web:
+      type: string
+      format: uri
+      nullable: true
+      maxLength: 2048  # Common maximum length for URLs
+      pattern: ^https?:\/\/.+
+      description: Website URL
+      example: "https://www.rodekors.no/modum"

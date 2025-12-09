@@ -1,0 +1,7 @@
+# file: _shared/fields/v1/member-status.yaml
+components:
+  schemas:
+    MemberStatus:
+      type: boolean
+      description: Indicates if the person is a member of the organization
+      example: true

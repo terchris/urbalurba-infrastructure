@@ -1,0 +1,5875 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Complete datacenter on your laptop - Kubernetes infrastructure for local development and production">
+      
+      
+      
+        <link rel="canonical" href="https://terchris.github.io/urbalurba-infrastructure/package-auth-authentik-testusers/">
+      
+      
+        <link rel="prev" href="../package-auth-authentik-technical-implementation/">
+      
+      
+        <link rel="next" href="../package-core-readme/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.0">
+    
+    
+      
+        <title>Test Users - Urbalurba Infrastructure</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.618322db.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#urbalurba-authentik-test-users-package" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Urbalurba Infrastructure" class="md-header__button md-logo" aria-label="Urbalurba Infrastructure" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Urbalurba Infrastructure
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Test Users
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/terchris/urbalurba-infrastructure" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    terchris/urbalurba-infrastructure
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Urbalurba Infrastructure" class="md-nav__button md-logo" aria-label="Urbalurba Infrastructure" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Urbalurba Infrastructure
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/terchris/urbalurba-infrastructure" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    terchris/urbalurba-infrastructure
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../overview-getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../overview-installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../overview-infrastructure/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../overview-services/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Services
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../overview-system-architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hosts & Platforms
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Hosts & Platforms
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hosts-readme/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hosts-rancher-kubernetes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rancher Desktop
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hosts-azure-aks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Azure AKS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hosts-azure-microk8s/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Azure MicroK8s
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hosts-multipass-microk8s/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multipass MicroK8s
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hosts-raspberry-microk8s/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Raspberry Pi
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hosts-cloud-init-readme/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cloud Init
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hosts-cloud-init-secrets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cloud Init Secrets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Packages
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Packages
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_1" id="__nav_4_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI & ML
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    AI & ML
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../package-ai-readme/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../package-ai-litellm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LiteLLM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../package-ai-litellm-client-key-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LiteLLM Client Keys
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../package-ai-openwebui-model-access-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OpenWebUI Model Access
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../package-ai-environment-management/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Management
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4_2" id="__nav_4_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Authentication
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Authentication
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../package-auth-authentik-readme/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../package-auth-authentik-auth10/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Auth10 Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../package-auth-authentik-auth10-developer-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../package-auth-authentik-blueprints-syntax/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Blueprints Syntax
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../package-auth-authentik-technical-implementation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Technical Implementation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Test Users
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Test Users
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#table-of-contents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Table of Contents
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#user-specification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        User Specification
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="User Specification">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#user-distribution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        User Distribution
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#complete-user-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Complete User Table
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#okta-field-mapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Okta Field Mapping
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Okta Field Mapping">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#field-categories" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Field Categories
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Field Categories">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#core-identity-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core Identity Fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#organizational-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Organizational Fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#employment-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Employment Fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#contact-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Contact Fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bankid-fields-norwegian-national-id" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        BankID Fields (Norwegian National ID)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#system-integration-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        System Integration Fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#data-anonymization-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data Anonymization Strategy
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Data Anonymization Strategy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#personal-information" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Personal Information
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#organizational-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Organizational Data
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#organizational-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Organizational Structure
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Organizational Structure">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#manager-relationships" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Manager Relationships
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#department-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Department Structure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#group-assignment-logic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Group Assignment Logic
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#blueprint-implementation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Blueprint Implementation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Blueprint Implementation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#blueprint-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Blueprint Structure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#field-mapping-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Field Mapping Rules
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Field Mapping Rules">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#core-authentik-fields-direct-mapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core Authentik Fields (Direct Mapping)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#custom-attributes-all-other-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Custom Attributes (All Other Fields)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#complete-user-entry-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Complete User Entry Example
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#data-type-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data Type Handling
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Data Type Handling">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#string-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        String Values
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#boolean-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Boolean Values
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#empty-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Empty Values
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#deployment-guide" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Deployment Guide
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Deployment Guide">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#helm-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Helm Configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#complete-deployment-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Complete Deployment Workflow
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#blueprint-discovery-process" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Blueprint Discovery Process
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#testing-and-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing and Validation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Testing and Validation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#validation-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validation Checklist
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing-the-blueprint" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing the Blueprint
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#usage-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Usage Notes
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Usage Notes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#for-developers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        For Developers
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#for-testing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        For Testing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#for-maintenance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        For Maintenance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#maintenance-and-updates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Maintenance and Updates
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Maintenance and Updates">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#adding-new-users" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adding New Users
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#modifying-existing-users" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Modifying Existing Users
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#field-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Field Changes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#blueprint-updates-and-redeployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Blueprint Updates and Redeployment
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#implementation-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Implementation Notes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Resources
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_3" id="__nav_4_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Core
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../package-core-readme/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../package-core-nginx/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Nginx
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_4" id="__nav_4_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Databases
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Databases
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../package-databases-readme/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../package-databases-postgresql/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PostgreSQL
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../package-databases-postgresql-container/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PostgreSQL Container
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../package-databases-mysql/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MySQL
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../package-databases-mongodb/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MongoDB
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../package-databases-qdrant/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Qdrant
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_5" id="__nav_4_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Science
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Data Science
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../package-datascience/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../package-datascience-jupyterhub/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    JupyterHub
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../package-datascience-spark/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spark
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../package-datascience-unitycatalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Unity Catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_6" id="__nav_4_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Development
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../package-development-readme/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../package-development-argocd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ArgoCD
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../package-development-templates/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Templates
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_7" id="__nav_4_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Management
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Management
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../package-management-readme/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../package-management-pgadmin/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    pgAdmin
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../package-management-rabbitmq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    RabbitMQ Admin
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../package-management-redisinsight/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    RedisInsight
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_8" id="__nav_4_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Monitoring
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Monitoring
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../package-monitoring-readme/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../package-monitoring-prometheus/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prometheus
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../package-monitoring-grafana/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Grafana
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../package-monitoring-loki/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Loki
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../package-monitoring-tempo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tempo
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../package-monitoring-otel/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OpenTelemetry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../package-monitoring-sovdev-logger/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SovDev Logger
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_9" id="__nav_4_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Message Queues
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Message Queues
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../package-queues-readme/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../package-queues-rabbitmq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    RabbitMQ
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../package-queues-redis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Redis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4_10" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_10" id="__nav_4_10_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Search
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_10">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Search
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../package-search-readme/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../package-search-elasticsearch/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Elasticsearch
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Networking
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Networking
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../networking-readme/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../networking-tailscale-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tailscale Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../networking-tailscale-networkisolation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tailscale Network Isolation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../networking-cloudflare-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cloudflare Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Provision Host
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Provision Host
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../provision-host-readme/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../provision-host-rancher/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rancher Integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../provision-host-kubernetes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Kubernetes Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../provision-host-tools/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tools
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rules & Standards
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Rules & Standards
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rules-readme/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rules-automated-kubernetes-deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Kubernetes Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rules-ingress-traefik/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ingress & Traefik
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rules-secrets-management/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Secrets Management
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rules-provisioning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Provisioning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rules-naming-conventions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Naming Conventions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rules-git-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Git Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rules-development-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rules-documentation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Documentation Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rules-howtodoc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Documentation (Legacy)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../README.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Documentation Index
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../manifests-readme/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Manifests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../secrets-management-readme/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Secrets Management
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../troubleshooting-readme/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#table-of-contents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Table of Contents
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#user-specification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        User Specification
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="User Specification">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#user-distribution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        User Distribution
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#complete-user-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Complete User Table
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#okta-field-mapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Okta Field Mapping
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Okta Field Mapping">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#field-categories" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Field Categories
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Field Categories">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#core-identity-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core Identity Fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#organizational-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Organizational Fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#employment-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Employment Fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#contact-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Contact Fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bankid-fields-norwegian-national-id" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        BankID Fields (Norwegian National ID)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#system-integration-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        System Integration Fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#data-anonymization-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data Anonymization Strategy
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Data Anonymization Strategy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#personal-information" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Personal Information
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#organizational-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Organizational Data
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#organizational-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Organizational Structure
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Organizational Structure">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#manager-relationships" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Manager Relationships
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#department-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Department Structure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#group-assignment-logic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Group Assignment Logic
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#blueprint-implementation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Blueprint Implementation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Blueprint Implementation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#blueprint-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Blueprint Structure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#field-mapping-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Field Mapping Rules
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Field Mapping Rules">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#core-authentik-fields-direct-mapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core Authentik Fields (Direct Mapping)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#custom-attributes-all-other-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Custom Attributes (All Other Fields)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#complete-user-entry-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Complete User Entry Example
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#data-type-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data Type Handling
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Data Type Handling">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#string-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        String Values
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#boolean-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Boolean Values
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#empty-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Empty Values
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#deployment-guide" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Deployment Guide
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Deployment Guide">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#helm-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Helm Configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#complete-deployment-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Complete Deployment Workflow
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#blueprint-discovery-process" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Blueprint Discovery Process
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#testing-and-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing and Validation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Testing and Validation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#validation-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validation Checklist
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing-the-blueprint" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing the Blueprint
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#usage-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Usage Notes
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Usage Notes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#for-developers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        For Developers
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#for-testing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        For Testing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#for-maintenance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        For Maintenance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#maintenance-and-updates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Maintenance and Updates
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Maintenance and Updates">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#adding-new-users" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adding New Users
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#modifying-existing-users" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Modifying Existing Users
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#field-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Field Changes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#blueprint-updates-and-redeployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Blueprint Updates and Redeployment
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#implementation-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Implementation Notes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Resources
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="urbalurba-authentik-test-users-package">Urbalurba Authentik Test Users Package<a class="headerlink" href="#urbalurba-authentik-test-users-package" title="Permanent link">&para;</a></h1>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
+<p>This document provides a complete guide for creating and managing test users in Authentik that mirror the organizational structure found in production Okta. The goal is to provide developers with a realistic test environment that includes all Okta fields and organizational relationships while maintaining data anonymity.</p>
+<p>This package includes:
+- <strong>Complete user specification</strong> with all Okta fields
+- <strong>Organizational structure</strong> mirroring organizational departments
+- <strong>Blueprint conversion methodology</strong> for automated deployment
+- <strong>Implementation guide</strong> for Authentik integration</p>
+<h2 id="table-of-contents">Table of Contents<a class="headerlink" href="#table-of-contents" title="Permanent link">&para;</a></h2>
+<ol>
+<li><a href="#user-specification">User Specification</a></li>
+<li><a href="#okta-field-mapping">Okta Field Mapping</a></li>
+<li><a href="#organizational-structure">Organizational Structure</a></li>
+<li><a href="#blueprint-implementation">Blueprint Implementation</a></li>
+<li><a href="#deployment-guide">Deployment Guide</a></li>
+<li><a href="#testing-and-validation">Testing and Validation</a></li>
+<li><a href="#maintenance-and-updates">Maintenance and Updates</a></li>
+</ol>
+<hr />
+<h2 id="user-specification">User Specification<a class="headerlink" href="#user-specification" title="Permanent link">&para;</a></h2>
+<h3 id="user-distribution">User Distribution<a class="headerlink" href="#user-distribution" title="Permanent link">&para;</a></h3>
+<p><strong>Total Users: 11</strong>
+- <strong>HQ Users: 9</strong> - Covering all major departments from the national office
+- <strong>District Users: 2</strong> - Representing regional/district level operations</p>
+<h3 id="complete-user-table">Complete User Table<a class="headerlink" href="#complete-user-table" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Username</th>
+<th>Email</th>
+<th>Name</th>
+<th>Department</th>
+<th>vi_department</th>
+<th>vi_departmentID</th>
+<th>vi_unitname</th>
+<th>vi_unitID</th>
+<th>costCenter</th>
+<th>vi_Locale</th>
+<th>vi_StateProvince</th>
+<th>vi_position</th>
+<th>vi_employeeform</th>
+<th>employeeNumber</th>
+<th>samAccountName</th>
+<th>managerId</th>
+<th>manager</th>
+<th>ManagerdisplayName</th>
+<th>isEmployee</th>
+<th>isVolunteer</th>
+<th>u_start_date</th>
+<th>u_end_date</th>
+<th>mobilePhone</th>
+<th>secondEmail</th>
+<th>bankid_birthdate</th>
+<th>bankid_nnin_altsub</th>
+<th>bankid_altsub</th>
+<th>bankid_verification_timestamp</th>
+<th>bankid_user_verified</th>
+<th>bankid_sub</th>
+<th>bankid_firstname</th>
+<th>bankid_lastname</th>
+<th>AgressoDomainUser</th>
+<th>RelationNumber</th>
+<th>Azure_lastNonInteractiveSignInDateTime</th>
+<th>ServiceNowManagerIdExternalID</th>
+<th>extensionAttribute7</th>
+<th>u_crm_guid</th>
+<th>streetAddress</th>
+<th>city</th>
+<th>zipCode</th>
+<th>state</th>
+<th>deliveryOffice</th>
+<th>division</th>
+<th>title</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ok1</td>
+<td>ok1@urbalurba.no</td>
+<td>Ola Nordmann</td>
+<td>Økonomi og administrasjon</td>
+<td>Økonomi og administrasjon</td>
+<td>N750</td>
+<td>Økonomi og administrasjon</td>
+<td>#5421000#N750#N750#</td>
+<td>N750</td>
+<td>Oslo</td>
+<td>Nasjonalkontoret</td>
+<td>Økonomi- og administrasjonsmedarbeider</td>
+<td>1 Fast ansatt</td>
+<td>25001</td>
+<td>105010OK1</td>
+<td>105010MGR1</td>
+<td>manager1@urbalurba.no</td>
+<td>Manager Person</td>
+<td>true</td>
+<td>false</td>
+<td>01/01/2020</td>
+<td></td>
+<td>+4790012345</td>
+<td>ola.nordmann@example.no</td>
+<td>80-01-15</td>
+<td>15018012345</td>
+<td>Pass</td>
+<td>2020-01-01T09:00:00</td>
+<td>true</td>
+<td>12345678-1234-1234-1234-123456789012</td>
+<td>Ola</td>
+<td>Nordmann</td>
+<td>Z94\105010OK1</td>
+<td>105010OK1</td>
+<td>2024-01-15T08:30:00Z</td>
+<td>d1b50bf41ba56690825da711604bcbf2</td>
+<td>5207a9ec-a6bf-ec11-8117-001dd8b74416</td>
+<td>bb0a469d-905c-ef11-bfe3-0022489bed2b</td>
+<td>Storgata 1</td>
+<td>Oslo</td>
+<td>0155</td>
+<td>Nasjonalkontoret</td>
+<td>RK Hovedkontor</td>
+<td>105010-001 - RK Hovedkontor</td>
+<td>Økonomi- og administrasjonsmedarbeider</td>
+</tr>
+<tr>
+<td>re1</td>
+<td>re1@urbalurba.no</td>
+<td>Kari Hansen</td>
+<td>Økonomi og administrasjon</td>
+<td>Regnskap og rapportering</td>
+<td>N760</td>
+<td>Regnskap og rapportering</td>
+<td>#5421000#N760#N760#</td>
+<td>N760</td>
+<td>Oslo</td>
+<td>Nasjonalkontoret</td>
+<td>Regnskapsmedarbeider</td>
+<td>1 Fast ansatt</td>
+<td>25002</td>
+<td>105010RE1</td>
+<td>105010OK1</td>
+<td>ola.nordmann@urbalurba.no</td>
+<td>Ola Nordmann</td>
+<td>true</td>
+<td>false</td>
+<td>01/02/2020</td>
+<td></td>
+<td>+4790012346</td>
+<td>kari.hansen@example.no</td>
+<td>85-03-22</td>
+<td>22038512345</td>
+<td>Pass</td>
+<td>2020-02-01T09:00:00</td>
+<td>true</td>
+<td>12345678-1234-1234-1234-123456789013</td>
+<td>Kari</td>
+<td>Hansen</td>
+<td>Z94\105010RE1</td>
+<td>105010RE1</td>
+<td>2024-01-15T08:30:00Z</td>
+<td>d1b50bf41ba56690825da711604bcbf3</td>
+<td>5207a9ec-a6bf-ec11-8117-001dd8b74417</td>
+<td>bb0a469d-905c-ef11-bfe3-0022489bed2c</td>
+<td>Storgata 2</td>
+<td>Oslo</td>
+<td>0155</td>
+<td>Nasjonalkontoret</td>
+<td>RK Hovedkontor</td>
+<td>105010-001 - RK Hovedkontor</td>
+<td>Regnskapsmedarbeider</td>
+</tr>
+<tr>
+<td>it1</td>
+<td>it1@urbalurba.no</td>
+<td>Erik Larsen</td>
+<td>Økonomi og administrasjon</td>
+<td>IT</td>
+<td>N770</td>
+<td>IT</td>
+<td>#5421000#N770#N770#</td>
+<td>N770</td>
+<td>Oslo</td>
+<td>Nasjonalkontoret</td>
+<td>IT Specialist</td>
+<td>1 Fast ansatt</td>
+<td>25003</td>
+<td>105010IT1</td>
+<td>105010OK1</td>
+<td>ola.nordmann@urbalurba.no</td>
+<td>Ola Nordmann</td>
+<td>true</td>
+<td>false</td>
+<td>01/03/2020</td>
+<td></td>
+<td>+4790012347</td>
+<td>erik.larsen@example.no</td>
+<td>82-07-10</td>
+<td>10078212345</td>
+<td>Pass</td>
+<td>2020-03-01T09:00:00</td>
+<td>true</td>
+<td>12345678-1234-1234-1234-123456789014</td>
+<td>Erik</td>
+<td>Larsen</td>
+<td>Z94\105010IT1</td>
+<td>105010IT1</td>
+<td>2024-01-15T08:30:00Z</td>
+<td>d1b50bf41ba56690825da711604bcbf4</td>
+<td>5207a9ec-a6bf-ec11-8117-001dd8b74418</td>
+<td>bb0a469d-905c-ef11-bfe3-0022489bed2d</td>
+<td>Storgata 3</td>
+<td>Oslo</td>
+<td>0155</td>
+<td>Nasjonalkontoret</td>
+<td>RK Hovedkontor</td>
+<td>105010-001 - RK Hovedkontor</td>
+<td>IT Specialist</td>
+</tr>
+<tr>
+<td>hr1</td>
+<td>hr1@urbalurba.no</td>
+<td>Anna Olsen</td>
+<td>HR og organisasjonsutvikling</td>
+<td>HR</td>
+<td>N780</td>
+<td>HR</td>
+<td>#5421000#N780#N780#</td>
+<td>N780</td>
+<td>Oslo</td>
+<td>Nasjonalkontoret</td>
+<td>HR Medarbeider</td>
+<td>1 Fast ansatt</td>
+<td>25004</td>
+<td>105010HR1</td>
+<td>105010OK1</td>
+<td>ola.nordmann@urbalurba.no</td>
+<td>Ola Nordmann</td>
+<td>true</td>
+<td>false</td>
+<td>01/04/2020</td>
+<td></td>
+<td>+4790012348</td>
+<td>anna.olsen@example.no</td>
+<td>88-11-05</td>
+<td>05118812345</td>
+<td>Pass</td>
+<td>2020-04-01T09:00:00</td>
+<td>true</td>
+<td>12345678-1234-1234-1234-123456789015</td>
+<td>Anna</td>
+<td>Olsen</td>
+<td>Z94\105010HR1</td>
+<td>105010HR1</td>
+<td>2024-01-15T08:30:00Z</td>
+<td>d1b50bf41ba56690825da711604bcbf5</td>
+<td>5207a9ec-a6bf-ec11-8117-001dd8b74419</td>
+<td>bb0a469d-905c-ef11-bfe3-0022489bed2e</td>
+<td>Storgata 4</td>
+<td>Oslo</td>
+<td>0155</td>
+<td>Nasjonalkontoret</td>
+<td>RK Hovedkontor</td>
+<td>105010-001 - RK Hovedkontor</td>
+<td>HR Medarbeider</td>
+</tr>
+<tr>
+<td>ko1</td>
+<td>ko1@urbalurba.no</td>
+<td>Lars Andersen</td>
+<td>Kommunikasjon og samfunn</td>
+<td>Kommunikasjon</td>
+<td>N790</td>
+<td>Kommunikasjon</td>
+<td>#5421000#N790#N790#</td>
+<td>N790</td>
+<td>Oslo</td>
+<td>Nasjonalkontoret</td>
+<td>Kommunikasjonsmedarbeider</td>
+<td>1 Fast ansatt</td>
+<td>25005</td>
+<td>105010KO1</td>
+<td>105010OK1</td>
+<td>ola.nordmann@urbalurba.no</td>
+<td>Ola Nordmann</td>
+<td>true</td>
+<td>false</td>
+<td>01/05/2020</td>
+<td></td>
+<td>+4790012349</td>
+<td>lars.andersen@example.no</td>
+<td>79-09-18</td>
+<td>18097912345</td>
+<td>Pass</td>
+<td>2020-05-01T09:00:00</td>
+<td>true</td>
+<td>12345678-1234-1234-1234-123456789016</td>
+<td>Lars</td>
+<td>Andersen</td>
+<td>Z94\105010KO1</td>
+<td>105010KO1</td>
+<td>2024-01-15T08:30:00Z</td>
+<td>d1b50bf41ba56690825da711604bcbf6</td>
+<td>5207a9ec-a6bf-ec11-8117-001dd8b74420</td>
+<td>bb0a469d-905c-ef11-bfe3-0022489bed2f</td>
+<td>Storgata 5</td>
+<td>Oslo</td>
+<td>0155</td>
+<td>Nasjonalkontoret</td>
+<td>RK Hovedkontor</td>
+<td>105010-001 - RK Hovedkontor</td>
+<td>Kommunikasjonsmedarbeider</td>
+</tr>
+<tr>
+<td>in1</td>
+<td>in1@urbalurba.no</td>
+<td>Maria Johansen</td>
+<td>Inntekter</td>
+<td>Inntekter</td>
+<td>N800</td>
+<td>Inntekter</td>
+<td>#5421000#N800#N800#</td>
+<td>N800</td>
+<td>Oslo</td>
+<td>Nasjonalkontoret</td>
+<td>Inntektsmedarbeider</td>
+<td>1 Fast ansatt</td>
+<td>25006</td>
+<td>105010IN1</td>
+<td>105010OK1</td>
+<td>ola.nordmann@urbalurba.no</td>
+<td>Ola Nordmann</td>
+<td>true</td>
+<td>false</td>
+<td>01/06/2020</td>
+<td></td>
+<td>+4790012350</td>
+<td>maria.johansen@example.no</td>
+<td>83-12-03</td>
+<td>03128312345</td>
+<td>Pass</td>
+<td>2020-06-01T09:00:00</td>
+<td>true</td>
+<td>12345678-1234-1234-1234-123456789017</td>
+<td>Maria</td>
+<td>Johansen</td>
+<td>Z94\105010IN1</td>
+<td>105010IN1</td>
+<td>2024-01-15T08:30:00Z</td>
+<td>d1b50bf41ba56690825da711604bcbf7</td>
+<td>5207a9ec-a6bf-ec11-8117-001dd8b74421</td>
+<td>bb0a469d-905c-ef11-bfe3-0022489bed30</td>
+<td>Storgata 6</td>
+<td>Oslo</td>
+<td>0155</td>
+<td>Nasjonalkontoret</td>
+<td>RK Hovedkontor</td>
+<td>105010-001 - RK Hovedkontor</td>
+<td>Inntektsmedarbeider</td>
+</tr>
+<tr>
+<td>sr1</td>
+<td>sr1@urbalurba.no</td>
+<td>Thomas Pedersen</td>
+<td>Nasjonale programmer og beredskap</td>
+<td>Søk og redning</td>
+<td>N810</td>
+<td>Søk og redning</td>
+<td>#5421000#N810#N810#</td>
+<td>N810</td>
+<td>Oslo</td>
+<td>Nasjonalkontoret</td>
+<td>Beredskapsmedarbeider</td>
+<td>1 Fast ansatt</td>
+<td>25007</td>
+<td>105010SR1</td>
+<td>105010OK1</td>
+<td>ola.nordmann@urbalurba.no</td>
+<td>Ola Nordmann</td>
+<td>true</td>
+<td>false</td>
+<td>01/07/2020</td>
+<td></td>
+<td>+4790012351</td>
+<td>thomas.pedersen@example.no</td>
+<td>81-04-14</td>
+<td>14048112345</td>
+<td>Pass</td>
+<td>2020-07-01T09:00:00</td>
+<td>true</td>
+<td>12345678-1234-1234-1234-123456789018</td>
+<td>Thomas</td>
+<td>Pedersen</td>
+<td>Z94\105010SR1</td>
+<td>105010SR1</td>
+<td>2024-01-15T08:30:00Z</td>
+<td>d1b50bf41ba56690825da711604bcbf8</td>
+<td>5207a9ec-a6bf-ec11-8117-001dd8b74422</td>
+<td>bb0a469d-905c-ef11-bfe3-0022489bed31</td>
+<td>Storgata 7</td>
+<td>Oslo</td>
+<td>0155</td>
+<td>Nasjonalkontoret</td>
+<td>RK Hovedkontor</td>
+<td>105010-001 - RK Hovedkontor</td>
+<td>Beredskapsmedarbeider</td>
+</tr>
+<tr>
+<td>ip1</td>
+<td>ip1@urbalurba.no</td>
+<td>Ingrid Svendsen</td>
+<td>Internasjonale programmer og beredskap</td>
+<td>Technical Unit</td>
+<td>N820</td>
+<td>Technical Unit</td>
+<td>#5421000#N820#N820#</td>
+<td>N820</td>
+<td>Oslo</td>
+<td>Nasjonalkontoret</td>
+<td>Teknisk rådgiver</td>
+<td>1 Fast ansatt</td>
+<td>25008</td>
+<td>105010IP1</td>
+<td>105010OK1</td>
+<td>ola.nordmann@urbalurba.no</td>
+<td>Ola Nordmann</td>
+<td>true</td>
+<td>false</td>
+<td>01/08/2020</td>
+<td></td>
+<td>+4790012352</td>
+<td>ingrid.svendsen@example.no</td>
+<td>86-06-27</td>
+<td>27068612345</td>
+<td>Pass</td>
+<td>2020-08-01T09:00:00</td>
+<td>true</td>
+<td>12345678-1234-1234-1234-123456789019</td>
+<td>Ingrid</td>
+<td>Svendsen</td>
+<td>Z94\105010IP1</td>
+<td>105010IP1</td>
+<td>2024-01-15T08:30:00Z</td>
+<td>d1b50bf41ba56690825da711604bcbf9</td>
+<td>5207a9ec-a6bf-ec11-8117-001dd8b74423</td>
+<td>bb0a469d-905c-ef11-bfe3-0022489bed32</td>
+<td>Storgata 8</td>
+<td>Oslo</td>
+<td>0155</td>
+<td>Nasjonalkontoret</td>
+<td>RK Hovedkontor</td>
+<td>105010-001 - RK Hovedkontor</td>
+<td>Teknisk rådgiver</td>
+</tr>
+<tr>
+<td>di1</td>
+<td>di1@urbalurba.no</td>
+<td>Per Kristiansen</td>
+<td>Økonomi og administrasjon</td>
+<td>Digital innovasjon</td>
+<td>N830</td>
+<td>Digital innovasjon</td>
+<td>#5421000#N830#N830#</td>
+<td>N830</td>
+<td>Oslo</td>
+<td>Nasjonalkontoret</td>
+<td>Digital innovasjonsrådgiver</td>
+<td>1 Fast ansatt</td>
+<td>25009</td>
+<td>105010DI1</td>
+<td>105010OK1</td>
+<td>ola.nordmann@urbalurba.no</td>
+<td>Ola Nordmann</td>
+<td>true</td>
+<td>false</td>
+<td>01/09/2020</td>
+<td></td>
+<td>+4790012353</td>
+<td>per.kristiansen@example.no</td>
+<td>84-02-11</td>
+<td>11028412345</td>
+<td>Pass</td>
+<td>2020-09-01T09:00:00</td>
+<td>true</td>
+<td>12345678-1234-1234-1234-123456789020</td>
+<td>Per</td>
+<td>Kristiansen</td>
+<td>Z94\105010DI1</td>
+<td>105010DI1</td>
+<td>2024-01-15T08:30:00Z</td>
+<td>d1b50bf41ba56690825da711604bcbfa</td>
+<td>5207a9ec-a6bf-ec11-8117-001dd8b74424</td>
+<td>bb0a469d-905c-ef11-bfe3-0022489bed33</td>
+<td>Storgata 9</td>
+<td>Oslo</td>
+<td>0155</td>
+<td>Nasjonalkontoret</td>
+<td>RK Hovedkontor</td>
+<td>105010-001 - RK Hovedkontor</td>
+<td>Digital innovasjonsrådgiver</td>
+</tr>
+<tr>
+<td>dist1</td>
+<td>dist1@urbalurba.no</td>
+<td>Bjørn Nilsen</td>
+<td>Distriktskontor</td>
+<td>Buskerud RK</td>
+<td>D006</td>
+<td>Buskerud RK</td>
+<td>#5421000#D006#D006#</td>
+<td>D006</td>
+<td>Drammen</td>
+<td>Distrikt</td>
+<td>Distriktsmedarbeider</td>
+<td>1 Fast ansatt</td>
+<td>25010</td>
+<td>105010DIST1</td>
+<td>105010OK1</td>
+<td>ola.nordmann@urbalurba.no</td>
+<td>Ola Nordmann</td>
+<td>true</td>
+<td>false</td>
+<td>01/10/2020</td>
+<td></td>
+<td>+4790012354</td>
+<td>bjorn.nilsen@example.no</td>
+<td>87-08-25</td>
+<td>25088712345</td>
+<td>Pass</td>
+<td>2020-10-01T09:00:00</td>
+<td>true</td>
+<td>12345678-1234-1234-1234-123456789021</td>
+<td>Bjørn</td>
+<td>Nilsen</td>
+<td>Z94\105010DIST1</td>
+<td>105010DIST1</td>
+<td>2024-01-15T08:30:00Z</td>
+<td>d1b50bf41ba56690825da711604bcbfb</td>
+<td>5207a9ec-a6bf-ec11-8117-001dd8b74425</td>
+<td>bb0a469d-905c-ef11-bfe3-0022489bed34</td>
+<td>Drammensveien 1</td>
+<td>Drammen</td>
+<td>3015</td>
+<td>Distrikt</td>
+<td>Buskerud RK</td>
+<td>105010-002 - Buskerud RK</td>
+<td>Distriktsmedarbeider</td>
+</tr>
+<tr>
+<td>dist2</td>
+<td>dist2@urbalurba.no</td>
+<td>Solveig Berg</td>
+<td>Distriktskontor</td>
+<td>Hordaland RK</td>
+<td>D010</td>
+<td>Hordaland RK</td>
+<td>#5421000#D010#D010#</td>
+<td>D010</td>
+<td>Bergen</td>
+<td>Distrikt</td>
+<td>Distriktsmedarbeider</td>
+<td>1 Fast ansatt</td>
+<td>25011</td>
+<td>105010DIST2</td>
+<td>105010OK1</td>
+<td>ola.nordmann@urbalurba.no</td>
+<td>Ola Nordmann</td>
+<td>true</td>
+<td>false</td>
+<td>01/11/2020</td>
+<td></td>
+<td>+4790012355</td>
+<td>solveig.berg@example.no</td>
+<td>89-01-08</td>
+<td>08018912345</td>
+<td>Pass</td>
+<td>2020-11-01T09:00:00</td>
+<td>true</td>
+<td>12345678-1234-1234-1234-123456789022</td>
+<td>Solveig</td>
+<td>Berg</td>
+<td>Z94\105010DIST2</td>
+<td>105010DIST2</td>
+<td>2024-01-15T08:30:00Z</td>
+<td>d1b50bf41ba56690825da711604bcbfc</td>
+<td>5207a9ec-a6bf-ec11-8117-001dd8b74426</td>
+<td>bb0a469d-905c-ef11-bfe3-0022489bed35</td>
+<td>Bryggen 1</td>
+<td>Bergen</td>
+<td>5003</td>
+<td>Distrikt</td>
+<td>Hordaland RK</td>
+<td>105010-003 - Hordaland RK</td>
+<td>Distriktsmedarbeider</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="okta-field-mapping">Okta Field Mapping<a class="headerlink" href="#okta-field-mapping" title="Permanent link">&para;</a></h2>
+<h3 id="field-categories">Field Categories<a class="headerlink" href="#field-categories" title="Permanent link">&para;</a></h3>
+<p>The user specification includes all fields found in production Okta, organized into these categories:</p>
+<h4 id="core-identity-fields">Core Identity Fields<a class="headerlink" href="#core-identity-fields" title="Permanent link">&para;</a></h4>
+<ul>
+<li><strong>username</strong>: Unique identifier for each user (ok1, re1, it1, etc.)</li>
+<li><strong>email</strong>: Primary email address using @urbalurba.no domain</li>
+<li><strong>name</strong>: Full name using generic Norwegian names</li>
+<li><strong>login</strong>: Same as email (standard Okta pattern)</li>
+</ul>
+<h4 id="organizational-fields">Organizational Fields<a class="headerlink" href="#organizational-fields" title="Permanent link">&para;</a></h4>
+<ul>
+<li><strong>department</strong>: Main department from organizational chart</li>
+<li><strong>vi_department</strong>: Visma integration department field</li>
+<li><strong>vi_departmentID</strong>: Unique department identifier (N750-N830 for HQ, D006/D010 for districts)</li>
+<li><strong>vi_unitname</strong>: Unit name within department</li>
+<li><strong>vi_unitID</strong>: Unique unit identifier with organizational hierarchy</li>
+<li><strong>costCenter</strong>: Cost center code matching department</li>
+<li><strong>vi_Locale</strong>: Geographic location (Oslo for HQ, Drammen/Bergen for districts)</li>
+<li><strong>vi_StateProvince</strong>: Organizational level (Nasjonalkontoret/Distrikt)</li>
+</ul>
+<h4 id="employment-fields">Employment Fields<a class="headerlink" href="#employment-fields" title="Permanent link">&para;</a></h4>
+<ul>
+<li><strong>vi_position</strong>: Job title/position</li>
+<li><strong>vi_employeeform</strong>: Employment type (1 Fast ansatt = Full-time employee)</li>
+<li><strong>employeeNumber</strong>: Sequential employee number (25001-25011)</li>
+<li><strong>samAccountName</strong>: Active Directory account name</li>
+<li><strong>managerId</strong>: Manager's samAccountName</li>
+<li><strong>manager</strong>: Manager's email address</li>
+<li><strong>ManagerdisplayName</strong>: Manager's full name</li>
+<li><strong>isEmployee</strong>: Always true for all users</li>
+<li><strong>isVolunteer</strong>: Always false for all users</li>
+<li><strong>u_start_date</strong>: Employment start date (DD/MM/YYYY format)</li>
+<li><strong>u_end_date</strong>: Employment end date (empty for active employees)</li>
+</ul>
+<h4 id="contact-fields">Contact Fields<a class="headerlink" href="#contact-fields" title="Permanent link">&para;</a></h4>
+<ul>
+<li><strong>mobilePhone</strong>: Norwegian mobile phone number (+47XXXXXXXX)</li>
+<li><strong>secondEmail</strong>: Personal email address using @example.no domain</li>
+<li><strong>streetAddress</strong>: Generic Norwegian street address</li>
+<li><strong>city</strong>: City name (Oslo, Drammen, Bergen)</li>
+<li><strong>zipCode</strong>: Norwegian postal code</li>
+<li><strong>state</strong>: Organizational state (Nasjonalkontoret/Distrikt)</li>
+<li><strong>deliveryOffice</strong>: Office location name (RK Hovedkontor, Buskerud RK, Hordaland RK)</li>
+<li><strong>division</strong>: Full division name with code (105010-001 - RK Hovedkontor, etc.)</li>
+</ul>
+<h4 id="bankid-fields-norwegian-national-id">BankID Fields (Norwegian National ID)<a class="headerlink" href="#bankid-fields-norwegian-national-id" title="Permanent link">&para;</a></h4>
+<ul>
+<li><strong>bankid_birthdate</strong>: Birth date in YY-MM-DD format</li>
+<li><strong>bankid_nnin_altsub</strong>: Norwegian national identification number (fake)</li>
+<li><strong>bankid_altsub</strong>: BankID alternative subject (Pass)</li>
+<li><strong>bankid_verification_timestamp</strong>: When BankID was verified</li>
+<li><strong>bankid_user_verified</strong>: Whether user is BankID verified (true)</li>
+<li><strong>bankid_sub</strong>: BankID subject identifier (UUID format)</li>
+<li><strong>bankid_firstname</strong>: First name from BankID</li>
+<li><strong>bankid_lastname</strong>: Last name from BankID</li>
+</ul>
+<h4 id="system-integration-fields">System Integration Fields<a class="headerlink" href="#system-integration-fields" title="Permanent link">&para;</a></h4>
+<ul>
+<li><strong>AgressoDomainUser</strong>: Agresso system domain user (Z94\samAccountName)</li>
+<li><strong>RelationNumber</strong>: Relation number (same as samAccountName)</li>
+<li><strong>Azure_lastNonInteractiveSignInDateTime</strong>: Last Azure sign-in timestamp</li>
+<li><strong>ServiceNowManagerIdExternalID</strong>: ServiceNow manager external ID</li>
+<li><strong>extensionAttribute7</strong>: Extension attribute (UUID format)</li>
+<li><strong>u_crm_guid</strong>: CRM system GUID (UUID format)</li>
+</ul>
+<h3 id="data-anonymization-strategy">Data Anonymization Strategy<a class="headerlink" href="#data-anonymization-strategy" title="Permanent link">&para;</a></h3>
+<h4 id="personal-information">Personal Information<a class="headerlink" href="#personal-information" title="Permanent link">&para;</a></h4>
+<ul>
+<li><strong>Names</strong>: Generic Norwegian names (Ola Nordmann, Kari Hansen, etc.)</li>
+<li><strong>Emails</strong>: @urbalurba.no for work, @example.no for personal</li>
+<li><strong>Phone Numbers</strong>: Norwegian format but fake numbers</li>
+<li><strong>Addresses</strong>: Generic Norwegian addresses</li>
+<li><strong>BankID Data</strong>: Valid Norwegian format but invalid numbers</li>
+</ul>
+<h4 id="organizational-data">Organizational Data<a class="headerlink" href="#organizational-data" title="Permanent link">&para;</a></h4>
+<ul>
+<li><strong>Department Names</strong>: Real department names (not sensitive)</li>
+<li><strong>Cost Centers</strong>: Realistic codes but generic</li>
+<li><strong>Employee IDs</strong>: Sequential numbers starting from 25001</li>
+<li><strong>Manager Relationships</strong>: Realistic hierarchy for testing</li>
+</ul>
+<hr />
+<h2 id="organizational-structure">Organizational Structure<a class="headerlink" href="#organizational-structure" title="Permanent link">&para;</a></h2>
+<h3 id="manager-relationships">Manager Relationships<a class="headerlink" href="#manager-relationships" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>ok1</strong> (Ola Nordmann) is the manager for all other users</li>
+<li>All users report to ok1 via managerId and manager fields</li>
+<li>This creates a realistic organizational hierarchy for testing</li>
+</ul>
+<h3 id="department-structure">Department Structure<a class="headerlink" href="#department-structure" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>HQ Departments</strong>: 9 departments covering all major functions</li>
+<li><strong>District Offices</strong>: 2 districts representing regional operations</li>
+<li><strong>Cost Centers</strong>: Unique codes for each department/unit</li>
+<li><strong>Geographic Distribution</strong>: Oslo (HQ), Drammen (Buskerud), Bergen (Hordaland)</li>
+</ul>
+<h3 id="group-assignment-logic">Group Assignment Logic<a class="headerlink" href="#group-assignment-logic" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>HQ Group</strong>: Users with <code>state</code> or <code>vi_StateProvince</code> = "Nasjonalkontoret"</li>
+<li><strong>Distrikt Group</strong>: Users with <code>state</code> or <code>vi_StateProvince</code> = "Distrikt"</li>
+<li><strong>Alternative Logic</strong>: Infer from <code>vi_departmentID</code> prefix: <code>N...</code> → <code>HQ</code>, <code>D...</code> → <code>Distrikt</code></li>
+</ul>
+<hr />
+<h2 id="blueprint-implementation">Blueprint Implementation<a class="headerlink" href="#blueprint-implementation" title="Permanent link">&para;</a></h2>
+<h3 id="blueprint-structure">Blueprint Structure<a class="headerlink" href="#blueprint-structure" title="Permanent link">&para;</a></h3>
+<p>The Authentik blueprint follows this structure:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v1</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ConfigMap</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="nt">metadata</span><span class="p">:</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">users-groups-test-blueprint</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">authentik</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">  </span><span class="nt">labels</span><span class="p">:</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">    </span><span class="nt">app.kubernetes.io/name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">authentik</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">    </span><span class="nt">app.kubernetes.io/component</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">blueprint</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">    </span><span class="nt">blueprints.goauthentik.io/instantiate</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;true&quot;</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="nt">data</span><span class="p">:</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="w">  </span><span class="nt">users-groups-test-setup.yaml</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="w">    </span><span class="no"># yaml-language-server: $schema=https://goauthentik.io/blueprints/schema.json</span>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="w">    </span><span class="no">version: 1</span>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="w">    </span><span class="no">metadata:</span>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="w">      </span><span class="no">name: &quot;Complete Okta-Compatible Test Users - Urbalurba Development Environment&quot;</span>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="w">      </span><span class="no">labels:</span>
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="w">        </span><span class="no">blueprints.goauthentik.io/instantiate: &quot;true&quot;</span>
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a><span class="w">    </span><span class="no">context: {}</span>
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a><span class="w">    </span><span class="no">entries:</span>
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a><span class="w">      </span><span class="no"># Groups first</span>
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a><span class="w">      </span><span class="no">- model: authentik_core.group</span>
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a><span class="w">        </span><span class="no">state: present</span>
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a><span class="w">        </span><span class="no">identifiers:</span>
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a><span class="w">          </span><span class="no">name: &quot;HQ&quot;</span>
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a><span class="w">        </span><span class="no">attrs:</span>
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a><span class="w">          </span><span class="no">name: &quot;HQ&quot;</span>
+<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a><span class="w">          </span><span class="no">is_superuser: false</span>
+<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a><span class="w">          </span><span class="no">attributes:</span>
+<a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a><span class="w">            </span><span class="no">type: &quot;org_group&quot;</span>
+<a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a><span class="w">            </span><span class="no">scope: &quot;hq&quot;</span>
+<a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a>
+<a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a><span class="w">      </span><span class="no">- model: authentik_core.group</span>
+<a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a><span class="w">        </span><span class="no">state: present</span>
+<a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a><span class="w">        </span><span class="no">identifiers:</span>
+<a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a><span class="w">          </span><span class="no">name: &quot;Distrikt&quot;</span>
+<a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a><span class="w">        </span><span class="no">attrs:</span>
+<a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a><span class="w">          </span><span class="no">name: &quot;Distrikt&quot;</span>
+<a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a><span class="w">          </span><span class="no">is_superuser: false</span>
+<a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a><span class="w">          </span><span class="no">attributes:</span>
+<a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a><span class="w">            </span><span class="no">type: &quot;org_group&quot;</span>
+<a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a><span class="w">            </span><span class="no">scope: &quot;district&quot;</span>
+<a id="__codelineno-0-44" name="__codelineno-0-44" href="#__codelineno-0-44"></a>
+<a id="__codelineno-0-45" name="__codelineno-0-45" href="#__codelineno-0-45"></a><span class="w">      </span><span class="no"># User entries go here</span>
+</code></pre></div>
+<h3 id="field-mapping-rules">Field Mapping Rules<a class="headerlink" href="#field-mapping-rules" title="Permanent link">&para;</a></h3>
+<h4 id="core-authentik-fields-direct-mapping">Core Authentik Fields (Direct Mapping)<a class="headerlink" href="#core-authentik-fields-direct-mapping" title="Permanent link">&para;</a></h4>
+<ul>
+<li><code>username</code> → <code>username</code></li>
+<li><code>email</code> → <code>email</code></li>
+<li><code>name</code> → <code>name</code></li>
+<li><code>password</code> → <code>password</code> (always "Password123")</li>
+<li><code>is_active</code> → <code>is_active</code> (always true)</li>
+</ul>
+<h4 id="custom-attributes-all-other-fields">Custom Attributes (All Other Fields)<a class="headerlink" href="#custom-attributes-all-other-fields" title="Permanent link">&para;</a></h4>
+<p>All other fields from the specification go into the <code>attributes</code> section:
+- <code>department</code> → <code>attributes.department</code>
+- <code>vi_department</code> → <code>attributes.vi_department</code>
+- <code>employeeNumber</code> → <code>attributes.employeeNumber</code>
+- <code>samAccountName</code> → <code>attributes.samAccountName</code>
+- <code>managerId</code> → <code>attributes.managerId</code>
+- <code>manager</code> → <code>attributes.manager</code>
+- <code>ManagerdisplayName</code> → <code>attributes.ManagerdisplayName</code>
+- <code>isEmployee</code> → <code>attributes.isEmployee</code>
+- <code>isVolunteer</code> → <code>attributes.isVolunteer</code>
+- <code>u_start_date</code> → <code>attributes.u_start_date</code>
+- <code>u_end_date</code> → <code>attributes.u_end_date</code>
+- <code>mobilePhone</code> → <code>attributes.mobilePhone</code>
+- <code>secondEmail</code> → <code>attributes.secondEmail</code>
+- <code>bankid_birthdate</code> → <code>attributes.bankid_birthdate</code>
+- <code>bankid_nnin_altsub</code> → <code>attributes.bankid_nnin_altsub</code>
+- <code>bankid_altsub</code> → <code>attributes.bankid_altsub</code>
+- <code>bankid_verification_timestamp</code> → <code>attributes.bankid_verification_timestamp</code>
+- <code>bankid_user_verified</code> → <code>attributes.bankid_user_verified</code>
+- <code>bankid_sub</code> → <code>attributes.bankid_sub</code>
+- <code>bankid_firstname</code> → <code>attributes.bankid_firstname</code>
+- <code>bankid_lastname</code> → <code>attributes.bankid_lastname</code>
+- <code>AgressoDomainUser</code> → <code>attributes.AgressoDomainUser</code>
+- <code>RelationNumber</code> → <code>attributes.RelationNumber</code>
+- <code>Azure_lastNonInteractiveSignInDateTime</code> → <code>attributes.Azure_lastNonInteractiveSignInDateTime</code>
+- <code>ServiceNowManagerIdExternalID</code> → <code>attributes.ServiceNowManagerIdExternalID</code>
+- <code>extensionAttribute7</code> → <code>attributes.extensionAttribute7</code>
+- <code>u_crm_guid</code> → <code>attributes.u_crm_guid</code>
+- <code>streetAddress</code> → <code>attributes.streetAddress</code>
+- <code>city</code> → <code>attributes.city</code>
+- <code>zipCode</code> → <code>attributes.zipCode</code>
+- <code>state</code> → <code>attributes.state</code>
+- <code>deliveryOffice</code> → <code>attributes.deliveryOffice</code>
+- <code>division</code> → <code>attributes.division</code>
+- <code>title</code> → <code>attributes.title</code>
+- <code>vi_employeeform</code> → <code>attributes.vi_employeeform</code>
+- <code>vi_departmentID</code> → <code>attributes.vi_departmentID</code>
+- <code>vi_unitname</code> → <code>attributes.vi_unitname</code>
+- <code>vi_unitID</code> → <code>attributes.vi_unitID</code>
+- <code>costCenter</code> → <code>attributes.costCenter</code>
+- <code>vi_Locale</code> → <code>attributes.vi_Locale</code>
+- <code>vi_StateProvince</code> → <code>attributes.vi_StateProvince</code>
+- <code>vi_position</code> → <code>attributes.vi_position</code></p>
+<h3 id="complete-user-entry-example">Complete User Entry Example<a class="headerlink" href="#complete-user-entry-example" title="Permanent link">&para;</a></h3>
+<p>Here's a complete example for user <code>ok1</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">authentik_core.user</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="nt">state</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">present</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span><span class="nt">identifiers</span><span class="p">:</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">    </span><span class="nt">username</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;ok1&quot;</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">  </span><span class="nt">attrs</span><span class="p">:</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">    </span><span class="nt">username</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;ok1&quot;</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Ola</span><span class="nv"> </span><span class="s">Nordmann&quot;</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">    </span><span class="nt">email</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;ok1@urbalurba.no&quot;</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">    </span><span class="nt">password</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Password123&quot;</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="w">    </span><span class="nt">is_active</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="w">    </span><span class="nt">attributes</span><span class="p">:</span>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="w">      </span><span class="nt">department</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Økonomi</span><span class="nv"> </span><span class="s">og</span><span class="nv"> </span><span class="s">administrasjon&quot;</span>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="w">      </span><span class="nt">vi_department</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Økonomi</span><span class="nv"> </span><span class="s">og</span><span class="nv"> </span><span class="s">administrasjon&quot;</span>
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="w">      </span><span class="nt">vi_departmentID</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;N750&quot;</span>
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="w">      </span><span class="nt">vi_unitname</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Økonomi</span><span class="nv"> </span><span class="s">og</span><span class="nv"> </span><span class="s">administrasjon&quot;</span>
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="w">      </span><span class="nt">vi_unitID</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;#5421000#N750#N750#&quot;</span>
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a><span class="w">      </span><span class="nt">costCenter</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;N750&quot;</span>
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a><span class="w">      </span><span class="nt">vi_Locale</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Oslo&quot;</span>
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a><span class="w">      </span><span class="nt">vi_StateProvince</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Nasjonalkontoret&quot;</span>
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a><span class="w">      </span><span class="nt">vi_position</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Økonomi-</span><span class="nv"> </span><span class="s">og</span><span class="nv"> </span><span class="s">administrasjonsmedarbeider&quot;</span>
+<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a><span class="w">      </span><span class="nt">vi_employeeform</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;1</span><span class="nv"> </span><span class="s">Fast</span><span class="nv"> </span><span class="s">ansatt&quot;</span>
+<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a><span class="w">      </span><span class="nt">employeeNumber</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;25001&quot;</span>
+<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a><span class="w">      </span><span class="nt">samAccountName</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;105010OK1&quot;</span>
+<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a><span class="w">      </span><span class="nt">managerId</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;105010MGR1&quot;</span>
+<a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a><span class="w">      </span><span class="nt">manager</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;manager1@urbalurba.no&quot;</span>
+<a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a><span class="w">      </span><span class="nt">ManagerdisplayName</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Manager</span><span class="nv"> </span><span class="s">Person&quot;</span>
+<a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a><span class="w">      </span><span class="nt">isEmployee</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;true&quot;</span>
+<a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a><span class="w">      </span><span class="nt">isVolunteer</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;false&quot;</span>
+<a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a><span class="w">      </span><span class="nt">u_start_date</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;01/01/2020&quot;</span>
+<a id="__codelineno-1-30" name="__codelineno-1-30" href="#__codelineno-1-30"></a><span class="w">      </span><span class="nt">u_end_date</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;&quot;</span>
+<a id="__codelineno-1-31" name="__codelineno-1-31" href="#__codelineno-1-31"></a><span class="w">      </span><span class="nt">mobilePhone</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;+4790012345&quot;</span>
+<a id="__codelineno-1-32" name="__codelineno-1-32" href="#__codelineno-1-32"></a><span class="w">      </span><span class="nt">secondEmail</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;ola.nordmann@example.no&quot;</span>
+<a id="__codelineno-1-33" name="__codelineno-1-33" href="#__codelineno-1-33"></a><span class="w">      </span><span class="nt">bankid_birthdate</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;80-01-15&quot;</span>
+<a id="__codelineno-1-34" name="__codelineno-1-34" href="#__codelineno-1-34"></a><span class="w">      </span><span class="nt">bankid_nnin_altsub</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;15018012345&quot;</span>
+<a id="__codelineno-1-35" name="__codelineno-1-35" href="#__codelineno-1-35"></a><span class="w">      </span><span class="nt">bankid_altsub</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Pass&quot;</span>
+<a id="__codelineno-1-36" name="__codelineno-1-36" href="#__codelineno-1-36"></a><span class="w">      </span><span class="nt">bankid_verification_timestamp</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;2020-01-01T09:00:00&quot;</span>
+<a id="__codelineno-1-37" name="__codelineno-1-37" href="#__codelineno-1-37"></a><span class="w">      </span><span class="nt">bankid_user_verified</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;true&quot;</span>
+<a id="__codelineno-1-38" name="__codelineno-1-38" href="#__codelineno-1-38"></a><span class="w">      </span><span class="nt">bankid_sub</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;12345678-1234-1234-1234-123456789012&quot;</span>
+<a id="__codelineno-1-39" name="__codelineno-1-39" href="#__codelineno-1-39"></a><span class="w">      </span><span class="nt">bankid_firstname</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Ola&quot;</span>
+<a id="__codelineno-1-40" name="__codelineno-1-40" href="#__codelineno-1-40"></a><span class="w">      </span><span class="nt">bankid_lastname</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Nordmann&quot;</span>
+<a id="__codelineno-1-41" name="__codelineno-1-41" href="#__codelineno-1-41"></a><span class="w">      </span><span class="nt">AgressoDomainUser</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Z94\\105010OK1&quot;</span>
+<a id="__codelineno-1-42" name="__codelineno-1-42" href="#__codelineno-1-42"></a><span class="w">      </span><span class="nt">RelationNumber</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;105010OK1&quot;</span>
+<a id="__codelineno-1-43" name="__codelineno-1-43" href="#__codelineno-1-43"></a><span class="w">      </span><span class="nt">Azure_lastNonInteractiveSignInDateTime</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;2024-01-15T08:30:00Z&quot;</span>
+<a id="__codelineno-1-44" name="__codelineno-1-44" href="#__codelineno-1-44"></a><span class="w">      </span><span class="nt">ServiceNowManagerIdExternalID</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;d1b50bf41ba56690825da711604bcbf2&quot;</span>
+<a id="__codelineno-1-45" name="__codelineno-1-45" href="#__codelineno-1-45"></a><span class="w">      </span><span class="nt">extensionAttribute7</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;5207a9ec-a6bf-ec11-8117-001dd8b74416&quot;</span>
+<a id="__codelineno-1-46" name="__codelineno-1-46" href="#__codelineno-1-46"></a><span class="w">      </span><span class="nt">u_crm_guid</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;bb0a469d-905c-ef11-bfe3-0022489bed2b&quot;</span>
+<a id="__codelineno-1-47" name="__codelineno-1-47" href="#__codelineno-1-47"></a><span class="w">      </span><span class="nt">streetAddress</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Storgata</span><span class="nv"> </span><span class="s">1&quot;</span>
+<a id="__codelineno-1-48" name="__codelineno-1-48" href="#__codelineno-1-48"></a><span class="w">      </span><span class="nt">city</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Oslo&quot;</span>
+<a id="__codelineno-1-49" name="__codelineno-1-49" href="#__codelineno-1-49"></a><span class="w">      </span><span class="nt">zipCode</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;0155&quot;</span>
+<a id="__codelineno-1-50" name="__codelineno-1-50" href="#__codelineno-1-50"></a><span class="w">      </span><span class="nt">state</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Nasjonalkontoret&quot;</span>
+<a id="__codelineno-1-51" name="__codelineno-1-51" href="#__codelineno-1-51"></a><span class="w">      </span><span class="nt">deliveryOffice</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;RK</span><span class="nv"> </span><span class="s">Hovedkontor&quot;</span>
+<a id="__codelineno-1-52" name="__codelineno-1-52" href="#__codelineno-1-52"></a><span class="w">      </span><span class="nt">division</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;105010-001</span><span class="nv"> </span><span class="s">-</span><span class="nv"> </span><span class="s">RK</span><span class="nv"> </span><span class="s">Hovedkontor&quot;</span>
+<a id="__codelineno-1-53" name="__codelineno-1-53" href="#__codelineno-1-53"></a><span class="w">      </span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Økonomi-</span><span class="nv"> </span><span class="s">og</span><span class="nv"> </span><span class="s">administrasjonsmedarbeider&quot;</span>
+<a id="__codelineno-1-54" name="__codelineno-1-54" href="#__codelineno-1-54"></a><span class="w">    </span><span class="nt">groups</span><span class="p">:</span>
+<a id="__codelineno-1-55" name="__codelineno-1-55" href="#__codelineno-1-55"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="kt">!Find</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">authentik_core.group</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">name</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;HQ&quot;</span><span class="p p-Indicator">]]</span>
+</code></pre></div>
+<h3 id="data-type-handling">Data Type Handling<a class="headerlink" href="#data-type-handling" title="Permanent link">&para;</a></h3>
+<h4 id="string-values">String Values<a class="headerlink" href="#string-values" title="Permanent link">&para;</a></h4>
+<p>Most fields are strings and should be quoted:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">attributes</span><span class="p">:</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="nt">department</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Økonomi</span><span class="nv"> </span><span class="s">og</span><span class="nv"> </span><span class="s">administrasjon&quot;</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span><span class="nt">employeeNumber</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;25001&quot;</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span><span class="nt">isEmployee</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;true&quot;</span>
+</code></pre></div></p>
+<h4 id="boolean-values">Boolean Values<a class="headerlink" href="#boolean-values" title="Permanent link">&para;</a></h4>
+<p>Boolean fields should be strings in Authentik:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">attributes</span><span class="p">:</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="nt">isEmployee</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;true&quot;</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">  </span><span class="nt">isVolunteer</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;false&quot;</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">  </span><span class="nt">bankid_user_verified</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;true&quot;</span>
+</code></pre></div></p>
+<h4 id="empty-values">Empty Values<a class="headerlink" href="#empty-values" title="Permanent link">&para;</a></h4>
+<p>For empty fields, use empty strings:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nt">attributes</span><span class="p">:</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span><span class="nt">u_end_date</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;&quot;</span>
+</code></pre></div></p>
+<hr />
+<h2 id="deployment-guide">Deployment Guide<a class="headerlink" href="#deployment-guide" title="Permanent link">&para;</a></h2>
+<h3 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Authentik namespace must exist</strong></li>
+<li><strong>Blueprint ConfigMaps must be applied BEFORE deploying Authentik with Helm</strong></li>
+<li><strong>Proper labels must be set for automatic discovery</strong></li>
+<li><strong>Blueprint names must be listed in Helm values</strong> under <code>blueprints.configMaps</code></li>
+</ol>
+<h3 id="helm-configuration">Helm Configuration<a class="headerlink" href="#helm-configuration" title="Permanent link">&para;</a></h3>
+<p>Add the following to your Authentik Helm values file:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1"># Blueprint system configuration</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="nt">blueprints</span><span class="p">:</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">  </span><span class="c1"># List of ConfigMaps containing blueprints</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">  </span><span class="c1"># Only keys ending with .yaml will be discovered and applied</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">  </span><span class="nt">configMaps</span><span class="p">:</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;whoami-forward-auth-blueprint&quot;</span><span class="w">        </span><span class="c1"># Proxy authentication setup</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;openwebui-authentik-blueprint&quot;</span><span class="w">         </span><span class="c1"># OAuth2/OIDC application setup</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;users-groups-test-blueprint&quot;</span><span class="w">           </span><span class="c1"># Test blueprint for users and groups</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="w">    </span><span class="c1"># Add your blueprint ConfigMap names here</span>
+</code></pre></div>
+<h3 id="complete-deployment-workflow">Complete Deployment Workflow<a class="headerlink" href="#complete-deployment-workflow" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># 1. Deploy blueprint ConfigMaps FIRST (before Authentik)</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>manifests/074-authentik-users-groups-blueprint.yaml
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="c1"># 2. Verify ConfigMaps are created</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>kubectl<span class="w"> </span>get<span class="w"> </span>configmaps<span class="w"> </span>-n<span class="w"> </span>authentik<span class="w"> </span>-l<span class="w"> </span>app.kubernetes.io/component<span class="o">=</span>blueprint
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="c1"># 3. Deploy/upgrade Authentik with Helm (with blueprint references in values)</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class="w"> </span>authentik<span class="w"> </span>authentik/authentik<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="w">  </span>-n<span class="w"> </span>authentik<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="w">  </span>-f<span class="w"> </span>values-authentik.yaml<span class="w">  </span><span class="c1"># Contains the blueprints.configMaps configuration</span>
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a><span class="c1"># 4. Monitor blueprint application</span>
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>kubectl<span class="w"> </span>logs<span class="w"> </span>-n<span class="w"> </span>authentik<span class="w"> </span>deployment/authentik-server<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span>blueprint
+</code></pre></div>
+<h3 id="blueprint-discovery-process">Blueprint Discovery Process<a class="headerlink" href="#blueprint-discovery-process" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>ConfigMap Creation</strong>: Blueprint ConfigMaps are deployed to the <code>authentik</code> namespace</li>
+<li><strong>Helm Reference</strong>: ConfigMap names are listed in <code>blueprints.configMaps</code> in Helm values</li>
+<li><strong>Authentik Startup</strong>: When Authentik starts, it reads the configured ConfigMap list</li>
+<li><strong>Blueprint Loading</strong>: Authentik loads and applies blueprints from the referenced ConfigMaps</li>
+<li><strong>Automatic Reapplication</strong>: Changes to ConfigMaps trigger reapplication (monitored every 60 minutes)</li>
+</ol>
+<hr />
+<h2 id="testing-and-validation">Testing and Validation<a class="headerlink" href="#testing-and-validation" title="Permanent link">&para;</a></h2>
+<h3 id="validation-checklist">Validation Checklist<a class="headerlink" href="#validation-checklist" title="Permanent link">&para;</a></h3>
+<p>Before finalizing the blueprint, verify:
+- [ ] All 11 users are included
+- [ ] All fields from specification are mapped
+- [ ] YAML syntax is valid
+- [ ] Authentik blueprint format is correct
+- [ ] All string values are properly quoted
+- [ ] Boolean values are strings ("true"/"false")
+- [ ] Empty fields use empty strings ("")
+- [ ] Metadata and labels are correct
+- [ ] Blueprint instantiation label is present</p>
+<h3 id="testing-the-blueprint">Testing the Blueprint<a class="headerlink" href="#testing-the-blueprint" title="Permanent link">&para;</a></h3>
+<p>After creating the blueprint:</p>
+<ol>
+<li><strong>Apply to cluster</strong>: <code>kubectl apply -f manifests/074-authentik-users-groups-blueprint.yaml</code></li>
+<li><strong>Restart Authentik</strong> (to pick up changes immediately): <code>kubectl rollout restart deployment/authentik-server -n authentik</code></li>
+<li><strong>Check Authentik</strong>: Verify users appear in Authentik admin interface</li>
+<li><strong>Test authentication</strong>: Try logging in with test credentials</li>
+<li><strong>Verify fields</strong>: Check that all custom attributes are present</li>
+<li><strong>Test applications</strong>: Verify integration with OpenWebUI and other apps</li>
+</ol>
+<p><strong>Note</strong>: Authentik automatically detects blueprint changes within 60 minutes, but restarting ensures immediate application of changes.</p>
+<h3 id="usage-notes">Usage Notes<a class="headerlink" href="#usage-notes" title="Permanent link">&para;</a></h3>
+<h4 id="for-developers">For Developers<a class="headerlink" href="#for-developers" title="Permanent link">&para;</a></h4>
+<ul>
+<li>All users have password "Password123" for easy testing</li>
+<li>Users cover all major organizational scenarios</li>
+<li>Field values are realistic but anonymous</li>
+<li>Easy to modify for specific test scenarios</li>
+</ul>
+<h4 id="for-testing">For Testing<a class="headerlink" href="#for-testing" title="Permanent link">&para;</a></h4>
+<ul>
+<li><strong>Authentication</strong>: All users can log in with their credentials</li>
+<li><strong>Authorization</strong>: Manager relationships can be tested</li>
+<li><strong>Integration</strong>: All Okta fields are present for app testing</li>
+<li><strong>Edge Cases</strong>: Some fields are empty to test null handling</li>
+</ul>
+<h4 id="for-maintenance">For Maintenance<a class="headerlink" href="#for-maintenance" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Users are created once when Authentik starts</li>
+<li>No updates needed after initial deployment</li>
+<li>Easy to add more users following the same pattern</li>
+<li>Clear documentation for future modifications</li>
+</ul>
+<hr />
+<h2 id="maintenance-and-updates">Maintenance and Updates<a class="headerlink" href="#maintenance-and-updates" title="Permanent link">&para;</a></h2>
+<h3 id="adding-new-users">Adding New Users<a class="headerlink" href="#adding-new-users" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Add user to specification table</li>
+<li>Follow conversion process for new user</li>
+<li>Add user entry to blueprint</li>
+<li>Reapply blueprint to cluster</li>
+</ol>
+<h3 id="modifying-existing-users">Modifying Existing Users<a class="headerlink" href="#modifying-existing-users" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Update user data in specification</li>
+<li>Regenerate user entry in blueprint</li>
+<li>Reapply blueprint to cluster</li>
+</ol>
+<h3 id="field-changes">Field Changes<a class="headerlink" href="#field-changes" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Update field mapping rules if needed</li>
+<li>Regenerate entire blueprint</li>
+<li>Reapply blueprint to cluster</li>
+</ol>
+<h3 id="blueprint-updates-and-redeployment">Blueprint Updates and Redeployment<a class="headerlink" href="#blueprint-updates-and-redeployment" title="Permanent link">&para;</a></h3>
+<p>When updating blueprints:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c1"># Update blueprint ConfigMaps</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>manifests/074-authentik-users-groups-blueprint.yaml
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="c1"># Authentik automatically detects changes (within 60 minutes)</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="c1"># Or force immediate reapplication:</span>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>kubectl<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deployment/authentik-server<span class="w"> </span>-n<span class="w"> </span>authentik
+</code></pre></div>
+<p><strong>Note</strong>: New blueprints require updating Helm values and redeploying Authentik, but existing blueprint changes are automatically detected.</p>
+<hr />
+<h2 id="implementation-notes">Implementation Notes<a class="headerlink" href="#implementation-notes" title="Permanent link">&para;</a></h2>
+<p>This specification will be used to create the Authentik blueprint file <code>manifests/074-authentik-users-groups-blueprint.yaml</code> which will:</p>
+<ol>
+<li><strong>Create all 11 users</strong> with complete field mappings</li>
+<li><strong>Set up realistic organizational relationships</strong> with manager hierarchies</li>
+<li><strong>Provide comprehensive test data</strong> for development</li>
+<li><strong>Maintain data anonymity</strong> while preserving structure</li>
+<li><strong>Support all applications</strong> that depend on Okta field structure</li>
+</ol>
+<p>The blueprint ensures that the user specification is accurately converted into a functional Authentik configuration that provides comprehensive test data for development environments. The structured approach guarantees consistency and completeness while maintaining the flexibility to modify and extend the test data as needed.</p>
+<hr />
+<h2 id="resources">Resources<a class="headerlink" href="#resources" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="docs/package-auth-authentik-blueprints-syntax.md">Authentik Blueprints Manual</a></li>
+<li><a href="terchris/okta/okta-fields.md">Okta Fields Reference</a></li>
+<li><a href="terchris/okta/user-table.md">User Table Specification</a></li>
+<li><a href="terchris/okta/howto-convert-userdatatblueprint.md">Blueprint Conversion Guide</a></li>
+<li><a href="https://docs.goauthentik.io/customize/blueprints/">Official Authentik Blueprint Documentation</a></li>
+<li><a href="https://goauthentik.io/blueprints/schema.json">Blueprint Schema</a></li>
+</ul>
+<hr />
+<p><em>Last updated: January 2025</em></p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/terchris/urbalurba-infrastructure" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.expand", "navigation.top", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate"], "search": "../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.e71a0d61.min.js"></script>
+      
+    
+  </body>
+</html>
