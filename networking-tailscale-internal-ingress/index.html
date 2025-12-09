@@ -10,13 +10,9 @@
       
       
       
-        <link rel="canonical" href="https://terchris.github.io/urbalurba-infrastructure/networking-readme/">
+        <link rel="canonical" href="https://terchris.github.io/urbalurba-infrastructure/networking-tailscale-internal-ingress/">
       
       
-        <link rel="prev" href="../package-search-elasticsearch/">
-      
-      
-        <link rel="next" href="../networking-tailscale-setup/">
       
       
         
@@ -27,7 +23,7 @@
     
     
       
-        <title>Overview - Urbalurba Infrastructure</title>
+        <title>Tailscale Internal Access Setup Guide - Urbalurba Infrastructure</title>
       
     
     
@@ -78,7 +74,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#networking-overview" class="md-skip">
+        <a href="#tailscale-internal-access-setup-guide" class="md-skip">
           Skip to content
         </a>
       
@@ -114,7 +110,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Overview
+              Tailscale Internal Access Setup Guide
             
           </span>
         </div>
@@ -2599,8 +2595,6 @@
       
   
   
-    
-  
   
   
     
@@ -2613,11 +2607,13 @@
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
         
           
           <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
@@ -2638,7 +2634,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
@@ -2653,37 +2649,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Overview
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../networking-readme/" class="md-nav__link">
         
   
   
@@ -2699,359 +2668,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#quick-start-connect-your-cluster-to-the-internet" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        🚀 Quick Start - Connect Your Cluster to the Internet
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="🚀 Quick Start - Connect Your Cluster to the Internet">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#option-a-tailscale-funnel-quick-free" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Option A: Tailscale Funnel 🔵 (Quick &amp; Free)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#option-b-cloudflare-tunnel-professional" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Option B: Cloudflare Tunnel ⚡ (Professional)
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#introduction" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Introduction
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#internet-access-options-tailscale-vs-cloudflare" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        🌐 Internet Access Options: Tailscale vs Cloudflare
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="🌐 Internet Access Options: Tailscale vs Cloudflare">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#your-current-status" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Your Current Status ✅
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#which-option-should-you-choose" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        🤔 Which Option Should You Choose?
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#choose-tailscale-funnel-if-you-want" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Choose Tailscale Funnel if you want:
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#choose-cloudflare-tunnel-if-you-want" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Choose Cloudflare Tunnel if you want:
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#quick-comparison" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        📊 Quick Comparison
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#can-you-use-both" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        🚀 Can You Use Both?
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#recommended-decision-path" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        🎯 Recommended Decision Path
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="🎯 Recommended Decision Path">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#quick-decision-questions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Quick Decision Questions:
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#architecture-overview" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        🏗️ Architecture Overview
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="🏗️ Architecture Overview">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#microsoft-cloud-adoption-framework-caf-principles" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Microsoft Cloud Adoption Framework (CAF) principles
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#dual-tunnel-architecture-benefits" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Dual-Tunnel Architecture Benefits
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#external-access-with-cloudflare" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        External Access with Cloudflare
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#internet-access-with-tailscale-funnel" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Internet Access with Tailscale Funnel
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#internal-networking-with-tailscale-vpn" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Internal Networking with Tailscale VPN
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#high-level-architecture-for-internet-access" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        High-Level Architecture for Internet Access
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#high-level-architecture-for-devops-access" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        High-Level Architecture for DevOps Access
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#technology-choices-for-optimal-security-and-performance" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Technology Choices for Optimal Security and Performance
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Technology Choices for Optimal Security and Performance">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#why-cloudflare" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Why Cloudflare?
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#why-tailscale" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Why Tailscale?
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#next-steps" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Next Steps
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Next Steps">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#ready-to-connect-to-the-internet" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Ready to Connect to the Internet?
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#internal-developer-access-sovereignsky" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Internal Developer Access (SovereignSky)
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -3862,22 +3478,33 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#quick-start-connect-your-cluster-to-the-internet" class="md-nav__link">
+  <a href="#overview" class="md-nav__link">
     <span class="md-ellipsis">
       
-        🚀 Quick Start - Connect Your Cluster to the Internet
+        Overview
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="🚀 Quick Start - Connect Your Cluster to the Internet">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architecture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Architecture">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#option-a-tailscale-funnel-quick-free" class="md-nav__link">
+  <a href="#how-it-works" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Option A: Tailscale Funnel 🔵 (Quick &amp; Free)
+        How It Works
       
     </span>
   </a>
@@ -3885,10 +3512,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#option-b-cloudflare-tunnel-professional" class="md-nav__link">
+  <a href="#tailscale-devices-per-cluster" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Option B: Cloudflare Tunnel ⚡ (Professional)
+        Tailscale Devices Per Cluster
       
     </span>
   </a>
@@ -3901,33 +3528,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#introduction" class="md-nav__link">
+  <a href="#quick-start" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Introduction
+        Quick Start
       
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#internet-access-options-tailscale-vs-cloudflare" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        🌐 Internet Access Options: Tailscale vs Cloudflare
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="🌐 Internet Access Options: Tailscale vs Cloudflare">
+    <nav class="md-nav" aria-label="Quick Start">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#your-current-status" class="md-nav__link">
+  <a href="#step-1-configure-secrets" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Your Current Status ✅
+        Step 1: Configure Secrets
       
     </span>
   </a>
@@ -3935,10 +3551,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#which-option-should-you-choose" class="md-nav__link">
+  <a href="#step-2-deploy-internal-ingress" class="md-nav__link">
     <span class="md-ellipsis">
       
-        🤔 Which Option Should You Choose?
+        Step 2: Deploy Internal Ingress
       
     </span>
   </a>
@@ -3946,143 +3562,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#choose-tailscale-funnel-if-you-want" class="md-nav__link">
+  <a href="#step-3-verify-deployment" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Choose Tailscale Funnel if you want:
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#choose-cloudflare-tunnel-if-you-want" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Choose Cloudflare Tunnel if you want:
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#quick-comparison" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        📊 Quick Comparison
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#can-you-use-both" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        🚀 Can You Use Both?
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#recommended-decision-path" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        🎯 Recommended Decision Path
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="🎯 Recommended Decision Path">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#quick-decision-questions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Quick Decision Questions:
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#architecture-overview" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        🏗️ Architecture Overview
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="🏗️ Architecture Overview">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#microsoft-cloud-adoption-framework-caf-principles" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Microsoft Cloud Adoption Framework (CAF) principles
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#dual-tunnel-architecture-benefits" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Dual-Tunnel Architecture Benefits
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#external-access-with-cloudflare" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        External Access with Cloudflare
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#internet-access-with-tailscale-funnel" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Internet Access with Tailscale Funnel
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#internal-networking-with-tailscale-vpn" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Internal Networking with Tailscale VPN
+        Step 3: Verify Deployment
       
     </span>
   </a>
@@ -4095,44 +3578,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#high-level-architecture-for-internet-access" class="md-nav__link">
+  <a href="#configuration-files" class="md-nav__link">
     <span class="md-ellipsis">
       
-        High-Level Architecture for Internet Access
+        Configuration Files
       
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#high-level-architecture-for-devops-access" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        High-Level Architecture for DevOps Access
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#technology-choices-for-optimal-security-and-performance" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Technology Choices for Optimal Security and Performance
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Technology Choices for Optimal Security and Performance">
+    <nav class="md-nav" aria-label="Configuration Files">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#why-cloudflare" class="md-nav__link">
+  <a href="#manifests" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Why Cloudflare?
+        Manifests
       
     </span>
   </a>
@@ -4140,10 +3601,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#why-tailscale" class="md-nav__link">
+  <a href="#ansible-playbooks" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Why Tailscale?
+        Ansible Playbooks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#setup-scripts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Setup Scripts
       
     </span>
   </a>
@@ -4156,22 +3628,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#next-steps" class="md-nav__link">
+  <a href="#technical-details" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Next Steps
+        Technical Details
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Next Steps">
+    <nav class="md-nav" aria-label="Technical Details">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#ready-to-connect-to-the-internet" class="md-nav__link">
+  <a href="#why-two-devices" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Ready to Connect to the Internet?
+        Why Two Devices?
       
     </span>
   </a>
@@ -4179,10 +3651,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#internal-developer-access-sovereignsky" class="md-nav__link">
+  <a href="#loadbalancer-service-configuration-key-points" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Internal Developer Access (SovereignSky)
+        LoadBalancer Service Configuration Key Points
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#operator-configuration-key-points" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Operator Configuration Key Points
       
     </span>
   </a>
@@ -4191,6 +3674,139 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#developer-access" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Developer Access
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Developer Access">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#from-sovereignsky-devcontainer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        From SovereignSky Devcontainer
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#direct-tailscale-access" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Direct Tailscale Access
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#removal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Removal
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#comparison-internal-vs-funnel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Comparison: Internal vs Funnel
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#device-not-appearing-in-tailscale-admin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Device Not Appearing in Tailscale Admin
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#connection-refused" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Connection Refused
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wrong-device-name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Wrong Device Name
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#helm-chart-default-behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Helm Chart Default Behavior
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See Also
+      
+    </span>
+  </a>
   
 </li>
       
@@ -4214,373 +3830,346 @@
   
 
 
-<h1 id="networking-overview">Networking Overview<a class="headerlink" href="#networking-overview" title="Permanent link">&para;</a></h1>
-<p><strong>Status</strong>: 🌐 Dual-Tunnel Internet Access Architecture<br />
-<strong>Updated</strong>: September 8, 2025<br />
-<strong>Architecture</strong>: HostRegexp routing with Tailscale + Cloudflare support</p>
-<h2 id="quick-start-connect-your-cluster-to-the-internet">🚀 Quick Start - Connect Your Cluster to the Internet<a class="headerlink" href="#quick-start-connect-your-cluster-to-the-internet" title="Permanent link">&para;</a></h2>
-<p>Your cluster works perfectly on <code>.localhost</code> domains for development. Ready to connect to the internet?</p>
-<p><strong>You have two options</strong> - both are supported by your existing manifests:</p>
-<h3 id="option-a-tailscale-funnel-quick-free">Option A: Tailscale Funnel 🔵 (Quick &amp; Free)<a class="headerlink" href="#option-a-tailscale-funnel-quick-free" title="Permanent link">&para;</a></h3>
+<h1 id="tailscale-internal-access-setup-guide">Tailscale Internal Access Setup Guide<a class="headerlink" href="#tailscale-internal-access-setup-guide" title="Permanent link">&para;</a></h1>
+<p><strong>Purpose</strong>: Internal-only Tailnet access for SovereignSky developers
+<strong>Audience</strong>: Developers needing secure access to cluster services without public internet exposure
+<strong>Time Required</strong>: 5-10 minutes
+<strong>Prerequisites</strong>: Working cluster with Traefik ingress, Tailscale account with OAuth credentials</p>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
+<p>This guide explains how to deploy <strong>internal-only</strong> Tailscale access to your Kubernetes cluster using a LoadBalancer Service. Unlike the Funnel-based setup (see <code>networking-tailscale-setup.md</code>), this deployment:</p>
 <ul>
-<li><strong>Get online in</strong>: 15 minutes</li>
-<li><strong>Cost</strong>: Free </li>
-<li><strong>URLs</strong>: <code>https://whoami.your-device.ts.net</code></li>
-<li><strong>Perfect for</strong>: Personal projects, demos, team development</li>
+<li><strong>NO public internet access</strong> (internal Tailnet only)</li>
+<li><strong>Accessible ONLY from devices on the same Tailnet</strong></li>
+<li><strong>Works with HTTP</strong> (no HTTPS requirement on tailnet)</li>
+<li><strong>Designed for SovereignSky developers</strong> using devcontainers with Tailscale VPN</li>
 </ul>
-<h3 id="option-b-cloudflare-tunnel-professional">Option B: Cloudflare Tunnel ⚡ (Professional)<a class="headerlink" href="#option-b-cloudflare-tunnel-professional" title="Permanent link">&para;</a></h3>
-<ul>
-<li><strong>Get online in</strong>: 45 minutes</li>
-<li><strong>Cost</strong>: ~$10-15/year (domain)</li>
-<li><strong>URLs</strong>: <code>https://whoami.your-domain.com</code></li>
-<li><strong>Perfect for</strong>: Business sites, production apps, custom branding</li>
-</ul>
-<p><strong>👉 <a href="#-internet-access-options-tailscale-vs-cloudflare">Jump to tunnel selection guide</a></strong></p>
-<hr />
-<h2 id="introduction">Introduction<a class="headerlink" href="#introduction" title="Permanent link">&para;</a></h2>
-<p>This document provides a complete guide to:
-* <strong>Internet access options</strong> - Choose between Tailscale Funnel and Cloudflare Tunnel
-* <strong>Architecture overview</strong> - How the dual-tunnel system works
-* <strong>Setup guidance</strong> - Get your services online quickly
-* <strong>DevOps access</strong> - Secure administration with Tailscale VPN</p>
-<hr />
-<h2 id="internet-access-options-tailscale-vs-cloudflare">🌐 Internet Access Options: Tailscale vs Cloudflare<a class="headerlink" href="#internet-access-options-tailscale-vs-cloudflare" title="Permanent link">&para;</a></h2>
-<h3 id="your-current-status">Your Current Status ✅<a class="headerlink" href="#your-current-status" title="Permanent link">&para;</a></h3>
-<p>You have successfully deployed your cluster and everything works on development domains:
-- ✅ <code>http://whoami.localhost</code> - Working great<br />
-- ✅ <code>http://openwebui.localhost</code> - AI chat accessible
-- ✅ <code>http://authentik.localhost</code> - Authentication ready
-- ✅ All services running smoothly</p>
-<p><strong>Next Step</strong>: Connect to the internet so others can access your services.</p>
-<h3 id="which-option-should-you-choose">🤔 Which Option Should You Choose?<a class="headerlink" href="#which-option-should-you-choose" title="Permanent link">&para;</a></h3>
-<h3 id="choose-tailscale-funnel-if-you-want">Choose <strong>Tailscale Funnel</strong> if you want:<a class="headerlink" href="#choose-tailscale-funnel-if-you-want" title="Permanent link">&para;</a></h3>
-<p>✅ <strong>Quick &amp; Free Setup</strong>
-- No domain purchase required
-- Automatic HTTPS certificates<br />
-- Working in 15 minutes</p>
-<p>✅ <strong>Personal/Learning Projects</strong>
-- Perfect for demos and testing
-- Share with friends easily
-- No ongoing domain costs</p>
-<p>✅ <strong>Built-in Security</strong>
-- Only people you invite can access
-- VPN-level security by default
-- Fine-grained access controls</p>
-<p>✅ <strong>Simple Management</strong>
-- One dashboard for everything
-- No DNS configuration needed
-- Automatic updates and renewal</p>
-<p><strong>Best for</strong>: Personal projects, learning, demos, team development, secure internal tools</p>
-<h3 id="choose-cloudflare-tunnel-if-you-want">Choose <strong>Cloudflare Tunnel</strong> if you want:<a class="headerlink" href="#choose-cloudflare-tunnel-if-you-want" title="Permanent link">&para;</a></h3>
-<p>✅ <strong>Professional Domains</strong>
-- Your own custom domain (<code>yourcompany.com</code>)
-- Professional appearance for clients
-- Brand consistency</p>
-<p>✅ <strong>Production-Ready Features</strong>
-- Global CDN and caching
-- DDoS protection included
-- Web Application Firewall (WAF)
-- Analytics and monitoring</p>
-<p>✅ <strong>Public Access</strong>
-- Anyone can access (no VPN needed)
-- Perfect for public-facing services
-- SEO-friendly URLs</p>
-<p>✅ <strong>Scalability</strong>
-- Handle high traffic loads
-- Multiple domains supported
-- Enterprise-grade infrastructure</p>
-<p><strong>Best for</strong>: Business websites, public services, client demos, production applications</p>
-<h3 id="quick-comparison">📊 Quick Comparison<a class="headerlink" href="#quick-comparison" title="Permanent link">&para;</a></h3>
+<h2 id="architecture">Architecture<a class="headerlink" href="#architecture" title="Permanent link">&para;</a></h2>
+<h3 id="how-it-works">How It Works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>SovereignSky Devcontainer (with Tailscale)
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    |
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    v
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>Tailnet (private network)
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    |
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    v
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>k8s-terje (Tailscale LoadBalancer)  &lt;-- internal URL: http://k8s-terje.taile269d.ts.net
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    |
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    v
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>Traefik Ingress Controller
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    |
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>    +-&gt; grafana.sovereignsky.no
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    +-&gt; otel.sovereignsky.no
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>    +-&gt; litellm.sovereignsky.no
+</code></pre></div>
+<h3 id="tailscale-devices-per-cluster">Tailscale Devices Per Cluster<a class="headerlink" href="#tailscale-devices-per-cluster" title="Permanent link">&para;</a></h3>
+<p>Each cluster creates <strong>two devices</strong> in Tailscale Admin Console:</p>
 <table>
 <thead>
 <tr>
-<th>Feature</th>
-<th>Tailscale</th>
-<th>Cloudflare</th>
+<th>Device Name</th>
+<th>Purpose</th>
+<th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><strong>Setup Time</strong></td>
-<td>15 minutes</td>
-<td>45 minutes</td>
+<td><code>k8s-terje-tailscale-operator</code></td>
+<td>Controller</td>
+<td>Manages Tailscale resources in the cluster</td>
 </tr>
 <tr>
-<td><strong>Domain Cost</strong></td>
-<td>Free</td>
-<td>$10-15/year</td>
+<td><code>k8s-terje</code></td>
+<td>LoadBalancer proxy</td>
+<td>Routes HTTP traffic to Traefik</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Multi-cluster naming convention:</strong>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>MacBook cluster:    k8s-terje-tailscale-operator, k8s-terje
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>iMac cluster:       k8s-imac-tailscale-operator, k8s-imac
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>tecmacdev cluster:  k8s-tecmacdev-tailscale-operator, k8s-tecmacdev
+</code></pre></div></p>
+<p>The <code>-tailscale-operator</code> suffix matches the default naming from <a href="https://tailscale.com/kb/1236/kubernetes-operator">Tailscale Kubernetes Operator documentation</a>, making it clear this is the official Tailscale component.</p>
+<h2 id="quick-start">Quick Start<a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h2>
+<h3 id="step-1-configure-secrets">Step 1: Configure Secrets<a class="headerlink" href="#step-1-configure-secrets" title="Permanent link">&para;</a></h3>
+<p>Ensure your <code>00-common-values.env</code> (or Kubernetes secrets) includes:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># Tailscale OAuth credentials (from https://login.tailscale.com/admin/settings/oauth)</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nv">TAILSCALE_CLIENTID</span><span class="o">=</span>k7Gdhr7mdf11CNTRL
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="nv">TAILSCALE_CLIENTSECRET</span><span class="o">=</span>tskey-client-k7Gdhr7mdf11CNTRL-xxxxx
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="c1"># Tailnet info</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="nv">TAILSCALE_TAILNET</span><span class="o">=</span>businessmodel.io
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="nv">TAILSCALE_DOMAIN</span><span class="o">=</span>taile269d.ts.net
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="c1"># Internal hostname - UNIQUE PER CLUSTER</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="nv">TAILSCALE_INTERNAL_HOSTNAME</span><span class="o">=</span>k8s-terje<span class="w">   </span><span class="c1"># k8s-imac for iMac, k8s-tecmacdev for tecmacdev</span>
+</code></pre></div>
+<h3 id="step-2-deploy-internal-ingress">Step 2: Deploy Internal Ingress<a class="headerlink" href="#step-2-deploy-internal-ingress" title="Permanent link">&para;</a></h3>
+<p>From the provision-host container:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1"># Deploy Tailscale internal ingress</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>docker<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>provision-host<span class="w"> </span>ansible-playbook<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">  </span>/mnt/urbalurbadisk/ansible/playbooks/805-deploy-tailscale-internal-ingress.yml
+</code></pre></div>
+<p>Or using the setup script:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>docker<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>provision-host<span class="w"> </span>/mnt/urbalurbadisk/provision-host/kubernetes/network/03-setup-tailscale-internal.sh
+</code></pre></div></p>
+<h3 id="step-3-verify-deployment">Step 3: Verify Deployment<a class="headerlink" href="#step-3-verify-deployment" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1"># Check pods in tailscale namespace</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>tailscale
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="c1"># Expected output:</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="c1"># NAME                                              READY   STATUS</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="c1"># operator-84987b6fc7-xxxxx                         1/1     Running</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="c1"># ts-tailscale-internal-ingress-xxxxx-0             1/1     Running</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="c1"># Check Tailscale Admin Console for devices:</span>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="c1"># - k8s-terje-tailscale-operator</span>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="c1"># - k8s-terje</span>
+</code></pre></div>
+<h2 id="configuration-files">Configuration Files<a class="headerlink" href="#configuration-files" title="Permanent link">&para;</a></h2>
+<h3 id="manifests">Manifests<a class="headerlink" href="#manifests" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>manifests/800-tailscale-operator-config.yaml.j2</code></td>
+<td>Helm values for Tailscale operator (Jinja2 template)</td>
 </tr>
 <tr>
-<td><strong>Custom Domain</strong></td>
+<td><code>manifests/805-tailscale-internal-ingress.yaml.j2</code></td>
+<td>LoadBalancer Service for Tailnet-only access (Jinja2 template)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ansible-playbooks">Ansible Playbooks<a class="headerlink" href="#ansible-playbooks" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ansible/playbooks/805-deploy-tailscale-internal-ingress.yml</code></td>
+<td>Deploy internal ingress</td>
+</tr>
+<tr>
+<td><code>ansible/playbooks/806-remove-tailscale-internal-ingress.yml</code></td>
+<td>Remove internal ingress</td>
+</tr>
+</tbody>
+</table>
+<h3 id="setup-scripts">Setup Scripts<a class="headerlink" href="#setup-scripts" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>provision-host/kubernetes/network/03-setup-tailscale-internal.sh</code></td>
+<td>Setup script</td>
+</tr>
+<tr>
+<td><code>provision-host/kubernetes/network/03-remove-tailscale-internal.sh</code></td>
+<td>Removal script</td>
+</tr>
+</tbody>
+</table>
+<h2 id="technical-details">Technical Details<a class="headerlink" href="#technical-details" title="Permanent link">&para;</a></h2>
+<h3 id="why-two-devices">Why Two Devices?<a class="headerlink" href="#why-two-devices" title="Permanent link">&para;</a></h3>
+<p>The Tailscale Kubernetes Operator <strong>always</strong> registers itself as a device on the Tailnet. This cannot be disabled. Per the <a href="https://tailscale.com/kb/1236/kubernetes-operator">official documentation</a>:</p>
+<blockquote>
+<p>The Tailscale Kubernetes operator creates a tailnet device for itself when deployed.</p>
+</blockquote>
+<p>This is expected behavior, not a bug. Each cluster needs:
+1. <strong>Operator device</strong> - Manages Tailscale resources
+2. <strong>Ingress device</strong> - Routes actual traffic</p>
+<h3 id="loadbalancer-service-configuration-key-points">LoadBalancer Service Configuration Key Points<a class="headerlink" href="#loadbalancer-service-configuration-key-points" title="Permanent link">&para;</a></h3>
+<p>The LoadBalancer Service uses <code>loadBalancerClass: tailscale</code> which enables HTTP traffic:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># From 805-tailscale-internal-ingress.yaml.j2</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v1</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Service</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="nt">metadata</span><span class="p">:</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">traefik-tailscale</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kube-system</span>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="w">  </span><span class="nt">annotations</span><span class="p">:</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="w">    </span><span class="nt">tailscale.com/hostname</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;{{</span><span class="nv"> </span><span class="s">TAILSCALE_INTERNAL_HOSTNAME</span><span class="nv"> </span><span class="s">}}&quot;</span><span class="w">  </span><span class="c1"># Device name</span>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="w">    </span><span class="nt">tailscale.com/tags</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;tag:k8s-operator&quot;</span>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="nt">spec</span><span class="p">:</span>
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="w">  </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">LoadBalancer</span>
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a><span class="w">  </span><span class="nt">loadBalancerClass</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tailscale</span>
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a><span class="w">  </span><span class="nt">selector</span><span class="p">:</span>
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a><span class="w">    </span><span class="nt">app.kubernetes.io/name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">traefik</span>
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a><span class="w">    </span><span class="nt">app.kubernetes.io/instance</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">traefik-kube-system</span>
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a><span class="w">  </span><span class="nt">ports</span><span class="p">:</span>
+<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http</span>
+<a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a><span class="w">      </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">80</span>
+<a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a><span class="w">      </span><span class="nt">targetPort</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">web</span>
+<a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https</span>
+<a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a><span class="w">      </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">443</span>
+<a id="__codelineno-6-22" name="__codelineno-6-22" href="#__codelineno-6-22"></a><span class="w">      </span><span class="nt">targetPort</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">websecure</span>
+</code></pre></div>
+<p>This approach:
+- Works with HTTP (no HTTPS requirement on tailnet)
+- Does NOT use Funnel (internal Tailnet access only)
+- Exposes both HTTP (80) and HTTPS (443) ports to Traefik</p>
+<h3 id="operator-configuration-key-points">Operator Configuration Key Points<a class="headerlink" href="#operator-configuration-key-points" title="Permanent link">&para;</a></h3>
+<p>The operator gets a unique hostname per cluster:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c1"># From 800-tailscale-operator-config.yaml.j2</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="nt">operatorConfig</span><span class="p">:</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">  </span><span class="nt">hostname</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;{{</span><span class="nv"> </span><span class="s">TAILSCALE_INTERNAL_HOSTNAME</span><span class="nv"> </span><span class="s">}}-tailscale-operator&quot;</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">  </span><span class="nt">tags</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;tag:k8s-operator&quot;</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="w">  </span><span class="nt">logging</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;info&quot;</span>
+</code></pre></div>
+<h2 id="developer-access">Developer Access<a class="headerlink" href="#developer-access" title="Permanent link">&para;</a></h2>
+<h3 id="from-sovereignsky-devcontainer">From SovereignSky Devcontainer<a class="headerlink" href="#from-sovereignsky-devcontainer" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Devcontainer has Tailscale VPN configured</li>
+<li>DNS resolves <code>*.sovereignsky.no</code> to the cluster's Tailscale IP</li>
+<li>Access services directly: <code>http://grafana.sovereignsky.no</code></li>
+</ol>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1"># From inside a devcontainer with Tailscale</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>curl<span class="w"> </span>http://grafana.sovereignsky.no
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>curl<span class="w"> </span>http://otel.sovereignsky.no
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>curl<span class="w"> </span>http://litellm.sovereignsky.no
+</code></pre></div>
+<h3 id="direct-tailscale-access">Direct Tailscale Access<a class="headerlink" href="#direct-tailscale-access" title="Permanent link">&para;</a></h3>
+<p>You can also access the cluster directly via Tailscale (HTTP works now):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="c1"># Direct Tailscale URL (HTTP, internal only)</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>curl<span class="w"> </span>http://k8s-terje.taile269d.ts.net
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="c1"># With Host header for service routing</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>curl<span class="w"> </span>-H<span class="w"> </span><span class="s2">&quot;Host: grafana.localhost&quot;</span><span class="w"> </span>http://k8s-terje.taile269d.ts.net
+</code></pre></div>
+<h2 id="removal">Removal<a class="headerlink" href="#removal" title="Permanent link">&para;</a></h2>
+<p>To remove the internal ingress:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="c1"># Remove ingress only (keep operator)</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>docker<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>provision-host<span class="w"> </span>ansible-playbook<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="w">  </span>/mnt/urbalurbadisk/ansible/playbooks/806-remove-tailscale-internal-ingress.yml
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="c1"># Remove everything (ingress + operator)</span>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>docker<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>provision-host<span class="w"> </span>ansible-playbook<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="w">  </span>/mnt/urbalurbadisk/ansible/playbooks/806-remove-tailscale-internal-ingress.yml<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a><span class="w">  </span>-e<span class="w"> </span><span class="nv">remove_operator</span><span class="o">=</span><span class="nb">true</span>
+</code></pre></div>
+<p>Or using the script:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>docker<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>provision-host<span class="w"> </span>/mnt/urbalurbadisk/provision-host/kubernetes/network/03-remove-tailscale-internal.sh
+</code></pre></div></p>
+<h2 id="comparison-internal-vs-funnel">Comparison: Internal vs Funnel<a class="headerlink" href="#comparison-internal-vs-funnel" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Internal LoadBalancer (805)</th>
+<th>Funnel Ingress (802-803)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Public internet access</td>
 <td>No</td>
 <td>Yes</td>
 </tr>
 <tr>
-<td><strong>Security</strong></td>
-<td>VPN-style (invite only)</td>
-<td>Public + WAF protection</td>
+<td>Requires Tailscale on client</td>
+<td>Yes</td>
+<td>No</td>
 </tr>
 <tr>
-<td><strong>Performance</strong></td>
-<td>Direct connection</td>
-<td>Global CDN</td>
+<td>Use case</td>
+<td>Developer access</td>
+<td>Public services</td>
 </tr>
 <tr>
-<td><strong>Maintenance</strong></td>
-<td>Minimal</td>
-<td>Minimal</td>
+<td>Security</td>
+<td>Tailnet-only</td>
+<td>Public with HTTPS</td>
 </tr>
 <tr>
-<td><strong>Production Ready</strong></td>
-<td>Personal/team use</td>
-<td>Enterprise grade</td>
+<td>HTTP support</td>
+<td>Yes</td>
+<td>No (HTTPS only)</td>
 </tr>
 <tr>
-<td><strong>Access Control</strong></td>
-<td>Tailscale accounts</td>
-<td>Internet + optional auth</td>
+<td>HTTPS requirement on tailnet</td>
+<td>No</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Kubernetes resource type</td>
+<td>LoadBalancer Service</td>
+<td>Ingress</td>
+</tr>
+<tr>
+<td>Setup scripts</td>
+<td>805/806</td>
+<td>801-804</td>
 </tr>
 </tbody>
 </table>
-<h3 id="can-you-use-both">🚀 Can You Use Both?<a class="headerlink" href="#can-you-use-both" title="Permanent link">&para;</a></h3>
-<p><strong>Yes!</strong> Your <strong>HostRegexp routing architecture</strong> supports both simultaneously:</p>
-<ul>
-<li><strong>Development</strong>: <code>service.localhost</code> (local testing)</li>
-<li><strong>Team Access</strong>: <code>service.your-device.ts.net</code> (secure team sharing)  </li>
-<li><strong>Public Access</strong>: <code>service.yourcompany.com</code> (customer-facing)</li>
-</ul>
-<p><strong>Technical Implementation</strong>:
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># Your manifests use HostRegexp patterns like this:</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nt">match</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">HostRegexp(`whoami\..+`)</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="c1"># This automatically handles:</span>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="c1"># - whoami.localhost (development)</span>
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="c1"># - whoami.provision-host.dog-pence.ts.net (Tailscale Funnel)  </span>
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="c1"># - whoami.yourcompany.com (Cloudflare Tunnel)</span>
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<h3 id="device-not-appearing-in-tailscale-admin">Device Not Appearing in Tailscale Admin<a class="headerlink" href="#device-not-appearing-in-tailscale-admin" title="Permanent link">&para;</a></h3>
+<ol>
+<li>
+<p>Check operator pod logs:
+   <div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>kubectl<span class="w"> </span>logs<span class="w"> </span>-n<span class="w"> </span>tailscale<span class="w"> </span>-l<span class="w"> </span><span class="nv">app</span><span class="o">=</span>operator
 </code></pre></div></p>
-<p><strong>Common Pattern</strong>:
-1. Start with <strong>Tailscale</strong> for immediate internet access
-2. Add <strong>Cloudflare</strong> later when you need custom domains
-3. Use both for different purposes (internal vs external)</p>
-<p><em>See <a href="../rules-ingress-traefik/">Traefik Ingress Rules</a> for complete technical details on HostRegexp routing.</em></p>
-<h3 id="recommended-decision-path">🎯 Recommended Decision Path<a class="headerlink" href="#recommended-decision-path" title="Permanent link">&para;</a></h3>
-<h4 id="quick-decision-questions">Quick Decision Questions:<a class="headerlink" href="#quick-decision-questions" title="Permanent link">&para;</a></h4>
-<ol>
-<li><strong>Do you need a custom domain (yourcompany.com)?</strong></li>
-<li>Yes → Cloudflare</li>
-<li>
-<p>No → Tailscale</p>
 </li>
 <li>
-<p><strong>Is this for business/client use?</strong></p>
-</li>
-<li>Yes → Cloudflare  </li>
-<li>
-<p>No → Tailscale</p>
+<p>Verify OAuth credentials are correct in secrets</p>
 </li>
 <li>
-<p><strong>Do you want to spend money on a domain?</strong></p>
+<p>Check that <code>tag:k8s-operator</code> exists in your Tailnet ACL policy</p>
 </li>
-<li>Yes → Cloudflare</li>
-<li>
-<p>No → Tailscale</p>
-</li>
-<li>
-<p><strong>Do you need public internet access?</strong></p>
-</li>
-<li>Yes → Cloudflare</li>
-<li>Team only → Tailscale</li>
 </ol>
-<p><strong>When in doubt, start with Tailscale</strong> - you can always add Cloudflare later!</p>
-<hr />
-<h2 id="architecture-overview">🏗️ Architecture Overview<a class="headerlink" href="#architecture-overview" title="Permanent link">&para;</a></h2>
-<h3 id="microsoft-cloud-adoption-framework-caf-principles">Microsoft Cloud Adoption Framework (CAF) principles<a class="headerlink" href="#microsoft-cloud-adoption-framework-caf-principles" title="Permanent link">&para;</a></h3>
-<p>The networking architecture follows Microsoft Cloud Adoption Framework (CAF) principles for enterprise-grade infrastructure design.</p>
-<p>Kubernetes clusters can be defined as Landing Zones - either standalone or within larger Azure/cloud Landing Zones, providing isolation, governance, and security boundaries.</p>
-<h3 id="dual-tunnel-architecture-benefits">Dual-Tunnel Architecture Benefits<a class="headerlink" href="#dual-tunnel-architecture-benefits" title="Permanent link">&para;</a></h3>
-<p>Your cluster uses <strong>HostRegexp routing patterns</strong> in Traefik IngressRoutes that automatically work with both tunnel types:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># Example from your working manifests:</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">traefik.io/v1alpha1</span>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">IngressRoute</span>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="nt">spec</span><span class="p">:</span>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">  </span><span class="nt">routes</span><span class="p">:</span>
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">match</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">HostRegexp(`whoami\..+`)</span><span class="w">  </span><span class="c1"># Matches any domain starting with &quot;whoami.&quot;</span>
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">      </span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Rule</span>
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">      </span><span class="nt">services</span><span class="p">:</span>
-<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">whoami</span>
-<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="w">          </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">80</span>
-<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>
-<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="c1"># This pattern automatically handles:</span>
-<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="c1"># - whoami.localhost (development - auto-routes to 127.0.0.1)</span>
-<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="c1"># - whoami.provision-host.dog-pence.ts.net (Tailscale Funnel)  </span>
-<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="c1"># - whoami.yourcompany.com (Cloudflare Tunnel)</span>
-</code></pre></div>
-<p><strong>Key Technical Advantages</strong>:
-- ✅ <strong>Unified Routing</strong>: Single IngressRoute handles multiple domains
-- ✅ <strong>Zero Configuration</strong>: No manifest changes when adding tunnel types
-- ✅ <strong>Internal DNS Support</strong>: CoreDNS resolves <code>.localhost</code> for pod-to-pod communication<br />
-- ✅ <strong>Authentication Ready</strong>: Works with Authentik forward auth middleware
-- ✅ <strong>Future-Proof</strong>: Automatically supports any new domains</p>
-<p><em>Technical details: <a href="../rules-ingress-traefik/">Traefik Ingress Rules Guide</a></em></p>
-<h3 id="external-access-with-cloudflare">External Access with Cloudflare<a class="headerlink" href="#external-access-with-cloudflare" title="Permanent link">&para;</a></h3>
-<p>Cloudflare provides secure, scalable exposure of services to the internet:</p>
-<ul>
-<li><strong>Purpose</strong>: Professional public access with custom domains</li>
-<li><strong>Benefits</strong>: Global CDN, DDoS protection, WAF, rate limiting, zero-trust access</li>
-<li><strong>Implementation</strong>: Cloudflare Tunnels connect to Kubernetes without inbound ports</li>
-<li><strong>URLs</strong>: <code>https://service.yourcompany.com</code></li>
-</ul>
-<h3 id="internet-access-with-tailscale-funnel">Internet Access with Tailscale Funnel<a class="headerlink" href="#internet-access-with-tailscale-funnel" title="Permanent link">&para;</a></h3>
-<p>Tailscale Funnel provides quick, secure internet access without custom domains:</p>
-<ul>
-<li><strong>Purpose</strong>: Fast internet access for personal/team projects</li>
-<li><strong>Benefits</strong>: Zero configuration, automatic HTTPS, invite-based security</li>
-<li><strong>Implementation</strong>: Tailscale Funnel exposes services via .ts.net domains</li>
-<li><strong>URLs</strong>: <code>https://service.your-device.ts.net</code></li>
-</ul>
-<h3 id="internal-networking-with-tailscale-vpn">Internal Networking with Tailscale VPN<a class="headerlink" href="#internal-networking-with-tailscale-vpn" title="Permanent link">&para;</a></h3>
-<p>Tailscale VPN provides secure DevOps access to clusters:</p>
-<ul>
-<li><strong>Purpose</strong>: Private communication for administration and maintenance</li>
-<li><strong>Benefits</strong>: Works across any environment (local, cloud, multi-cloud)</li>
-<li><strong>Security</strong>: Zero-trust networking with MagicDNS and ACL-based access control</li>
-</ul>
-<h2 id="high-level-architecture-for-internet-access">High-Level Architecture for Internet Access<a class="headerlink" href="#high-level-architecture-for-internet-access" title="Permanent link">&para;</a></h2>
-<p>The diagram below shows how external traffic reaches your services through either tunnel type:</p>
-<p>:::mermaid
-flowchart TD
-    User["External User"]
-    User2["Team Member"]
-    Dev["Developer"]</p>
-<div class="highlight"><pre><span></span><code>subgraph Internet_Access [&quot;Internet Access Options&quot;]
-    Tailscale_Funnel[&quot;Tailscale Funnel&lt;br&gt;service.device.ts.net&quot;]
-    CF_Tunnel[&quot;Cloudflare Tunnel&lt;br&gt;service.domain.com&quot;]
-    Localhost[&quot;Localhost&lt;br&gt;service.localhost&quot;]
-end
-
-subgraph Your_Cluster [&quot;Your Kubernetes Cluster&quot;]
-    subgraph Traefik_Layer [&quot;Traefik Layer&quot;]
-        Traefik[&quot;Traefik 3.3.6&lt;br&gt;IngressRoute CRDs&quot;]
-        HostRegexp[&quot;HostRegexp Routing&lt;br&gt;`service\..+`&quot;]
-        Internal_DNS[&quot;Internal DNS&lt;br&gt;CoreDNS Rewrites&quot;]
-    end
-
-    subgraph Services_Layer [&quot;Services Layer&quot;]
-        Services[&quot;Your Services&lt;br&gt;(whoami, openwebui, authentik)&quot;]
-        Auth[&quot;Authentik Forward Auth&lt;br&gt;(Optional)&quot;]
-    end
-end
-
-User --&gt; CF_Tunnel
-User2 --&gt; Tailscale_Funnel
-Dev --&gt; Localhost
-
-CF_Tunnel --&gt; Traefik
-Tailscale_Funnel --&gt; Traefik
-Localhost --&gt; Traefik
-
-Traefik --&gt; HostRegexp
-HostRegexp --&gt; Auth
-HostRegexp --&gt; Services
-Auth --&gt; Services
-
-Internal_DNS -.-&gt; Services
-</code></pre></div>
-<p>:::</p>
-<p><strong>Key Technical Features</strong>:
-- <strong>HostRegexp routing</strong>: <code>match: HostRegexp('service\..+')</code> patterns handle all domain types
-- <strong>Traefik IngressRoute CRDs</strong>: Using <code>traefik.io/v1alpha1</code> API (current stable version)
-- <strong>Internal DNS</strong>: CoreDNS rewrites enable pod-to-pod communication on same hostnames
-- <strong>Authentication</strong>: Optional Authentik forward auth middleware for protected services
-- <strong>Zero Configuration</strong>: No manifest changes needed when adding/switching tunnels</p>
-<h2 id="high-level-architecture-for-devops-access">High-Level Architecture for DevOps Access<a class="headerlink" href="#high-level-architecture-for-devops-access" title="Permanent link">&para;</a></h2>
-<p>The diagram below shows how DevOps engineers securely connect to clusters:</p>
-<p>:::mermaid
-flowchart TD
-    subgraph DevOps["DevOps Engineer's Machine"]
-        subgraph provision_host_container ["provision-host container"]
-            kubectl["kubectl"]
-            tools["SSH<br>Ansible<br>Cloud CLIs"]
-            Tailscale_Client["Tailscale Client"]</p>
-<div class="highlight"><pre><span></span><code>        kubectl --- tools --- Tailscale_Client
-        linkStyle 0 stroke-width:0,stroke-opacity:0,fill-opacity:0
-        linkStyle 1 stroke-width:0,stroke-opacity:0,fill-opacity:0
-    end
-end
-
-subgraph Tailscale_Network [&quot;Tailscale Secure Network&quot;]
-    TS_Cloud[&quot;Tailscale Control Plane&lt;br&gt;(Authentication &amp; ACLs)&quot;]
-end
-
-subgraph Your_Infrastructure [&quot;Your Infrastructure&quot;]
-    subgraph Cluster_VM[&quot;Cluster Host&quot;]
-        Tailscale_Agent[&quot;Tailscale Client&quot;]
-        K8s_Cluster[&quot;Kubernetes Cluster&quot;]
-
-        Tailscale_Agent --- K8s_Cluster
-        linkStyle 3 stroke-width:0,stroke-opacity:0,fill-opacity:0
-    end
-end
-
-Tailscale_Client -- &quot;Secure Connection&quot; --&gt; TS_Cloud
-Tailscale_Agent -- &quot;Secure Connection&quot; --&gt; TS_Cloud
-
-Tailscale_Client -. &quot;Encrypted P2P&lt;br&gt;Administration&quot; .-&gt; Tailscale_Agent
-</code></pre></div>
-<p>:::</p>
-<hr />
-<h2 id="technology-choices-for-optimal-security-and-performance">Technology Choices for Optimal Security and Performance<a class="headerlink" href="#technology-choices-for-optimal-security-and-performance" title="Permanent link">&para;</a></h2>
-<h3 id="why-cloudflare">Why Cloudflare?<a class="headerlink" href="#why-cloudflare" title="Permanent link">&para;</a></h3>
-<p>Cloudflare provides enterprise-grade security and performance for public-facing services:</p>
-<p><strong>Security Features</strong>:
-- Advanced Web Application Firewall (WAF) blocks malicious traffic
-- DDoS protection mitigates attacks of any size
-- Zero-trust tunnel approach - no inbound ports needed
-- SSL/TLS termination with automatic certificate management</p>
-<p><strong>Performance Features</strong>:
-- Global network spans 300+ cities for low latency
-- Intelligent edge caching reduces server load
-- Cloudflare Workers enable custom routing logic
-- Analytics and monitoring for traffic insights</p>
-<p><strong>Implementation</strong>:
-- Cloudflare Tunnels create secure outbound-only connections
-- No public IP addresses or firewall ports needed
-- Programmable routing based on domain, path, or headers
-- Automatic failover and load balancing</p>
-<p>For detailed setup instructions, see <a href="../networking-cloudflare-setup/">Cloudflare Tunnel Setup Guide</a>.</p>
-<h3 id="why-tailscale">Why Tailscale?<a class="headerlink" href="#why-tailscale" title="Permanent link">&para;</a></h3>
-<p>Tailscale provides zero-configuration secure networking for both internet access and DevOps administration:</p>
-<p><strong>For Internet Access (Tailscale Funnel)</strong>:
-- Instant HTTPS endpoints on .ts.net domains
-- No domain purchase or DNS configuration required
-- Invite-based access control for security
-- Perfect for personal projects and team development</p>
-<p><strong>For DevOps Access (Tailscale VPN)</strong>:
-- WireGuard-based encrypted peer-to-peer connections
-- Works seamlessly across NATs and firewalls
-- Identity-based access control with fine-grained ACLs
-- "Zero config" approach eliminates traditional VPN complexity</p>
-<p><strong>Architecture Benefits</strong>:
-- True zero-trust networking model
-- Eliminates central VPN server points of failure
-- Automatic key rotation and device management
-- Cross-platform support for all environments</p>
-<p>For detailed setup instructions, see <a href="../networking-tailscale-setup/">Tailscale Funnel Setup Guide</a>.</p>
-<hr />
-<h2 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
-<h3 id="ready-to-connect-to-the-internet">Ready to Connect to the Internet?<a class="headerlink" href="#ready-to-connect-to-the-internet" title="Permanent link">&para;</a></h3>
-<p>Choose your tunnel type and follow the setup guide:</p>
+<h3 id="connection-refused">Connection Refused<a class="headerlink" href="#connection-refused" title="Permanent link">&para;</a></h3>
 <ol>
-<li><strong>🔵 <a href="../networking-tailscale-setup/">Tailscale Funnel Setup</a></strong> - Get online in 15 minutes (free)</li>
-<li><strong>⚡ <a href="../networking-cloudflare-setup/">Cloudflare Tunnel Setup</a></strong> - Professional setup with custom domain</li>
+<li>
+<p>Verify Traefik is running:
+   <div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>-l<span class="w"> </span>app.kubernetes.io/name<span class="o">=</span>traefik
+</code></pre></div></p>
+</li>
+<li>
+<p>Check LoadBalancer Service configuration:
+   <div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>svc<span class="w"> </span>traefik-tailscale<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>-o<span class="w"> </span>yaml
+</code></pre></div></p>
+</li>
+<li>
+<p>Check if the service has a Tailscale IP assigned:
+   <div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>svc<span class="w"> </span>traefik-tailscale<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.status.loadBalancer.ingress}&#39;</span>
+</code></pre></div></p>
+</li>
 </ol>
-<h3 id="internal-developer-access-sovereignsky">Internal Developer Access (SovereignSky)<a class="headerlink" href="#internal-developer-access-sovereignsky" title="Permanent link">&para;</a></h3>
-<p>For internal-only access from within the Tailnet (no public internet):</p>
+<h3 id="wrong-device-name">Wrong Device Name<a class="headerlink" href="#wrong-device-name" title="Permanent link">&para;</a></h3>
+<p>If the operator device shows as generic <code>tailscale-operator</code> instead of <code>k8s-terje-tailscale-operator</code>:</p>
 <ol>
-<li><strong>🔒 <a href="../networking-tailscale-internal-ingress/">Tailscale Internal Access</a></strong> - HTTP access for SovereignSky developers via Tailnet VPN</li>
+<li>
+<p>Remove the deployment:
+   <div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>docker<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>provision-host<span class="w"> </span>ansible-playbook<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="w">  </span>/mnt/urbalurbadisk/ansible/playbooks/806-remove-tailscale-internal-ingress.yml<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="w">  </span>-e<span class="w"> </span><span class="nv">remove_operator</span><span class="o">=</span><span class="nb">true</span>
+</code></pre></div></p>
+</li>
+<li>
+<p>Redeploy - the Helm chart will use the templated operator config with the correct hostname</p>
+</li>
 </ol>
-<hr />
-<p><em>Your HostRegexp architecture makes switching between tunnel types seamless - the same manifests work for localhost development, Tailscale team access, and Cloudflare production without any modifications.</em></p>
+<h3 id="helm-chart-default-behavior">Helm Chart Default Behavior<a class="headerlink" href="#helm-chart-default-behavior" title="Permanent link">&para;</a></h3>
+<p>The Tailscale Helm chart has a default <code>operatorConfig.hostname: "tailscale-operator"</code>. Our Jinja2 template (<code>800-tailscale-operator-config.yaml.j2</code>) overrides this with <code>{{ TAILSCALE_INTERNAL_HOSTNAME }}-tailscale-operator</code> to give each cluster a unique name.</p>
+<h2 id="see-also">See Also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../networking-tailscale-setup/">networking-tailscale-setup.md</a> - Funnel-based public internet access</li>
+<li><a href="https://tailscale.com/kb/1236/kubernetes-operator">Tailscale Kubernetes Operator documentation</a></li>
+<li><a href="https://tailscale.com/kb/1439/kubernetes-operator-cluster-ingress">Tailscale Cluster Ingress documentation</a></li>
+</ul>
 
 
 
