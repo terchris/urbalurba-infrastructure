@@ -60,7 +60,7 @@ Documentation is deployed to three environments automatically:
 Install MkDocs with Material theme locally:
 
 ```bash
-pip install mkdocs-material mkdocs-tags-plugin
+pip install mkdocs-material
 ```
 
 ### File Naming Conventions
@@ -205,7 +205,7 @@ def hello():
 The `.github/workflows/docs.yml` workflow:
 
 - Triggers on push to `main` when `docs/` or `mkdocs.yml` changes
-- Installs `mkdocs-material` and `mkdocs-tags-plugin`
+- Installs `mkdocs-material` (includes built-in tags plugin)
 - Runs `mkdocs gh-deploy --force`
 - Publishes to `gh-pages` branch
 
@@ -272,7 +272,7 @@ ansible-playbook playbooks/020-setup-nginx.yml
 mkdocs --version
 
 # Install if missing
-pip install mkdocs-material mkdocs-tags-plugin
+pip install mkdocs-material
 ```
 
 ### GitHub Pages Not Updating
