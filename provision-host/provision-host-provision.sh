@@ -1,8 +1,16 @@
 #!/bin/bash
 # filename: provision-host-provision.sh
 # description: Orchestrates the execution of all provisioning scripts for the host
+#
+# Usage: ./provision-host-provision.sh [cloud-provider]
+#   cloud-provider: az/azure (default), aws, gcp/google, oci/oracle, tf/terraform, all
+#
+# Example: ./provision-host-provision.sh aws
 
 RUN_IN_DIR="/mnt/urbalurbadisk/provision-host"
+
+# Store cloud provider argument for passing to cloudproviders script
+CLOUD_PROVIDER="${1:-az}"
 
 # Initialize associative arrays for status and errors
 declare -A STATUS
@@ -61,16 +69,21 @@ add_error() {
 # Execute a script with proper error handling
 execute_script() {
     local script=$1
+    local script_arg=$2
     echo "---------------------------------------------------"
-    echo "Running ${script}..."
-    
+    echo "Running ${script}${script_arg:+ with argument: $script_arg}..."
+
     # Set container environment variable if in container
     if is_container; then
         export RUNNING_IN_CONTAINER=true
     fi
-    
+
     if [ -x "./${script}" ]; then
-        ./${script}
+        if [ -n "$script_arg" ]; then
+            ./${script} "$script_arg"
+        else
+            ./${script}
+        fi
         local exit_code=$?
         if [ ${exit_code} -ne 0 ]; then
             echo "Error executing ${script}. Continuing with next script."
@@ -112,6 +125,7 @@ print_summary() {
 # Main execution
 main() {
     echo "Starting host provisioning on $(hostname)"
+    echo "Cloud Provider: ${CLOUD_PROVIDER}"
     echo "---------------------------------------------------"
 
     if ! ensure_correct_directory; then
@@ -122,11 +136,21 @@ main() {
     local overall_exit_code=0
 
     for script in "${PROVISION_SCRIPTS[@]}"; do
-        if execute_script "$script"; then
-            echo "$script completed successfully."
+        # Pass cloud provider argument only to cloudproviders script
+        if [[ "$script" == "provision-host-01-cloudproviders.sh" ]]; then
+            if execute_script "$script" "$CLOUD_PROVIDER"; then
+                echo "$script completed successfully."
+            else
+                echo "Error executing $script. Continuing with next script."
+                overall_exit_code=1
+            fi
         else
-            echo "Error executing $script. Continuing with next script."
-            overall_exit_code=1
+            if execute_script "$script"; then
+                echo "$script completed successfully."
+            else
+                echo "Error executing $script. Continuing with next script."
+                overall_exit_code=1
+            fi
         fi
         echo "---------------------------------------------------"
     done
