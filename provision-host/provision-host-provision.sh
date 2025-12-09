@@ -15,6 +15,7 @@ PROVISION_SCRIPTS=(
     "provision-host-02-kubetools.sh"
     "provision-host-03-net.sh"
     "provision-host-04-helmrepo.sh"
+    "provision-host-05-builddocs.sh"
 )
 
 # Check if running in a container
