@@ -35,7 +35,7 @@ Urbalurba Infrastructure provides a complete datacenter environment on your lapt
 - **Object storage** - File and blob storage solutions
 
 ### AI & Machine Learning
-- **[AI Package](doc/package-ai-readme.md)** - ChatGPT-like system running locally
+- **[AI Package](docs/package-ai-readme.md)** - ChatGPT-like system running locally
 - **Private AI models** - Use AI on your sensitive documents safely
 - **Local LLM execution** - Run AI models without cloud dependencies
 
@@ -48,12 +48,12 @@ Urbalurba Infrastructure provides a complete datacenter environment on your lapt
 
 Urbalurba runs a local Kubernetes cluster (via Rancher Desktop) and deploys services using declarative manifests. The provision-host container is the central management environment that applies manifests, runs provisioning scripts, and provides the full toolchain for day‑to‑day operations.
 
-- Read the full overview in [How It Works](doc/HOW_IT_WORKS.md)
-- Learn more about the management environment in [Provision Host Documentation](doc/provision-host-readme.md)
+- Read the full overview in [How It Works](docs/HOW_IT_WORKS.md)
+- Learn more about the management environment in [Provision Host Documentation](docs/provision-host-readme.md)
 
 ## 🚀 Getting Started
 
-See the [Installation Guide](doc/INSTALL.md) for prerequisites, the one-line installer, and options for interactive, automatic, and preview modes.
+See the [Installation Guide](docs/INSTALL.md) for prerequisites, the one-line installer, and options for interactive, automatic, and preview modes.
 
 ## 🎯 Use Cases
 
@@ -80,7 +80,7 @@ See the [Installation Guide](doc/INSTALL.md) for prerequisites, the one-line ins
 ```
 urbalurba-infrastructure/
 ├── manifests/           # Kubernetes manifests for all services
-├── doc/                 # Documentation and guides
+├── docs/                 # Documentation and guides
 │   └── package-ai-readme.md   # AI package setup and usage
 ├── install-urbalurba.sh # Main installation script
 ├── Brewfile            # macOS dependencies definition
@@ -89,7 +89,7 @@ urbalurba-infrastructure/
 
 ## 📚 Documentation
 
-- **[AI Package](doc/package-ai-readme.md)** - Local ChatGPT setup and usage
+- **[AI Package](docs/package-ai-readme.md)** - Local ChatGPT setup and usage
 - **[Manifests](manifests/)** - Kubernetes configurations for all services
 - **Service Documentation** - Individual service setups and configurations
 - **Deployment Guides** - Moving from local to cloud production
@@ -123,7 +123,7 @@ The **provision-host** container includes all the tools needed to manage your lo
 
 Access the management tools through the provision-host container once the system is running.
 
-> **Note:** For detailed instructions on how to use the provision-host management container—including how to log in, where to find setup scripts, and how to manage applications/services in your Kubernetes cluster—see [Provision Host Documentation](doc/provision-host-readme.md).
+> **Note:** For detailed instructions on how to use the provision-host management container—including how to log in, where to find setup scripts, and how to manage applications/services in your Kubernetes cluster—see [Provision Host Documentation](docs/provision-host-readme.md).
 
 ## 🔧 Architecture
 

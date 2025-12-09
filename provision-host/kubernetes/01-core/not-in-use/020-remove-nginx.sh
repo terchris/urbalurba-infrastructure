@@ -5,7 +5,7 @@
 # Usage: ./01-remove-nginx.sh [target-host]
 # Example: ./01-remove-nginx.sh rancher-desktop
 #
-# This script follows the Script + Ansible pattern defined in doc/rules-provisioning.md:
+# This script follows the Script + Ansible pattern defined in docs/rules-provisioning.md:
 # - Minimal orchestration in shell script
 # - Heavy lifting delegated to Ansible playbook
 

@@ -124,7 +124,7 @@ check_required_files
 if docker ps -a --format '{{.Names}}' | grep -q 'provision-host'; then
     echo "Error: A provision-host container already exists."
     echo "  The only way to reinstall is to delete all the containers and volumes. YUOR DATA WILL BE LOST!"
-    echo "  is to reset Rancher Desktop as described in doc/reset-urbalurba-infrastructure.md"
+    echo "  is to reset Rancher Desktop as described in docs/reset-urbalurba-infrastructure.md"
     echo "  and then run this script again."
     exit 1
 fi

@@ -235,7 +235,7 @@ elif [ -f "$LEGACY_TEMPLATE" ]; then
         echo ""
         echo "There is a template file that contains default values."
         echo "You should copy and edit it to add your own secrets."
-        echo "Read doc/kubernetes-secrets-readme.md for more information."
+        echo "Read docs/kubernetes-secrets-readme.md for more information."
         echo ""
         echo "But if you just want the system to run, you can continue with default values."
         echo ""
@@ -253,7 +253,7 @@ elif [ -f "$LEGACY_TEMPLATE" ]; then
             echo "   # Replace the placeholder values with your actual values"
             echo ""
             echo "For detailed information about the secrets and their default values,"
-            echo "please read doc/kubernetes-secrets-readme.md"
+            echo "please read docs/kubernetes-secrets-readme.md"
             echo ""
             echo "After editing the file, run './install-rancher.sh' again to continue the installation."
             exit 1
