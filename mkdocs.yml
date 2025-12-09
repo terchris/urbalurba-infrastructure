@@ -1,0 +1,159 @@
+# MkDocs configuration for Urbalurba Infrastructure
+# Run locally: mkdocs serve
+# Build: mkdocs build
+# Deploy: mkdocs gh-deploy
+
+site_name: Urbalurba Infrastructure
+site_description: Complete datacenter on your laptop - Kubernetes infrastructure for local development and production
+site_url: https://terchris.github.io/urbalurba-infrastructure/
+repo_url: https://github.com/terchris/urbalurba-infrastructure
+repo_name: terchris/urbalurba-infrastructure
+
+theme:
+  name: material
+  palette:
+    # Light mode
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    # Dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+  icon:
+    repo: fontawesome/brands/github
+
+plugins:
+  - search
+  - tags
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Overview: overview-getting-started.md
+    - Installation: overview-installation.md
+    - Infrastructure: overview-infrastructure.md
+    - Services: overview-services.md
+    - System Architecture: overview-system-architecture.md
+  - Hosts & Platforms:
+    - Overview: hosts-readme.md
+    - Rancher Desktop: hosts-rancher-kubernetes.md
+    - Azure AKS: hosts-azure-aks.md
+    - Azure MicroK8s: hosts-azure-microk8s.md
+    - Multipass MicroK8s: hosts-multipass-microk8s.md
+    - Raspberry Pi: hosts-raspberry-microk8s.md
+    - Cloud Init: hosts-cloud-init-readme.md
+    - Cloud Init Secrets: hosts-cloud-init-secrets.md
+  - Packages:
+    - AI & ML:
+      - Overview: package-ai-readme.md
+      - LiteLLM: package-ai-litellm.md
+      - LiteLLM Client Keys: package-ai-litellm-client-key-setup.md
+      - OpenWebUI Model Access: package-ai-openwebui-model-access-setup.md
+      - Environment Management: package-ai-environment-management.md
+    - Authentication:
+      - Overview: package-auth-authentik-readme.md
+      - Auth10 Configuration: package-auth-authentik-auth10.md
+      - Developer Guide: package-auth-authentik-auth10-developer-guide.md
+      - Blueprints Syntax: package-auth-authentik-blueprints-syntax.md
+      - Technical Implementation: package-auth-authentik-technical-implementation.md
+      - Test Users: package-auth-authentik-testusers.md
+    - Core:
+      - Overview: package-core-readme.md
+      - Nginx: package-core-nginx.md
+    - Databases:
+      - Overview: package-databases-readme.md
+      - PostgreSQL: package-databases-postgresql.md
+      - PostgreSQL Container: package-databases-postgresql-container.md
+      - MySQL: package-databases-mysql.md
+      - MongoDB: package-databases-mongodb.md
+      - Qdrant: package-databases-qdrant.md
+    - Data Science:
+      - Overview: package-datascience.md
+      - JupyterHub: package-datascience-jupyterhub.md
+      - Spark: package-datascience-spark.md
+      - Unity Catalog: package-datascience-unitycatalog.md
+    - Development:
+      - Overview: package-development-readme.md
+      - ArgoCD: package-development-argocd.md
+      - Templates: package-development-templates.md
+    - Management:
+      - Overview: package-management-readme.md
+      - pgAdmin: package-management-pgadmin.md
+      - RabbitMQ Admin: package-management-rabbitmq.md
+      - RedisInsight: package-management-redisinsight.md
+    - Monitoring:
+      - Overview: package-monitoring-readme.md
+      - Prometheus: package-monitoring-prometheus.md
+      - Grafana: package-monitoring-grafana.md
+      - Loki: package-monitoring-loki.md
+      - Tempo: package-monitoring-tempo.md
+      - OpenTelemetry: package-monitoring-otel.md
+      - SovDev Logger: package-monitoring-sovdev-logger.md
+    - Message Queues:
+      - Overview: package-queues-readme.md
+      - RabbitMQ: package-queues-rabbitmq.md
+      - Redis: package-queues-redis.md
+    - Search:
+      - Overview: package-search-readme.md
+      - Elasticsearch: package-search-elasticsearch.md
+  - Networking:
+    - Overview: networking-readme.md
+    - Tailscale Setup: networking-tailscale-setup.md
+    - Tailscale Network Isolation: networking-tailscale-networkisolation.md
+    - Cloudflare Setup: networking-cloudflare-setup.md
+  - Provision Host:
+    - Overview: provision-host-readme.md
+    - Rancher Integration: provision-host-rancher.md
+    - Kubernetes Operations: provision-host-kubernetes.md
+    - Tools: provision-host-tools.md
+  - Rules & Standards:
+    - Overview: rules-readme.md
+    - Kubernetes Deployment: rules-automated-kubernetes-deployment.md
+    - Ingress & Traefik: rules-ingress-traefik.md
+    - Secrets Management: rules-secrets-management.md
+    - Provisioning: rules-provisioning.md
+    - Naming Conventions: rules-naming-conventions.md
+    - Git Workflow: rules-git-workflow.md
+    - Development Workflow: rules-development-workflow.md
+    - Documentation: rules-howtodoc.md
+  - Reference:
+    - Documentation Index: README.md
+    - Manifests: manifests-readme.md
+    - Secrets Management: secrets-management-readme.md
+    - Troubleshooting: troubleshooting-readme.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/terchris/urbalurba-infrastructure
