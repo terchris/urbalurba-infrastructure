@@ -65,7 +65,7 @@ spec:
     trustForwardHeader: true
     # Headers to pass from Authentik to protected application
     # These are the actual headers Authentik provides (not X-Forwarded-*)
-    # See developer guide for integration examples: doc/package-auth-authentik-auth10-developer-guide.md
+    # See developer guide for integration examples: docs/package-auth-authentik-auth10-developer-guide.md
     authResponseHeaders:
       - X-authentik-username
       - X-authentik-groups

@@ -138,7 +138,7 @@ The repository tracks infrastructure changes in the `main` branch. Current modif
 - ✅ **CSP Middleware Solution**: Created `076-authentik-csp-middleware.yaml` that solves mixed content issues for external HTTPS domains
 - ✅ **Updated Authentik Configuration**: Modified `075-authentik-config.yaml` with internal cluster URL for dynamic domain detection  
 - ✅ **Enhanced Deployment**: Updated `ansible/playbooks/070-setup-authentik.yml` to include CSP middleware deployment
-- ✅ **Complete Documentation**: Updated `doc/rules-ingress-traefik.md` with CSP middleware explanation
+- ✅ **Complete Documentation**: Updated `docs/rules-ingress-traefik.md` with CSP middleware explanation
 
 ### Problem Partially Solved
 Authentication currently works for:
