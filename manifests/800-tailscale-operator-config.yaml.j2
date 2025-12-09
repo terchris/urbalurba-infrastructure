@@ -1,0 +1,54 @@
+# 800-tailscale-operator-config.yaml.j2
+# Installs Tailscale Kubernetes Operator with ingress functionality
+#
+# This is a Jinja2 template - used by Ansible playbook 805-deploy-tailscale-internal-ingress.yml
+# Variable: TAILSCALE_INTERNAL_HOSTNAME - used for both operator and ingress device names
+#
+# Usage: This file is rendered by Ansible, then used with:
+# helm install tailscale-operator tailscale/tailscale-operator -n tailscale --create-namespace \
+#   -f /tmp/800-tailscale-operator-config.yaml \
+#   --set-string oauth.clientId=$TAILSCALE_CLIENTID --set-string oauth.clientSecret=$TAILSCALE_CLIENTSECRET
+#
+# The operator handles creation of Tailscale ingress resources for exposing your Kubernetes services
+# After installation, create an Ingress resource with appropriate Tailscale annotations
+
+# Enable HTTPS for tailnet services (required for Funnel)
+experimental:
+  enableTailscaleHTTPS: "true"  # As a string, not boolean - for consistency
+
+# Disable API server proxy as we only need ingress functionality
+apiServerProxyConfig:
+  mode: "false"  # As a string, not boolean - this should fix the template error
+
+# Configure operator and proxy settings
+# The Tailscale K8s operator ALWAYS registers as a device on the tailnet - this cannot be disabled.
+# See: https://tailscale.com/kb/1236/kubernetes-operator
+#
+# Per-cluster naming convention (matches Tailscale docs naming + our cluster prefix):
+#   Operator: {{ TAILSCALE_INTERNAL_HOSTNAME }}-tailscale-operator (controller that manages Tailscale resources)
+#   Ingress:  {{ TAILSCALE_INTERNAL_HOSTNAME }} (configured in 805-tailscale-internal-ingress.yaml.j2)
+#
+# Example for 3 clusters - Tailscale admin console will show 6 devices:
+#   k8s-terje-tailscale-operator, k8s-terje          (MacBook cluster)
+#   k8s-imac-tailscale-operator, k8s-imac            (iMac cluster)
+#   k8s-tecmacdev-tailscale-operator, k8s-tecmacdev  (tecmacdev cluster)
+#
+# The "-tailscale-operator" suffix matches the default name from Tailscale docs,
+# making it clear this is the Tailscale Kubernetes Operator (not a custom component).
+operatorConfig:
+  hostname: "{{ TAILSCALE_INTERNAL_HOSTNAME }}-tailscale-operator"  # Unique operator name per cluster
+  tags: "tag:k8s-operator"  # Tag for the operator itself
+  logging: "info"           # Use info level for production
+
+# Default tags for proxies - adjust according to your ACL policy
+proxyConfig:
+  defaultTags: "tag:k8s-operator"    # Tag for proxy nodes
+  # Configure TCP keepalive settings to improve connection stability
+  tcpKeepaliveEnabled: true  # This is a boolean value
+  tcpKeepaliveIdleSec: 60    # This is a numeric value
+
+# Note: To use this configuration, you must:
+# 1. Have appropriate tag definitions in your tailnet policy file
+# 2. Ensure nodeAttrs in your policy allow Funnel for tag:k8s-operator
+# 3. OAuth client credentials must be provided separately with --set flags
+# 4. Have created an OAuth client with the required scopes (Devices Core and Auth Keys write)
