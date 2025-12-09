@@ -3069,6 +3069,39 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#cloud-provider-selection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cloud Provider Selection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tools-installed-per-selection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tools Installed Per Selection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#available-cloud-provider-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Available Cloud Provider Tools
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#azure-cli" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4269,6 +4302,39 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#cloud-provider-selection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cloud Provider Selection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tools-installed-per-selection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tools Installed Per Selection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#available-cloud-provider-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Available Cloud Provider Tools
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#azure-cli" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4870,7 +4936,64 @@
 <li>Supports both x86_64 and aarch64 architectures</li>
 </ul>
 <h3 id="2-cloud-provider-tools-provision-host-01-cloudproviderssh">2. Cloud Provider Tools (<code>provision-host-01-cloudproviders.sh</code>)<a class="headerlink" href="#2-cloud-provider-tools-provision-host-01-cloudproviderssh" title="Permanent link">&para;</a></h3>
-<p>The container supports ALL major cloud providers with their official CLIs:</p>
+<p>The container supports ALL major cloud providers with their official CLIs. You can select which cloud provider tools to install during setup:</p>
+<h4 id="cloud-provider-selection">Cloud Provider Selection<a class="headerlink" href="#cloud-provider-selection" title="Permanent link">&para;</a></h4>
+<p>When running <code>./install-rancher.sh</code> or the container creation script, you can specify which cloud provider tools to install:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># Install Azure CLI only (default)</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>./install-rancher.sh
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>./install-rancher.sh<span class="w"> </span>az
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="c1"># Install AWS CLI only</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>./install-rancher.sh<span class="w"> </span>aws
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="c1"># Install Google Cloud SDK only</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>./install-rancher.sh<span class="w"> </span>gcp
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="c1"># Install Oracle Cloud CLI only</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>./install-rancher.sh<span class="w"> </span>oci
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="c1"># Install Terraform only</span>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>./install-rancher.sh<span class="w"> </span>tf
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="c1"># Install ALL cloud provider tools</span>
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>./install-rancher.sh<span class="w"> </span>all
+</code></pre></div>
+<h4 id="tools-installed-per-selection">Tools Installed Per Selection<a class="headerlink" href="#tools-installed-per-selection" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Selection</th>
+<th>Tools Installed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>az</code> / <code>azure</code> (default)</td>
+<td>Azure CLI</td>
+</tr>
+<tr>
+<td><code>aws</code></td>
+<td>AWS CLI v2</td>
+</tr>
+<tr>
+<td><code>gcp</code> / <code>google</code></td>
+<td>Google Cloud SDK (gcloud, bq, gsutil)</td>
+</tr>
+<tr>
+<td><code>oci</code> / <code>oracle</code></td>
+<td>Oracle Cloud Infrastructure CLI</td>
+</tr>
+<tr>
+<td><code>tf</code> / <code>terraform</code></td>
+<td>Terraform</td>
+</tr>
+<tr>
+<td><code>all</code></td>
+<td>All of the above</td>
+</tr>
+</tbody>
+</table>
+<h4 id="available-cloud-provider-tools">Available Cloud Provider Tools<a class="headerlink" href="#available-cloud-provider-tools" title="Permanent link">&para;</a></h4>
 <h4 id="azure-cli">Azure CLI<a class="headerlink" href="#azure-cli" title="Permanent link">&para;</a></h4>
 <ul>
 <li><strong>Resource Management</strong>: VMs, Storage, Networking, AKS</li>
@@ -4970,77 +5093,87 @@
 - <strong>Runix</strong>: pgAdmin and other administrative tools
 - <strong>Gravitee</strong>: API management platform charts</p>
 <h2 id="directory-structure">Directory Structure<a class="headerlink" href="#directory-structure" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>/mnt/urbalurbadisk/
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>├── ansible/                 # Ansible playbooks and roles
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>│   ├── inventory/
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>│   ├── playbooks/
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>│   └── roles/
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>├── manifests/               # Kubernetes manifests
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>├── provision-host/          # Provisioning scripts
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>│   └── kubernetes/         # Kubernetes setup scripts
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>├── secrets/                # Secure storage (gitignored)
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>├── kubeconfig/             # Kubernetes configurations
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>└── topsecret/              # Sensitive configurations
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>/mnt/urbalurbadisk/
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>├── ansible/                 # Ansible playbooks and roles
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>│   ├── inventory/
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>│   ├── playbooks/
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>│   └── roles/
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>├── manifests/               # Kubernetes manifests
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>├── provision-host/          # Provisioning scripts
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>│   └── kubernetes/         # Kubernetes setup scripts
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>├── secrets/                # Secure storage (gitignored)
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>├── kubeconfig/             # Kubernetes configurations
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>└── topsecret/              # Sensitive configurations
 </code></pre></div>
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
 <h3 id="accessing-the-container">Accessing the Container<a class="headerlink" href="#accessing-the-container" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># Access interactive shell</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>docker<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>provision-host<span class="w"> </span>bash
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1"># Run commands directly</span>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>docker<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>provision-host<span class="w"> </span>kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-A
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># Access interactive shell</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>docker<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>provision-host<span class="w"> </span>bash
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># Run commands directly</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>docker<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>provision-host<span class="w"> </span>kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-A
 </code></pre></div>
 <h3 id="cloud-provider-authentication">Cloud Provider Authentication<a class="headerlink" href="#cloud-provider-authentication" title="Permanent link">&para;</a></h3>
 <h4 id="azure">Azure<a class="headerlink" href="#azure" title="Permanent link">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>az<span class="w"> </span>login
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>az<span class="w"> </span>account<span class="w"> </span><span class="nb">set</span><span class="w"> </span>--subscription<span class="w"> </span><span class="s2">&quot;subscription-name&quot;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>az<span class="w"> </span>login
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>az<span class="w"> </span>account<span class="w"> </span><span class="nb">set</span><span class="w"> </span>--subscription<span class="w"> </span><span class="s2">&quot;subscription-name&quot;</span>
 </code></pre></div>
 <h4 id="aws">AWS<a class="headerlink" href="#aws" title="Permanent link">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>aws<span class="w"> </span>configure
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="c1"># Or use environment variables</span>
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="nb">export</span><span class="w"> </span><span class="nv">AWS_ACCESS_KEY_ID</span><span class="o">=</span>xxx
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="nb">export</span><span class="w"> </span><span class="nv">AWS_SECRET_ACCESS_KEY</span><span class="o">=</span>xxx
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>aws<span class="w"> </span>configure
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="c1"># Or use environment variables</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="nb">export</span><span class="w"> </span><span class="nv">AWS_ACCESS_KEY_ID</span><span class="o">=</span>xxx
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="nb">export</span><span class="w"> </span><span class="nv">AWS_SECRET_ACCESS_KEY</span><span class="o">=</span>xxx
 </code></pre></div>
 <h4 id="google-cloud">Google Cloud<a class="headerlink" href="#google-cloud" title="Permanent link">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>gcloud<span class="w"> </span>auth<span class="w"> </span>login
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>gcloud<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>project<span class="w"> </span>PROJECT_ID
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>gcloud<span class="w"> </span>auth<span class="w"> </span>login
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>gcloud<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>project<span class="w"> </span>PROJECT_ID
 </code></pre></div>
 <h4 id="oracle-cloud">Oracle Cloud<a class="headerlink" href="#oracle-cloud" title="Permanent link">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>oci<span class="w"> </span>setup<span class="w"> </span>config
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>oci<span class="w"> </span>setup<span class="w"> </span>config
 </code></pre></div>
 <h3 id="kubernetes-management">Kubernetes Management<a class="headerlink" href="#kubernetes-management" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># List contexts</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>kubectl<span class="w"> </span>config<span class="w"> </span>get-contexts
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="c1"># Switch context</span>
-<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>kubectl<span class="w"> </span>config<span class="w"> </span>use-context<span class="w"> </span>rancher-desktop
-<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>
-<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="c1"># Deploy with Helm</span>
-<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>helm<span class="w"> </span>install<span class="w"> </span>myapp<span class="w"> </span>bitnami/postgresql
-<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>
-<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="c1"># Run Ansible playbook</span>
-<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>ansible-playbook<span class="w"> </span>/mnt/urbalurbadisk/ansible/playbooks/setup.yml
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c1"># List contexts</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>kubectl<span class="w"> </span>config<span class="w"> </span>get-contexts
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="c1"># Switch context</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>kubectl<span class="w"> </span>config<span class="w"> </span>use-context<span class="w"> </span>rancher-desktop
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="c1"># Deploy with Helm</span>
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>helm<span class="w"> </span>install<span class="w"> </span>myapp<span class="w"> </span>bitnami/postgresql
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="c1"># Run Ansible playbook</span>
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>ansible-playbook<span class="w"> </span>/mnt/urbalurbadisk/ansible/playbooks/setup.yml
 </code></pre></div>
 <h2 id="container-lifecycle">Container Lifecycle<a class="headerlink" href="#container-lifecycle" title="Permanent link">&para;</a></h2>
 <h3 id="building-the-container">Building the Container<a class="headerlink" href="#building-the-container" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nb">cd</span><span class="w"> </span>provision-host-rancher/
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>docker<span class="w"> </span>build<span class="w"> </span>-t<span class="w"> </span>provision-host:latest<span class="w"> </span>.
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="nb">cd</span><span class="w"> </span>provision-host-rancher/
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>docker<span class="w"> </span>build<span class="w"> </span>-t<span class="w"> </span>provision-host:latest<span class="w"> </span>.
 </code></pre></div>
 <h3 id="running-the-container">Running the Container<a class="headerlink" href="#running-the-container" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>docker<span class="w"> </span>run<span class="w"> </span>-d<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">  </span>--name<span class="w"> </span>provision-host<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">  </span>-v<span class="w"> </span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span>/.kube:/home/ansible/.kube<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="w">  </span>-v<span class="w"> </span><span class="si">${</span><span class="nv">PWD</span><span class="si">}</span>:/mnt/urbalurbadisk<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="w">  </span>provision-host:latest
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>docker<span class="w"> </span>run<span class="w"> </span>-d<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">  </span>--name<span class="w"> </span>provision-host<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">  </span>-v<span class="w"> </span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span>/.kube:/home/ansible/.kube<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="w">  </span>-v<span class="w"> </span><span class="si">${</span><span class="nv">PWD</span><span class="si">}</span>:/mnt/urbalurbadisk<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="w">  </span>provision-host:latest
 </code></pre></div>
 <h3 id="provisioning-after-creation">Provisioning After Creation<a class="headerlink" href="#provisioning-after-creation" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="c1"># Inside the container or via docker exec</span>
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="nb">cd</span><span class="w"> </span>/mnt/urbalurbadisk/provision-host/
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>./provision-host-00-coresw.sh
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>./provision-host-01-cloudproviders.sh<span class="w"> </span>all
-<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>./provision-host-02-kubetools.sh
-<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>./provision-host-03-net.sh
-<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>./provision-host-04-helmrepo.sh
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="c1"># Inside the container or via docker exec</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="nb">cd</span><span class="w"> </span>/mnt/urbalurbadisk/provision-host/
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="c1"># Run all provisioning scripts with Azure CLI (default)</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>./provision-host-provision.sh
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="c1"># Or specify a different cloud provider</span>
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>./provision-host-provision.sh<span class="w"> </span>aws<span class="w">    </span><span class="c1"># AWS only</span>
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>./provision-host-provision.sh<span class="w"> </span>gcp<span class="w">    </span><span class="c1"># Google Cloud only</span>
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>./provision-host-provision.sh<span class="w"> </span>all<span class="w">    </span><span class="c1"># All cloud providers</span>
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>
+<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a><span class="c1"># Or run individual scripts manually</span>
+<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>./provision-host-00-coresw.sh
+<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>./provision-host-01-cloudproviders.sh<span class="w"> </span>aws<span class="w">  </span><span class="c1"># Specify cloud provider</span>
+<a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a>./provision-host-02-kubetools.sh
+<a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a>./provision-host-03-net.sh
+<a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a>./provision-host-04-helmrepo.sh
 </code></pre></div>
 <h2 id="environment-variables">Environment Variables<a class="headerlink" href="#environment-variables" title="Permanent link">&para;</a></h2>
 <ul>
@@ -5064,14 +5197,14 @@
 <h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
 <h3 id="common-issues">Common Issues<a class="headerlink" href="#common-issues" title="Permanent link">&para;</a></h3>
 <h4 id="1-permission-denied">1. Permission Denied<a class="headerlink" href="#1-permission-denied" title="Permanent link">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="c1"># Switch to root temporarily if needed</span>
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>docker<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-u<span class="w"> </span>root<span class="w"> </span>provision-host<span class="w"> </span>bash
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="c1"># Switch to root temporarily if needed</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>docker<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-u<span class="w"> </span>root<span class="w"> </span>provision-host<span class="w"> </span>bash
 </code></pre></div>
 <h4 id="2-kubernetes-context-issues">2. Kubernetes Context Issues<a class="headerlink" href="#2-kubernetes-context-issues" title="Permanent link">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="c1"># Verify kubeconfig</span>
-<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>kubectl<span class="w"> </span>config<span class="w"> </span>view
-<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="c1"># Check current context</span>
-<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>kubectl<span class="w"> </span>config<span class="w"> </span>current-context
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="c1"># Verify kubeconfig</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>kubectl<span class="w"> </span>config<span class="w"> </span>view
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="c1"># Check current context</span>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>kubectl<span class="w"> </span>config<span class="w"> </span>current-context
 </code></pre></div>
 <h4 id="3-cloud-cli-authentication">3. Cloud CLI Authentication<a class="headerlink" href="#3-cloud-cli-authentication" title="Permanent link">&para;</a></h4>
 <ul>
@@ -5085,14 +5218,14 @@
 </ul>
 <h2 id="maintenance">Maintenance<a class="headerlink" href="#maintenance" title="Permanent link">&para;</a></h2>
 <h3 id="updating-tools">Updating Tools<a class="headerlink" href="#updating-tools" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="c1"># Update cloud CLIs</span>
-<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>az<span class="w"> </span>upgrade
-<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>aws<span class="w"> </span>--version<span class="w">  </span><span class="c1"># Check for updates</span>
-<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>gcloud<span class="w"> </span>components<span class="w"> </span>update
-<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>
-<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a><span class="c1"># Update Kubernetes tools</span>
-<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>helm<span class="w"> </span>repo<span class="w"> </span>update
-<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a><span class="c1"># kubectl is typically updated via snap or direct download</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="c1"># Update cloud CLIs</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>az<span class="w"> </span>upgrade
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>aws<span class="w"> </span>--version<span class="w">  </span><span class="c1"># Check for updates</span>
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>gcloud<span class="w"> </span>components<span class="w"> </span>update
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a><span class="c1"># Update Kubernetes tools</span>
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>helm<span class="w"> </span>repo<span class="w"> </span>update
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a><span class="c1"># kubectl is typically updated via snap or direct download</span>
 </code></pre></div>
 <h3 id="container-updates">Container Updates<a class="headerlink" href="#container-updates" title="Permanent link">&para;</a></h3>
 <ol>
