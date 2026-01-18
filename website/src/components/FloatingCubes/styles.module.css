@@ -1,0 +1,253 @@
+/* Scene container */
+.scene {
+  position: relative;
+  width: 100%;
+  height: 450px;
+  perspective: 1200px;
+  overflow: visible;
+}
+
+/* Cloud SVG positioned in upper area - sized to contain cubes */
+.cloudSvg {
+  position: absolute;
+  top: -5%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 110%;
+  height: auto;
+  z-index: 0;
+  opacity: 0.9;
+}
+
+.cloudPath {
+  animation: cloudPulse 4s ease-in-out infinite;
+}
+
+@keyframes cloudPulse {
+  0%, 100% { opacity: 0.9; }
+  50% { opacity: 1; }
+}
+
+/* Empty slot indicator at top of pyramid */
+.emptySlot {
+  position: absolute;
+  left: 42%;
+  top: 15%;
+  width: 45px;
+  height: 45px;
+  border: 2px dashed rgba(58, 143, 94, 0.4);
+  border-radius: 6px;
+  z-index: 0;
+}
+
+/* Individual cube wrapper */
+.cubeWrapper {
+  position: absolute;
+  transform-style: preserve-3d;
+  will-change: transform;
+  z-index: 1;
+}
+
+/* Running cubes (in cloud) - subtle float */
+.runningCube {
+  animation: floatSubtle 6s ease-in-out infinite;
+}
+
+/* Waiting cubes (below cloud) - gentle bob */
+.waitingCube {
+  animation: floatWaiting 4s ease-in-out infinite;
+}
+
+/* Size variants */
+.cubeSmall {
+  --cube-size: 35px;
+  --font-size: 9px;
+}
+
+.cubeMedium {
+  --cube-size: 45px;
+  --font-size: 10px;
+}
+
+/* The cube container - continuous spin for running cubes */
+.cube {
+  position: relative;
+  width: var(--cube-size);
+  height: var(--cube-size);
+  transform-style: preserve-3d;
+  animation: spin 12s linear infinite;
+  will-change: transform;
+}
+
+/* Waiting cubes don't spin - shows they're not running */
+.waitingCube .cube {
+  animation: none;
+  transform: rotateX(-20deg) rotateY(45deg);
+}
+
+/* Cube faces - glass effect */
+.face {
+  position: absolute;
+  width: var(--cube-size);
+  height: var(--cube-size);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  border: 2px solid rgba(58, 143, 94, 0.6);
+  backface-visibility: visible;
+}
+
+/* Face label */
+.faceLabel {
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: var(--font-size);
+  font-weight: 700;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* Top face - brightest */
+.faceTop {
+  background: linear-gradient(135deg, rgba(79, 184, 123, 0.85) 0%, rgba(58, 143, 94, 0.75) 50%, rgba(79, 184, 123, 0.8) 100%);
+  transform: rotateX(90deg) translateZ(calc(var(--cube-size) / 2));
+  box-shadow: inset 0 0 30px rgba(255, 255, 255, 0.3), inset 0 0 60px rgba(100, 200, 150, 0.2);
+}
+
+/* Front face */
+.faceFront {
+  background: linear-gradient(180deg, rgba(79, 184, 123, 0.8) 0%, rgba(58, 143, 94, 0.85) 100%);
+  transform: translateZ(calc(var(--cube-size) / 2));
+  box-shadow: inset 0 0 25px rgba(255, 255, 255, 0.2), inset 0 0 50px rgba(90, 180, 140, 0.15);
+}
+
+/* Back face */
+.faceBack {
+  background: linear-gradient(180deg, rgba(58, 143, 94, 0.8) 0%, rgba(46, 115, 75, 0.85) 100%);
+  transform: rotateY(180deg) translateZ(calc(var(--cube-size) / 2));
+  box-shadow: inset 0 0 25px rgba(255, 255, 255, 0.15), inset 0 0 40px rgba(80, 160, 130, 0.15);
+}
+
+/* Left face */
+.faceLeft {
+  background: linear-gradient(180deg, rgba(58, 143, 94, 0.8) 0%, rgba(46, 115, 75, 0.85) 100%);
+  transform: rotateY(-90deg) translateZ(calc(var(--cube-size) / 2));
+  box-shadow: inset 0 0 25px rgba(255, 255, 255, 0.15), inset 0 0 40px rgba(80, 160, 130, 0.15);
+}
+
+/* Right face */
+.faceRight {
+  background: linear-gradient(180deg, rgba(79, 184, 123, 0.8) 0%, rgba(58, 143, 94, 0.85) 100%);
+  transform: rotateY(90deg) translateZ(calc(var(--cube-size) / 2));
+  box-shadow: inset 0 0 25px rgba(255, 255, 255, 0.2), inset 0 0 50px rgba(90, 180, 140, 0.15);
+}
+
+/* Entering cube - lighter tint */
+.faceEntering {
+  background: linear-gradient(135deg, rgba(100, 200, 150, 0.9) 0%, rgba(79, 184, 123, 0.85) 100%);
+}
+
+/* Animations */
+@keyframes floatSubtle {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes floatWaiting {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes spin {
+  0% { transform: rotateX(-20deg) rotateY(0deg); }
+  100% { transform: rotateX(-20deg) rotateY(360deg); }
+}
+
+/* Exiting cube - moves from top slot down to waiting area */
+.exitingCube {
+  position: absolute;
+  left: 40%;
+  z-index: 2;
+  animation: exitCloud 8s ease-in-out infinite;
+}
+
+@keyframes exitCloud {
+  0%, 10% {
+    top: 12%;
+    opacity: 1;
+  }
+  30% {
+    top: 40%;
+    opacity: 1;
+  }
+  50%, 100% {
+    top: 88%;
+    opacity: 0.6;
+  }
+}
+
+/* Entering cube - moves from below cloud up into top slot */
+.enteringCube {
+  position: absolute;
+  left: 40%;
+  z-index: 2;
+  animation: enterCloud 8s ease-in-out infinite;
+}
+
+@keyframes enterCloud {
+  0%, 50% {
+    top: 88%;
+    opacity: 0.8;
+  }
+  70% {
+    top: 40%;
+    opacity: 1;
+  }
+  90%, 100% {
+    top: 12%;
+    opacity: 1;
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 996px) {
+  .scene {
+    height: 400px;
+  }
+
+  .cubeSmall {
+    --cube-size: 38px;
+    --font-size: 10px;
+  }
+
+  .cubeMedium {
+    --cube-size: 50px;
+    --font-size: 11px;
+  }
+
+  .emptySlot {
+    width: 50px;
+    height: 50px;
+  }
+}
+
+@media (max-width: 480px) {
+  .scene {
+    height: 350px;
+  }
+
+  .cubeSmall {
+    --cube-size: 32px;
+    --font-size: 9px;
+  }
+
+  .cubeMedium {
+    --cube-size: 42px;
+    --font-size: 10px;
+  }
+
+  .emptySlot {
+    width: 42px;
+    height: 42px;
+  }
+}

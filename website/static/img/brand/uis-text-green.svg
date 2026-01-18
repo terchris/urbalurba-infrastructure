@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg width="400px" height="120px" viewBox="0 0 400 120" xmlns="http://www.w3.org/2000/svg">
+  <title>UIS Logo with Text (Green)</title>
+
+  <defs>
+    <linearGradient id="cube-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4fb87b"/>
+      <stop offset="100%" style="stop-color:#3a8f5e"/>
+    </linearGradient>
+    <!-- Clip path to cut the U where logo overlaps -->
+    <clipPath id="u-clip">
+      <rect x="95" y="0" width="305" height="120"/>
+    </clipPath>
+  </defs>
+
+  <!-- Cloud + Pyramid logo (scaled and positioned) -->
+  <g transform="translate(50, 60) scale(1.1) translate(-50, -40)">
+    <!-- Cloud shape -->
+    <path d="M78 56
+             C85 56, 90 50, 90 42
+             C90 34, 84 28, 76 28
+             C75 17, 65 9, 50 9
+             C37 9, 27 17, 26 28
+             C24 27, 21 26, 18 26
+             C9 26, 2 34, 2 44
+             C2 54, 9 62, 20 62
+             L76 62
+             C83 62, 88 58, 88 52
+             Z"
+          fill="none"
+          stroke="#3a8f5e"
+          stroke-width="2.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"/>
+
+    <!-- Pyramid Stack -->
+    <!-- Bottom row: 3 cubes -->
+    <rect x="20" y="44" width="13" height="13" rx="2" fill="url(#cube-grad)"/>
+    <rect x="37" y="44" width="13" height="13" rx="2" fill="url(#cube-grad)"/>
+    <rect x="54" y="44" width="13" height="13" rx="2" fill="url(#cube-grad)"/>
+
+    <!-- Middle row: 2 cubes -->
+    <rect x="28.5" y="29" width="13" height="13" rx="2" fill="url(#cube-grad)"/>
+    <rect x="45.5" y="29" width="13" height="13" rx="2" fill="url(#cube-grad)"/>
+
+    <!-- Top row: 1 cube -->
+    <rect x="37" y="14" width="13" height="13" rx="2" fill="url(#cube-grad)"/>
+  </g>
+
+  <!-- UIS text with clipped U -->
+  <g clip-path="url(#u-clip)">
+    <text x="95" y="88" font-family="Arial, Helvetica, sans-serif" font-size="72" font-weight="bold" fill="#3a8f5e">UIS</text>
+  </g>
+</svg>
