@@ -1,0 +1,8 @@
+{
+  "label": "Management",
+  "position": 7,
+  "link": {
+    "type": "doc",
+    "id": "packages/management/index"
+  }
+}
