@@ -1,0 +1,8 @@
+{
+  "label": "AI & Machine Learning",
+  "position": 1,
+  "link": {
+    "type": "doc",
+    "id": "packages/ai/index"
+  }
+}

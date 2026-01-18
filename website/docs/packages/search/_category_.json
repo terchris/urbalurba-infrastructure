@@ -1,0 +1,8 @@
+{
+  "label": "Search",
+  "position": 10,
+  "link": {
+    "type": "doc",
+    "id": "packages/search/index"
+  }
+}

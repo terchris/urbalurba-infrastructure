@@ -1,0 +1,306 @@
+/**
+ * Urbalurba Infrastructure Stack - Custom Styles
+ * SovereignSky green/navy branding (matching DevContainer Toolbox)
+ */
+
+/*
+ * Brand Colors (matching DCT)
+ *
+ * Primary: Green (#3a8f5e) - SovereignSky green
+ * Secondary: Navy Blue (#1e3a5f) - SovereignSky navy
+ * Accent: Bright Green (#25c2a0) - for dark mode / highlights
+ */
+:root {
+  /* Primary green - matches SovereignSky branding */
+  --ifm-color-primary: #3a8f5e;
+  --ifm-color-primary-dark: #348054;
+  --ifm-color-primary-darker: #31794f;
+  --ifm-color-primary-darkest: #286441;
+  --ifm-color-primary-light: #409e68;
+  --ifm-color-primary-lighter: #43a56d;
+  --ifm-color-primary-lightest: #4fb87b;
+
+  /* Secondary navy blue */
+  --ifm-color-secondary: #1e3a5f;
+
+  --ifm-code-font-size: 95%;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+
+  /* Font */
+  --ifm-font-family-base: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, sans-serif;
+  --ifm-heading-font-family: var(--ifm-font-family-base);
+}
+
+/* Dark mode - brighter green for readability */
+[data-theme='dark'] {
+  --ifm-color-primary: #25c2a0;
+  --ifm-color-primary-dark: #21af90;
+  --ifm-color-primary-darker: #1fa588;
+  --ifm-color-primary-darkest: #1a8870;
+  --ifm-color-primary-light: #29d5b0;
+  --ifm-color-primary-lighter: #32d8b4;
+  --ifm-color-primary-lightest: #4fddbf;
+
+  --ifm-color-secondary: #3a5f8f;
+
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+}
+
+/* Table styling */
+.markdown table {
+  width: 100% !important;
+  min-width: 100%;
+  max-width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin-bottom: 1.5rem;
+  display: table;
+}
+
+.markdown table thead tr {
+  background: var(--ifm-color-primary);
+}
+
+.markdown table thead th {
+  color: white;
+  font-weight: 600;
+  padding: 0.75rem 1rem;
+  border: none;
+  text-align: left;
+}
+
+.markdown table tbody tr {
+  background: var(--ifm-card-background-color);
+  transition: background-color 0.15s ease;
+}
+
+.markdown table tbody tr:hover {
+  background: var(--ifm-color-emphasis-100);
+}
+
+.markdown table tbody td {
+  padding: 0.75rem 1rem;
+  border: none;
+  border-top: 1px solid var(--ifm-color-emphasis-200);
+  vertical-align: top;
+}
+
+.markdown table tbody tr:first-child td {
+  border-top: none;
+}
+
+.markdown table tbody td:first-child code {
+  background: var(--ifm-color-emphasis-200);
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+}
+
+.markdown table tbody td:first-child a {
+  font-weight: 500;
+  color: var(--ifm-color-primary);
+}
+
+.markdown table tbody td:first-child a:hover {
+  text-decoration: underline;
+}
+
+/* Dark mode table adjustments */
+[data-theme='dark'] .markdown table {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme='dark'] .markdown table tbody tr {
+  background: var(--ifm-background-surface-color);
+}
+
+[data-theme='dark'] .markdown table tbody tr:hover {
+  background: var(--ifm-color-emphasis-100);
+}
+
+/* Navbar styling */
+.navbar__title {
+  font-weight: 700;
+}
+
+/* Footer styling - ensure readable text on dark background */
+.footer--dark {
+  --ifm-footer-background-color: #1e3a5f;
+}
+
+.footer--dark .footer__title {
+  color: #ffffff;
+}
+
+.footer--dark .footer__link-item {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.footer--dark .footer__link-item:hover {
+  color: #ffffff;
+}
+
+.footer--dark .footer__copyright {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.footer--dark .footer__copyright a {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.footer--dark .footer__copyright a:hover {
+  color: #ffffff;
+}
+
+/* Code blocks */
+.prism-code {
+  font-size: 0.9rem;
+}
+
+/* Sidebar */
+.menu__link--active:not(.menu__link--sublist) {
+  background-color: rgba(58, 143, 94, 0.1);
+}
+
+[data-theme='dark'] .menu__link--active:not(.menu__link--sublist) {
+  background-color: rgba(37, 194, 160, 0.1);
+}
+
+/* Admonitions */
+.admonition {
+  border-radius: 8px;
+}
+
+/* Links */
+.markdown a {
+  text-decoration: none;
+}
+
+.markdown a:hover {
+  text-decoration: underline;
+}
+
+/* Hero section */
+.hero {
+  background: linear-gradient(135deg, #1e3a5f 0%, #2d4a6f 100%);
+}
+
+.hero__title {
+  font-size: 3rem;
+  font-weight: 700;
+}
+
+.hero__subtitle {
+  font-size: 1.5rem;
+  color: #d1d5db;
+}
+
+/* Feature cards */
+.feature-card {
+  padding: 1.5rem;
+  border-radius: 12px;
+  background: var(--ifm-card-background-color);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.feature-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* Button styling */
+.button--primary {
+  background-color: var(--ifm-color-primary);
+  border-color: var(--ifm-color-primary);
+  color: white;
+}
+
+.button--primary:hover {
+  background-color: var(--ifm-color-primary-dark);
+  border-color: var(--ifm-color-primary-dark);
+  color: white;
+}
+
+.button--secondary,
+.button--outline {
+  background-color: transparent;
+  border-color: white !important;
+  color: white !important;
+}
+
+.button--secondary:hover,
+.button--outline:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: white !important;
+  color: white !important;
+}
+
+/* Hero buttons - ensure visibility in both light and dark mode */
+.hero .button--secondary,
+.hero .button--outline,
+.heroBanner .button--secondary,
+.heroBanner .button--outline {
+  background-color: transparent;
+  border: 2px solid white !important;
+  color: white !important;
+}
+
+.hero .button--secondary:hover,
+.hero .button--outline:hover,
+.heroBanner .button--secondary:hover,
+.heroBanner .button--outline:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+  color: white !important;
+}
+
+/* Breadcrumbs */
+.breadcrumbs__link {
+  color: var(--ifm-color-primary);
+}
+
+/* Search */
+.navbar__search-input {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.navbar__search-input::placeholder {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Version badge in navbar */
+.navbar .badge--secondary {
+  background-color: #1e3a5f;
+  color: #ffffff;
+  border: none;
+}
+
+[data-theme='dark'] .navbar .badge--secondary {
+  background-color: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Responsive adjustments */
+@media screen and (max-width: 996px) {
+  .hero__title {
+    font-size: 2rem;
+  }
+
+  .hero__subtitle {
+    font-size: 1.25rem;
+  }
+}
+
+/* Image zoom */
+.medium-zoom-overlay {
+  z-index: 1000;
+}
+
+.medium-zoom-image--opened {
+  z-index: 1001;
+}
