@@ -70,7 +70,7 @@ const config: Config = {
       title: 'Urbalurba Infrastructure Stack',
       logo: {
         alt: 'Urbalurba Infrastructure Stack Logo',
-        src: 'img/logo.svg',
+        src: 'img/brand/uis-logo-green.svg',
       },
       items: [
         {

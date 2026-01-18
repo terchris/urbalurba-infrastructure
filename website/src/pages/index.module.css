@@ -11,12 +11,60 @@
   }
 }
 
-.buttons {
+.heroContainer {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 3rem;
+}
+
+.heroAnimation {
+  flex: 0 0 auto;
+  width: 400px;
+}
+
+.heroContent {
+  flex: 1;
+  text-align: left;
+  max-width: 500px;
+}
+
+@media screen and (max-width: 996px) {
+  .heroContainer {
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  .heroAnimation {
+    width: 320px;
+  }
+
+  .heroContent {
+    text-align: center;
+  }
+}
+
+@media screen and (max-width: 500px) {
+  .heroAnimation {
+    width: 280px;
+  }
+}
+
+.buttons {
+  display: flex;
+  align-items: center;
   gap: 1rem;
   margin-top: 2rem;
+}
+
+.heroContent .buttons {
+  justify-content: flex-start;
+}
+
+@media screen and (max-width: 996px) {
+  .heroContent .buttons {
+    justify-content: center;
+  }
 }
 
 @media screen and (max-width: 500px) {

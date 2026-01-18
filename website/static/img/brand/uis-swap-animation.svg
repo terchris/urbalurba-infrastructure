@@ -1,0 +1,149 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250" width="400" height="250">
+  <defs>
+    <!-- Vendor gradients -->
+    <linearGradient id="vendorGray" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#64748b"/>
+      <stop offset="100%" style="stop-color:#475569"/>
+    </linearGradient>
+    
+    <!-- Open source green -->
+    <linearGradient id="ossGreen2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4ade80"/>
+      <stop offset="100%" style="stop-color:#22c55e"/>
+    </linearGradient>
+    
+    <!-- Shadow -->
+    <filter id="dropShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="2" dy="4" stdDeviation="4" flood-color="#000" flood-opacity="0.2"/>
+    </filter>
+  </defs>
+  
+  <!-- Cloud background -->
+  <path d="M340 150
+           C365 150, 385 130, 385 105
+           C385 80, 365 60, 335 60
+           C330 30, 290 5, 210 5
+           C140 5, 100 30, 95 60
+           C85 57, 73 55, 62 55
+           C25 55, -5 85, -5 120
+           C-5 155, 25 185, 65 185
+           L330 185
+           C360 185, 380 168, 380 145
+           Z"
+        fill="none"
+        stroke="#22c55e"
+        stroke-width="2.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        opacity="0.8"/>
+
+  <!-- Static stack base (already replaced services) -->
+  <g filter="url(#dropShadow)">
+    <!-- Bottom row -->
+    <g transform="translate(100, 120)">
+      <rect width="50" height="50" rx="8" fill="url(#ossGreen2)"/>
+      <text x="25" y="28" font-family="system-ui, sans-serif" font-size="10" font-weight="700" fill="white" text-anchor="middle">Minio</text>
+      <text x="25" y="40" font-family="system-ui, sans-serif" font-size="7" fill="white" text-anchor="middle" opacity="0.7">Storage</text>
+    </g>
+    <g transform="translate(160, 120)">
+      <rect width="50" height="50" rx="8" fill="url(#ossGreen2)"/>
+      <text x="25" y="28" font-family="system-ui, sans-serif" font-size="10" font-weight="700" fill="white" text-anchor="middle">Postgres</text>
+      <text x="25" y="40" font-family="system-ui, sans-serif" font-size="7" fill="white" text-anchor="middle" opacity="0.7">Database</text>
+    </g>
+    <g transform="translate(220, 120)">
+      <rect width="50" height="50" rx="8" fill="url(#ossGreen2)"/>
+      <text x="25" y="28" font-family="system-ui, sans-serif" font-size="10" font-weight="700" fill="white" text-anchor="middle">Redis</text>
+      <text x="25" y="40" font-family="system-ui, sans-serif" font-size="7" fill="white" text-anchor="middle" opacity="0.7">Cache</text>
+    </g>
+    
+    <!-- Middle row -->
+    <g transform="translate(130, 62)">
+      <rect width="50" height="50" rx="8" fill="url(#ossGreen2)"/>
+      <text x="25" y="28" font-family="system-ui, sans-serif" font-size="10" font-weight="700" fill="white" text-anchor="middle">Grafana</text>
+      <text x="25" y="40" font-family="system-ui, sans-serif" font-size="7" fill="white" text-anchor="middle" opacity="0.7">Monitor</text>
+    </g>
+    <g transform="translate(190, 62)">
+      <rect width="50" height="50" rx="8" fill="url(#ossGreen2)"/>
+      <text x="25" y="28" font-family="system-ui, sans-serif" font-size="10" font-weight="700" fill="white" text-anchor="middle">Prom</text>
+      <text x="25" y="40" font-family="system-ui, sans-serif" font-size="7" fill="white" text-anchor="middle" opacity="0.7">Metrics</text>
+    </g>
+  </g>
+  
+  <!-- Empty slot (dashed) for top -->
+  <rect x="160" y="4" width="50" height="50" rx="8" 
+        fill="none" stroke="#22c55e" stroke-width="2" stroke-dasharray="6,4" opacity="0.4"/>
+  
+  <!-- ANIMATED: Vendor cube flying OUT (top left) -->
+  <g filter="url(#dropShadow)">
+    <g>
+      <animateTransform attributeName="transform" type="translate"
+        values="160,4; 160,4; 140,-10; 80,-30; 20,-50; -50,-60"
+        keyTimes="0; 0.3; 0.45; 0.6; 0.8; 1"
+        dur="4s" repeatCount="indefinite"
+        calcMode="spline"
+        keySplines="0.4 0 0.6 1; 0.4 0 0.6 1; 0.4 0 0.6 1; 0.4 0 0.6 1; 0.4 0 0.6 1"/>
+      <g>
+        <animate attributeName="opacity" values="1;1;0.8;0.5;0.2;0" 
+                 keyTimes="0;0.3;0.45;0.6;0.8;1" dur="4s" repeatCount="indefinite"/>
+        <rect width="50" height="50" rx="8" fill="url(#vendorGray)"/>
+        <text x="25" y="28" font-family="system-ui, sans-serif" font-size="9" font-weight="700" fill="white" text-anchor="middle">Azure</text>
+        <text x="25" y="40" font-family="system-ui, sans-serif" font-size="7" fill="white" text-anchor="middle" opacity="0.7">OpenAI</text>
+        <!-- X mark -->
+        <g stroke="#ef4444" stroke-width="3" stroke-linecap="round" opacity="0.8">
+          <line x1="10" y1="10" x2="40" y2="40"/>
+          <line x1="40" y1="10" x2="10" y2="40"/>
+        </g>
+      </g>
+    </g>
+  </g>
+  
+  <!-- ANIMATED: OSS cube flying IN (from right) -->
+  <g filter="url(#dropShadow)">
+    <g>
+      <animateTransform attributeName="transform" type="translate"
+        values="420,80; 380,60; 300,30; 220,10; 160,4; 160,4"
+        keyTimes="0; 0.15; 0.35; 0.55; 0.7; 1"
+        dur="4s" repeatCount="indefinite"
+        calcMode="spline"
+        keySplines="0.4 0 0.6 1; 0.3 0 0.7 1; 0.3 0 0.7 1; 0.5 0 0.3 1; 0.4 0 0.6 1"/>
+      <g>
+        <animate attributeName="opacity" values="0;0.5;0.8;1;1;1" 
+                 keyTimes="0;0.15;0.35;0.55;0.7;1" dur="4s" repeatCount="indefinite"/>
+        <rect width="50" height="50" rx="8" fill="url(#ossGreen2)">
+          <animate attributeName="fill-opacity" values="0.7;0.85;1;1;1;1" 
+                   keyTimes="0;0.15;0.35;0.55;0.7;1" dur="4s" repeatCount="indefinite"/>
+        </rect>
+        <text x="25" y="28" font-family="system-ui, sans-serif" font-size="10" font-weight="700" fill="white" text-anchor="middle">Ollama</text>
+        <text x="25" y="40" font-family="system-ui, sans-serif" font-size="7" fill="white" text-anchor="middle" opacity="0.7">Local AI</text>
+      </g>
+    </g>
+  </g>
+  
+  <!-- Floating available services (right side) -->
+  <g filter="url(#dropShadow)" opacity="0.7">
+    <g>
+      <animateTransform attributeName="transform" type="translate"
+        values="320,100; 320,110; 320,100" dur="3s" repeatCount="indefinite"
+        calcMode="spline" keySplines="0.4 0 0.6 1; 0.4 0 0.6 1"/>
+      <rect width="42" height="42" rx="6" fill="url(#ossGreen2)" opacity="0.8"/>
+      <text x="21" y="24" font-family="system-ui, sans-serif" font-size="9" font-weight="700" fill="white" text-anchor="middle">Loki</text>
+      <text x="21" y="35" font-family="system-ui, sans-serif" font-size="6" fill="white" text-anchor="middle" opacity="0.7">Logs</text>
+    </g>
+  </g>
+  
+  <g filter="url(#dropShadow)" opacity="0.7">
+    <g>
+      <animateTransform attributeName="transform" type="translate"
+        values="330,155; 330,165; 330,155" dur="2.7s" repeatCount="indefinite"
+        calcMode="spline" keySplines="0.4 0 0.6 1; 0.4 0 0.6 1"/>
+      <rect width="42" height="42" rx="6" fill="url(#ossGreen2)" opacity="0.8"/>
+      <text x="21" y="24" font-family="system-ui, sans-serif" font-size="9" font-weight="700" fill="white" text-anchor="middle">NATS</text>
+      <text x="21" y="35" font-family="system-ui, sans-serif" font-size="6" fill="white" text-anchor="middle" opacity="0.7">Queue</text>
+    </g>
+  </g>
+  
+  <!-- Labels -->
+  <text x="35" y="230" font-family="system-ui, sans-serif" font-size="10" fill="#ef4444" text-anchor="middle" opacity="0.8">Vendor Lock-in</text>
+  <text x="185" y="230" font-family="system-ui, sans-serif" font-size="10" fill="#4ade80" text-anchor="middle">Your Sovereign Stack</text>
+  <text x="340" y="230" font-family="system-ui, sans-serif" font-size="10" fill="#4ade80" text-anchor="middle" opacity="0.8">Available Services</text>
+</svg>

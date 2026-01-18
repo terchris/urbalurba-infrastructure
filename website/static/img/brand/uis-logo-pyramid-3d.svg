@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 80" width="100" height="80">
+  <defs>
+    <!-- 3D cube face gradients -->
+    <linearGradient id="cubeTop" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" style="stop-color:#4ade80"/>
+      <stop offset="100%" style="stop-color:#86efac"/>
+    </linearGradient>
+    <linearGradient id="cubeFront" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#22c55e"/>
+      <stop offset="100%" style="stop-color:#16a34a"/>
+    </linearGradient>
+    <linearGradient id="cubeRight" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#22c55e"/>
+      <stop offset="100%" style="stop-color:#15803d"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Cloud outline -->
+  <path d="M78 56
+           C85 56, 90 50, 90 42
+           C90 34, 84 28, 76 28
+           C75 17, 65 9, 50 9
+           C37 9, 27 17, 26 28
+           C24 27, 21 26, 18 26
+           C9 26, 2 34, 2 44
+           C2 54, 9 62, 20 62
+           L76 62
+           C83 62, 88 58, 88 52
+           Z"
+        fill="none"
+        stroke="#22c55e"
+        stroke-width="2.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"/>
+  
+  <!-- Isometric cube function: creates a 3D looking cube -->
+  <!-- Each cube is made of 3 parallelograms -->
+  
+  <!-- Bottom row: 3 cubes -->
+  <!-- Cube 1 (left) -->
+  <g transform="translate(18, 35)">
+    <polygon points="10,5 20,0 20,12 10,17" fill="url(#cubeRight)"/>
+    <polygon points="0,0 10,5 10,17 0,12" fill="url(#cubeFront)"/>
+    <polygon points="0,0 10,-5 20,0 10,5" fill="url(#cubeTop)"/>
+  </g>
+  
+  <!-- Cube 2 (center) -->
+  <g transform="translate(38, 35)">
+    <polygon points="10,5 20,0 20,12 10,17" fill="url(#cubeRight)"/>
+    <polygon points="0,0 10,5 10,17 0,12" fill="url(#cubeFront)"/>
+    <polygon points="0,0 10,-5 20,0 10,5" fill="url(#cubeTop)"/>
+  </g>
+  
+  <!-- Cube 3 (right) -->
+  <g transform="translate(58, 35)">
+    <polygon points="10,5 20,0 20,12 10,17" fill="url(#cubeRight)"/>
+    <polygon points="0,0 10,5 10,17 0,12" fill="url(#cubeFront)"/>
+    <polygon points="0,0 10,-5 20,0 10,5" fill="url(#cubeTop)"/>
+  </g>
+  
+  <!-- Middle row: 2 cubes -->
+  <!-- Cube 4 (left-center) -->
+  <g transform="translate(28, 22)">
+    <polygon points="10,5 20,0 20,12 10,17" fill="url(#cubeRight)"/>
+    <polygon points="0,0 10,5 10,17 0,12" fill="url(#cubeFront)"/>
+    <polygon points="0,0 10,-5 20,0 10,5" fill="url(#cubeTop)"/>
+  </g>
+  
+  <!-- Cube 5 (right-center) -->
+  <g transform="translate(48, 22)">
+    <polygon points="10,5 20,0 20,12 10,17" fill="url(#cubeRight)"/>
+    <polygon points="0,0 10,5 10,17 0,12" fill="url(#cubeFront)"/>
+    <polygon points="0,0 10,-5 20,0 10,5" fill="url(#cubeTop)"/>
+  </g>
+  
+  <!-- Top row: 1 cube -->
+  <g transform="translate(38, 9)">
+    <polygon points="10,5 20,0 20,12 10,17" fill="url(#cubeRight)"/>
+    <polygon points="0,0 10,5 10,17 0,12" fill="url(#cubeFront)"/>
+    <polygon points="0,0 10,-5 20,0 10,5" fill="url(#cubeTop)"/>
+  </g>
+</svg>

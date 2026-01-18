@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 80" width="100" height="80">
-  <title>UIS Logo (Green)</title>
+  <title>UIS Logo (Teal - Dark Mode)</title>
   <defs>
-    <linearGradient id="cube" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#4fb87b"/>
-      <stop offset="100%" style="stop-color:#3a8f5e"/>
+    <linearGradient id="cube-teal" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4fd1c5"/>
+      <stop offset="100%" style="stop-color:#25c2a0"/>
     </linearGradient>
   </defs>
 
@@ -21,21 +21,21 @@
            C83 62, 88 58, 88 52
            Z"
         fill="none"
-        stroke="#3a8f5e"
+        stroke="#25c2a0"
         stroke-width="2.5"
         stroke-linecap="round"
         stroke-linejoin="round"/>
 
   <!-- Pyramid Stack -->
   <!-- Bottom row: 3 cubes -->
-  <rect x="20" y="44" width="13" height="13" rx="2" fill="url(#cube)"/>
-  <rect x="37" y="44" width="13" height="13" rx="2" fill="url(#cube)"/>
-  <rect x="54" y="44" width="13" height="13" rx="2" fill="url(#cube)"/>
+  <rect x="20" y="44" width="13" height="13" rx="2" fill="url(#cube-teal)"/>
+  <rect x="37" y="44" width="13" height="13" rx="2" fill="url(#cube-teal)"/>
+  <rect x="54" y="44" width="13" height="13" rx="2" fill="url(#cube-teal)"/>
 
   <!-- Middle row: 2 cubes (centered between bottom cubes) -->
-  <rect x="28.5" y="29" width="13" height="13" rx="2" fill="url(#cube)"/>
-  <rect x="45.5" y="29" width="13" height="13" rx="2" fill="url(#cube)"/>
+  <rect x="28.5" y="29" width="13" height="13" rx="2" fill="url(#cube-teal)"/>
+  <rect x="45.5" y="29" width="13" height="13" rx="2" fill="url(#cube-teal)"/>
 
   <!-- Top row: 1 cube (centered) -->
-  <rect x="37" y="14" width="13" height="13" rx="2" fill="url(#cube)"/>
+  <rect x="37" y="14" width="13" height="13" rx="2" fill="url(#cube-teal)"/>
 </svg>
