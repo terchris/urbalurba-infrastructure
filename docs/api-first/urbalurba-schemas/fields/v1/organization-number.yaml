@@ -1,8 +1,0 @@
-# file: _shared/fields/v1/organization-number.yaml
-components:
-  schemas:
-    OrganizationNumber:
-      type: string
-      description: Norwegian organization number (organisasjonsnummer)
-      pattern: '^[0-9]{9}$'
-      example: "979345306"

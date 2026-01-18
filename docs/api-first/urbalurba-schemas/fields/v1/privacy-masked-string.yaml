@@ -1,9 +1,0 @@
-# file: _shared/fields/v1/privacy-masked-string.yaml
-components:
-  schemas:
-    PrivacyMaskedString:
-      type: string
-      description: String that can be masked for privacy reasons with "n/a"
-      pattern: '^(?!n\/a$).+|^n\/a$'  # Accepts any non-empty string or exactly "n/a"
-      maxLength: 100
-      example: "Some value"
