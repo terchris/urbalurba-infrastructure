@@ -1,8 +1,0 @@
-# file: _shared/fields/v1/branch-id.yaml
-components:
-  schemas:
-    BranchId:
-      type: string
-      description: Unique identifier for the branch
-      pattern: '^L[0-9]{3}$'
-      example: "L099"

@@ -1,8 +1,0 @@
-# file: _shared/fields/v1/postal-code.yaml
-components:
-  schemas:
-    NorwegianPostalCode:
-      type: string
-      description: Norwegian postal code (4 digits)
-      pattern: '^[0-9]{4}$'
-      example: "3371"

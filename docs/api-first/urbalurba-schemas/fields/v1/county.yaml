@@ -1,9 +1,0 @@
-# file: _shared/fields/v1/county.yaml
-components:
-  schemas:
-    County:
-      type: string
-      description: Norwegian county (fylke)
-      maxLength: 50
-      pattern: '^[a-zA-ZæøåÆØÅ\s\-]+$'
-      example: "Buskerud"

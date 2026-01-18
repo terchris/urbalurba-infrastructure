@@ -1,8 +1,0 @@
-# file: _shared/fields/v1/norwegian-phone.yaml
-components:
-  schemas:
-    NorwegianPhoneNumber:
-      type: string
-      description: Norwegian phone number with country code
-      pattern: '^\+47 [0-9]{8}$'
-      example: "+47 41929488"

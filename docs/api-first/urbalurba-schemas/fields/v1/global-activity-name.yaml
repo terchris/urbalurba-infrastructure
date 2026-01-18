@@ -1,9 +1,0 @@
-# file: _shared/fields/v1/global-activity-name.yaml
-components:
-  schemas:
-    GlobalActivityName:
-      type: string
-      description: Standard name for the activity type as defined centrally
-      minLength: 1
-      maxLength: 50
-      example: "BesÃ¸k med hund"
