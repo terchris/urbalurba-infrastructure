@@ -1,0 +1,70 @@
+{
+    // we are using devcontainers read about it: https://code.visualstudio.com/docs/devcontainers/containers
+    // or watch this video intro: https://www.youtube.com/watch?v=b1RavPr_878&t=38s
+    // NEWER edit this file. It is the same for all projects. Extend in the .devcontainer.extend folder
+    "name": "DevContainer Toolbox",
+    "_toolboxVersion": "1.5.0",
+    "build": {
+        "dockerfile": "Dockerfile.base",
+        "args": {
+            "DEV_MAC_LOGNAME": "${localEnv:LOGNAME}",
+            "DEV_MAC_USER": "${localEnv:USER}",
+            "DEV_LINUX_LOGNAME": "${localEnv:LOGNAME}",
+            "DEV_LINUX_USER": "${localEnv:USER}",
+            "DEV_WIN_USERDNSDOMAIN": "${localEnv:USERDNSDOMAIN}",
+            "DEV_WIN_USERDOMAIN": "${localEnv:USERDOMAIN}",
+            "DEV_WIN_USERDOMAIN_ROAMINGPROFILE": "${localEnv:USERDOMAIN_ROAMINGPROFILE}",
+            "DEV_WIN_USERNAME": "${localEnv:USERNAME}",
+            "DEV_WIN_COMPUTERNAME": "${localEnv:COMPUTERNAME}",
+            "DEV_WIN_OS": "${localEnv:OS}",
+            "DEV_WIN_NUMBER_OF_PROCESSORS": "${localEnv:NUMBER_OF_PROCESSORS}",
+            "DEV_WIN_PROCESSOR_ARCHITECTURE": "${localEnv:PROCESSOR_ARCHITECTURE}",
+            "DEV_WIN_PROCESSOR_IDENTIFIER": "${localEnv:PROCESSOR_IDENTIFIER}",
+            "DEV_WIN_ONEDRIVE": "${localEnv:OneDrive}",
+            "DEV_WIN_LOGONSERVER": "${localEnv:LOGONSERVER}"
+        }
+    },
+    // these are needed for setting up vpn in the container
+    "runArgs": [
+        "--cap-add=NET_ADMIN",
+        "--cap-add=NET_RAW",
+        "--cap-add=SYS_ADMIN",
+        "--cap-add=AUDIT_WRITE",
+        "--device=/dev/net/tun:/dev/net/tun",
+        "--privileged"
+        // Add "--network=your-network-name" if your project needs a custom Docker network
+    ],
+    "customizations": {
+        "vscode": {
+            // Universal extensions useful for any project
+            "extensions": [
+                "yzhang.markdown-all-in-one",
+                "MermaidChart.vscode-mermaid-chart",
+                "redhat.vscode-yaml",
+                "mhutchie.git-graph",
+                "timonwong.shellcheck"
+            ]
+        }
+    },
+    "remoteUser": "vscode",
+    "containerUser": "vscode",
+    "remoteEnv": {
+        "DOCKER_HOST": "unix:///var/run/docker.sock",
+        "DOCKER_HOST_URI": "/var/run/docker.sock",
+        "PODMAN_SOCKET": "/var/run/docker.sock"
+    },
+    "mounts": [
+        "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind,consistency=cached"
+    ],
+    // your repo root will always be /workspace
+    "workspaceFolder": "/workspace",
+    "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
+    // we stop the container when you exit vscode
+    "shutdownAction": "stopContainer",
+    "updateRemoteUserUID": true,
+    "init": true,
+    // main orchestration script that calls project-installs.sh for custom installations
+    "postCreateCommand": "bash .devcontainer/manage/postCreateCommand.sh",
+    // runs on EVERY container start - starts services and refreshes dynamic values
+    "postStartCommand": "bash .devcontainer/manage/postStartCommand.sh"
+}

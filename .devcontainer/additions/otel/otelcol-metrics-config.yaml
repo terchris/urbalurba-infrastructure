@@ -1,0 +1,266 @@
+# File: /workspace/.devcontainer/additions/otel/otelcol-metrics-config.yaml
+#
+# Purpose: Dedicated OpenTelemetry Collector configuration for system metrics collection
+#          Collects CPU, memory, disk, and network metrics every 10 seconds and sends
+#          them to Kubernetes-based observability backend (Prometheus).
+#
+# This config uses OTEL's native environment variable expansion: ${env:VARIABLE_NAME}
+# Variables are automatically sourced by service-otel-monitoring.sh from:
+#   - ~/.devcontainer-identity (DEVELOPER_ID, PROJECT_NAME)
+#   - ~/.git-identity (GIT_PROVIDER, GIT_ORG, GIT_REPO - for project/org filtering)
+#   - /workspace/.devcontainer.secrets/env-vars/.host-info (HOST_OS, HOST_USER, HOST_HOSTNAME, HOST_DOMAIN, HOST_CPU_ARCH)
+#   - ~/.nginx-backend-config (NGINX_OTEL_PORT)
+#
+# Why Separate: Due to pipeline cycling issue in OTel Collector v0.113.0, this dedicated
+#               metrics-only collector ensures consistent metric collection without
+#               interference from log/trace pipelines.
+#
+# Metrics Collected: System metrics from inside the devcontainer
+#   - CPU: system.cpu.time (per core, per state: user, system, idle, etc.)
+#   - Memory: system.memory.usage (per state: used, free, cached, buffered, etc.)
+#   - Disk I/O: system.disk.io, system.disk.operations
+#   - Filesystem: system.filesystem.usage, system.filesystem.inodes.usage
+#   - Network: system.network.io, system.network.connections, system.network.errors
+#
+# NOTE: We collect system-level metrics from INSIDE the devcontainer, showing resource
+#       usage as seen from the container's perspective. This gives accurate CPU, memory,
+#       disk, and network usage for the devcontainer itself.
+#
+# Labels Added: All metrics tagged with:
+#   - developer_id: From $DEVELOPER_ID env var (e.g., "john-doe")
+#   - project_name: From $PROJECT_NAME env var (e.g., "project-y")
+#   - service_name: Always "devcontainer-monitor"
+#   - cluster_name: Added by k8s collector (e.g., "urbalurba-local")
+#
+# Backend Flow:
+#   Metrics Collector → OTLP/HTTP → host.docker.internal (Docker host)
+#                                 → Traefik (Host: otel.localhost routing)
+#                                 → K8s OTel Collector (monitoring namespace)
+#                                 → Prometheus (queryable via PromQL)
+#
+# Usage:
+#   Start: source ~/.devcontainer-identity && \
+#          otelcol-contrib --config=/workspace/.devcontainer/additions/otel/otelcol-metrics-config.yaml
+#   Or use: service-otel-monitoring.sh --start
+#
+# Logs: Collector's internal logs go to stdout/stderr (captured by start script)
+#       Final destination: /var/log/otelcol-metrics.log
+#       Metrics debug output also included in the same log file
+#
+# Environment Variables Required:
+#   - DEVELOPER_ID: Developer identifier (from ~/.devcontainer-identity)
+#   - PROJECT_NAME: Project identifier (from ~/.devcontainer-identity)
+#   - HOST_OS: Host operating system (macOS/Linux/Windows)
+#   - HOST_USER: Host username
+#   - HOST_HOSTNAME: Host machine name
+#   - HOST_DOMAIN: Host domain (Windows only, empty for Mac/Linux)
+#   - HOST_CPU_ARCH: Host CPU architecture (arm64/amd64)
+#
+
+# RECEIVERS: Collect system metrics from inside the devcontainer
+receivers:
+  # Hostmetrics receiver: Collect system-level metrics from inside the devcontainer
+  # These metrics show CPU, memory, disk, and network usage as seen from within the container
+  hostmetrics:
+    # Collect metrics every 10 seconds
+    collection_interval: 10s
+    scrapers:
+      # CPU metrics: system_cpu_time_seconds_total (per core, per state)
+      cpu:
+      # Memory metrics: system_memory_usage_bytes (per state: used, free, cached, etc.)
+      memory:
+      # Disk I/O metrics
+      disk:
+      # Filesystem metrics
+      filesystem:
+      # Network metrics
+      network:
+
+  # Docker stats receiver: Collect container metrics from Docker API
+  # Monitors ALL containers visible via docker socket (devcontainer + K3s pods)
+  # Replaces the old prometheus/cgroup receiver that used metrics-devcontainer.sh
+  docker_stats:
+    endpoint: unix:///var/run/docker.sock
+    collection_interval: 10s
+    timeout: 5s
+    # Metrics collected: container.cpu.*, container.memory.*, container.network.io.*, container.blockio.*
+
+  # Prometheus receiver: Scrape script_exporter for devcontainer information
+  # script_exporter runs /workspace/.devcontainer/additions/otel/scripts/devcontainer-info.sh
+  # This provides static/semi-static information about installed components
+  prometheus/devcontainer_info:
+    config:
+      scrape_configs:
+        - job_name: 'devcontainer-info'
+          scrape_interval: 30s
+          scrape_timeout: 5s
+          static_configs:
+            - targets: ['localhost:9469']
+          params:
+            script: ['devcontainer_info']
+          metrics_path: '/probe'
+
+  # Prometheus receiver: Scrape script_exporter for K8s status
+  # script_exporter runs /workspace/.devcontainer/additions/otel/scripts/rancher-vm-k8s-status.sh
+  # Detects K8s status: disabled, enabled_unused (wasting RAM), enabled_active
+  prometheus/k8s_status:
+    config:
+      scrape_configs:
+        - job_name: 'k8s-status'
+          scrape_interval: 30s
+          scrape_timeout: 10s
+          static_configs:
+            - targets: ['localhost:9469']
+          params:
+            script: ['k8s_status']
+          metrics_path: '/probe'
+
+  # NOTE: docker_stats receiver re-enabled in v0.140.1
+  # Previous issues in v0.113.0 have been resolved. Docker socket IS accessible from devcontainer.
+
+# PROCESSORS: Process and enrich metrics before export
+processors:
+  # Batch processor: Accumulate metrics for 5 seconds before sending
+  # Reduces network overhead from 6 exports/min to ~1-2 exports/min
+  batch:
+    timeout: 5s
+
+  # Transform processor: Rename docker_stats metrics to cAdvisor-compatible names
+  # This allows using existing Grafana community dashboards designed for cAdvisor
+  transform/docker_to_prometheus:
+    metric_statements:
+      - context: metric
+        statements:
+          # CPU metrics
+          - set(name, "container_cpu_usage_seconds_total") where name == "container.cpu.usage.total"
+          - set(name, "container_cpu_user_seconds_total") where name == "container.cpu.usage.usermode"
+          - set(name, "container_cpu_system_seconds_total") where name == "container.cpu.usage.kernelmode"
+          # Memory metrics
+          - set(name, "container_memory_usage_bytes") where name == "container.memory.usage.total"
+          - set(name, "container_memory_limit_bytes") where name == "container.memory.usage.limit"
+          - set(name, "container_memory_rss_bytes") where name == "container.memory.rss"
+          # Network metrics
+          - set(name, "container_network_receive_bytes_total") where name == "container.network.io.usage.rx_bytes"
+          - set(name, "container_network_transmit_bytes_total") where name == "container.network.io.usage.tx_bytes"
+
+  # Resource processor: Add identity attributes to all metrics
+  # These become Prometheus labels for filtering and grouping
+  resource:
+    attributes:
+      # Developer identifier (e.g., "john-doe")
+      - key: developer_id
+        value: ${env:DEVELOPER_ID}
+        action: upsert
+      # Project identifier (e.g., "project-y")
+      - key: project_name
+        value: ${env:PROJECT_NAME}
+        action: upsert
+
+      # Git repository information (from config-git.sh / git-identity.sh)
+      - key: git.provider
+        value: ${env:GIT_PROVIDER}
+        action: upsert
+      - key: git.organization
+        value: ${env:GIT_ORG}
+        action: upsert
+      - key: git.repository
+        value: ${env:GIT_REPO}
+        action: upsert
+
+      # Service identifier (always "devcontainer-monitor")
+      - key: service.name
+        value: devcontainer-monitor
+        action: upsert
+
+      # Host machine information (from config-host-info.sh)
+      - key: host.name
+        value: ${env:TS_HOSTNAME}
+        action: upsert
+      - key: host.os
+        value: ${env:HOST_OS}
+        action: upsert
+      - key: host.user
+        value: ${env:HOST_USER}
+        action: upsert
+      - key: host.hostname
+        value: ${env:HOST_HOSTNAME}
+        action: upsert
+      - key: host.domain
+        value: ${env:HOST_DOMAIN}
+        action: upsert
+      - key: host.cpu.arch
+        value: ${env:HOST_CPU_ARCH}
+        action: upsert
+
+      # Windows extended variables - using OTel semantic conventions where available
+      # (values are "undefined" on Mac/Linux)
+      - key: host.arch
+        value: ${env:HOST_ARCH}
+        action: upsert
+      - key: host.cpu.model.name
+        value: ${env:HOST_CPU_MODEL_NAME}
+        action: upsert
+      - key: host.cpu.logical.count
+        value: ${env:HOST_CPU_LOGICAL_COUNT}
+        action: upsert
+
+      # Organization detection (from Windows OneDrive/LOGONSERVER)
+      - key: organization.name
+        value: ${env:ORGANIZATION_NAME}
+        action: upsert
+      - key: organization.prefix
+        value: ${env:ORGANIZATION_PREFIX}
+        action: upsert
+      - key: organization.machine.ownership
+        value: ${env:ORGANIZATION_MACHINE_OWNERSHIP}
+        action: upsert
+
+# NOTE: We collect hostmetrics (system-level) and docker_stats (container-level).
+#       docker_stats monitors ALL containers visible via Docker socket including K3s pods.
+
+# EXPORTERS: Send metrics to backend systems
+exporters:
+  # OTLP HTTP exporter: Send to Kubernetes cluster via nginx proxy
+  otlphttp:
+    # Routes through nginx reverse proxy on localhost:${env:NGINX_OTEL_PORT}
+    endpoint: http://localhost:${env:NGINX_OTEL_PORT}
+    headers:
+      # Traefik routing header: Routes to k8s OTel Collector
+      Host: otel.localhost
+    # Compress data to reduce bandwidth
+    compression: gzip
+
+  # Debug exporter: Log metrics locally for troubleshooting
+  # Output goes to /var/log/otelcol-metrics.log (configured in startup script)
+  # Set to 'basic' to reduce log size - use 'detailed' only when debugging
+  debug:
+    verbosity: basic
+
+# SERVICE: Define the metrics pipeline
+service:
+  # Internal telemetry for the collector
+  telemetry:
+    logs:
+      level: info
+      # Output collector's own logs to stdout/stderr instead of directly to /var/log/
+      # Why: Collector runs as non-root vscode user and cannot write to /var/log/otelcol.log
+      # Solution: stdout/stderr are captured by nohup in start-otel-monitoring.sh and redirected
+      # to /var/log/otelcol-metrics.log (which has proper permissions set by the start script)
+      # This avoids "permission denied" errors while still logging to /var/log/
+      output_paths:
+        - stdout
+      error_output_paths:
+        - stderr
+    metrics:
+      # Disable collector's internal metrics
+      level: none
+
+  pipelines:
+    # Metrics pipeline: hostmetrics + docker_stats + devcontainer_info + k8s_status → resource → batch → export
+    metrics:
+      # Collect host-level metrics, container metrics via Docker API, devcontainer info, and K8s status
+      receivers: [hostmetrics, docker_stats, prometheus/devcontainer_info, prometheus/k8s_status]
+      # Transform docker metrics to Prometheus naming, add labels, then batch
+      processors: [transform/docker_to_prometheus, resource, batch]
+      # Send to k8s (otlphttp) and local logs (debug)
+      exporters: [otlphttp, debug]
