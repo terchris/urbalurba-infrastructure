@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - '.devcontainer/**'
+      - '.devcontainer.extend/**'
+      - '.devcontainer.secrets/**'
 
 permissions:
   contents: write
@@ -21,7 +25,7 @@ jobs:
 
       - name: 📦 Archive infrastructure files
         run: |
-          zip -r urbalurba-infrastructure.zip . -x "terchris/*" ".github/*" ".git/*"
+          zip -r urbalurba-infrastructure.zip . -x "terchris/*" ".github/*" ".git/*" ".devcontainer/*" ".devcontainer.extend/*" ".devcontainer.secrets/*"
 
       - name: ⬆️ Upload infrastructure.zip as an artifact
         uses: actions/upload-artifact@v4
