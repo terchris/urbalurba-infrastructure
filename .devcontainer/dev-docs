@@ -25,9 +25,22 @@ set -euo pipefail
 # Script directory and paths
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 readonly SCRIPT_DIR
-readonly MANAGE_DIR="${SCRIPT_DIR}"
-readonly ADDITIONS_DIR="${SCRIPT_DIR}/../additions"
-readonly WORKSPACE_ROOT="${SCRIPT_DIR}/../.."
+
+# Handle both cases:
+# 1. Running from .devcontainer/manage/ (symlink resolved or direct execution)
+# 2. Running from .devcontainer/ root (when script is a copy, not symlink - e.g., from zip extraction)
+if [[ "$(basename "$SCRIPT_DIR")" == "manage" ]]; then
+    DEVCONTAINER_DIR="$(dirname "$SCRIPT_DIR")"
+    MANAGE_DIR="$SCRIPT_DIR"
+else
+    # Script is in .devcontainer/ root (copy from zip extraction)
+    DEVCONTAINER_DIR="$SCRIPT_DIR"
+    MANAGE_DIR="$SCRIPT_DIR/manage"
+fi
+readonly DEVCONTAINER_DIR
+readonly MANAGE_DIR
+readonly ADDITIONS_DIR="$DEVCONTAINER_DIR/additions"
+readonly WORKSPACE_ROOT="$DEVCONTAINER_DIR/.."
 readonly TOOLS_DIR="${WORKSPACE_ROOT}/website/docs/tools"
 readonly OUTPUT_FILE="${TOOLS_DIR}/index.mdx"
 readonly OUTPUT_FILE_COMMANDS="${WORKSPACE_ROOT}/website/docs/commands.md"
