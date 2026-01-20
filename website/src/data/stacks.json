@@ -1,0 +1,99 @@
+{
+  "@context": "https://schema.org",
+  "@type": "ItemList",
+  "name": "UIS Stacks",
+  "description": "Service stacks - groups of services that work together in the Urbalurba Infrastructure Stack",
+  "itemListElement": [
+    {
+      "@type": "SoftwareSourceCode",
+      "identifier": "observability",
+      "name": "Observability Stack",
+      "description": "Complete monitoring with metrics, logs, and distributed tracing",
+      "category": "MONITORING",
+      "logo": "observability-stack-logo.svg",
+      "summary": "The observability stack provides full visibility into your infrastructure. Prometheus collects metrics, Loki aggregates logs, Tempo stores traces, and Grafana visualizes everything in unified dashboards. The OpenTelemetry Collector receives telemetry data from applications.",
+      "components": [
+        {
+          "service": "prometheus",
+          "position": 1,
+          "note": "Metrics collection and storage"
+        },
+        {
+          "service": "tempo",
+          "position": 2,
+          "note": "Distributed tracing backend"
+        },
+        {
+          "service": "loki",
+          "position": 3,
+          "note": "Log aggregation"
+        },
+        {
+          "service": "otel-collector",
+          "position": 4,
+          "note": "Telemetry data receiver",
+          "optional": true
+        },
+        {
+          "service": "grafana",
+          "position": 5,
+          "note": "Visualization and dashboards"
+        }
+      ]
+    },
+    {
+      "@type": "SoftwareSourceCode",
+      "identifier": "ai-local",
+      "name": "Local AI Stack",
+      "description": "Run AI models locally with a unified API and chat interface",
+      "category": "AI",
+      "logo": "ai-local-stack-logo.svg",
+      "summary": "The local AI stack enables running large language models on your own infrastructure. Ollama runs the models, LiteLLM provides a unified OpenAI-compatible API, and Open WebUI offers a ChatGPT-like interface for users.",
+      "components": [
+        {
+          "service": "ollama",
+          "position": 1,
+          "note": "LLM inference engine"
+        },
+        {
+          "service": "litellm",
+          "position": 2,
+          "note": "Unified API gateway",
+          "optional": true
+        },
+        {
+          "service": "openwebui",
+          "position": 3,
+          "note": "User-facing chat interface"
+        }
+      ]
+    },
+    {
+      "@type": "SoftwareSourceCode",
+      "identifier": "datascience",
+      "name": "Data Science Stack",
+      "description": "Collaborative data science platform with notebooks and distributed computing",
+      "category": "DATASCIENCE",
+      "logo": "datascience-stack-logo.svg",
+      "summary": "The data science stack provides a complete platform for data analysis and ML workflows. Apache Spark handles distributed computing, JupyterHub provides collaborative notebooks, and Unity Catalog manages data governance.",
+      "components": [
+        {
+          "service": "spark",
+          "position": 1,
+          "note": "Distributed computing engine"
+        },
+        {
+          "service": "jupyterhub",
+          "position": 2,
+          "note": "Multi-user notebook server"
+        },
+        {
+          "service": "unity-catalog",
+          "position": 3,
+          "note": "Data catalog and governance",
+          "optional": true
+        }
+      ]
+    }
+  ]
+}

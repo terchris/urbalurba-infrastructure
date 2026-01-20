@@ -32,10 +32,20 @@ while [ -L "$SCRIPT_SOURCE" ]; do
     [[ $SCRIPT_SOURCE != /* ]] && SCRIPT_SOURCE="$SCRIPT_DIR/$SCRIPT_SOURCE"
 done
 SCRIPT_DIR="$(cd -P "$(dirname "$SCRIPT_SOURCE")" && pwd)"
-DEVCONTAINER_DIR="$(dirname "$SCRIPT_DIR")"
+
+# Handle both cases:
+# 1. Running from .devcontainer/manage/ (symlink resolved or direct execution)
+# 2. Running from .devcontainer/ root (when script is a copy, not symlink)
+if [[ "$(basename "$SCRIPT_DIR")" == "manage" ]]; then
+    DEVCONTAINER_DIR="$(dirname "$SCRIPT_DIR")"
+    MANAGE_DIR="$SCRIPT_DIR"
+else
+    # Script is in .devcontainer/ root (copy from zip extraction)
+    DEVCONTAINER_DIR="$SCRIPT_DIR"
+    MANAGE_DIR="$SCRIPT_DIR/manage"
+fi
 ADDITIONS_DIR="$DEVCONTAINER_DIR/additions"
-MANAGE_DIR="$SCRIPT_DIR"
-DEV_TEMPLATE_SCRIPT="$SCRIPT_DIR/dev-template.sh"
+DEV_TEMPLATE_SCRIPT="$MANAGE_DIR/dev-template.sh"
 
 # Source component scanner library
 LIB_DIR="$ADDITIONS_DIR/lib"
