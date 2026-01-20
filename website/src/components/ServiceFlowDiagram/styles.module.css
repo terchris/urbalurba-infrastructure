@@ -1,0 +1,71 @@
+.flowContainer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding: 0.5rem 0;
+  -webkit-overflow-scrolling: touch;
+}
+
+.flowContainer::-webkit-scrollbar {
+  height: 4px;
+}
+
+.flowContainer::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.flowContainer::-webkit-scrollbar-thumb {
+  background: var(--ifm-color-emphasis-200);
+  border-radius: 2px;
+}
+
+.serviceNode {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.serviceLogo {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  border-radius: 6px;
+  background: var(--ifm-card-background-color);
+  padding: 4px;
+  border: 1px solid var(--ifm-color-emphasis-200);
+}
+
+.serviceName {
+  font-size: 0.625rem;
+  font-weight: 500;
+  color: var(--ifm-color-emphasis-700);
+  text-align: center;
+  max-width: 60px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.optionalNode .serviceLogo {
+  opacity: 0.6;
+  border-style: dashed;
+}
+
+.optionalNode .serviceName {
+  font-style: italic;
+}
+
+.arrow {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  color: var(--ifm-color-primary);
+}
+
+/* Dark mode adjustments */
+[data-theme='dark'] .serviceLogo {
+  border-color: var(--ifm-color-emphasis-300);
+}

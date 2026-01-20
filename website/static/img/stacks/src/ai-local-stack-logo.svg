@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="#3a8f5e">
+  <!-- AI Local Stack: Brain/neural network with local indicator -->
+  <!-- Central brain/processor -->
+  <rect x="8" y="8" width="8" height="8" rx="2" stroke-linecap="round" stroke-linejoin="round" />
+  <!-- Neural connections -->
+  <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v5M12 16v5M3 12h5M16 12h5" />
+  <!-- Corner nodes -->
+  <circle cx="12" cy="3" r="1.5" fill="#3a8f5e" />
+  <circle cx="12" cy="21" r="1.5" fill="#3a8f5e" />
+  <circle cx="3" cy="12" r="1.5" fill="#3a8f5e" />
+  <circle cx="21" cy="12" r="1.5" fill="#3a8f5e" />
+  <!-- Sparkle in center for AI -->
+  <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v4M10 12h4" />
+</svg>
