@@ -117,10 +117,7 @@ main() {
     sudo pip3 install --upgrade pip
     sudo pip3 install psycopg2-binary
 
-    # Install MkDocs with Material theme for documentation generation
-    # Note: mkdocs-material includes the tags plugin built-in (since v8.2+)
-    echo "Installing MkDocs and Material theme for documentation"
-    sudo pip3 install mkdocs-material
+    # MkDocs removed - documentation migrated to Docusaurus (built separately in website/)
 
     install_github_cli || return 1
 
