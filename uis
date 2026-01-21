@@ -55,8 +55,11 @@ start_container() {
     # Remove old container if exists
     docker rm -f "$CONTAINER_NAME" 2>/dev/null || true
 
-    # Start with mounts for user config/secrets
+    # Start with host network (so 127.0.0.1 in kubeconfig works)
+    # This matches how the original provision-host container was configured
     docker run -d --name "$CONTAINER_NAME" \
+        --network host \
+        --privileged \
         -v "$SCRIPT_DIR/topsecret:/mnt/urbalurbadisk/topsecret" \
         -v "$HOME/.kube:/home/ansible/.kube:ro" \
         "$IMAGE"
