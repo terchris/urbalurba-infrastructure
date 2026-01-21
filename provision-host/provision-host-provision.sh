@@ -3,9 +3,10 @@
 # description: Orchestrates the execution of all provisioning scripts for the host
 #
 # Usage: ./provision-host-provision.sh [cloud-provider]
-#   cloud-provider: az/azure (default), aws, gcp/google, oci/oracle, tf/terraform, all
+#   cloud-provider: none/skip, az/azure (default), aws, gcp/google, oci/oracle, tf/terraform, all
 #
 # Example: ./provision-host-provision.sh aws
+# Example: ./provision-host-provision.sh none  # Skip cloud provider installation
 
 RUN_IN_DIR="/mnt/urbalurbadisk/provision-host"
 
@@ -23,7 +24,7 @@ PROVISION_SCRIPTS=(
     "provision-host-02-kubetools.sh"
     "provision-host-03-net.sh"
     "provision-host-04-helmrepo.sh"
-    "provision-host-05-builddocs.sh"
+    # "provision-host-05-builddocs.sh"  # Removed - docs migrated to Docusaurus
 )
 
 # Check if running in a container

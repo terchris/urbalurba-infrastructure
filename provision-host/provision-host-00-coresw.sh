@@ -112,15 +112,13 @@ main() {
     sudo apt-get install -qq -y curl
 
     # Install psycopg2-binary for Ansible PostgreSQL modules
+    # Use --no-install-recommends to avoid pulling in build-essential/gcc (~90MB)
     echo "Installing psycopg2-binary Python package for Ansible PostgreSQL support"
-    sudo apt-get install -qq -y python3-pip
+    sudo apt-get install -qq -y --no-install-recommends python3-pip
     sudo pip3 install --upgrade pip
     sudo pip3 install psycopg2-binary
 
-    # Install MkDocs with Material theme for documentation generation
-    # Note: mkdocs-material includes the tags plugin built-in (since v8.2+)
-    echo "Installing MkDocs and Material theme for documentation"
-    sudo pip3 install mkdocs-material
+    # MkDocs removed - documentation migrated to Docusaurus (built separately in website/)
 
     install_github_cli || return 1
 

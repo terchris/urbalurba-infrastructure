@@ -3,6 +3,7 @@
 # description: Installs software for cloud providers on the provision host.
 #
 # Usage: This script can be run with a specific cloud provider parameter:
+#   none/skip    - Skip all cloud provider installations (for local-only use)
 #   az/azure     - Install Azure CLI only (default)
 #   oci/oracle   - Install Oracle Cloud CLI only
 #   aws          - Install AWS CLI only
@@ -11,6 +12,7 @@
 #   all          - Install all cloud provider tools
 #
 # Example: ./provision-host-01-cloudproviders.sh aws
+# Example: ./provision-host-01-cloudproviders.sh none  # Skip all cloud CLIs
 
 # Run systemctl daemon-reload to address unit file changes
 if [ "$RUNNING_IN_CONTAINER" != "true" ]; then
@@ -313,6 +315,7 @@ main() {
     echo "Cloud Provider Installation Script"
     echo "================================="
     echo "Available options:"
+    echo "  none/skip    - Skip all cloud provider installations (for local-only use)"
     echo "  az/azure     - Install Azure CLI only (default)"
     echo "  oci/oracle   - Install Oracle Cloud CLI only"
     echo "  aws          - Install AWS CLI only"
@@ -333,6 +336,10 @@ main() {
 
     # Handle selective installation based on parameter
     case "${1:-az}" in
+        "none"|"skip")
+            echo "Skipping cloud provider installation (none selected)"
+            add_status "Cloud Providers" "Status" "Skipped (none selected)"
+            ;;
         "az"|"azure")
             install_azure_cli || echo "Azure CLI installation failed"
             ;;
@@ -357,7 +364,7 @@ main() {
             ;;
         *)
             echo "Unknown cloud provider: $1"
-            echo "Supported options: az/azure (default), oci/oracle, aws, gcp/google, tf/terraform, all"
+            echo "Supported options: none/skip, az/azure (default), oci/oracle, aws, gcp/google, tf/terraform, all"
             return 1
             ;;
     esac

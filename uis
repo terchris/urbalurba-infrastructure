@@ -1,0 +1,166 @@
+#!/bin/bash
+# UIS - Urbalurba Infrastructure Stack CLI wrapper
+# This script manages the UIS provision-host container
+#
+# Usage: ./uis <command> [args]
+# Run ./uis help for available commands
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CONTAINER_NAME="uis-provision-host"
+IMAGE="${UIS_IMAGE:-uis-provision-host:local}"
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+log_info() { echo -e "${GREEN}[UIS]${NC} $1"; }
+log_warn() { echo -e "${YELLOW}[UIS]${NC} $1"; }
+log_error() { echo -e "${RED}[UIS]${NC} $1"; }
+
+# Check if topsecret folder exists
+check_topsecret() {
+    if [ ! -d "$SCRIPT_DIR/topsecret" ]; then
+        log_error "topsecret/ folder not found!"
+        log_info "Create it with: mkdir -p topsecret/config topsecret/secrets-config"
+        log_info "Then copy templates: cp -r topsecret/secrets-templates/* topsecret/secrets-config/"
+        exit 1
+    fi
+}
+
+# Check if image exists
+check_image() {
+    if ! docker image inspect "$IMAGE" &>/dev/null; then
+        log_error "Image '$IMAGE' not found!"
+        log_info "Build it with: docker build -f Dockerfile.uis-provision-host -t uis-provision-host:local ."
+        log_info "Or pull from registry: docker pull ghcr.io/terchris/uis-provision-host:latest"
+        exit 1
+    fi
+}
+
+# Start container if not running
+start_container() {
+    if docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
+        return 0
+    fi
+
+    check_topsecret
+    check_image
+
+    log_info "Starting UIS container..."
+
+    # Remove old container if exists
+    docker rm -f "$CONTAINER_NAME" 2>/dev/null || true
+
+    # Start with mounts for user config/secrets
+    docker run -d --name "$CONTAINER_NAME" \
+        -v "$SCRIPT_DIR/topsecret:/mnt/urbalurbadisk/topsecret" \
+        -v "$HOME/.kube:/home/ansible/.kube:ro" \
+        "$IMAGE"
+
+    # Wait for container to be ready
+    sleep 2
+
+    log_info "Container started"
+}
+
+# Stop container
+stop_container() {
+    if docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
+        log_info "Stopping UIS container..."
+        docker stop "$CONTAINER_NAME" >/dev/null
+        log_info "Container stopped"
+    else
+        log_warn "Container is not running"
+    fi
+}
+
+# Show usage
+show_usage() {
+    echo "UIS - Urbalurba Infrastructure Stack"
+    echo ""
+    echo "Usage: ./uis <command> [args]"
+    echo ""
+    echo "Commands:"
+    echo "  start       Start the UIS container"
+    echo "  stop        Stop the UIS container"
+    echo "  restart     Restart the UIS container"
+    echo "  status      Show container status"
+    echo "  shell       Open a shell in the container"
+    echo "  provision   Run kubernetes provisioning (rancher-desktop)"
+    echo "  exec <cmd>  Execute a command in the container"
+    echo "  logs        Show container logs"
+    echo "  build       Build the container image locally"
+    echo "  help        Show this help message"
+    echo ""
+    echo "Examples:"
+    echo "  ./uis start                    # Start the container"
+    echo "  ./uis shell                    # Enter the container"
+    echo "  ./uis provision                # Deploy services to kubernetes"
+    echo "  ./uis exec kubectl get pods    # Run kubectl command"
+    echo ""
+    echo "Environment variables:"
+    echo "  UIS_IMAGE   Override the container image (default: uis-provision-host:local)"
+}
+
+# Main command handler
+case "${1:-help}" in
+    start)
+        start_container
+        log_info "UIS container is ready"
+        ;;
+    stop)
+        stop_container
+        ;;
+    restart)
+        stop_container
+        start_container
+        log_info "UIS container restarted"
+        ;;
+    status)
+        if docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
+            log_info "Container is running"
+            docker ps --filter "name=$CONTAINER_NAME" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+        else
+            log_warn "Container is not running"
+        fi
+        ;;
+    shell)
+        start_container
+        docker exec -it "$CONTAINER_NAME" bash
+        ;;
+    provision)
+        start_container
+        log_info "Running kubernetes provisioning..."
+        docker exec -it "$CONTAINER_NAME" bash -c \
+            "cd /mnt/urbalurbadisk/provision-host/kubernetes && ./provision-kubernetes.sh rancher-desktop"
+        ;;
+    exec)
+        shift
+        if [ $# -eq 0 ]; then
+            log_error "No command specified"
+            exit 1
+        fi
+        start_container
+        docker exec -it "$CONTAINER_NAME" "$@"
+        ;;
+    logs)
+        docker logs "$CONTAINER_NAME" ${2:---tail 50}
+        ;;
+    build)
+        log_info "Building UIS container image..."
+        docker build -f "$SCRIPT_DIR/Dockerfile.uis-provision-host" -t uis-provision-host:local "$SCRIPT_DIR"
+        log_info "Build complete"
+        ;;
+    help|--help|-h)
+        show_usage
+        ;;
+    *)
+        log_error "Unknown command: $1"
+        show_usage
+        exit 1
+        ;;
+esac

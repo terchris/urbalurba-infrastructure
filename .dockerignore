@@ -1,0 +1,45 @@
+# .dockerignore for UIS container build
+# Excludes files not needed in the provision-host container
+
+# Git
+.git
+.gitignore
+
+# Development containers
+.devcontainer
+.devcontainer.extend
+
+# Documentation (built separately via Docusaurus)
+website
+docs
+
+# IDE and editor files
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Secrets (user provides their own via mount)
+topsecret/secrets-config
+topsecret/secrets-generated
+topsecret/kubernetes
+topsecret/config
+
+# Build artifacts
+node_modules
+*.log
+__pycache__
+*.pyc
+
+# GitHub workflows (not needed in container)
+.github
+
+# This Dockerfile and wrapper (not needed inside container)
+Dockerfile.*
+uis
+.dockerignore
+
+# Claude Code files
+CLAUDE.md
+.claude
