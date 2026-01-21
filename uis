@@ -67,6 +67,11 @@ start_container() {
     # Wait for container to be ready
     sleep 2
 
+    # Create kubeconfig symlink for playbooks that expect the old path
+    docker exec "$CONTAINER_NAME" bash -c \
+        "mkdir -p /mnt/urbalurbadisk/kubeconfig && ln -sf /home/ansible/.kube/config /mnt/urbalurbadisk/kubeconfig/kubeconf-all" \
+        2>/dev/null || true
+
     log_info "Container started"
 }
 
