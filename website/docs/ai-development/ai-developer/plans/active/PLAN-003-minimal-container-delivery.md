@@ -408,6 +408,9 @@ Deferred to future plans:
 - `uis init` wizard
 - Install script (`curl ... | bash`)
 - Multiple container variants (full/local/azure)
+- **Windows/WSL2 support**: The `uis` wrapper script currently uses `$HOME/.kube` for kubeconfig path, which works on macOS/Linux but needs adjustment for:
+  - Windows (native): `%USERPROFILE%\.kube\config`
+  - WSL2: May need `/mnt/c/Users/<name>/.kube/config` depending on where Rancher Desktop stores kubeconfig
 
 ---
 
