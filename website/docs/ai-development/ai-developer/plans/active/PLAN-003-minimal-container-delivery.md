@@ -153,6 +153,80 @@ User confirms all commands work and services deploy correctly.
 
 ---
 
+## Phase 5: Slim Container Image
+
+Reduce container size from 2.48GB to ~1.8GB by removing unused components.
+
+### Analysis (Current: 2.48GB)
+
+| Component | Size | Action |
+|-----------|------|--------|
+| k9s | 116M | Remove - optional terminal UI |
+| snapd | 91M | Remove - not needed in container |
+| gcc/g++ | 90M | Remove - compiler not needed |
+| Unused Ansible collections | ~350M | Remove - keep only required |
+| cloudflared | 38M | Keep - needed for tunnels |
+| **Total savings** | **~650M** | Target: ~1.8GB |
+
+### Ansible Collections to Keep (Based on actual usage in playbooks)
+
+- `kubernetes.core` - K8s management (k8s, k8s_info modules)
+- `community.postgresql` - PostgreSQL management (postgresql_db, postgresql_user, etc.)
+- `community.general` - General utilities (cloudflare_dns module)
+
+**NOT needed** (not used in any playbooks):
+- `community.docker` - Not used
+- `community.mysql` - Not used
+- `ansible.posix` - Not used
+- `ansible.utils` - Not used
+
+### Tasks
+
+- [x] 5.1 Remove k9s from provisioning ✓ **SKIPPED - user needs k9s**
+  - **File**: `provision-host/provision-host-02-kubetools.sh`
+  - k9s is kept as requested
+
+- [x] 5.2 Remove snapd and prevent gcc installation ✓
+  - **File**: `provision-host/provision-host-00-coresw.sh`
+  - Added `--no-install-recommends` to python3-pip install (prevents gcc/g++ ~90MB)
+  - **File**: `provision-host/provision-host-02-kubetools.sh`
+  - Skip snapd installation when `RUNNING_IN_CONTAINER=true` (~91MB)
+  - **File**: `Dockerfile.uis-provision-host`
+  - Added cleanup step to purge snapd and clear caches
+
+- [x] 5.3 Install only required Ansible collections ✓
+  - **File**: `provision-host/provision-host-02-kubetools.sh`
+  - Changed from `ansible` to `ansible-core` package (~350MB savings)
+  - Install only: `kubernetes.core`, `community.postgresql`, `community.general`
+
+- [x] 5.4 Clean apt cache and temp files ✓
+  - **File**: `Dockerfile.uis-provision-host`
+  - Added final cleanup layer for apt cache, pip cache, tmp files
+
+- [ ] 5.5 Rebuild and verify size
+  ```bash
+  docker build -f Dockerfile.uis-provision-host -t uis-provision-host:local .
+  docker images uis-provision-host:local  # Should be ~1.8GB
+  ```
+
+### Validation
+
+```bash
+# Verify size reduced
+docker images uis-provision-host:local
+
+# Verify tools still work
+./uis start
+docker exec uis-provision-host kubectl version --client
+docker exec uis-provision-host ansible --version
+docker exec uis-provision-host helm version --short
+./uis stop
+```
+
+User confirms container size is acceptable and tools work.
+
+---
+
 ## Acceptance Criteria
 
 - [ ] Container builds successfully
@@ -173,10 +247,11 @@ User confirms all commands work and services deploy correctly.
 | `provision-host/provision-host-01-cloudproviders.sh` | Modify | Add `none` option |
 | `provision-host/provision-host-00-coresw.sh` | Modify | Remove MkDocs installation |
 | `provision-host/provision-host-provision.sh` | Modify | Remove builddocs from script list |
-| `Dockerfile.uis-provision-host` | Create | Container build definition |
+| `Dockerfile.uis-provision-host` | Create/Modify | Container build definition + cleanup |
 | `uis` | Create | Wrapper script |
 | `.dockerignore` | Create | Exclude files from build |
 | `.github/workflows/build-uis-container.yml` | Create | CI/CD pipeline for container builds |
+| `provision-host/provision-host-02-kubetools.sh` | Modify | Remove k9s, slim Ansible collections |
 
 ---
 

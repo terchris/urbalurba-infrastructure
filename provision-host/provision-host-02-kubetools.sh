@@ -62,9 +62,19 @@ install_ansible_kubernetes() {
         sudo apt-get update -qq || return 1
         sudo apt-get install -qq -y software-properties-common || return 1
         sudo add-apt-repository --yes --update ppa:ansible/ansible || return 1
-        sudo DEBIAN_FRONTEND=noninteractive apt-get install -qq -y ansible python3-kubernetes || return 1
+
+        # Install ansible-core (slim) instead of full ansible package (~350MB savings)
+        # Then install only the collections we actually use
+        sudo DEBIAN_FRONTEND=noninteractive apt-get install -qq -y ansible-core python3-kubernetes || return 1
         check_command_success "Ansible" "Installation" || return 1
-        
+
+        # Install only required Ansible collections (used in our playbooks)
+        echo "Installing required Ansible collections..."
+        ansible-galaxy collection install kubernetes.core --force || return 1
+        ansible-galaxy collection install community.postgresql --force || return 1
+        ansible-galaxy collection install community.general --force || return 1
+        add_status "Ansible Collections" "Status" "kubernetes.core, community.postgresql, community.general"
+
         ANSIBLE_VERSION=$(ansible --version 2>&1 | head -n1 | sed -E 's/ansible \[core ([0-9.]+)\].*/\1/')
         add_status "Ansible" "Status" "Installed (${ANSIBLE_VERSION})"
     fi
@@ -80,10 +90,10 @@ install_ansible_kubernetes() {
 
     # Configure Ansible to work from any directory
     echo "Configuring Ansible global settings"
-    
+
     # Create global Ansible config directory if it doesn't exist
     sudo mkdir -p /etc/ansible
-    
+
     # Create or update the ansible.cfg file using sudo tee
     sudo tee /etc/ansible/ansible.cfg > /dev/null << 'ENDCONFIG'
 [defaults]
@@ -96,12 +106,12 @@ roles_path = /mnt/urbalurbadisk/ansible/roles
 pipelining = True
 control_path = /tmp/ansible-ssh-%%h-%%p-%%r
 ENDCONFIG
-    
+
     # Set permissions
     sudo chmod 644 /etc/ansible/ansible.cfg
-    
+
     add_status "Ansible Config" "Status" "Global configuration created"
-    
+
     return 0
 }
 
@@ -256,7 +266,13 @@ main() {
 
     # Run apt update once at the beginning
     sudo apt-get update -qq || return 1
-    sudo apt-get install -qq -y curl snapd || return 1
+
+    # Install curl; skip snapd in containers (not needed and saves ~91MB)
+    if [ "$RUNNING_IN_CONTAINER" = "true" ]; then
+        sudo apt-get install -qq -y curl || return 1
+    else
+        sudo apt-get install -qq -y curl snapd || return 1
+    fi
 
     install_ansible_kubernetes || return 1
     install_kubectl || return 1
