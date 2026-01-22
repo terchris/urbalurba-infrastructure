@@ -21,6 +21,9 @@ source "$LIB_DIR/service-scanner.sh"
 source "$LIB_DIR/first-run.sh"
 source "$LIB_DIR/service-deployment.sh"
 source "$LIB_DIR/service-auto-enable.sh" 2>/dev/null || true
+source "$LIB_DIR/menu-helpers.sh" 2>/dev/null || true
+source "$LIB_DIR/tool-installation.sh" 2>/dev/null || true
+source "$LIB_DIR/secrets-management.sh" 2>/dev/null || true
 
 # Version
 UIS_VERSION="0.1.0"
@@ -39,10 +42,15 @@ UIS (Urbalurba Infrastructure Stack) v$UIS_VERSION
 
 Usage: uis <command> [options]
 
+Interactive:
+  setup                   Interactive TUI menu for service management
+  init                    Initialize configuration (first-time setup wizard)
+
 Service Discovery:
   list                    List available services with status
   status                  Show deployed services health
   categories              List service categories
+  cluster types           List available cluster types
 
 Service Deployment:
   deploy [service]        Deploy all enabled services, or specific service
@@ -53,16 +61,32 @@ Configuration:
   disable <service>       Remove service from enabled-services.conf
   list-enabled            Show currently enabled services
 
+Secrets Management:
+  secrets init            Create .uis.secrets/ structure with templates
+  secrets status          Show secrets configuration status
+  secrets edit            Open secrets config in editor
+  secrets generate        Generate Kubernetes secrets from templates
+  secrets apply           Apply generated secrets to cluster
+  secrets validate        Validate secrets configuration
+
+Tools:
+  tools list              List all available tools with status
+  tools install <tool>    Install an optional tool
+
 Information:
   version                 Show UIS version
   help                    Show this help message
 
 Examples:
+  uis setup               # Open interactive menu
+  uis init                # Run first-time setup wizard
   uis list                # Show all available services
   uis enable prometheus   # Enable prometheus
   uis deploy              # Deploy all enabled services
-  uis deploy grafana      # Deploy grafana (auto-enables)
-  uis status              # Check health of deployed services
+  uis secrets init        # Initialize secrets configuration
+  uis secrets status      # Show what's configured
+  uis tools list          # Show available tools
+  uis tools install azure-cli  # Install Azure CLI
 
 EOF
 }
@@ -335,6 +359,388 @@ cmd_list_enabled() {
 }
 
 # ============================================================
+# Tools Commands
+# ============================================================
+
+cmd_tools() {
+    local subcmd="${1:-list}"
+    shift || true
+
+    case "$subcmd" in
+        list|ls)
+            cmd_tools_list
+            ;;
+        install)
+            cmd_tools_install "$@"
+            ;;
+        *)
+            log_error "Unknown tools subcommand: $subcmd"
+            echo "Usage: uis tools [list|install <tool>]"
+            exit "$EXIT_GENERAL_ERROR"
+            ;;
+    esac
+}
+
+cmd_tools_list() {
+    print_section "Available Tools"
+
+    if ! type list_tools &>/dev/null; then
+        log_error "tool-installation.sh not loaded"
+        exit "$EXIT_GENERAL_ERROR"
+    fi
+
+    list_tools
+}
+
+cmd_tools_install() {
+    local tool_id="${1:-}"
+
+    if [[ -z "$tool_id" ]]; then
+        log_error "Usage: uis tools install <tool>"
+        exit "$EXIT_GENERAL_ERROR"
+    fi
+
+    if ! type install_tool &>/dev/null; then
+        log_error "tool-installation.sh not loaded"
+        exit "$EXIT_GENERAL_ERROR"
+    fi
+
+    install_tool "$tool_id"
+}
+
+# ============================================================
+# Interactive Setup Menu
+# ============================================================
+
+cmd_setup() {
+    if ! type show_menu &>/dev/null; then
+        log_error "menu-helpers.sh not loaded"
+        exit "$EXIT_GENERAL_ERROR"
+    fi
+
+    while true; do
+        local choice
+        choice=$(show_menu "UIS Setup Menu v$UIS_VERSION" "Select an option:" \
+            "services" "Browse & Deploy Services" \
+            "tools" "Install Optional Tools" \
+            "status" "System Status" \
+            "exit" "Exit")
+
+        case "$choice" in
+            services)
+                setup_services_menu
+                ;;
+            tools)
+                setup_tools_menu
+                ;;
+            status)
+                clear_screen
+                cmd_status
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            exit|"")
+                break
+                ;;
+        esac
+    done
+}
+
+setup_services_menu() {
+    while true; do
+        # Build category menu
+        local -a menu_args=()
+        for cat_id in "${CATEGORY_ORDER[@]}"; do
+            local cat_name
+            cat_name=$(get_category_name "$cat_id")
+            menu_args+=("$cat_id" "$cat_name")
+        done
+        menu_args+=("back" "Back to Main Menu")
+
+        local choice
+        choice=$(show_menu "Service Categories" "Select a category:" "${menu_args[@]}")
+
+        if [[ "$choice" == "back" || -z "$choice" ]]; then
+            break
+        fi
+
+        setup_category_services "$choice"
+    done
+}
+
+setup_category_services() {
+    local category="$1"
+    local cat_name
+    cat_name=$(get_category_name "$category")
+
+    while true; do
+        # Build service checklist
+        local -a checklist_args=()
+        local service_id script
+
+        while IFS= read -r service_id; do
+            [[ -z "$service_id" ]] && continue
+            script=$(find_service_script "$service_id")
+            [[ -z "$script" ]] && continue
+
+            unset SCRIPT_NAME SCRIPT_DESCRIPTION SCRIPT_CHECK_COMMAND
+            source "$script" 2>/dev/null
+
+            local state="off"
+            if is_service_enabled "$service_id" 2>/dev/null; then
+                state="on"
+            fi
+
+            local status_marker=""
+            if [[ -n "$SCRIPT_CHECK_COMMAND" ]]; then
+                if check_service_deployed "$service_id" 2>/dev/null; then
+                    status_marker="✅ "
+                fi
+            fi
+
+            checklist_args+=("$service_id" "$status_marker${SCRIPT_NAME:-$service_id}" "$state")
+        done < <(get_services_by_category "$category")
+
+        if [[ ${#checklist_args[@]} -eq 0 ]]; then
+            show_msgbox "No Services" "No services found in category $cat_name"
+            break
+        fi
+
+        local selected
+        selected=$(show_checklist "Services: $cat_name" "Toggle services to enable/disable:" "${checklist_args[@]}")
+
+        if [[ -z "$selected" ]]; then
+            break
+        fi
+
+        # Update enabled services based on selection
+        for service_id in $(get_services_by_category "$category"); do
+            if [[ " $selected " == *" $service_id "* ]]; then
+                # Should be enabled
+                if ! is_service_enabled "$service_id" 2>/dev/null; then
+                    enable_service "$service_id" 2>/dev/null
+                fi
+            else
+                # Should be disabled
+                if is_service_enabled "$service_id" 2>/dev/null; then
+                    disable_service "$service_id" 2>/dev/null
+                fi
+            fi
+        done
+
+        # Offer to deploy
+        if show_yesno "Deploy Services" "Deploy the selected services now?"; then
+            clear_screen
+            deploy_enabled_services
+            echo ""
+            read -p "Press Enter to continue..."
+        fi
+
+        break
+    done
+}
+
+setup_tools_menu() {
+    while true; do
+        # Build tool checklist
+        local -a checklist_args=()
+        local tool_id
+
+        for tool_id in $(get_all_tool_ids | sort -u); do
+            local name desc state
+            name=$(get_tool_value "$tool_id" "TOOL_NAME")
+            name="${name:-$tool_id}"
+            desc=$(get_tool_value "$tool_id" "TOOL_DESCRIPTION")
+
+            if is_tool_installed "$tool_id"; then
+                state="on"
+                name="✅ $name"
+            else
+                state="off"
+            fi
+
+            checklist_args+=("$tool_id" "$name" "$state")
+        done
+
+        local selected
+        selected=$(show_checklist "Install Optional Tools" "Select tools to install:" "${checklist_args[@]}")
+
+        if [[ -z "$selected" ]]; then
+            break
+        fi
+
+        # Install selected tools that aren't already installed
+        for tool_id in $selected; do
+            if ! is_tool_installed "$tool_id"; then
+                clear_screen
+                install_tool "$tool_id"
+                echo ""
+                read -p "Press Enter to continue..."
+            fi
+        done
+
+        break
+    done
+}
+
+# ============================================================
+# Init Command
+# ============================================================
+
+cmd_init() {
+    print_section "UIS First-Time Setup"
+
+    echo "Welcome to UIS (Urbalurba Infrastructure Stack)!"
+    echo ""
+
+    # Check if already initialized
+    if check_first_run; then
+        log_info "UIS is already initialized"
+        echo ""
+        echo "Current configuration:"
+        load_cluster_config
+        echo "  CLUSTER_TYPE: ${CLUSTER_TYPE:-rancher-desktop}"
+        echo "  BASE_DOMAIN: ${BASE_DOMAIN:-localhost}"
+        echo ""
+        echo "To reconfigure, remove .uis.extend/ and run 'uis init' again"
+        return 0
+    fi
+
+    echo "This wizard will help you configure UIS for your environment."
+    echo ""
+
+    # Project name (optional)
+    local project_name
+    read -p "Project name [uis]: " project_name
+    project_name="${project_name:-uis}"
+
+    # Cluster type selection
+    echo ""
+    echo "Select cluster type:"
+    echo "  1. rancher-desktop (Local laptop - default)"
+    echo "  2. azure-aks (Azure Kubernetes Service)"
+    echo "  3. azure-microk8s (MicroK8s on Azure VM)"
+    echo "  4. multipass-microk8s (MicroK8s on local VM)"
+    echo "  5. raspberry-microk8s (MicroK8s on Raspberry Pi)"
+    read -p "Choice [1]: " cluster_choice
+    cluster_choice="${cluster_choice:-1}"
+
+    local cluster_type
+    case "$cluster_choice" in
+        1) cluster_type="rancher-desktop" ;;
+        2) cluster_type="azure-aks" ;;
+        3) cluster_type="azure-microk8s" ;;
+        4) cluster_type="multipass-microk8s" ;;
+        5) cluster_type="raspberry-microk8s" ;;
+        *) cluster_type="rancher-desktop" ;;
+    esac
+
+    # Base domain
+    echo ""
+    read -p "Base domain [localhost]: " base_domain
+    base_domain="${base_domain:-localhost}"
+
+    # Initialize configuration
+    initialize_uis_config
+
+    # Update cluster-config.sh with user choices
+    local config_file
+    config_file=$(get_base_path)/.uis.extend/cluster-config.sh
+
+    cat > "$config_file" << EOF
+#!/bin/bash
+# UIS Cluster Configuration
+# Generated by 'uis init' on $(date)
+
+# Project identifier
+PROJECT_NAME="$project_name"
+
+# Cluster type - determines deployment strategy
+CLUSTER_TYPE="$cluster_type"
+
+# Base domain for service URLs
+BASE_DOMAIN="$base_domain"
+
+# Additional configuration can be added here
+EOF
+
+    echo ""
+    log_success "Configuration saved to .uis.extend/cluster-config.sh"
+    echo ""
+    echo "Next steps:"
+    echo "  uis list              # See available services"
+    echo "  uis enable <service>  # Enable services you want"
+    echo "  uis deploy            # Deploy enabled services"
+    echo ""
+    echo "For custom secrets (optional):"
+    echo "  uis secrets init      # Create secrets configuration"
+}
+
+cmd_cluster() {
+    local subcmd="${1:-types}"
+    shift || true
+
+    case "$subcmd" in
+        types)
+            print_section "Available Cluster Types"
+            echo ""
+            printf "%-20s %s\n" "TYPE" "DESCRIPTION"
+            echo "────────────────────────────────────────────────────────────"
+            printf "%-20s %s\n" "rancher-desktop" "Local laptop (default)"
+            printf "%-20s %s\n" "azure-aks" "Azure Kubernetes Service"
+            printf "%-20s %s\n" "azure-microk8s" "MicroK8s on Azure VM"
+            printf "%-20s %s\n" "multipass-microk8s" "MicroK8s on local VM"
+            printf "%-20s %s\n" "raspberry-microk8s" "MicroK8s on Raspberry Pi"
+            ;;
+        *)
+            log_error "Unknown cluster subcommand: $subcmd"
+            echo "Usage: uis cluster [types]"
+            exit "$EXIT_GENERAL_ERROR"
+            ;;
+    esac
+}
+
+# ============================================================
+# Secrets Commands
+# ============================================================
+
+cmd_secrets() {
+    local subcmd="${1:-status}"
+    shift || true
+
+    if ! type init_secrets &>/dev/null; then
+        log_error "secrets-management.sh not loaded"
+        exit "$EXIT_GENERAL_ERROR"
+    fi
+
+    case "$subcmd" in
+        init)
+            init_secrets
+            ;;
+        status)
+            show_secrets_status
+            ;;
+        edit)
+            edit_secrets
+            ;;
+        generate)
+            generate_secrets
+            ;;
+        apply)
+            apply_secrets
+            ;;
+        validate)
+            validate_secrets
+            ;;
+        *)
+            log_error "Unknown secrets subcommand: $subcmd"
+            echo "Usage: uis secrets [init|status|edit|generate|apply|validate]"
+            exit "$EXIT_GENERAL_ERROR"
+            ;;
+    esac
+}
+
+# ============================================================
 # Main Command Router
 # ============================================================
 
@@ -348,6 +754,18 @@ main() {
             ;;
         help|--help|-h)
             cmd_help
+            ;;
+        setup)
+            cmd_setup
+            ;;
+        init)
+            cmd_init
+            ;;
+        cluster)
+            cmd_cluster "$@"
+            ;;
+        secrets)
+            cmd_secrets "$@"
             ;;
         list|ls)
             cmd_list "$@"
@@ -372,6 +790,9 @@ main() {
             ;;
         list-enabled|enabled)
             cmd_list_enabled
+            ;;
+        tools)
+            cmd_tools "$@"
             ;;
         *)
             log_error "Unknown command: $command"
