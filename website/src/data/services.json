@@ -56,6 +56,20 @@
   }
 ,
   {
+    "id": "whoami",
+    "type": "service",
+    "name": "Whoami",
+    "description": "Test service for debugging",
+    "category": "CORE",
+    "abstract": "Lightweight test container for debugging ingress and authentication",
+    "logo": "",
+    "website": "https://github.com/traefik/whoami",
+    "playbook": "025-setup-whoami-testpod.yml",
+    "manifest": "",
+    "priority": 2
+  }
+,
+  {
     "id": "mongodb",
     "type": "service",
     "name": "MongoDB",
@@ -65,6 +79,20 @@
     "logo": "mongodb-logo.webp",
     "website": "https://www.mongodb.com",
     "playbook": "040-setup-mongodb.yml",
+    "manifest": "",
+    "priority": 31
+  }
+,
+  {
+    "id": "mysql",
+    "type": "service",
+    "name": "MySQL",
+    "description": "Open-source relational database",
+    "category": "DATABASES",
+    "abstract": "Popular open-source relational database for web applications",
+    "logo": "mysql-logo.webp",
+    "website": "https://www.mysql.com",
+    "playbook": "040-database-mysql.yml",
     "manifest": "",
     "priority": 31
   }
@@ -112,6 +140,48 @@
   }
 ,
   {
+    "id": "jupyterhub",
+    "type": "service",
+    "name": "JupyterHub",
+    "description": "Multi-user Jupyter notebook server",
+    "category": "DATASCIENCE",
+    "abstract": "Multi-user server for Jupyter notebooks enabling collaborative data science",
+    "logo": "jupyterhub-logo.webp",
+    "website": "https://jupyter.org/hub",
+    "playbook": "350-setup-jupyterhub.yml",
+    "manifest": "",
+    "priority": 92
+  }
+,
+  {
+    "id": "spark",
+    "type": "service",
+    "name": "Apache Spark",
+    "description": "Unified analytics engine for big data",
+    "category": "DATASCIENCE",
+    "abstract": "Fast and general-purpose cluster computing system for big data processing",
+    "logo": "spark-logo.webp",
+    "website": "https://spark.apache.org",
+    "playbook": "330-setup-spark.yml",
+    "manifest": "",
+    "priority": 91
+  }
+,
+  {
+    "id": "unity-catalog",
+    "type": "service",
+    "name": "Unity Catalog",
+    "description": "Open-source data catalog and governance",
+    "category": "DATASCIENCE",
+    "abstract": "Open-source data catalog for unified governance across data and AI assets",
+    "logo": "unity-catalog-logo.webp",
+    "website": "https://www.unitycatalog.io",
+    "playbook": "320-setup-unity-catalog.yml",
+    "manifest": "",
+    "priority": 90
+  }
+,
+  {
     "id": "argocd",
     "type": "service",
     "name": "ArgoCD",
@@ -123,6 +193,20 @@
     "playbook": "220-setup-argocd.yml",
     "manifest": "",
     "priority": 80
+  }
+,
+  {
+    "id": "gravitee",
+    "type": "service",
+    "name": "Gravitee",
+    "description": "API management and gateway platform",
+    "category": "MANAGEMENT",
+    "abstract": "Open-source API management platform for designing, deploying, and managing APIs",
+    "logo": "gravitee-logo.webp",
+    "website": "https://www.gravitee.io",
+    "playbook": "090-setup-gravitee.yml",
+    "manifest": "",
+    "priority": 81
   }
 ,
   {
@@ -193,6 +277,34 @@
     "playbook": "031-setup-tempo.yml",
     "manifest": "",
     "priority": 12
+  }
+,
+  {
+    "id": "cloudflare-tunnel",
+    "type": "service",
+    "name": "Cloudflare Tunnel",
+    "description": "Secure tunnel to Cloudflare network",
+    "category": "NETWORK",
+    "abstract": "Secure outbound-only tunnel to expose services via Cloudflare",
+    "logo": "cloudflare-logo.webp",
+    "website": "https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/",
+    "playbook": "820-setup-network-cloudflare-tunnel.yml",
+    "manifest": "",
+    "priority": 101
+  }
+,
+  {
+    "id": "tailscale-tunnel",
+    "type": "service",
+    "name": "Tailscale Tunnel",
+    "description": "Secure mesh VPN tunnel",
+    "category": "NETWORK",
+    "abstract": "Zero-config WireGuard-based mesh VPN for secure remote access",
+    "logo": "tailscale-logo.webp",
+    "website": "https://tailscale.com",
+    "playbook": "801-setup-network-tailscale-tunnel.yml",
+    "manifest": "",
+    "priority": 100
   }
 ,
   {

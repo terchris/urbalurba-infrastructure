@@ -32,10 +32,12 @@ _CATEGORY_DATA=(
     "QUEUES|Message Queues|Async messaging and event streams|queue,messaging|inbox"
     "SEARCH|Search|Full-text search and indexing|search,indexing|search"
     "MANAGEMENT|Management|Admin tools and GitOps|admin,management|cog"
+    "DATASCIENCE|Data Science|Analytics and machine learning platforms|datascience,analytics|flask"
+    "NETWORK|Networking|VPN tunnels and network access|network,vpn|globe"
 )
 
 # Category display order (just the IDs)
-CATEGORY_ORDER=(CORE MONITORING DATABASES AI AUTHENTICATION QUEUES SEARCH MANAGEMENT)
+CATEGORY_ORDER=(CORE MONITORING DATABASES AI AUTHENTICATION QUEUES SEARCH MANAGEMENT DATASCIENCE NETWORK)
 
 # Internal: Find category data by ID
 # Usage: _find_category_data "MONITORING"

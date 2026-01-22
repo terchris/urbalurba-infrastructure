@@ -62,4 +62,20 @@
       "description": "Admin tools and GitOps",
       "icon": "cog"
     }
+,
+    {
+      "id": "DATASCIENCE",
+      "name": "Data Science",
+      "order": 8,
+      "description": "Analytics and machine learning platforms",
+      "icon": "flask"
+    }
+,
+    {
+      "id": "NETWORK",
+      "name": "Networking",
+      "order": 9,
+      "description": "VPN tunnels and network access",
+      "icon": "globe"
+    }
 ]}
