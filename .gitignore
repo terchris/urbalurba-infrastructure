@@ -33,3 +33,12 @@ troubleshooting/output/*
 WARP.md
 CLAUDE.md
 
+
+# Top secret folder - contains credentials (NEVER commit)
+.devcontainer.secrets/
+
+# UIS secrets folder (created by ./uis on first run)
+.uis.secrets/
+
+# Generated kubernetes secrets (anywhere in repo)
+/topsecret/kubernetes/kubernetes-secrets.yml

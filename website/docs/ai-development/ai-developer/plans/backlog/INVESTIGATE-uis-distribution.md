@@ -23,6 +23,7 @@
 
 **Related Plans**:
 - [PLAN-003-minimal-container-delivery.md](../completed/PLAN-003-minimal-container-delivery.md) - ✅ Complete
+- [PLAN-004-uis-orchestration-system.md](./PLAN-004-uis-orchestration-system.md) - Backlog (DCT-based orchestration)
 - PLAN-002-json-generator.md (may need revision based on findings)
 
 ---
@@ -590,26 +591,22 @@ ansible-playbook "$PROJECT_ROOT/ansible/playbooks/030-setup-prometheus.yml" -e "
 - [x] Create `Dockerfile.uis-provision-host`
 - [x] Create CI/CD workflow for container build
 - [x] Create `./uis` thin wrapper script
+- [x] Container image at `ghcr.io/terchris/uis-provision-host:latest`
+- [x] Size reduced from 2.7GB to 1.86GB
+- [x] Auto-pull from registry
+- [x] Branded welcome page
 
-**Remaining for full orchestration system:**
-- [ ] Create `provision-host/uis/` folder structure
-- [ ] Create `lib/service-scanner.sh` based on DCT
-- [ ] Create `manage/uis-cli.sh` CLI entry point
-- [ ] Create sample service scripts with metadata (monitoring category first)
-- [ ] Create install script (`install.sh`) - `curl ... | bash`
-- [ ] Create `topsecret/config/` template structure
-- [ ] Create `enabled-services.conf` config-driven deployment
-- [ ] Create `uis init` wizard
-- [ ] Adapt secrets management for container model
-- [ ] Test end-to-end: install → init → cluster → deploy
+**Remaining for full orchestration system (see PLAN-004):**
 
-**Platform support:**
-- [ ] Windows/WSL2 support for `./uis` wrapper script
-  - Windows (native): `%USERPROFILE%\.kube\config`
-  - WSL2: May need `/mnt/c/Users/<name>/.kube/config` depending on where Rancher Desktop stores kubeconfig
-
-**Container variants (optional):**
-- [ ] Multiple container image variants (full/local/azure)
+All remaining items are detailed in [PLAN-004-uis-orchestration-system.md](./PLAN-004-uis-orchestration-system.md):
+- Phase 1: Foundation - Library and Scanner
+- Phase 2: Service Scripts with Metadata
+- Phase 3: Config System - enabled-services.conf
+- Phase 4: CLI Entry Point
+- Phase 5: Interactive Menu
+- Phase 6: Init Wizard
+- Phase 7: Install Script
+- Phase 8: Platform Support (Windows/WSL2)
 
 ### Container Optimization (To Do)
 - [ ] Add `none` option to `provision-host-01-cloudproviders.sh` to skip cloud CLI installation
@@ -1302,13 +1299,19 @@ These come in later phases after the minimal delivery is proven.
 3. ~~Get user feedback on proposed design~~ ✅ (Container-as-Deliverable model approved)
 4. ~~Create detailed implementation plan (PLAN-003)~~ ✅
 5. ~~Implement minimal container delivery (PLAN-003)~~ ✅
-6. **Create PLAN-004: Full UIS orchestration system** ← Next
-   - Phase 1: Create `provision-host/uis/` folder structure
-   - Phase 2: Install script and init wizard
-   - Phase 3: Config-driven deployment (enabled-services.conf)
-   - Phase 4: Secrets management integration
-7. Test end-to-end and iterate
-8. Document migration path for existing users
+6. ~~Create PLAN-004: Full UIS orchestration system~~ ✅
+7. **Implement PLAN-004** ← Next
+   - See [PLAN-004-uis-orchestration-system.md](./PLAN-004-uis-orchestration-system.md)
+   - Phase 1: Foundation - Library and Scanner
+   - Phase 2: Service Scripts with Metadata
+   - Phase 3: Config System - enabled-services.conf
+   - Phase 4: CLI Entry Point
+   - Phase 5: Interactive Menu
+   - Phase 6: Init Wizard
+   - Phase 7: Install Script
+   - Phase 8: Platform Support
+8. Test end-to-end and iterate
+9. Document migration path for existing users
 
 ---
 
