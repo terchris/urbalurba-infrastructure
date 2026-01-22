@@ -1,0 +1,290 @@
+#!/bin/bash
+# uis - Urbalurba Infrastructure Stack CLI wrapper
+#
+# This script manages the UIS provision-host container and routes
+# commands to uis-cli.sh running inside the container.
+#
+# Usage: ./uis <command> [args]
+# Run ./uis help for available commands
+#
+# Container Commands (handled by this wrapper):
+#   start     Start the UIS container
+#   stop      Stop the UIS container
+#   restart   Restart the UIS container
+#   status    Show container status
+#   shell     Open a shell in the container
+#   logs      Show container logs
+#   update    Pull latest container image
+#
+# UIS Commands (routed to container):
+#   All other commands are passed to uis-cli.sh inside the container.
+#   Run ./uis help after starting to see available UIS commands.
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CONTAINER_NAME="uis-provision-host"
+IMAGE="${UIS_IMAGE:-ghcr.io/terchris/uis-provision-host:latest}"
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+log_info() { echo -e "${GREEN}[UIS]${NC} $1"; }
+log_warn() { echo -e "${YELLOW}[UIS]${NC} $1"; }
+log_error() { echo -e "${RED}[UIS]${NC} $1"; }
+
+# Detect platform for kubeconfig path
+detect_platform() {
+    case "$(uname -s)" in
+        Linux*)
+            if grep -q Microsoft /proc/version 2>/dev/null; then
+                echo "wsl2"
+            else
+                echo "linux"
+            fi
+            ;;
+        Darwin*) echo "macos" ;;
+        MINGW*|MSYS*|CYGWIN*) echo "windows-gitbash" ;;
+        *) echo "unknown" ;;
+    esac
+}
+
+# Get kubeconfig path based on platform
+get_kubeconfig_path() {
+    local platform=$(detect_platform)
+    case "$platform" in
+        windows-gitbash)
+            # Git Bash on Windows - convert Windows path
+            echo "/c/Users/$USER/.kube/config"
+            ;;
+        *)
+            # macOS, Linux, WSL2 - standard path
+            echo "$HOME/.kube/config"
+            ;;
+    esac
+}
+
+# First-run initialization - create config folders
+first_run_init() {
+    if [[ ! -d "$SCRIPT_DIR/.uis.extend" ]]; then
+        log_info "First run - creating configuration folders..."
+        mkdir -p "$SCRIPT_DIR/.uis.extend"
+        mkdir -p "$SCRIPT_DIR/.uis.secrets"
+
+        # Create .gitignore to protect secrets
+        cat > "$SCRIPT_DIR/.uis.secrets/.gitignore" << 'EOF'
+# Never commit secrets
+*
+!.gitignore
+!README.md
+EOF
+        log_info "Created .uis.extend/ and .uis.secrets/"
+    fi
+}
+
+# Check if container is running
+is_container_running() {
+    docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"
+}
+
+# Check if image exists, pull if needed
+check_image() {
+    if docker image inspect "$IMAGE" &>/dev/null; then
+        return 0
+    fi
+
+    # Image not found locally - try to pull
+    if [[ "$IMAGE" == *"/"* ]]; then
+        log_info "Image not found locally, pulling from registry..."
+        if docker pull "$IMAGE"; then
+            log_info "Image pulled successfully"
+            return 0
+        fi
+        log_error "Failed to pull image '$IMAGE'"
+    else
+        log_error "Image '$IMAGE' not found!"
+    fi
+
+    echo ""
+    echo "Install UIS with:"
+    echo "  curl -fsSL https://uis.sovereignsky.no/install.sh | bash"
+    exit 1
+}
+
+# Start container
+start_container() {
+    if is_container_running; then
+        log_info "Container is already running"
+        return 0
+    fi
+
+    first_run_init
+    check_image
+
+    log_info "Starting UIS container..."
+
+    # Remove old container if exists
+    docker rm -f "$CONTAINER_NAME" 2>/dev/null || true
+
+    local kubeconfig
+    kubeconfig=$(get_kubeconfig_path)
+
+    # Build mount options
+    local mount_opts=""
+    mount_opts+="-v \"$SCRIPT_DIR/.uis.extend:/mnt/urbalurbadisk/.uis.extend\" "
+    mount_opts+="-v \"$SCRIPT_DIR/.uis.secrets:/mnt/urbalurbadisk/.uis.secrets\" "
+
+    # Mount kubeconfig if it exists
+    if [[ -f "$kubeconfig" ]]; then
+        mount_opts+="-v \"$kubeconfig:/home/ansible/.kube/config:ro\" "
+    else
+        log_warn "Kubeconfig not found at $kubeconfig"
+        log_info "Kubernetes commands will not work until kubeconfig is available"
+    fi
+
+    # Start with host network (so 127.0.0.1 in kubeconfig works)
+    eval docker run -d --name "$CONTAINER_NAME" \
+        --network host \
+        --privileged \
+        $mount_opts \
+        "$IMAGE"
+
+    # Wait for container to be ready
+    sleep 2
+
+    # Initialize config inside container (copy defaults if needed)
+    docker exec "$CONTAINER_NAME" bash -c \
+        "source /mnt/urbalurbadisk/provision-host/uis/lib/first-run.sh && initialize_uis_config" \
+        2>/dev/null || true
+
+    log_info "Container started"
+}
+
+# Stop container
+stop_container() {
+    if is_container_running; then
+        log_info "Stopping UIS container..."
+        docker stop "$CONTAINER_NAME" >/dev/null
+        docker rm "$CONTAINER_NAME" >/dev/null 2>&1 || true
+        log_info "Container stopped"
+    else
+        log_warn "Container is not running"
+    fi
+}
+
+# Show container status
+show_status() {
+    if is_container_running; then
+        log_info "Container is running"
+        docker ps --filter "name=$CONTAINER_NAME" --format "table {{.Names}}\t{{.Status}}\t{{.Image}}"
+    else
+        log_warn "Container is not running"
+        echo ""
+        echo "Start with: ./uis start"
+    fi
+}
+
+# Update container image
+update_container() {
+    log_info "Pulling latest UIS container image..."
+    if docker pull "$IMAGE"; then
+        log_info "Image updated successfully"
+        if is_container_running; then
+            log_info "Restarting container with new image..."
+            stop_container
+            start_container
+        fi
+    else
+        log_error "Failed to pull image"
+        exit 1
+    fi
+}
+
+# Execute command in container via uis-cli.sh
+exec_uis_command() {
+    if ! is_container_running; then
+        log_info "Container not running, starting..."
+        start_container
+    fi
+
+    docker exec -it "$CONTAINER_NAME" \
+        /mnt/urbalurbadisk/provision-host/uis/manage/uis-cli.sh "$@"
+}
+
+# Show usage
+show_usage() {
+    echo "UIS - Urbalurba Infrastructure Stack"
+    echo ""
+    echo "Usage: ./uis <command> [args]"
+    echo ""
+    echo "Container Commands:"
+    echo "  start       Start the UIS container"
+    echo "  stop        Stop the UIS container"
+    echo "  restart     Restart the UIS container"
+    echo "  status      Show container status"
+    echo "  shell       Open a shell in the container"
+    echo "  logs        Show container logs"
+    echo "  update      Pull latest container image"
+    echo ""
+    echo "UIS Commands (after container is running):"
+    echo "  setup       Interactive configuration menu"
+    echo "  init        First-time configuration wizard"
+    echo "  list        List available services"
+    echo "  deploy      Deploy enabled services"
+    echo "  help        Show all UIS commands"
+    echo ""
+    echo "Examples:"
+    echo "  ./uis start              # Start the container"
+    echo "  ./uis deploy             # Deploy services"
+    echo "  ./uis setup              # Interactive menu"
+    echo "  ./uis shell              # Enter the container"
+    echo ""
+    echo "Quick start:"
+    echo "  ./uis start && ./uis deploy"
+    echo ""
+    echo "Documentation: https://uis.sovereignsky.no"
+}
+
+# Main command handler
+case "${1:-}" in
+    start)
+        start_container
+        log_info "UIS container is ready"
+        echo ""
+        echo "Next steps:"
+        echo "  ./uis deploy       Deploy default services"
+        echo "  ./uis setup        Interactive configuration"
+        echo "  ./uis help         Show all commands"
+        ;;
+    stop)
+        stop_container
+        ;;
+    restart)
+        stop_container
+        start_container
+        log_info "UIS container restarted"
+        ;;
+    status)
+        show_status
+        ;;
+    shell)
+        start_container
+        docker exec -it "$CONTAINER_NAME" bash
+        ;;
+    logs)
+        docker logs "$CONTAINER_NAME" ${2:---tail 50}
+        ;;
+    update)
+        update_container
+        ;;
+    ""|--help|-h)
+        show_usage
+        ;;
+    # All other commands are routed to uis-cli.sh
+    *)
+        exec_uis_command "$@"
+        ;;
+esac

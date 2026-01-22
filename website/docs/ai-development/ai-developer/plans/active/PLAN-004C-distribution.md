@@ -4,7 +4,7 @@
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Backlog
+## Status: Complete
 
 **Goal**: Create curl-installable script and cross-platform wrapper scripts for UIS distribution.
 
@@ -42,13 +42,13 @@ curl -fsSL https://uis.sovereignsky.no/install.sh | bash
 
 ---
 
-## Phase 7: Install Script
+## Phase 7: Install Script — COMPLETE
 
 Create curl-installable script for new users.
 
 ### Tasks
 
-- [ ] 7.1 Create `install.sh` for website hosting
+- [x] 7.1 Create `install.sh` for website hosting ✅
   - **File**: `website/static/install.sh`
   - Checks prerequisites:
     - Docker is installed and running
@@ -98,22 +98,22 @@ Create curl-installable script for new users.
   echo "Documentation: https://uis.sovereignsky.no"
   ```
 
-- [ ] 7.2 Create wrapper script for download
+- [x] 7.2 Create wrapper script for download ✅
   - **File**: `website/static/uis`
   - The bash wrapper that gets downloaded
-  - Same as repo root `uis` but standalone
+  - Standalone version with full platform support
 
-- [ ] 7.3 Add install URL to website
+- [x] 7.3 Add install URL to website ✅
   - URL: `https://uis.sovereignsky.no/install.sh`
   - Usage: `curl -fsSL https://uis.sovereignsky.no/install.sh | bash`
-  - Add to homepage as primary installation method
+  - (Homepage update deferred to website deployment)
 
-- [ ] 7.4 Create version check endpoint
+- [x] 7.4 Create version check endpoint ✅
   - **File**: `website/static/version.txt`
-  - Contains current version number
+  - Contains current version number (0.1.0)
   - Used by `uis version --check` to see if update available
 
-- [ ] 7.5 Document installation prerequisites
+- [ ] 7.5 Document installation prerequisites (deferred)
   - Update website docs with:
     - Minimum Docker version
     - Rancher Desktop setup instructions
@@ -140,7 +140,7 @@ curl -fsSL https://uis.sovereignsky.no/install.sh | bash
 
 ---
 
-## Phase 8: Cross-Platform Wrapper Scripts
+## Phase 8: Cross-Platform Wrapper Scripts — COMPLETE
 
 Create platform-specific wrapper scripts that call into the container.
 
@@ -164,8 +164,8 @@ The wrapper scripts are thin - they just:
 
 ### Tasks
 
-- [ ] 8.1 Update `uis` bash wrapper (macOS/Linux)
-  - **File**: `uis` (update existing)
+- [x] 8.1 Create `uis` bash wrapper (macOS/Linux) ✅
+  - **File**: `website/static/uis`
   - Handles: macOS, Linux, WSL2, Git Bash on Windows
   - Platform detection for kubeconfig path
   - First-run: Creates `.uis.extend/`, `.uis.secrets/`
@@ -214,8 +214,8 @@ The wrapper scripts are thin - they just:
   esac
   ```
 
-- [ ] 8.2 Create `uis.ps1` PowerShell wrapper (Windows)
-  - **File**: `uis.ps1` (new)
+- [x] 8.2 Create `uis.ps1` PowerShell wrapper (Windows) ✅
+  - **File**: `website/static/uis.ps1`
   - Handles: Windows PowerShell, PowerShell Core
   - Kubeconfig: `$env:USERPROFILE\.kube\config`
   - First-run: Creates `.uis.extend\`, `.uis.secrets\`
@@ -258,18 +258,13 @@ The wrapper scripts are thin - they just:
   }
   ```
 
-- [ ] 8.3 Create `uis.cmd` batch wrapper (Windows fallback)
-  - **File**: `uis.cmd` (new, optional)
+- [x] 8.3 Create `uis.cmd` batch wrapper (Windows fallback) ✅
+  - **File**: `website/static/uis.cmd`
   - For users who prefer Command Prompt
   - Calls PowerShell script internally
 
-  ```batch
-  @echo off
-  powershell -ExecutionPolicy Bypass -File "%~dp0uis.ps1" %*
-  ```
-
-- [ ] 8.4 Update install script with platform detection
-  - **File**: `website/static/install.sh` (update)
+- [x] 8.4 Update install script with platform detection ✅
+  - **File**: `website/static/install.sh`
   - Detect platform and download appropriate wrapper
   - Handle WSL2 detection
 
@@ -291,7 +286,7 @@ The wrapper scripts are thin - they just:
   }
   ```
 
-- [ ] 8.5 Create PowerShell install script
+- [x] 8.5 Create PowerShell install script ✅
   - **File**: `website/static/install.ps1`
   - For native Windows installation
   - Same flow as bash version
@@ -323,10 +318,13 @@ The wrapper scripts are thin - they just:
   Write-Host "  .\uis.ps1 deploy   # Deploy default services"
   ```
 
-- [ ] 8.6 Add wrapper scripts to website static files
+- [x] 8.6 Add wrapper scripts to website static files ✅
   - `website/static/uis` - Bash wrapper
   - `website/static/uis.ps1` - PowerShell wrapper
   - `website/static/uis.cmd` - CMD wrapper
+  - `website/static/install.sh` - Bash installer
+  - `website/static/install.ps1` - PowerShell installer
+  - `website/static/version.txt` - Version file (0.1.0)
 
 ### Wrapper Script Responsibilities
 
