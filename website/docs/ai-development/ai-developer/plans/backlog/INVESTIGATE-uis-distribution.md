@@ -2,20 +2,27 @@
 
 > **Purpose**: Design a new distribution model for UIS that allows users to install and update without forking the repo or editing core files.
 
-## Status: Investigation Complete ✅
+## Status: Investigation Complete ✅ | PLAN-003 Complete ✅
 
 **Goal**: Design a container-based distribution model for UIS.
 
-**Last Updated**: 2026-01-20
+**Last Updated**: 2026-01-22
 
 **Priority**: High (foundational for product scalability)
 
 **Decision**: **Container-as-Deliverable** - The UIS product is delivered as a container image, not a zip file. Users only need to provide their `topsecret/` folder (secrets + config).
 
-**Next Action**: Create implementation plan (PLAN-003) based on this investigation.
+**Completed**: PLAN-003 implemented minimal container delivery:
+- Container image published to `ghcr.io/terchris/uis-provision-host:latest`
+- Size reduced from 2.7GB to 1.86GB
+- `./uis` wrapper script with auto-pull from registry
+- CI/CD pipeline for multi-arch builds (amd64/arm64)
+- Branded welcome page for nginx catch-all
+
+**Next Action**: Implement full orchestration system (Phase 1-6 below).
 
 **Related Plans**:
-- [PLAN-003-minimal-container-delivery.md](../active/PLAN-003-minimal-container-delivery.md) - Minimal first delivery (created from this investigation)
+- [PLAN-003-minimal-container-delivery.md](../completed/PLAN-003-minimal-container-delivery.md) - ✅ Complete
 - PLAN-002-json-generator.md (may need revision based on findings)
 
 ---
@@ -578,17 +585,31 @@ ansible-playbook "$PROJECT_ROOT/ansible/playbooks/030-setup-prometheus.yml" -e "
 - [x] Merge setup/remove into single script with flags or keep separate? → **Keep separate + add SCRIPT_REMOVE metadata**
 
 ### Implementation (To Do)
+
+**Completed in PLAN-003:**
+- [x] Create `Dockerfile.uis-provision-host`
+- [x] Create CI/CD workflow for container build
+- [x] Create `./uis` thin wrapper script
+
+**Remaining for full orchestration system:**
 - [ ] Create `provision-host/uis/` folder structure
 - [ ] Create `lib/service-scanner.sh` based on DCT
 - [ ] Create `manage/uis-cli.sh` CLI entry point
 - [ ] Create sample service scripts with metadata (monitoring category first)
-- [ ] Create `Dockerfile.uis-provision-host`
-- [ ] Create CI/CD workflow for container build
-- [ ] Create install script (`install.sh`)
-- [ ] Create `./uis` thin wrapper script
+- [ ] Create install script (`install.sh`) - `curl ... | bash`
 - [ ] Create `topsecret/config/` template structure
+- [ ] Create `enabled-services.conf` config-driven deployment
+- [ ] Create `uis init` wizard
 - [ ] Adapt secrets management for container model
 - [ ] Test end-to-end: install → init → cluster → deploy
+
+**Platform support:**
+- [ ] Windows/WSL2 support for `./uis` wrapper script
+  - Windows (native): `%USERPROFILE%\.kube\config`
+  - WSL2: May need `/mnt/c/Users/<name>/.kube/config` depending on where Rancher Desktop stores kubeconfig
+
+**Container variants (optional):**
+- [ ] Multiple container image variants (full/local/azure)
 
 ### Container Optimization (To Do)
 - [ ] Add `none` option to `provision-host-01-cloudproviders.sh` to skip cloud CLI installation
@@ -1279,11 +1300,15 @@ These come in later phases after the minimal delivery is proven.
 1. ~~Complete research tasks above~~ ✅
 2. ~~Design user journey~~ ✅
 3. ~~Get user feedback on proposed design~~ ✅ (Container-as-Deliverable model approved)
-4. **Create detailed implementation plan (PLAN-003)** ← Next
-5. Implement Phase 1: Create `provision-host/uis/` folder structure
-6. Implement Phase 2: Build container image + CI/CD
-7. Implement Phase 3: Install script and wrapper
-8. Test end-to-end and iterate
+4. ~~Create detailed implementation plan (PLAN-003)~~ ✅
+5. ~~Implement minimal container delivery (PLAN-003)~~ ✅
+6. **Create PLAN-004: Full UIS orchestration system** ← Next
+   - Phase 1: Create `provision-host/uis/` folder structure
+   - Phase 2: Install script and init wizard
+   - Phase 3: Config-driven deployment (enabled-services.conf)
+   - Phase 4: Secrets management integration
+7. Test end-to-end and iterate
+8. Document migration path for existing users
 
 ---
 
