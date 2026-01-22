@@ -4,7 +4,7 @@
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Backlog (Epic)
+## Status: Complete (Epic)
 
 **Goal**: Create a DCT-inspired orchestration system for UIS with config-driven deployment, interactive menu, and install script.
 
@@ -24,10 +24,10 @@ This epic is split into 4 implementation plans. Execute them in order:
 
 | Plan | Phases | Focus | Prerequisites |
 |------|--------|-------|---------------|
-| [PLAN-004A: Core CLI](./PLAN-004A-core-cli.md) | 1-4 | Foundation, scanner, config, CLI | None |
-| [PLAN-004B: Menu & Secrets](./PLAN-004B-menu-secrets.md) | 5-6 | TUI menu, init wizard, secrets | PLAN-004A |
-| [PLAN-004C: Distribution](./PLAN-004C-distribution.md) | 7-8 | Install script, cross-platform | PLAN-004A |
-| [PLAN-004D: Website & Testing](./PLAN-004D-website-testing.md) | 9-10 | JSON generation, test framework | PLAN-004A (Phases 1-2) |
+| [PLAN-004A: Core CLI](../completed/PLAN-004A-core-cli.md) | 1-4 | Foundation, scanner, config, CLI | ✅ Complete |
+| [PLAN-004B: Menu & Secrets](../completed/PLAN-004B-menu-secrets.md) | 5-6 | TUI menu, init wizard, secrets | ✅ Complete |
+| [PLAN-004C: Distribution](../completed/PLAN-004C-distribution.md) | 7-8 | Install script, cross-platform | ✅ Complete |
+| [PLAN-004D: Website & Testing](../completed/PLAN-004D-website-testing.md) | 9-10 | JSON generation, test framework | ✅ Complete |
 
 **Delivery Summary**:
 - **004A**: `uis list`, `uis deploy`, `uis enable/disable`, first-run initialization
