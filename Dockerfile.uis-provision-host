@@ -58,6 +58,7 @@ COPY --chown=ansible:ansible cloud-init/ /mnt/urbalurbadisk/cloud-init/
 COPY --chown=ansible:ansible networking/ /mnt/urbalurbadisk/networking/
 COPY --chown=ansible:ansible provision-host/ /mnt/urbalurbadisk/provision-host/
 COPY --chown=ansible:ansible scripts/ /mnt/urbalurbadisk/scripts/
+COPY --chown=ansible:ansible testdata/ /mnt/urbalurbadisk/testdata/
 COPY --chown=ansible:ansible topsecret/secrets-templates/ /mnt/urbalurbadisk/topsecret/secrets-templates/
 
 # Switch to ansible user for provisioning

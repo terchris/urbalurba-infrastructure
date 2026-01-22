@@ -9,7 +9,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONTAINER_NAME="uis-provision-host"
-IMAGE="${UIS_IMAGE:-uis-provision-host:local}"
+IMAGE="${UIS_IMAGE:-ghcr.io/terchris/uis-provision-host:latest}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -31,14 +31,27 @@ check_topsecret() {
     fi
 }
 
-# Check if image exists
+# Check if image exists, pull if needed
 check_image() {
-    if ! docker image inspect "$IMAGE" &>/dev/null; then
-        log_error "Image '$IMAGE' not found!"
-        log_info "Build it with: docker build -f Dockerfile.uis-provision-host -t uis-provision-host:local ."
-        log_info "Or pull from registry: docker pull ghcr.io/terchris/uis-provision-host:latest"
-        exit 1
+    if docker image inspect "$IMAGE" &>/dev/null; then
+        return 0
     fi
+
+    # Image not found locally - try to pull if it looks like a registry image
+    if [[ "$IMAGE" == *"/"* ]]; then
+        log_info "Image '$IMAGE' not found locally, pulling from registry..."
+        if docker pull "$IMAGE"; then
+            log_info "Image pulled successfully"
+            return 0
+        fi
+        log_error "Failed to pull image '$IMAGE'"
+    else
+        log_error "Image '$IMAGE' not found!"
+    fi
+
+    log_info "Build it with: docker build -f Dockerfile.uis-provision-host -t uis-provision-host:local ."
+    log_info "Or pull from registry: export UIS_IMAGE=ghcr.io/terchris/uis-provision-host:latest"
+    exit 1
 }
 
 # Start container if not running
@@ -111,7 +124,7 @@ show_usage() {
     echo "  ./uis exec kubectl get pods    # Run kubectl command"
     echo ""
     echo "Environment variables:"
-    echo "  UIS_IMAGE   Override the container image (default: uis-provision-host:local)"
+    echo "  UIS_IMAGE   Override the container image (default: ghcr.io/terchris/uis-provision-host:latest)"
 }
 
 # Main command handler

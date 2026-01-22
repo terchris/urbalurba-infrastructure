@@ -1,9 +1,195 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Hello World!</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome to UIS</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #1e3a5f 0%, #2d4a6f 100%);
+      color: white;
+      padding: 2rem;
+    }
+
+    .container {
+      text-align: center;
+      max-width: 600px;
+    }
+
+    .logo {
+      width: 120px;
+      height: 96px;
+      margin-bottom: 2rem;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+    }
+
+    .tagline {
+      font-size: 1.25rem;
+      color: #d1d5db;
+      margin-bottom: 2rem;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(74, 222, 128, 0.15);
+      border: 1px solid rgba(74, 222, 128, 0.3);
+      padding: 0.5rem 1rem;
+      border-radius: 9999px;
+      font-size: 0.875rem;
+      color: #4ade80;
+      margin-bottom: 2rem;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      background: #4ade80;
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .description {
+      color: #9ca3af;
+      line-height: 1.6;
+      margin-bottom: 2rem;
+    }
+
+    .buttons {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+
+    .btn-primary {
+      background: #3a8f5e;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #348054;
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: white;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.5);
+    }
+
+    .footer {
+      margin-top: 3rem;
+      font-size: 0.875rem;
+      color: #6b7280;
+    }
+
+    .footer a {
+      color: #9ca3af;
+      text-decoration: none;
+    }
+
+    .footer a:hover {
+      color: white;
+    }
+
+    @media (max-width: 480px) {
+      h1 {
+        font-size: 1.75rem;
+      }
+      .tagline {
+        font-size: 1rem;
+      }
+      .buttons {
+        flex-direction: column;
+      }
+      .btn {
+        width: 100%;
+        text-align: center;
+      }
+    }
+  </style>
 </head>
 <body>
-  <h1>Hello World!</h1>
+  <div class="container">
+    <!-- UIS Logo (inline SVG) -->
+    <svg class="logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 80">
+      <defs>
+        <linearGradient id="cube" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:#4fb87b"/>
+          <stop offset="100%" style="stop-color:#3a8f5e"/>
+        </linearGradient>
+      </defs>
+      <!-- Cloud shape -->
+      <path d="M78 56 C85 56, 90 50, 90 42 C90 34, 84 28, 76 28 C75 17, 65 9, 50 9 C37 9, 27 17, 26 28 C24 27, 21 26, 18 26 C9 26, 2 34, 2 44 C2 54, 9 62, 20 62 L76 62 C83 62, 88 58, 88 52 Z"
+            fill="none" stroke="#4fb87b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <!-- Pyramid Stack -->
+      <rect x="20" y="44" width="13" height="13" rx="2" fill="url(#cube)"/>
+      <rect x="37" y="44" width="13" height="13" rx="2" fill="url(#cube)"/>
+      <rect x="54" y="44" width="13" height="13" rx="2" fill="url(#cube)"/>
+      <rect x="28.5" y="29" width="13" height="13" rx="2" fill="url(#cube)"/>
+      <rect x="45.5" y="29" width="13" height="13" rx="2" fill="url(#cube)"/>
+      <rect x="37" y="14" width="13" height="13" rx="2" fill="url(#cube)"/>
+    </svg>
+
+    <h1>Welcome to UIS</h1>
+    <p class="tagline">Urbalurba Infrastructure Stack</p>
+
+    <div class="status">
+      <span class="status-dot"></span>
+      Your infrastructure is running
+    </div>
+
+    <p class="description">
+      This is the default catch-all page for your local Kubernetes cluster.
+      Any undefined routes will be served by this page.
+    </p>
+
+    <div class="buttons">
+      <a href="https://uis.sovereignsky.no/docs" class="btn btn-primary">View Documentation</a>
+      <a href="/urbalurba-test.html" class="btn btn-secondary">Test Page</a>
+    </div>
+
+    <div class="footer">
+      <a href="https://sovereignsky.no">SovereignSky</a> ·
+      <a href="https://github.com/terchris/urbalurba-infrastructure">GitHub</a>
+    </div>
+  </div>
 </body>
 </html>
