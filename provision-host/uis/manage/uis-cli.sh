@@ -73,6 +73,9 @@ Tools:
   tools list              List all available tools with status
   tools install <tool>    Install an optional tool
 
+Documentation:
+  docs generate           Generate JSON files for website
+
 Information:
   version                 Show UIS version
   help                    Show this help message
@@ -701,6 +704,34 @@ cmd_cluster() {
 }
 
 # ============================================================
+# Docs Commands
+# ============================================================
+
+cmd_docs() {
+    local subcmd="${1:-generate}"
+    shift || true
+
+    case "$subcmd" in
+        generate|gen)
+            local output_dir="${1:-}"
+            local docs_script="$SCRIPT_DIR/uis-docs.sh"
+
+            if [[ ! -f "$docs_script" ]]; then
+                log_error "uis-docs.sh not found"
+                exit "$EXIT_GENERAL_ERROR"
+            fi
+
+            "$docs_script" "$output_dir"
+            ;;
+        *)
+            log_error "Unknown docs subcommand: $subcmd"
+            echo "Usage: uis docs [generate [output-dir]]"
+            exit "$EXIT_GENERAL_ERROR"
+            ;;
+    esac
+}
+
+# ============================================================
 # Secrets Commands
 # ============================================================
 
@@ -766,6 +797,9 @@ main() {
             ;;
         secrets)
             cmd_secrets "$@"
+            ;;
+        docs)
+            cmd_docs "$@"
             ;;
         list|ls)
             cmd_list "$@"

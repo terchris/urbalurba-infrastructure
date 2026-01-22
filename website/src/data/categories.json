@@ -1,118 +1,65 @@
-{
-  "@context": "https://schema.org",
-  "@type": "CategoryCodeSet",
-  "name": "UIS Service Categories",
-  "description": "Service categories for the Urbalurba Infrastructure Stack",
-  "hasCategoryCode": [
+{"categories": [
     {
-      "@type": "CategoryCode",
-      "codeValue": "AI",
-      "name": "AI & Machine Learning",
-      "order": 1,
-      "tags": ["ai", "llm", "openwebui", "ollama", "litellm", "machine-learning"],
-      "abstract": "AI and machine learning services for local LLM inference and API management.",
-      "summary": "Local AI infrastructure with OpenWebUI for chat interface, Ollama for LLM inference, and LiteLLM for unified API access to multiple models.",
-      "logo": "ai-logo.svg",
-      "manifest_range": "200-229"
-    },
-    {
-      "@type": "CategoryCode",
-      "codeValue": "AUTHENTICATION",
-      "name": "Authentication & SSO",
-      "order": 2,
-      "tags": ["authentik", "sso", "oauth", "identity", "authentication", "authorization"],
-      "abstract": "Identity management and single sign-on services.",
-      "summary": "Authentik provides enterprise-grade SSO, OAuth2/OIDC provider, and identity management with blueprints for automated configuration.",
-      "logo": "authentication-logo.svg",
-      "manifest_range": "070-079"
-    },
-    {
-      "@type": "CategoryCode",
-      "codeValue": "DATABASES",
-      "name": "Databases",
-      "order": 3,
-      "tags": ["postgresql", "mysql", "mongodb", "qdrant", "sql", "nosql", "vector"],
-      "abstract": "Relational, document, and vector database services.",
-      "summary": "Production-ready databases including PostgreSQL, MySQL, MongoDB, and Qdrant vector database for AI applications.",
-      "logo": "databases-logo.svg",
-      "manifest_range": "040-059"
-    },
-    {
-      "@type": "CategoryCode",
-      "codeValue": "MONITORING",
-      "name": "Observability & Monitoring",
-      "order": 4,
-      "tags": ["grafana", "prometheus", "loki", "tempo", "metrics", "logs", "traces"],
-      "abstract": "Full observability stack for metrics, logs, and traces.",
-      "summary": "Complete observability with Grafana dashboards, Prometheus metrics, Loki log aggregation, and Tempo distributed tracing.",
-      "logo": "monitoring-logo.svg",
-      "manifest_range": "030-039"
-    },
-    {
-      "@type": "CategoryCode",
-      "codeValue": "QUEUES",
-      "name": "Message Queues & Caching",
-      "order": 5,
-      "tags": ["rabbitmq", "redis", "messaging", "cache", "pubsub", "queue"],
-      "abstract": "Message brokers and caching services.",
-      "summary": "RabbitMQ for message queuing and Redis for caching, session storage, and pub/sub messaging.",
-      "logo": "queues-logo.svg",
-      "manifest_range": "060-069"
-    },
-    {
-      "@type": "CategoryCode",
-      "codeValue": "SEARCH",
-      "name": "Search & Indexing",
-      "order": 6,
-      "tags": ["elasticsearch", "search", "indexing", "full-text"],
-      "abstract": "Full-text search and indexing services.",
-      "summary": "Elasticsearch for powerful full-text search, log analysis, and data indexing capabilities.",
-      "logo": "search-logo.svg",
-      "manifest_range": "080-089"
-    },
-    {
-      "@type": "CategoryCode",
-      "codeValue": "DATASCIENCE",
-      "name": "Data Science & Analytics",
-      "order": 7,
-      "tags": ["spark", "jupyterhub", "unity-catalog", "notebooks", "analytics"],
-      "abstract": "Data science platforms and analytics tools.",
-      "summary": "Apache Spark for distributed computing, JupyterHub for collaborative notebooks, and Unity Catalog for data governance.",
-      "logo": "datascience-logo.svg",
-      "manifest_range": "240-259"
-    },
-    {
-      "@type": "CategoryCode",
-      "codeValue": "CORE",
+      "id": "CORE",
       "name": "Core Infrastructure",
-      "order": 8,
-      "tags": ["traefik", "ingress", "storage", "networking", "dns"],
-      "abstract": "Core infrastructure components for routing and storage.",
-      "summary": "Essential infrastructure including Traefik ingress controller, persistent storage, and networking configuration.",
-      "logo": "core-logo.svg",
-      "manifest_range": "000-029"
-    },
-    {
-      "@type": "CategoryCode",
-      "codeValue": "MANAGEMENT",
-      "name": "Management Tools",
-      "order": 9,
-      "tags": ["pgadmin", "redisinsight", "admin", "management", "ui"],
-      "abstract": "Web-based management interfaces for services.",
-      "summary": "Management UIs including pgAdmin for PostgreSQL, RedisInsight for Redis, and other administrative tools.",
-      "logo": "management-logo.svg",
-      "manifest_range": "600-699"
-    },
-    {
-      "@type": "CategoryCode",
-      "codeValue": "DEVELOPMENT",
-      "name": "Development Tools",
-      "order": 10,
-      "tags": ["argocd", "gitops", "ci-cd", "deployment"],
-      "abstract": "Development and deployment automation tools.",
-      "summary": "ArgoCD for GitOps deployments and other development workflow tools.",
-      "logo": "development-logo.svg",
-      "manifest_range": "700-799"
+      "order": 0,
+      "description": "Essential infrastructure services",
+      "icon": "server"
     }
-  ]
-}
+,
+    {
+      "id": "MONITORING",
+      "name": "Observability",
+      "order": 1,
+      "description": "Metrics, logs, and tracing",
+      "icon": "chart-line"
+    }
+,
+    {
+      "id": "DATABASES",
+      "name": "Databases",
+      "order": 2,
+      "description": "Data storage and caching services",
+      "icon": "database"
+    }
+,
+    {
+      "id": "AI",
+      "name": "AI & ML",
+      "order": 3,
+      "description": "AI and machine learning services",
+      "icon": "brain"
+    }
+,
+    {
+      "id": "AUTHENTICATION",
+      "name": "Authentication",
+      "order": 4,
+      "description": "Identity and access management",
+      "icon": "shield"
+    }
+,
+    {
+      "id": "QUEUES",
+      "name": "Message Queues",
+      "order": 5,
+      "description": "Async messaging and event streams",
+      "icon": "inbox"
+    }
+,
+    {
+      "id": "SEARCH",
+      "name": "Search",
+      "order": 6,
+      "description": "Full-text search and indexing",
+      "icon": "search"
+    }
+,
+    {
+      "id": "MANAGEMENT",
+      "name": "Management",
+      "order": 7,
+      "description": "Admin tools and GitOps",
+      "icon": "cog"
+    }
+]}

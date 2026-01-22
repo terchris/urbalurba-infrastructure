@@ -1,0 +1,80 @@
+name: Test UIS Scripts
+
+on:
+  pull_request:
+    paths:
+      - 'provision-host/uis/**'
+  push:
+    branches: [main]
+    paths:
+      - 'provision-host/uis/**'
+  workflow_dispatch:
+
+jobs:
+  static-tests:
+    name: Static Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install jq
+        run: sudo apt-get install -y jq
+
+      - name: Run static tests
+        run: bash provision-host/uis/tests/run-tests.sh static
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install jq
+        run: sudo apt-get install -y jq
+
+      - name: Run unit tests
+        run: bash provision-host/uis/tests/run-tests.sh unit
+
+  json-generation:
+    name: JSON Generation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install jq
+        run: sudo apt-get install -y jq
+
+      - name: Generate JSON files
+        run: bash provision-host/uis/manage/uis-docs.sh
+
+      - name: Validate generated JSON
+        run: |
+          echo "Validating services.json..."
+          jq . website/src/data/services.json > /dev/null
+          echo "Validating categories.json..."
+          jq . website/src/data/categories.json > /dev/null
+          echo "Validating tools.json..."
+          jq . website/src/data/tools.json > /dev/null
+          echo "All JSON files valid"
+
+  # Deploy tests are only run manually via workflow_dispatch
+  # They require a Kubernetes cluster and modify cluster state
+  deploy-tests:
+    name: Deploy Tests
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up kind cluster
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: uis-test
+
+      - name: Verify cluster
+        run: kubectl cluster-info
+
+      - name: Run deploy tests
+        run: |
+          export TEST_SERVICE=nginx
+          bash provision-host/uis/tests/run-tests.sh deploy

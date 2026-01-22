@@ -1,0 +1,66 @@
+{"tools": [
+  {
+    "id": "kubectl",
+    "type": "tool",
+    "name": "Kubernetes CLI",
+    "description": "Command-line tool for Kubernetes",
+    "builtin": true
+  }
+,
+  {
+    "id": "k9s",
+    "type": "tool",
+    "name": "K9s",
+    "description": "Terminal UI for Kubernetes",
+    "builtin": true
+  }
+,
+  {
+    "id": "helm",
+    "type": "tool",
+    "name": "Helm",
+    "description": "Kubernetes package manager",
+    "builtin": true
+  }
+,
+  {
+    "id": "ansible",
+    "type": "tool",
+    "name": "Ansible",
+    "description": "Automation and configuration management",
+    "builtin": true
+  }
+,
+  {
+    "id": "aws-cli",
+    "type": "tool",
+    "name": "AWS CLI",
+    "description": "Command-line interface for Amazon Web Services",
+    "category": "CLOUD_TOOLS",
+    "size": "~200MB",
+    "website": "https://aws.amazon.com/cli/",
+    "builtin": false
+  }
+,
+  {
+    "id": "azure-cli",
+    "type": "tool",
+    "name": "Azure CLI",
+    "description": "Command-line interface for Microsoft Azure",
+    "category": "CLOUD_TOOLS",
+    "size": "~637MB",
+    "website": "https://docs.microsoft.com/en-us/cli/azure/",
+    "builtin": false
+  }
+,
+  {
+    "id": "gcp-cli",
+    "type": "tool",
+    "name": "Google Cloud CLI",
+    "description": "Command-line interface for Google Cloud Platform",
+    "category": "CLOUD_TOOLS",
+    "size": "~500MB",
+    "website": "https://cloud.google.com/sdk/docs/install",
+    "builtin": false
+  }
+]}
