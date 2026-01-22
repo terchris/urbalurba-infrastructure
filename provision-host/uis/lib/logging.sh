@@ -10,6 +10,10 @@
 #   log_warn "Service may need restart"
 #   log_error "Deployment failed"
 
+# Guard against multiple sourcing
+[[ -n "${_UIS_LOGGING_LOADED:-}" ]] && return 0
+_UIS_LOGGING_LOADED=1
+
 # Colors
 readonly LOG_RED='\033[0;31m'
 readonly LOG_GREEN='\033[0;32m'

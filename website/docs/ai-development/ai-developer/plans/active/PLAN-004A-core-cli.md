@@ -4,7 +4,7 @@
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: In Progress
+## Status: Complete
 
 **Goal**: Create the foundation libraries, service scanner, config system, and basic CLI commands for UIS.
 
@@ -979,13 +979,13 @@ Create the folder structure that gets created on first run.
 
 ---
 
-## Phase 4: CLI Entry Point
+## Phase 4: CLI Entry Point — ✅ DONE
 
 Create the CLI that the `./uis` wrapper calls into.
 
 ### Tasks
 
-- [ ] 4.1 Create `manage/uis-cli.sh`
+- [x] 4.1 Create `manage/uis-cli.sh` ✓
   - Entry point for all UIS commands
   - Sources required libraries
   - Routes commands to appropriate functions
@@ -1011,7 +1011,7 @@ Create the CLI that the `./uis` wrapper calls into.
   uis help                    # Show help
   ```
 
-- [ ] 4.2 Implement `uis list` command
+- [x] 4.2 Implement `uis list` command ✓
   - Scans all service scripts
   - Shows: ID, Name, Category, Status (deployed/not deployed)
   - Groups by category
@@ -1028,12 +1028,12 @@ Create the CLI that the `./uis` wrapper calls into.
   AI              openwebui       Open WebUI      ❌ Not deployed
   ```
 
-- [ ] 4.3 Implement `uis status` command
+- [x] 4.3 Implement `uis status` command ✓
   - Shows currently deployed services
   - Checks SCRIPT_CHECK_COMMAND for each
   - Shows health status
 
-- [ ] 4.4 Implement `uis deploy` command
+- [x] 4.4 Implement `uis deploy` command ✓
   - Without args: deploys all services from enabled-services.conf
   - With service ID: deploys that specific service
   - Resolves dependencies automatically
@@ -1049,12 +1049,12 @@ Create the CLI that the `./uis` wrapper calls into.
   #   Services available at http://*.localhost
   ```
 
-- [ ] 4.5 Implement `uis remove` command
+- [x] 4.5 Implement `uis remove` command ✓
   - Finds matching removal script (SCRIPT_REMOVE metadata)
   - Warns about dependent services
   - Requires confirmation
 
-- [ ] 4.6 Implement `uis enable/disable` commands
+- [x] 4.6 Implement `uis enable/disable` commands ✓
   - **File**: `provision-host/uis/lib/service-auto-enable.sh`
   - `enable_service()` - Add SCRIPT_ID to enabled-services.conf
   - `disable_service()` - Remove SCRIPT_ID from enabled-services.conf
@@ -1064,12 +1064,12 @@ Create the CLI that the `./uis` wrapper calls into.
   - Auto-enable when service is successfully deployed
   - Keep comments and formatting in config file
 
-- [ ] 4.7 Update `./uis` wrapper script
+- [ ] 4.7 Update `./uis` wrapper script (deferred to integration)
   - Route new commands to `uis-cli.sh`
   - Keep existing commands working (shell, provision, start, stop)
   - First-run detection and folder creation
 
-- [ ] 4.8 Create tests for Phase 4 CLI commands
+- [x] 4.8 Create tests for Phase 4 CLI commands ✓
   - **File**: `provision-host/uis/tests/unit/test-phase4-cli.sh`
   - Test CLI help command
   - Test CLI version command
@@ -1124,7 +1124,7 @@ Create the CLI that the `./uis` wrapper calls into.
   print_summary
   ```
 
-- [ ] 4.9 Create integration test for enable/disable cycle
+- [x] 4.9 Create integration test for enable/disable cycle ✓
   - **File**: `provision-host/uis/tests/unit/test-enable-disable.sh`
   - Test enable adds service to config
   - Test disable removes service from config

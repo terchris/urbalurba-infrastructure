@@ -6,6 +6,10 @@
 # Usage:
 #   source /path/to/utilities.sh
 
+# Guard against multiple sourcing
+[[ -n "${_UIS_UTILITIES_LOADED:-}" ]] && return 0
+_UIS_UTILITIES_LOADED=1
+
 # Determine the UIS root directory
 get_uis_root() {
     local script_dir

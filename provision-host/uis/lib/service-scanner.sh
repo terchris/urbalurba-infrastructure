@@ -8,11 +8,58 @@
 #   scan_setup_scripts "/path/to/services"
 #   check_service_deployed "prometheus"
 
-# Default services directory (inside container)
-SERVICES_DIR="${SERVICES_DIR:-/mnt/urbalurbadisk/provision-host/uis/services}"
+# Guard against multiple sourcing
+[[ -n "${_UIS_SERVICE_SCANNER_LOADED:-}" ]] && return 0
+_UIS_SERVICE_SCANNER_LOADED=1
 
-# Cache for scanned services (to avoid re-scanning)
-declare -A _SERVICE_CACHE
+# Auto-detect services directory (works on host and in container)
+_detect_services_dir() {
+    # If already set, use it
+    [[ -n "${SERVICES_DIR:-}" ]] && echo "$SERVICES_DIR" && return 0
+
+    # Container path
+    if [[ -d "/mnt/urbalurbadisk/provision-host/uis/services" ]]; then
+        echo "/mnt/urbalurbadisk/provision-host/uis/services"
+        return 0
+    fi
+
+    # Host path: derive from this script's location
+    local script_dir
+    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    local services_dir="$(dirname "$script_dir")/services"
+    if [[ -d "$services_dir" ]]; then
+        echo "$services_dir"
+        return 0
+    fi
+
+    # Fallback to container path (will fail if not in container)
+    echo "/mnt/urbalurbadisk/provision-host/uis/services"
+}
+
+SERVICES_DIR="${SERVICES_DIR:-$(_detect_services_dir)}"
+
+# Cache for scanned services (bash 3.x compatible using indexed arrays)
+# Format: "service_id|/path/to/script"
+_SERVICE_CACHE_DATA=()
+
+# Helper: Find in cache by service ID
+_find_in_cache() {
+    local service_id="$1"
+    for entry in "${_SERVICE_CACHE_DATA[@]}"; do
+        if [[ "${entry%%|*}" == "$service_id" ]]; then
+            echo "${entry#*|}"
+            return 0
+        fi
+    done
+    return 1
+}
+
+# Helper: Add to cache
+_add_to_cache() {
+    local service_id="$1"
+    local script_path="$2"
+    _SERVICE_CACHE_DATA+=("$service_id|$script_path")
+}
 
 # Scan directory for service scripts and output metadata
 # Usage: scan_setup_scripts [directory]
@@ -133,8 +180,10 @@ find_service_script() {
     local dir="${SERVICES_DIR}"
 
     # Check cache first
-    if [[ -n "${_SERVICE_CACHE[$service_id]}" ]]; then
-        echo "${_SERVICE_CACHE[$service_id]}"
+    local cached
+    cached=$(_find_in_cache "$service_id")
+    if [[ -n "$cached" ]]; then
+        echo "$cached"
         return 0
     fi
 
@@ -155,7 +204,7 @@ find_service_script() {
         done < "$script"
 
         if [[ "$id" == "$service_id" ]]; then
-            _SERVICE_CACHE[$service_id]="$script"
+            _add_to_cache "$service_id" "$script"
             echo "$script"
             return 0
         fi
@@ -224,5 +273,5 @@ get_services_by_category() {
 
 # Clear the service cache (useful after adding/removing services)
 clear_service_cache() {
-    _SERVICE_CACHE=()
+    _SERVICE_CACHE_DATA=()
 }

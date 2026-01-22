@@ -4,6 +4,10 @@
 # Provides functions for deploying, removing, and checking services
 # based on enabled-services.conf configuration.
 
+# Guard against multiple sourcing
+[[ -n "${_UIS_SERVICE_DEPLOYMENT_LOADED:-}" ]] && return 0
+_UIS_SERVICE_DEPLOYMENT_LOADED=1
+
 # shellcheck disable=SC2034  # Variables are used by callers
 
 # Determine script directory for sourcing siblings

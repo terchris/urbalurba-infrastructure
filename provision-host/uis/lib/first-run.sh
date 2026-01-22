@@ -4,6 +4,10 @@
 # NOTE: Folder creation (.uis.extend/, .uis.secrets/) happens on HOST in wrapper script.
 # This library manages CONTENTS of those folders once mounted.
 
+# Guard against multiple sourcing
+[[ -n "${_UIS_FIRST_RUN_LOADED:-}" ]] && return 0
+_UIS_FIRST_RUN_LOADED=1
+
 # shellcheck disable=SC2034  # Variables are used by callers
 
 # Determine script directory for sourcing siblings

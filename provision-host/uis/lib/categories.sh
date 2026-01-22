@@ -17,6 +17,10 @@
 #   get_category_name "MONITORING"    # Returns "Observability"
 #   is_valid_category "AI"            # Returns 0 (true)
 
+# Guard against multiple sourcing
+[[ -n "${_UIS_CATEGORIES_LOADED:-}" ]] && return 0
+_UIS_CATEGORIES_LOADED=1
+
 # Category definitions as indexed arrays (bash 3.x compatible)
 # Format: ID|Display Name|Description|tags|icon
 _CATEGORY_DATA=(
