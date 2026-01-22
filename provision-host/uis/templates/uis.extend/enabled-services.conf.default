@@ -1,0 +1,21 @@
+# UIS Enabled Services
+# Format: One SCRIPT_ID per line
+# Run 'uis list' to see available services
+# Run 'uis enable <service>' to add a service
+# Run 'uis disable <service>' to remove a service
+
+# === Core (default) ===
+nginx
+
+# === Monitoring ===
+# prometheus
+# grafana
+# loki
+
+# === AI ===
+# openwebui
+# ollama
+
+# === Databases ===
+# postgresql
+# redis

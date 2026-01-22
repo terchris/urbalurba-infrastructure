@@ -612,13 +612,13 @@ done < <(scan_setup_scripts "provision-host/uis/services")
 
 ---
 
-## Phase 3: Config System - First-Run Initialization
+## Phase 3: Config System - First-Run Initialization — ✅ DONE
 
 Create the folder structure that gets created on first run.
 
 ### Tasks
 
-- [ ] 3.1 Create templates for `.uis.extend/` (baked into uis-provision-host container)
+- [x] 3.1 Create templates for `.uis.extend/` (baked into uis-provision-host container) ✓
   ```
   provision-host/uis/templates/uis.extend/
   ├── enabled-services.conf.default   # Default: nginx
@@ -629,7 +629,7 @@ Create the folder structure that gets created on first run.
   └── README.md
   ```
 
-- [ ] 3.2 Create templates for `.uis.secrets/` (baked into uis-provision-host container)
+- [x] 3.2 Create templates for `.uis.secrets/` (baked into uis-provision-host container) ✓
   ```
   provision-host/uis/templates/uis.secrets/
   ├── secrets-config/
@@ -644,7 +644,7 @@ Create the folder structure that gets created on first run.
   └── README.md                           # Documentation
   ```
 
-- [ ] 3.3 Create `enabled-services.conf.default`
+- [x] 3.3 Create `enabled-services.conf.default` ✓
   ```bash
   # UIS Enabled Services
   # Format: One SCRIPT_ID per line
@@ -669,7 +669,7 @@ Create the folder structure that gets created on first run.
   # redis
   ```
 
-- [ ] 3.4 Create `enabled-tools.conf.default`
+- [x] 3.4 Create `enabled-tools.conf.default` ✓
   ```bash
   # UIS Enabled Tools
   # These are tools installed in the uis-provision-host container
@@ -687,7 +687,7 @@ Create the folder structure that gets created on first run.
   # gcp-cli          # Google Cloud CLI
   ```
 
-- [ ] 3.5 Create `cluster-config.sh.default`
+- [x] 3.5 Create `cluster-config.sh.default` ✓
   ```bash
   # UIS Cluster Configuration
   # Edit this file to configure your cluster
@@ -705,7 +705,7 @@ Create the folder structure that gets created on first run.
   TARGET_HOST="rancher-desktop"
   ```
 
-- [ ] 3.6 Create first-run initialization library
+- [x] 3.6 Create first-run initialization library ✓
   - **File**: `provision-host/uis/lib/first-run.sh`
   - **NOTE**: Folder creation happens on HOST (see Architecture section)
   - This library provides helper functions for the CONTAINER to:
@@ -764,7 +764,7 @@ Create the folder structure that gets created on first run.
   }
   ```
 
-- [ ] 3.7 Create service deployment library
+- [x] 3.7 Create service deployment library ✓
   - **File**: `provision-host/uis/lib/service-deployment.sh`
   - Function: `deploy_enabled_services()` - reads config, deploys matching services
   - Function: `deploy_single_service()` - deploys one service with validation
@@ -903,7 +903,7 @@ Create the folder structure that gets created on first run.
   }
   ```
 
-- [ ] 3.8 Create default secrets with working localhost values
+- [x] 3.8 Create default secrets with working localhost values ✓
   - **File**: `provision-host/uis/templates/default-secrets.env`
   - Contains working defaults for localhost development:
     ```bash
@@ -913,7 +913,7 @@ Create the folder structure that gets created on first run.
     ```
   - Used when no `.uis.secrets/` exists (zero-config start)
 
-- [ ] 3.9 Create tests for Phase 3 config system
+- [x] 3.9 Create tests for Phase 3 config system ✓
   - **File**: `provision-host/uis/tests/unit/test-phase3-config.sh`
   - Test first-run.sh functions exist
   - Test service-deployment.sh functions exist

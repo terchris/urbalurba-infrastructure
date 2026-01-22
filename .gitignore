@@ -37,7 +37,8 @@ CLAUDE.md
 # Top secret folder - contains credentials (NEVER commit)
 .devcontainer.secrets/
 
-# UIS secrets folder (created by ./uis on first run)
+# UIS user configuration (created by ./uis on first run)
+.uis.extend/
 .uis.secrets/
 
 # Generated kubernetes secrets (anywhere in repo)
