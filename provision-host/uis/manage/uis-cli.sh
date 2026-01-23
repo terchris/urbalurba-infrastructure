@@ -25,6 +25,7 @@ source "$LIB_DIR/service-auto-enable.sh" 2>/dev/null || true
 source "$LIB_DIR/menu-helpers.sh" 2>/dev/null || true
 source "$LIB_DIR/tool-installation.sh" 2>/dev/null || true
 source "$LIB_DIR/secrets-management.sh" 2>/dev/null || true
+source "$LIB_DIR/uis-hosts.sh" 2>/dev/null || true
 
 # Version
 UIS_VERSION="0.1.0"
@@ -69,6 +70,13 @@ Configuration:
   disable <service>       Remove service from enabled-services.conf
   list-enabled            Show currently enabled services
 
+Host Management:
+  host add                List available host templates
+  host add <template>     Add a host configuration from template
+  host list               List configured hosts with status
+  host generate <name>    Generate cloud-init for physical devices
+  host create <name>      Create cloud resources for a host
+
 Secrets Management:
   secrets init            Create .uis.secrets/ structure with templates
   secrets status          Show secrets configuration status
@@ -96,6 +104,9 @@ Examples:
   uis deploy              # Deploy all enabled services
   uis stack list          # Show available stacks
   uis stack install observability  # Install full observability stack
+  uis host add            # List available host templates
+  uis host add azure-aks  # Add Azure AKS host configuration
+  uis host list           # Show configured hosts with status
   uis secrets init        # Initialize secrets configuration
   uis secrets status      # Show what's configured
   uis tools list          # Show available tools
@@ -950,6 +961,87 @@ cmd_docs() {
 }
 
 # ============================================================
+# Host Commands
+# ============================================================
+
+cmd_host() {
+    local subcmd="${1:-}"
+    shift || true
+
+    if ! type hosts_list_templates &>/dev/null; then
+        log_error "uis-hosts.sh not loaded"
+        exit "$EXIT_GENERAL_ERROR"
+    fi
+
+    case "$subcmd" in
+        ""|add)
+            if [[ -z "${1:-}" ]]; then
+                # No template specified - list available
+                hosts_list_templates
+            else
+                # Template specified - add it
+                hosts_add_template "$@"
+            fi
+            ;;
+        list|ls)
+            hosts_list_configured
+            ;;
+        generate)
+            cmd_host_generate "$@"
+            ;;
+        create)
+            cmd_host_create "$@"
+            ;;
+        *)
+            log_error "Unknown host subcommand: $subcmd"
+            echo "Usage: uis host [add|list|generate|create] [args]"
+            exit "$EXIT_GENERAL_ERROR"
+            ;;
+    esac
+}
+
+cmd_host_generate() {
+    local host_name="${1:-}"
+
+    if [[ -z "$host_name" ]]; then
+        log_error "Usage: uis host generate <host-name>"
+        exit "$EXIT_GENERAL_ERROR"
+    fi
+
+    log_info "Generating cloud-init for: $host_name"
+    log_warn "Cloud-init generation not yet implemented"
+    log_info "This will be completed in a future update"
+
+    # TODO: Implementation will:
+    # 1. Find host config in .uis.extend/hosts/
+    # 2. Validate required secrets exist
+    # 3. Load cloud-init template
+    # 4. Substitute variables
+    # 5. Write to .uis.secrets/generated/ubuntu-cloud-init/
+}
+
+cmd_host_create() {
+    local host_name="${1:-}"
+
+    if [[ -z "$host_name" ]]; then
+        log_error "Usage: uis host create <host-name>"
+        exit "$EXIT_GENERAL_ERROR"
+    fi
+
+    log_info "Creating cloud resources for: $host_name"
+    log_warn "Cloud resource creation not yet implemented"
+    log_info "This will be completed in a future update"
+
+    # TODO: Implementation will:
+    # 1. Find host config in .uis.extend/hosts/
+    # 2. Determine provider (Azure, GCP, AWS)
+    # 3. Validate credentials exist
+    # 4. For cloud-vm: generate cloud-init first
+    # 5. Call provider CLI to create resources
+    # 6. Store kubeconfig in .uis.secrets/generated/kubeconfig/
+}
+
+# ============================================================
 # Secrets Commands
 # ============================================================
 
@@ -1012,6 +1104,9 @@ main() {
             ;;
         cluster)
             cmd_cluster "$@"
+            ;;
+        host)
+            cmd_host "$@"
             ;;
         secrets)
             cmd_secrets "$@"

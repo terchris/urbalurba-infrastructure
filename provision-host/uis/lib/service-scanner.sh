@@ -12,31 +12,13 @@
 [[ -n "${_UIS_SERVICE_SCANNER_LOADED:-}" ]] && return 0
 _UIS_SERVICE_SCANNER_LOADED=1
 
-# Auto-detect services directory (works on host and in container)
-_detect_services_dir() {
-    # If already set, use it
-    [[ -n "${SERVICES_DIR:-}" ]] && echo "$SERVICES_DIR" && return 0
+# Determine script directory for sourcing paths.sh
+_SCANNER_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-    # Container path
-    if [[ -d "/mnt/urbalurbadisk/provision-host/uis/services" ]]; then
-        echo "/mnt/urbalurbadisk/provision-host/uis/services"
-        return 0
-    fi
+# Source paths.sh for SERVICES_DIR (skip if already loaded)
+[[ -z "${_UIS_PATHS_LOADED:-}" ]] && source "$_SCANNER_SCRIPT_DIR/paths.sh"
 
-    # Host path: derive from this script's location
-    local script_dir
-    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    local services_dir="$(dirname "$script_dir")/services"
-    if [[ -d "$services_dir" ]]; then
-        echo "$services_dir"
-        return 0
-    fi
-
-    # Fallback to container path (will fail if not in container)
-    echo "/mnt/urbalurbadisk/provision-host/uis/services"
-}
-
-SERVICES_DIR="${SERVICES_DIR:-$(_detect_services_dir)}"
+# Note: SERVICES_DIR is set by paths.sh
 
 # Cache for scanned services (bash 3.x compatible using indexed arrays)
 # Format: "service_id|/path/to/script"

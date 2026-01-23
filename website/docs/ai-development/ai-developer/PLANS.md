@@ -474,3 +474,66 @@ See [WORKFLOW.md](WORKFLOW.md) for the complete flow from idea to implementation
 4. **Runnable validation** - commands, not descriptions
 5. **Update as you go** - the plan is the source of truth
 6. **Keep completed plans** - they're documentation
+7. **Check existing lib/ before creating new code** - see [Library Reuse Rules](#library-reuse-rules) below
+
+---
+
+## Library Reuse Rules
+
+**CRITICAL:** Before writing any new code in `provision-host/uis/lib/`, you MUST:
+
+### 1. Check Existing Libraries
+
+Review these files for existing functionality:
+
+| Library | Purpose |
+|---------|---------|
+| `paths.sh` | **All path detection** - TEMPLATES_DIR, EXTEND_DIR, SECRETS_DIR, etc. |
+| `utilities.sh` | Base utilities - get_base_path(), die(), config_* functions |
+| `logging.sh` | All logging - log_info(), log_error(), print_section() |
+| `first-run.sh` | Initialization - check_first_run(), generate_ssh_keys() |
+
+### 2. Use Existing Functions
+
+**DO NOT** create duplicate path functions. Use `paths.sh`:
+
+```bash
+# Good - use paths.sh functions
+source "$LIB_DIR/paths.sh"
+templates_dir=$(get_templates_dir)
+secrets_dir=$(get_secrets_dir)
+
+# Bad - creating your own path detection
+_my_detect_templates_dir() { ... }  # WRONG!
+```
+
+### 3. If New Functionality is Needed
+
+Ask these questions before creating new functions:
+
+1. Does this already exist in another library?
+2. Should this be added to an existing library instead?
+3. Will multiple libraries need this? → Add to shared library
+4. Is this truly specific to this feature? → OK to add locally
+
+### 4. Centralized Path Functions
+
+All paths are managed by `paths.sh`. Available functions:
+
+```bash
+get_templates_dir()           # provision-host/uis/templates/
+get_extend_dir()              # .uis.extend/
+get_secrets_dir()             # .uis.secrets/
+get_services_dir()            # provision-host/uis/services/
+get_tools_dir()               # provision-host/uis/tools/
+get_hosts_templates_dir()     # templates/uis.extend/hosts/
+get_secrets_templates_dir()   # templates/uis.secrets/
+get_cloud_init_templates_dir() # templates/ubuntu-cloud-init/
+```
+
+### Why This Matters
+
+Code duplication leads to:
+- Inconsistent behavior (different functions return different values)
+- Maintenance burden (fix bugs in multiple places)
+- Confusion (which function should I use?)

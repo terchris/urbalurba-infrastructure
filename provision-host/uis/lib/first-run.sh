@@ -16,69 +16,9 @@ _FIRSTRUN_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Source dependencies
 source "$_FIRSTRUN_SCRIPT_DIR/logging.sh"
 source "$_FIRSTRUN_SCRIPT_DIR/utilities.sh"
+source "$_FIRSTRUN_SCRIPT_DIR/paths.sh"
 
-# Auto-detect templates directory
-_detect_templates_dir() {
-    # If already set, use it
-    [[ -n "${TEMPLATES_DIR:-}" ]] && echo "$TEMPLATES_DIR" && return 0
-
-    # Container path
-    if [[ -d "/mnt/urbalurbadisk/provision-host/uis/templates" ]]; then
-        echo "/mnt/urbalurbadisk/provision-host/uis/templates"
-        return 0
-    fi
-
-    # Host path: derive from this script's location
-    local script_dir
-    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    local templates_dir="$(dirname "$script_dir")/templates"
-    if [[ -d "$templates_dir" ]]; then
-        echo "$templates_dir"
-        return 0
-    fi
-
-    # Fallback to container path
-    echo "/mnt/urbalurbadisk/provision-host/uis/templates"
-}
-
-# Auto-detect extend directory
-_detect_extend_dir() {
-    # If already set, use it
-    [[ -n "${EXTEND_DIR:-}" ]] && echo "$EXTEND_DIR" && return 0
-
-    # Container path
-    if [[ -d "/mnt/urbalurbadisk/.uis.extend" ]]; then
-        echo "/mnt/urbalurbadisk/.uis.extend"
-        return 0
-    fi
-
-    # Host path: use get_base_path
-    local base_path
-    base_path=$(get_base_path)
-    echo "$base_path/.uis.extend"
-}
-
-# Auto-detect secrets directory
-_detect_secrets_dir() {
-    # If already set, use it
-    [[ -n "${SECRETS_DIR:-}" ]] && echo "$SECRETS_DIR" && return 0
-
-    # Container path
-    if [[ -d "/mnt/urbalurbadisk/.uis.secrets" ]]; then
-        echo "/mnt/urbalurbadisk/.uis.secrets"
-        return 0
-    fi
-
-    # Host path: use get_base_path
-    local base_path
-    base_path=$(get_base_path)
-    echo "$base_path/.uis.secrets"
-}
-
-# Default paths (auto-detected)
-TEMPLATES_DIR="${TEMPLATES_DIR:-$(_detect_templates_dir)}"
-EXTEND_DIR="${EXTEND_DIR:-$(_detect_extend_dir)}"
-SECRETS_DIR="${SECRETS_DIR:-$(_detect_secrets_dir)}"
+# Note: TEMPLATES_DIR, EXTEND_DIR, SECRETS_DIR are set by paths.sh
 
 # Check if first-run setup has been completed
 # Returns: 0 if configured, 1 if needs setup

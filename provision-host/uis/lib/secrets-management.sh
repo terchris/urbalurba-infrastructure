@@ -14,41 +14,45 @@ _SECRETS_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Source dependencies
 source "$_SECRETS_SCRIPT_DIR/logging.sh"
 source "$_SECRETS_SCRIPT_DIR/utilities.sh"
+source "$_SECRETS_SCRIPT_DIR/paths.sh"
 source "$_SECRETS_SCRIPT_DIR/first-run.sh"
 
 # ============================================================
-# Secrets Directory Detection
+# Secrets Directory Functions (wrappers for paths.sh)
 # ============================================================
 
 # Get the user secrets directory (.uis.secrets/)
 # Usage: get_user_secrets_dir
 # Output: Path to .uis.secrets/ directory
 get_user_secrets_dir() {
-    local base_path
-    base_path=$(get_base_path)
-    echo "$base_path/.uis.secrets"
+    get_secrets_dir
 }
 
-# Get the container secrets templates directory
+# Get the secrets templates directory
 # Usage: get_secrets_templates_dir
-# Output: Path to topsecret/secrets-templates/
+# Output: Path to templates/uis.secrets/
 get_secrets_templates_dir() {
-    # Container path
+    get_secrets_templates_dir_from_paths
+}
+
+# Internal: wrapper to avoid name collision
+get_secrets_templates_dir_from_paths() {
+    # New path: templates/uis.secrets/
+    local new_path
+    new_path="$(get_templates_dir)/uis.secrets"
+    if [[ -d "$new_path" ]]; then
+        echo "$new_path"
+        return 0
+    fi
+
+    # Legacy fallback: topsecret/secrets-templates/
     if [[ -d "/mnt/urbalurbadisk/topsecret/secrets-templates" ]]; then
         echo "/mnt/urbalurbadisk/topsecret/secrets-templates"
         return 0
     fi
 
-    # Host path (if topsecret mounted differently)
-    local base_path
-    base_path=$(get_base_path)
-    if [[ -d "$base_path/../topsecret/secrets-templates" ]]; then
-        echo "$base_path/../topsecret/secrets-templates"
-        return 0
-    fi
-
-    # Fallback to container path
-    echo "/mnt/urbalurbadisk/topsecret/secrets-templates"
+    # Default to new path
+    echo "$new_path"
 }
 
 # Check if user has configured secrets

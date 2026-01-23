@@ -14,32 +14,9 @@ _TOOL_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Source dependencies
 source "$_TOOL_SCRIPT_DIR/logging.sh"
 source "$_TOOL_SCRIPT_DIR/utilities.sh"
+source "$_TOOL_SCRIPT_DIR/paths.sh"
 
-# Auto-detect tools directory
-_detect_tools_dir() {
-    # If already set, use it
-    [[ -n "${TOOLS_DIR:-}" ]] && echo "$TOOLS_DIR" && return 0
-
-    # Container path
-    if [[ -d "/mnt/urbalurbadisk/provision-host/uis/tools" ]]; then
-        echo "/mnt/urbalurbadisk/provision-host/uis/tools"
-        return 0
-    fi
-
-    # Host path: derive from this script's location
-    local script_dir
-    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    local tools_dir="$(dirname "$script_dir")/tools"
-    if [[ -d "$tools_dir" ]]; then
-        echo "$tools_dir"
-        return 0
-    fi
-
-    # Fallback to container path
-    echo "/mnt/urbalurbadisk/provision-host/uis/tools"
-}
-
-TOOLS_DIR="${TOOLS_DIR:-$(_detect_tools_dir)}"
+# Note: TOOLS_DIR is set by paths.sh
 
 # Built-in tools that are always available
 BUILTIN_TOOLS="kubectl k9s helm ansible"

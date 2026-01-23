@@ -4,17 +4,21 @@
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Backlog
+## Status: Completed
 
 **Goal**: Implement the CLI commands for managing hosts and secrets (`./uis host add`, `./uis secrets status`, etc.)
 
-**Last Updated**: 2025-01-23
+**Last Updated**: 2026-01-23
+
+**Completed**: 2026-01-23
+
+**Progress**: Phases 1-3 complete with centralized path refactoring. Phase 4-5 (host create/generate, deploy integration) deferred to future plans.
 
 **Branch**: `feature/secrets-migration`
 
-**Prerequisites**: PLAN-001 must be complete (templates and init code exist)
+**Prerequisites**: PLAN-001 complete ✓
 
-**Related**: [INVESTIGATE-secrets-consolidation.md](./INVESTIGATE-secrets-consolidation.md)
+**Related**: [INVESTIGATE-secrets-consolidation.md](../backlog/INVESTIGATE-secrets-consolidation.md)
 
 ---
 
@@ -52,7 +56,8 @@ Create the shared library that CLI commands will use.
 
 ### Tasks
 
-- [ ] 1.1 Create `provision-host/uis/lib/uis-secrets.sh` with functions:
+- [x] 1.1 Create `provision-host/uis/lib/uis-secrets.sh` with functions:
+  **Note**: Functionality already exists in `secrets-management.sh` - no separate file needed
   ```bash
   # Paths inside container
   TEMPLATES_DIR="/mnt/urbalurbadisk/provision-host/uis/templates"
@@ -84,7 +89,7 @@ Create the shared library that CLI commands will use.
   }
   ```
 
-- [ ] 1.2 Create `provision-host/uis/lib/uis-hosts.sh` with functions:
+- [x] 1.2 Create `provision-host/uis/lib/uis-hosts.sh` with functions:
   ```bash
   # List available templates (from container)
   hosts_list_templates() {
@@ -115,21 +120,21 @@ Create the shared library that CLI commands will use.
   }
   ```
 
-- [ ] 1.3 Add unit tests in `provision-host/uis/tests/unit/`:
-  - `test-uis-secrets.sh`
-  - `test-uis-hosts.sh`
+- [x] 1.3 Add unit tests in `provision-host/uis/tests/unit/`:
+  - `test-uis-secrets.sh` - Not needed (secrets already tested in `test-phase6-secrets.sh`)
+  - `test-uis-hosts.sh` - Created with 46 tests
 
 ### Validation
 
-Unit tests pass for library functions.
+Unit tests pass for library functions. ✓
 
 ---
 
-## Phase 2: Host Management Commands
+## Phase 2: Host Management Commands ✓
 
 ### Tasks
 
-- [ ] 2.1 Implement `./uis host add` (no arguments):
+- [x] 2.1 Implement `./uis host add` (no arguments):
   - Lists available templates from container:
     ```
     Available host templates:
@@ -152,7 +157,7 @@ Unit tests pass for library functions.
     Usage: ./uis host add <template>
     ```
 
-- [ ] 2.2 Implement `./uis host add <template>`:
+- [x] 2.2 Implement `./uis host add <template>`:
   - Validate template exists in container
   - Create `$USER_EXTEND/hosts/<type>/` folder if needed
   - Copy host config template to user's folder
@@ -160,7 +165,7 @@ Unit tests pass for library functions.
   - Auto-generate SSH keys if host type requires them
   - Print "Next steps" telling user what files to edit
 
-- [ ] 2.3 Implement `./uis host list`:
+- [x] 2.3 Implement `./uis host list`:
   - List configured hosts from `$USER_EXTEND/hosts/`
   - Show status (ready/incomplete based on secrets)
   - Example:
@@ -177,19 +182,21 @@ Unit tests pass for library functions.
       rancher-desktop     ✓ ready (default)
     ```
 
-- [ ] 2.4 Create `provision-host/uis/manage/uis-host.sh` to route host subcommands
+- [x] 2.4 Create `provision-host/uis/manage/uis-host.sh` to route host subcommands
+  **Note**: Commands routed through `uis-cli.sh` directly - no separate file needed
 
 ### Validation
 
-User confirms `./uis host add` and `./uis host list` work correctly.
+User confirms `./uis host add` and `./uis host list` work correctly. ✓
 
 ---
 
-## Phase 3: Secrets Status Commands
+## Phase 3: Secrets Status Commands ✓
 
 ### Tasks
 
-- [ ] 3.1 Implement `./uis secrets status`:
+- [x] 3.1 Implement `./uis secrets status`:
+  **Note**: Already implemented in `secrets-management.sh`
   - Show what's configured in user's `$USER_SECRETS/`:
     ```
     Secrets Status:
@@ -210,7 +217,8 @@ User confirms `./uis host add` and `./uis host list` work correctly.
       ✓ defaults.env
     ```
 
-- [ ] 3.2 Implement `./uis secrets validate`:
+- [x] 3.2 Implement `./uis secrets validate`:
+  **Note**: Already implemented in `secrets-management.sh`
   - Check required secrets exist for user's configured hosts
   - Validate env files have non-empty required values
   - Example:
@@ -230,11 +238,12 @@ User confirms `./uis host add` and `./uis host list` work correctly.
     Validation failed: 1 issue found
     ```
 
-- [ ] 3.3 Create `provision-host/uis/manage/uis-secrets.sh` for secrets commands
+- [x] 3.3 Create `provision-host/uis/manage/uis-secrets.sh` for secrets commands
+  **Note**: Commands routed through `uis-cli.sh` directly using `secrets-management.sh`
 
 ### Validation
 
-User confirms `./uis secrets status` and `./uis secrets validate` work correctly.
+User confirms `./uis secrets status` and `./uis secrets validate` work correctly. ✓
 
 ---
 
@@ -289,32 +298,117 @@ User confirms `./uis deploy` works with both old and new setups.
 
 ## Acceptance Criteria
 
-- [ ] `./uis host add` lists available templates from container
-- [ ] `./uis host add <template>` copies config to user's folder
-- [ ] `./uis host list` shows user's configured hosts with status
-- [ ] `./uis secrets status` shows user's secrets configuration
-- [ ] `./uis secrets validate` validates against configured hosts
+- [x] `./uis host add` lists available templates from container
+- [x] `./uis host add <template>` copies config to user's folder
+- [x] `./uis host list` shows user's configured hosts with status
+- [x] `./uis secrets status` shows user's secrets configuration
+- [x] `./uis secrets validate` validates against configured hosts
 - [ ] `./uis host generate <name>` creates cloud-init in user's folder
 - [ ] `./uis host create <name>` provisions at least one host type
-- [ ] SSH keys auto-generated only when needed
-- [ ] All commands have clear, helpful output
-- [ ] Backwards compatibility with old `topsecret/` setup
+- [x] SSH keys auto-generated only when needed
+- [x] All commands have clear, helpful output
+- [x] Backwards compatibility with old `topsecret/` setup
 
 ---
 
-## Files to Create
+## Refactoring: Centralized Path Detection
 
-**Libraries:**
-- `provision-host/uis/lib/uis-secrets.sh`
-- `provision-host/uis/lib/uis-hosts.sh`
+During implementation, code duplication was identified across multiple libraries. Each library had its own path detection functions (`_detect_templates_dir`, `_detect_services_dir`, etc.) leading to maintenance burden and inconsistency.
+
+### Problem
+
+Five libraries had duplicate path detection logic:
+- `first-run.sh` - `_detect_templates_dir`, `_detect_extend_dir`, `_detect_secrets_dir`
+- `service-scanner.sh` - `_detect_services_dir`
+- `tool-installation.sh` - `_detect_tools_dir`
+- `secrets-management.sh` - `get_user_secrets_dir`, `get_secrets_templates_dir`
+- `uis-hosts.sh` - (new file, initially had its own path functions)
+
+### Solution
+
+Created `paths.sh` as single source of truth for all UIS paths:
+
+```bash
+# Core path functions
+get_templates_dir()           # provision-host/uis/templates/
+get_extend_dir()              # .uis.extend/
+get_secrets_dir()             # .uis.secrets/
+get_services_dir()            # provision-host/uis/services/
+get_tools_dir()               # provision-host/uis/tools/
+
+# Derived path functions
+get_hosts_templates_dir()     # templates/uis.extend/hosts/
+get_secrets_templates_dir()   # templates/uis.secrets/
+get_cloud_init_templates_dir() # templates/ubuntu-cloud-init/
+
+# Global variables for backward compatibility
+TEMPLATES_DIR, EXTEND_DIR, SECRETS_DIR, SERVICES_DIR, TOOLS_DIR
+```
+
+### Libraries Updated
+
+| Library | Changes |
+|---------|---------|
+| `first-run.sh` | Removed 3 duplicate functions, now sources paths.sh |
+| `service-scanner.sh` | Removed `_detect_services_dir`, now sources paths.sh |
+| `tool-installation.sh` | Removed `_detect_tools_dir`, now sources paths.sh |
+| `secrets-management.sh` | Removed duplicate functions, added wrappers to paths.sh |
+| `uis-hosts.sh` | Uses paths.sh wrappers |
+
+### Bash 3.x Compatibility Fix
+
+During testing on macOS (bash 3.2.57), discovered that `declare -A` associative arrays don't work. Fixed `uis-hosts.sh` by replacing associative arrays with functions using case statements:
+
+```bash
+# Before (bash 4+ only)
+declare -A HOST_TYPES=(
+    [managed]="Cloud-managed Kubernetes"
+    ...
+)
+
+# After (bash 3.x compatible)
+_get_host_type_info() {
+    case "$1" in
+        managed)  echo "Cloud-managed Kubernetes (AKS, GKE, EKS)" ;;
+        cloud-vm) echo "VM in cloud running MicroK8s" ;;
+        ...
+    esac
+}
+```
+
+### Documentation Updated
+
+Added "Library Reuse Rules" section to `PLANS.md` requiring:
+1. Check existing libraries before writing new code
+2. Use `paths.sh` for all path detection
+3. Ask questions before creating new functions
+
+---
+
+## Files Created/Modified
+
+**New Libraries:**
+- `provision-host/uis/lib/paths.sh` ✓ Created (centralized path detection)
+- `provision-host/uis/lib/uis-hosts.sh` ✓ Created (host management)
+
+**Refactored Libraries:**
+- `provision-host/uis/lib/first-run.sh` ✓ Refactored (removed duplicate path functions)
+- `provision-host/uis/lib/service-scanner.sh` ✓ Refactored (uses paths.sh)
+- `provision-host/uis/lib/tool-installation.sh` ✓ Refactored (uses paths.sh)
+- `provision-host/uis/lib/secrets-management.sh` ✓ Refactored (uses paths.sh)
 
 **Commands:**
-- `provision-host/uis/manage/uis-host.sh`
-- `provision-host/uis/manage/uis-secrets.sh`
+- `provision-host/uis/manage/uis-cli.sh` ✓ Modified (added host command routing)
 
 **Tests:**
-- `provision-host/uis/tests/unit/test-uis-secrets.sh`
-- `provision-host/uis/tests/unit/test-uis-hosts.sh`
+- `provision-host/uis/tests/unit/test-paths.sh` ✓ Created (32 tests)
+- `provision-host/uis/tests/unit/test-uis-hosts.sh` ✓ Created (46 tests)
+- `provision-host/uis/tests/unit/test-phase6-secrets.sh` - Already tested secrets
 
-**Modified:**
-- `provision-host/uis/manage/` (command routing)
+**Documentation:**
+- `website/docs/ai-development/ai-developer/PLANS.md` ✓ Updated (added Library Reuse Rules)
+
+**Not Needed:**
+- `uis-secrets.sh` - functionality in secrets-management.sh
+- `uis-host.sh` - routing done in uis-cli.sh
+- `uis-secrets.sh` command file - routing done in uis-cli.sh
