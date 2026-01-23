@@ -1,0 +1,382 @@
+#!/bin/bash
+# secrets-management.sh - Secrets management for UIS
+#
+# Provides commands for initializing, generating, and applying secrets.
+# Works with the existing topsecret/ secrets structure.
+
+# Guard against multiple sourcing
+[[ -n "${_UIS_SECRETS_MANAGEMENT_LOADED:-}" ]] && return 0
+_UIS_SECRETS_MANAGEMENT_LOADED=1
+
+# Determine script directory for sourcing siblings
+_SECRETS_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Source dependencies
+source "$_SECRETS_SCRIPT_DIR/logging.sh"
+source "$_SECRETS_SCRIPT_DIR/utilities.sh"
+source "$_SECRETS_SCRIPT_DIR/first-run.sh"
+
+# ============================================================
+# Secrets Directory Detection
+# ============================================================
+
+# Get the user secrets directory (.uis.secrets/)
+# Usage: get_user_secrets_dir
+# Output: Path to .uis.secrets/ directory
+get_user_secrets_dir() {
+    local base_path
+    base_path=$(get_base_path)
+    echo "$base_path/.uis.secrets"
+}
+
+# Get the container secrets templates directory
+# Usage: get_secrets_templates_dir
+# Output: Path to topsecret/secrets-templates/
+get_secrets_templates_dir() {
+    # Container path
+    if [[ -d "/mnt/urbalurbadisk/topsecret/secrets-templates" ]]; then
+        echo "/mnt/urbalurbadisk/topsecret/secrets-templates"
+        return 0
+    fi
+
+    # Host path (if topsecret mounted differently)
+    local base_path
+    base_path=$(get_base_path)
+    if [[ -d "$base_path/../topsecret/secrets-templates" ]]; then
+        echo "$base_path/../topsecret/secrets-templates"
+        return 0
+    fi
+
+    # Fallback to container path
+    echo "/mnt/urbalurbadisk/topsecret/secrets-templates"
+}
+
+# Check if user has configured secrets
+# Usage: has_user_secrets
+# Returns: 0 if .uis.secrets/ exists and has config, 1 otherwise
+has_user_secrets() {
+    local secrets_dir
+    secrets_dir=$(get_user_secrets_dir)
+
+    [[ -d "$secrets_dir/secrets-config" && \
+       -f "$secrets_dir/secrets-config/00-common-values.env.template" ]]
+}
+
+# Check if user has existing topsecret config
+# Usage: has_topsecret_config
+# Returns: 0 if topsecret/secrets-config exists, 1 otherwise
+has_topsecret_config() {
+    local base_path
+    base_path=$(get_base_path)
+
+    # Container path
+    [[ -d "/mnt/urbalurbadisk/topsecret/secrets-config" ]] && return 0
+
+    # Host path
+    [[ -d "$base_path/../topsecret/secrets-config" ]] && return 0
+
+    return 1
+}
+
+# ============================================================
+# Secrets Initialization
+# ============================================================
+
+# Initialize secrets directory structure
+# Usage: init_secrets
+# Creates: .uis.secrets/ with subdirectories and default templates
+init_secrets() {
+    local secrets_dir
+    secrets_dir=$(get_user_secrets_dir)
+
+    if [[ -d "$secrets_dir" ]]; then
+        log_warn "Secrets directory already exists: $secrets_dir"
+        log_info "To reset, remove it first: rm -rf $secrets_dir"
+        return 1
+    fi
+
+    log_info "Creating secrets directory structure..."
+
+    # Create directory structure
+    mkdir -p "$secrets_dir/secrets-config"
+    mkdir -p "$secrets_dir/kubernetes"
+
+    # Copy default template from UIS templates
+    local uis_root
+    uis_root=$(get_uis_root)
+    local template_dir="$uis_root/templates"
+
+    if [[ -f "$template_dir/default-secrets.env" ]]; then
+        cp "$template_dir/default-secrets.env" \
+           "$secrets_dir/secrets-config/00-common-values.env.template"
+        log_success "Created 00-common-values.env.template with working defaults"
+    else
+        # Create minimal default template
+        cat > "$secrets_dir/secrets-config/00-common-values.env.template" << 'EOF'
+# UIS Secrets Configuration
+# Edit these values to customize your deployment
+#
+# Defaults work for localhost development, customize for production
+
+# Admin credentials
+DEFAULT_ADMIN_EMAIL="admin@localhost"
+DEFAULT_ADMIN_PASSWORD="LocalDev123!"
+
+# Database credentials
+DEFAULT_DATABASE_PASSWORD="LocalDevDB456!"
+
+# External services (configure when needed)
+# TAILSCALE_SECRET=""
+# CLOUDFLARE_DNS_TOKEN=""
+# OPENAI_API_KEY=""
+# ANTHROPIC_API_KEY=""
+# GITHUB_ACCESS_TOKEN=""
+EOF
+        log_success "Created 00-common-values.env.template with defaults"
+    fi
+
+    # Copy README
+    if [[ -f "$uis_root/templates/uis.secrets/README.md" ]]; then
+        cp "$uis_root/templates/uis.secrets/README.md" "$secrets_dir/"
+    fi
+
+    # Copy .gitignore
+    if [[ -f "$uis_root/templates/uis.secrets/.gitignore" ]]; then
+        cp "$uis_root/templates/uis.secrets/.gitignore" "$secrets_dir/"
+    else
+        echo "# Never commit secrets" > "$secrets_dir/.gitignore"
+        echo "*" >> "$secrets_dir/.gitignore"
+        echo "!.gitignore" >> "$secrets_dir/.gitignore"
+        echo "!README.md" >> "$secrets_dir/.gitignore"
+    fi
+
+    log_success "Secrets directory initialized: $secrets_dir"
+    echo ""
+    echo "Next steps:"
+    echo "  1. Edit: $secrets_dir/secrets-config/00-common-values.env.template"
+    echo "  2. Generate: uis secrets generate"
+    echo "  3. Apply: uis secrets apply"
+
+    return 0
+}
+
+# ============================================================
+# Secrets Status
+# ============================================================
+
+# Show secrets configuration status
+# Usage: show_secrets_status
+show_secrets_status() {
+    local secrets_dir
+    secrets_dir=$(get_user_secrets_dir)
+
+    print_section "Secrets Configuration Status"
+
+    if has_user_secrets; then
+        echo "Secrets Source: Custom configuration"
+        echo "Location: $secrets_dir"
+    elif is_using_default_secrets; then
+        echo "Secrets Source: Built-in defaults (no .uis.secrets/ found)"
+        echo ""
+        log_info "Using built-in defaults - suitable for localhost development"
+        log_info "Run 'uis secrets init' to customize"
+    else
+        echo "Secrets Source: Unknown"
+    fi
+
+    echo ""
+
+    # Show default values status
+    echo "Core Variables (have working defaults):"
+    local vars_core="DEFAULT_ADMIN_EMAIL DEFAULT_ADMIN_PASSWORD DEFAULT_DATABASE_PASSWORD"
+    for var in $vars_core; do
+        local value
+        value=$(get_default_secret "$var")
+        if [[ -n "$value" ]]; then
+            # Mask passwords
+            if [[ "$var" == *PASSWORD* ]]; then
+                echo "  ✅ $var: ********"
+            else
+                echo "  ✅ $var: $value"
+            fi
+        else
+            echo "  ❌ $var: not set"
+        fi
+    done
+
+    echo ""
+    echo "External Services (configure when needed):"
+    local vars_external="TAILSCALE_SECRET CLOUDFLARE_DNS_TOKEN OPENAI_API_KEY ANTHROPIC_API_KEY GITHUB_ACCESS_TOKEN"
+    for var in $vars_external; do
+        local value
+        value=$(get_default_secret "$var")
+        if [[ -n "$value" && "$value" != '""' && "$value" != "''" ]]; then
+            echo "  ✅ $var: configured"
+        else
+            echo "  ⚪ $var: not set"
+        fi
+    done
+}
+
+# ============================================================
+# Secrets Generation
+# ============================================================
+
+# Generate Kubernetes secrets from templates
+# Usage: generate_secrets
+# Creates: .uis.secrets/kubernetes/kubernetes-secrets.yml
+generate_secrets() {
+    local secrets_dir
+    secrets_dir=$(get_user_secrets_dir)
+
+    if ! has_user_secrets; then
+        log_error "No secrets configuration found"
+        log_info "Run 'uis secrets init' first"
+        return 1
+    fi
+
+    local config_file="$secrets_dir/secrets-config/00-common-values.env.template"
+    local templates_dir
+    templates_dir=$(get_secrets_templates_dir)
+    local output_file="$secrets_dir/kubernetes/kubernetes-secrets.yml"
+
+    log_info "Generating Kubernetes secrets..."
+
+    # Source the configuration
+    set -a
+    # shellcheck source=/dev/null
+    source "$config_file"
+    set +a
+
+    # Check for main template
+    local main_template="$templates_dir/kubernetes-secrets.yml.template"
+    if [[ ! -f "$main_template" ]]; then
+        log_error "Secrets template not found: $main_template"
+        log_info "This file should exist in topsecret/secrets-templates/"
+        return 1
+    fi
+
+    # Generate using envsubst
+    if command -v envsubst &>/dev/null; then
+        envsubst < "$main_template" > "$output_file"
+    else
+        log_error "envsubst not found - cannot generate secrets"
+        log_info "Install gettext package: apt-get install gettext-base"
+        return 1
+    fi
+
+    local lines
+    lines=$(wc -l < "$output_file")
+    log_success "Generated: $output_file ($lines lines)"
+
+    return 0
+}
+
+# ============================================================
+# Secrets Application
+# ============================================================
+
+# Apply generated secrets to Kubernetes
+# Usage: apply_secrets
+apply_secrets() {
+    local secrets_dir
+    secrets_dir=$(get_user_secrets_dir)
+    local secrets_file="$secrets_dir/kubernetes/kubernetes-secrets.yml"
+
+    if [[ ! -f "$secrets_file" ]]; then
+        log_error "Generated secrets not found: $secrets_file"
+        log_info "Run 'uis secrets generate' first"
+        return 1
+    fi
+
+    log_info "Applying secrets to Kubernetes..."
+
+    if ! kubectl apply -f "$secrets_file"; then
+        log_error "Failed to apply secrets"
+        return 1
+    fi
+
+    log_success "Secrets applied successfully"
+    return 0
+}
+
+# ============================================================
+# Secrets Validation
+# ============================================================
+
+# Validate secrets configuration
+# Usage: validate_secrets
+# Returns: 0 if valid, 1 if issues found
+validate_secrets() {
+    local secrets_dir
+    secrets_dir=$(get_user_secrets_dir)
+
+    if ! has_user_secrets; then
+        log_warn "No custom secrets configured"
+        log_info "Using built-in defaults for localhost development"
+        return 0
+    fi
+
+    local config_file="$secrets_dir/secrets-config/00-common-values.env.template"
+    local has_issues=false
+
+    log_info "Validating secrets configuration..."
+
+    # Source config
+    set -a
+    # shellcheck source=/dev/null
+    source "$config_file"
+    set +a
+
+    # Check required variables
+    local required_vars="DEFAULT_ADMIN_EMAIL DEFAULT_ADMIN_PASSWORD DEFAULT_DATABASE_PASSWORD"
+    for var in $required_vars; do
+        local value
+        eval "value=\${$var:-}"
+        if [[ -z "$value" ]]; then
+            log_error "Required variable not set: $var"
+            has_issues=true
+        fi
+    done
+
+    # Check for weak default passwords if using custom config
+    if [[ "${DEFAULT_ADMIN_PASSWORD:-}" == "LocalDev123!" ]]; then
+        log_warn "Using default admin password - change for production"
+    fi
+
+    if [[ "${DEFAULT_DATABASE_PASSWORD:-}" == "LocalDevDB456!" ]]; then
+        log_warn "Using default database password - change for production"
+    fi
+
+    if [[ "$has_issues" == "true" ]]; then
+        return 1
+    fi
+
+    log_success "Secrets configuration is valid"
+    return 0
+}
+
+# ============================================================
+# Secrets Edit
+# ============================================================
+
+# Open secrets config in editor
+# Usage: edit_secrets
+edit_secrets() {
+    local secrets_dir
+    secrets_dir=$(get_user_secrets_dir)
+    local config_file="$secrets_dir/secrets-config/00-common-values.env.template"
+
+    if [[ ! -f "$config_file" ]]; then
+        log_error "Secrets config not found: $config_file"
+        log_info "Run 'uis secrets init' first"
+        return 1
+    fi
+
+    local editor="${EDITOR:-${VISUAL:-nano}}"
+
+    log_info "Opening secrets config in $editor..."
+    "$editor" "$config_file"
+
+    return $?
+}

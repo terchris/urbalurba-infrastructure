@@ -1,0 +1,15 @@
+#!/bin/bash
+# UIS Cluster Configuration
+# Edit this file to configure your cluster
+
+# Cluster type (see 'uis cluster types' for options)
+CLUSTER_TYPE="rancher-desktop"
+
+# Project name (used for namespaces, labels)
+PROJECT_NAME="uis"
+
+# Base domain for services
+BASE_DOMAIN="localhost"
+
+# Target host for Ansible (matches inventory)
+TARGET_HOST="rancher-desktop"

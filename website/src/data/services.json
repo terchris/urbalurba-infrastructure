@@ -1,434 +1,421 @@
-{
-  "@context": "https://schema.org",
-  "@type": "ItemList",
-  "name": "UIS Services",
-  "description": "Infrastructure services available in the Urbalurba Infrastructure Stack",
-  "itemListElement": [
-    {
-      "@type": "SoftwareApplication",
-      "identifier": "openwebui",
-      "name": "Open WebUI",
-      "description": "Modern web interface for interacting with local LLMs via Ollama and LiteLLM",
-      "applicationCategory": "AI",
-      "tags": ["ai", "llm", "chat", "interface", "ollama"],
-      "abstract": "Feature-rich web UI for local AI chat with model management and user authentication.",
-      "logo": "openwebui-logo.png",
-      "url": "https://openwebui.com",
-      "summary": "Open WebUI provides a ChatGPT-like interface for local LLMs. Supports multiple models via Ollama, user management, conversation history, and integrates with Authentik for SSO.",
-      "manifest": "208-openwebui.yaml",
-      "docs": "/docs/packages/ai",
-      "related": ["ollama", "litellm", "authentik"],
-      "requires": ["ollama"]
-    },
-    {
-      "@type": "SoftwareApplication",
-      "identifier": "ollama",
-      "name": "Ollama",
-      "description": "Local LLM inference server supporting various open-source models",
-      "applicationCategory": "AI",
-      "tags": ["ai", "llm", "inference", "local", "models"],
-      "abstract": "Run large language models locally with easy model management.",
-      "logo": "ollama-logo.svg",
-      "url": "https://ollama.ai",
-      "summary": "Ollama enables running LLMs locally with simple model downloads. Supports Llama, Mistral, CodeLlama, and many other models with GPU acceleration.",
-      "manifest": "201-ollama.yaml",
-      "docs": "/docs/packages/ai",
-      "related": ["openwebui", "litellm"]
-    },
-    {
-      "@type": "SoftwareApplication",
-      "identifier": "litellm",
-      "name": "LiteLLM",
-      "description": "Unified API proxy for multiple LLM providers with load balancing",
-      "applicationCategory": "AI",
-      "tags": ["ai", "llm", "api", "proxy", "openai-compatible"],
-      "abstract": "OpenAI-compatible API gateway for multiple LLM backends.",
-      "logo": "litellm-logo.svg",
-      "url": "https://litellm.ai",
-      "summary": "LiteLLM provides a unified OpenAI-compatible API for multiple LLM providers. Supports load balancing, fallbacks, cost tracking, and virtual API keys.",
-      "manifest": "205-litellm.yaml",
-      "docs": "/docs/packages/ai/litellm",
-      "related": ["openwebui", "ollama"]
-    },
-    {
-      "@type": "SoftwareApplication",
-      "identifier": "authentik",
-      "name": "Authentik",
-      "description": "Identity provider with SSO, OAuth2/OIDC, and user management",
-      "applicationCategory": "AUTHENTICATION",
-      "tags": ["sso", "oauth", "oidc", "identity", "authentication"],
-      "abstract": "Enterprise-grade identity provider with flexible authentication flows.",
-      "logo": "authentik-logo.svg",
-      "url": "https://goauthentik.io",
-      "summary": "Authentik provides SSO, OAuth2/OIDC provider, LDAP, SAML, and user management. Configured via blueprints for reproducible setup with forward auth for protecting services.",
-      "manifest": "070-authentik.yaml",
-      "docs": "/docs/packages/authentication",
-      "related": ["openwebui", "grafana", "pgadmin"],
-      "requires": ["postgresql", "redis"]
-    },
-    {
-      "@type": "SoftwareApplication",
-      "identifier": "postgresql",
-      "name": "PostgreSQL",
-      "description": "Advanced open-source relational database",
-      "applicationCategory": "DATABASES",
-      "tags": ["database", "sql", "relational", "postgres"],
-      "abstract": "Production-ready PostgreSQL with persistent storage.",
-      "logo": "postgresql-logo.svg",
-      "url": "https://postgresql.org",
-      "summary": "PostgreSQL is the primary relational database for the stack. Configured with persistent storage, backup support, and pgAdmin for management.",
-      "manifest": "040-postgresql.yaml",
-      "docs": "/docs/packages/databases/postgresql",
-      "related": ["pgadmin", "mysql"]
-    },
-    {
-      "@type": "SoftwareApplication",
-      "identifier": "mysql",
-      "name": "MySQL",
-      "description": "Popular open-source relational database",
-      "applicationCategory": "DATABASES",
-      "tags": ["database", "sql", "relational", "mysql"],
-      "abstract": "MySQL database server with persistent storage.",
-      "logo": "mysql-logo.svg",
-      "url": "https://mysql.com",
-      "summary": "MySQL provides an alternative SQL database option. Configured with persistent storage and compatible with applications requiring MySQL-specific features.",
-      "manifest": "041-mysql.yaml",
-      "docs": "/docs/packages/databases/mysql",
-      "related": ["postgresql"]
-    },
-    {
-      "@type": "SoftwareApplication",
-      "identifier": "mongodb",
-      "name": "MongoDB",
-      "description": "Document-oriented NoSQL database",
-      "applicationCategory": "DATABASES",
-      "tags": ["database", "nosql", "document", "mongodb"],
-      "abstract": "Flexible document database for JSON-like data.",
-      "logo": "mongodb-logo.svg",
-      "url": "https://mongodb.com",
-      "summary": "MongoDB stores data in flexible JSON-like documents. Ideal for applications with evolving schemas and document-centric data models.",
-      "manifest": "042-mongodb.yaml",
-      "docs": "/docs/packages/databases/mongodb",
-      "related": ["postgresql", "elasticsearch"]
-    },
-    {
-      "@type": "SoftwareApplication",
-      "identifier": "qdrant",
-      "name": "Qdrant",
-      "description": "Vector database for AI/ML similarity search",
-      "applicationCategory": "DATABASES",
-      "tags": ["database", "vector", "ai", "embeddings", "similarity"],
-      "abstract": "High-performance vector database for AI applications.",
-      "logo": "qdrant-logo.svg",
-      "url": "https://qdrant.tech",
-      "summary": "Qdrant is a vector similarity search engine designed for AI applications. Stores embeddings and enables semantic search, recommendations, and RAG applications.",
-      "manifest": "043-qdrant.yaml",
-      "docs": "/docs/packages/databases/qdrant",
-      "related": ["openwebui", "litellm"]
-    },
-    {
-      "@type": "SoftwareApplication",
-      "identifier": "grafana",
-      "name": "Grafana",
-      "description": "Visualization and dashboarding platform",
-      "applicationCategory": "MONITORING",
-      "tags": ["monitoring", "dashboards", "visualization", "metrics"],
-      "abstract": "Create and share dashboards for metrics, logs, and traces.",
-      "logo": "grafana-logo.svg",
-      "url": "https://grafana.com",
-      "summary": "Grafana provides rich visualization for Prometheus metrics, Loki logs, and Tempo traces. Pre-configured with datasources and dashboards for the stack.",
-      "manifest": "034-grafana.yaml",
-      "docs": "/docs/packages/monitoring/grafana",
-      "related": ["prometheus", "loki", "tempo"],
-      "requires": ["prometheus", "loki", "tempo"]
-    },
-    {
-      "@type": "SoftwareApplication",
-      "identifier": "prometheus",
-      "name": "Prometheus",
-      "description": "Time-series metrics collection and alerting",
-      "applicationCategory": "MONITORING",
-      "tags": ["monitoring", "metrics", "alerting", "timeseries"],
-      "abstract": "Pull-based metrics collection with powerful query language.",
-      "logo": "prometheus-logo.svg",
-      "url": "https://prometheus.io",
-      "summary": "Prometheus scrapes metrics from services and stores time-series data. Configured with service discovery and alerting rules for the stack.",
-      "manifest": "031-prometheus.yaml",
-      "docs": "/docs/packages/monitoring/prometheus",
-      "related": ["grafana", "alertmanager"]
-    },
-    {
-      "@type": "SoftwareApplication",
-      "identifier": "loki",
-      "name": "Loki",
-      "description": "Log aggregation system inspired by Prometheus",
-      "applicationCategory": "MONITORING",
-      "tags": ["monitoring", "logs", "aggregation", "logging"],
-      "abstract": "Horizontally scalable log aggregation with label-based indexing.",
-      "logo": "loki-logo.png",
-      "url": "https://grafana.com/oss/loki/",
-      "summary": "Loki aggregates logs from all services with efficient label-based indexing. Query logs in Grafana using LogQL alongside metrics.",
-      "manifest": "032-loki.yaml",
-      "docs": "/docs/packages/monitoring/loki",
-      "related": ["grafana", "promtail"]
-    },
-    {
-      "@type": "SoftwareApplication",
-      "identifier": "tempo",
-      "name": "Tempo",
-      "description": "Distributed tracing backend",
-      "applicationCategory": "MONITORING",
-      "tags": ["monitoring", "tracing", "distributed", "opentelemetry"],
-      "abstract": "High-scale distributed tracing with minimal dependencies.",
-      "logo": "tempo-logo.svg",
-      "url": "https://grafana.com/oss/tempo/",
-      "summary": "Tempo provides distributed tracing storage compatible with Jaeger, Zipkin, and OpenTelemetry. View traces in Grafana correlated with logs and metrics.",
-      "manifest": "033-tempo.yaml",
-      "docs": "/docs/packages/monitoring/tempo",
-      "related": ["grafana", "loki", "otel-collector"]
-    },
-    {
-      "@type": "SoftwareApplication",
-      "identifier": "redis",
-      "name": "Redis",
-      "description": "In-memory data store for caching and messaging",
-      "applicationCategory": "QUEUES",
-      "tags": ["cache", "redis", "messaging", "pubsub", "session"],
-      "abstract": "Fast in-memory key-value store with persistence options.",
-      "logo": "redis-logo.svg",
-      "url": "https://redis.io",
-      "summary": "Redis provides caching, session storage, and pub/sub messaging. Used by multiple services for performance optimization and real-time features.",
-      "manifest": "060-redis.yaml",
-      "docs": "/docs/packages/queues/redis",
-      "related": ["redisinsight", "rabbitmq"]
-    },
-    {
-      "@type": "SoftwareApplication",
-      "identifier": "rabbitmq",
-      "name": "RabbitMQ",
-      "description": "Message broker for reliable async communication",
-      "applicationCategory": "QUEUES",
-      "tags": ["messaging", "queue", "amqp", "broker", "async"],
-      "abstract": "Robust message broker supporting multiple messaging protocols.",
-      "logo": "rabbitmq-logo.svg",
-      "url": "https://rabbitmq.com",
-      "summary": "RabbitMQ enables reliable asynchronous communication between services. Supports AMQP, MQTT, and STOMP protocols with management UI.",
-      "manifest": "061-rabbitmq.yaml",
-      "docs": "/docs/packages/queues/rabbitmq",
-      "related": ["redis"]
-    },
-    {
-      "@type": "SoftwareApplication",
-      "identifier": "elasticsearch",
-      "name": "Elasticsearch",
-      "description": "Distributed search and analytics engine",
-      "applicationCategory": "SEARCH",
-      "tags": ["search", "elasticsearch", "full-text", "analytics"],
-      "abstract": "Powerful search engine with RESTful API.",
-      "logo": "elasticsearch-logo.svg",
-      "url": "https://elastic.co/elasticsearch",
-      "summary": "Elasticsearch provides full-text search, log analysis, and analytics. Supports complex queries, aggregations, and integrates with Kibana for visualization.",
-      "manifest": "080-elasticsearch.yaml",
-      "docs": "/docs/packages/search/elasticsearch",
-      "related": ["mongodb", "loki"]
-    },
-    {
-      "@type": "SoftwareApplication",
-      "identifier": "spark",
-      "name": "Apache Spark",
-      "description": "Distributed computing engine for big data",
-      "applicationCategory": "DATASCIENCE",
-      "tags": ["spark", "big-data", "distributed", "analytics", "ml"],
-      "abstract": "Unified analytics engine for large-scale data processing.",
-      "logo": "spark-logo.svg",
-      "url": "https://spark.apache.org",
-      "summary": "Apache Spark provides distributed data processing for batch and streaming workloads. Supports SQL, ML, and graph processing with Scala, Python, and R APIs.",
-      "manifest": "240-spark.yaml",
-      "docs": "/docs/packages/datascience/spark",
-      "related": ["jupyterhub", "unity-catalog"]
-    },
-    {
-      "@type": "SoftwareApplication",
-      "identifier": "jupyterhub",
-      "name": "JupyterHub",
-      "description": "Multi-user Jupyter notebook server",
-      "applicationCategory": "DATASCIENCE",
-      "tags": ["jupyter", "notebooks", "python", "data-science"],
-      "abstract": "Collaborative notebook environment for data science teams.",
-      "logo": "jupyterhub-logo.svg",
-      "url": "https://jupyter.org/hub",
-      "summary": "JupyterHub provides multi-user access to Jupyter notebooks. Integrated with Authentik for SSO and configured for collaborative data science workflows.",
-      "manifest": "241-jupyterhub.yaml",
-      "docs": "/docs/packages/datascience/jupyterhub",
-      "related": ["spark", "authentik"],
-      "requires": ["authentik"]
-    },
-    {
-      "@type": "SoftwareApplication",
-      "identifier": "unity-catalog",
-      "name": "Unity Catalog",
-      "description": "Open-source data catalog and governance",
-      "applicationCategory": "DATASCIENCE",
-      "tags": ["catalog", "governance", "data", "metadata", "lineage"],
-      "abstract": "Unified governance for data and AI assets.",
-      "logo": "unity-catalog-logo.png",
-      "url": "https://github.com/unitycatalog/unitycatalog",
-      "summary": "Unity Catalog provides centralized governance for tables, volumes, functions, and ML models. Supports access control, lineage tracking, and data discovery.",
-      "manifest": "242-unity-catalog.yaml",
-      "docs": "/docs/packages/datascience/unitycatalog",
-      "related": ["spark", "jupyterhub"]
-    },
-    {
-      "@type": "SoftwareApplication",
-      "identifier": "traefik",
-      "name": "Traefik",
-      "description": "Cloud-native ingress controller and reverse proxy",
-      "applicationCategory": "CORE",
-      "tags": ["ingress", "proxy", "routing", "tls", "load-balancer"],
-      "abstract": "Modern HTTP reverse proxy and load balancer.",
-      "logo": "traefik-logo.svg",
-      "url": "https://traefik.io",
-      "summary": "Traefik handles all HTTP routing, TLS termination, and load balancing. Configured with IngressRoutes for flexible routing and middleware for authentication.",
-      "manifest": "010-traefik.yaml",
-      "docs": "/docs/rules",
-      "related": ["authentik"]
-    },
-    {
-      "@type": "SoftwareApplication",
-      "identifier": "pgadmin",
-      "name": "pgAdmin",
-      "description": "Web-based PostgreSQL administration tool",
-      "applicationCategory": "MANAGEMENT",
-      "tags": ["postgresql", "admin", "database", "management", "ui"],
-      "abstract": "Feature-rich web interface for PostgreSQL management.",
-      "logo": "pgadmin-logo.png",
-      "url": "https://pgadmin.org",
-      "summary": "pgAdmin provides a web interface for PostgreSQL administration. Query editor, table management, and server monitoring with Authentik SSO integration.",
-      "manifest": "600-pgadmin.yaml",
-      "docs": "/docs/packages/management/pgadmin",
-      "related": ["postgresql", "authentik"],
-      "requires": ["postgresql"]
-    },
-    {
-      "@type": "SoftwareApplication",
-      "identifier": "redisinsight",
-      "name": "RedisInsight",
-      "description": "GUI for Redis database management",
-      "applicationCategory": "MANAGEMENT",
-      "tags": ["redis", "admin", "management", "ui", "visualization"],
-      "abstract": "Visual interface for Redis data and performance.",
-      "logo": "redisinsight-logo.svg",
-      "url": "https://redis.io/insight/",
-      "summary": "RedisInsight provides visual Redis management with key browser, CLI, memory analysis, and slow log inspection.",
-      "manifest": "601-redisinsight.yaml",
-      "docs": "/docs/packages/management/redisinsight",
-      "related": ["redis"],
-      "requires": ["redis"]
-    },
-    {
-      "@type": "SoftwareApplication",
-      "identifier": "argocd",
-      "name": "Argo CD",
-      "description": "GitOps continuous delivery for Kubernetes",
-      "applicationCategory": "DEVELOPMENT",
-      "tags": ["gitops", "cd", "deployment", "kubernetes", "automation"],
-      "abstract": "Declarative GitOps CD for Kubernetes applications.",
-      "logo": "argocd-logo.svg",
-      "url": "https://argoproj.github.io/cd/",
-      "summary": "Argo CD automates Kubernetes deployments using Git as source of truth. Monitors repositories and syncs cluster state with desired configuration.",
-      "manifest": "700-argocd.yaml",
-      "docs": "/docs/packages/development/argocd",
-      "related": ["traefik"]
-    },
-    {
-      "@type": "SoftwareApplication",
-      "identifier": "nginx",
-      "name": "NGINX",
-      "description": "High-performance web server and reverse proxy",
-      "applicationCategory": "CORE",
-      "tags": ["webserver", "proxy", "static", "nginx"],
-      "abstract": "Fast, reliable web server for static content and proxying.",
-      "logo": "nginx-logo.svg",
-      "url": "https://nginx.org",
-      "summary": "NGINX serves as the default web server for static content and can act as a reverse proxy. Configured for the root domain with default landing pages.",
-      "manifest": "020-nginx.yaml",
-      "docs": "/docs/packages/core/nginx",
-      "related": ["traefik"]
-    },
-    {
-      "@type": "SoftwareApplication",
-      "identifier": "tika",
-      "name": "Apache Tika",
-      "description": "Content analysis and extraction toolkit",
-      "applicationCategory": "AI",
-      "tags": ["ai", "extraction", "parsing", "documents", "ocr"],
-      "abstract": "Extract text and metadata from documents for AI processing.",
-      "logo": "tika-logo.svg",
-      "url": "https://tika.apache.org",
-      "summary": "Apache Tika detects and extracts metadata and text from various file formats. Used by AI services for document processing, RAG pipelines, and content analysis.",
-      "manifest": "201-tika.yaml",
-      "docs": "/docs/packages/ai/tika",
-      "related": ["openwebui", "litellm"]
-    },
-    {
-      "@type": "SoftwareApplication",
-      "identifier": "otel-collector",
-      "name": "OpenTelemetry Collector",
-      "description": "Vendor-agnostic telemetry data collection",
-      "applicationCategory": "MONITORING",
-      "tags": ["monitoring", "telemetry", "opentelemetry", "traces", "metrics"],
-      "abstract": "Receive, process, and export telemetry data.",
-      "logo": "otel-collector-logo.svg",
-      "url": "https://opentelemetry.io/docs/collector/",
-      "summary": "OpenTelemetry Collector receives traces, metrics, and logs from applications and exports to backends like Tempo, Prometheus, and Loki. Provides vendor-neutral instrumentation.",
-      "manifest": "033-otel-collector.yaml",
-      "docs": "/docs/packages/monitoring/otel-collector",
-      "related": ["tempo", "prometheus", "loki", "grafana"]
-    },
-    {
-      "@type": "SoftwareApplication",
-      "identifier": "gravitee",
-      "name": "Gravitee",
-      "description": "API management and gateway platform",
-      "applicationCategory": "CORE",
-      "tags": ["api", "gateway", "management", "apim", "security"],
-      "abstract": "Full-lifecycle API management platform.",
-      "logo": "gravitee-logo.svg",
-      "url": "https://gravitee.io",
-      "summary": "Gravitee provides API gateway, developer portal, and API management capabilities. Enables API security, rate limiting, analytics, and developer documentation.",
-      "manifest": "090-gravitee.yaml",
-      "docs": "/docs/packages/core/gravitee",
-      "related": ["traefik", "authentik"]
-    },
-    {
-      "@type": "SoftwareApplication",
-      "identifier": "tailscale",
-      "name": "Tailscale",
-      "description": "Zero-config VPN for secure network access",
-      "applicationCategory": "CORE",
-      "tags": ["vpn", "network", "wireguard", "mesh", "security"],
-      "abstract": "Secure mesh VPN based on WireGuard.",
-      "logo": "tailscale-logo.svg",
-      "url": "https://tailscale.com",
-      "summary": "Tailscale creates a secure mesh network for accessing services from anywhere. Provides internal ingress for developer access without exposing services publicly.",
-      "manifest": "100-tailscale.yaml",
-      "docs": "/docs/networking/tailscale-setup",
-      "related": ["cloudflare", "traefik"]
-    },
-    {
-      "@type": "SoftwareApplication",
-      "identifier": "cloudflare",
-      "name": "Cloudflare Tunnel",
-      "description": "Secure tunnel for exposing services to the internet",
-      "applicationCategory": "CORE",
-      "tags": ["tunnel", "network", "cloudflare", "ingress", "security"],
-      "abstract": "Expose services securely without opening firewall ports.",
-      "logo": "cloudflare-logo.svg",
-      "url": "https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/",
-      "summary": "Cloudflare Tunnel creates outbound-only connections to expose services on custom domains. No need to open firewall ports or configure NAT.",
-      "manifest": "101-cloudflare.yaml",
-      "docs": "/docs/networking/cloudflare-setup",
-      "related": ["tailscale", "traefik"]
-    }
-  ]
-}
+{"services": [
+  {
+    "@type": "SoftwareApplication",
+    "id": "litellm",
+    "name": "LiteLLM",
+    "description": "Unified API gateway for LLM providers",
+    "category": "AI",
+    "tags": ["ai", "llm", "api-gateway", "openai", "proxy", "unified-api"],
+    "abstract": "Call 100+ LLM APIs using OpenAI format",
+    "logo": "litellm-logo.webp",
+    "website": "https://litellm.ai"
+    ,"summary": "LiteLLM is a unified API gateway that allows you to call 100+ LLM APIs using the OpenAI format. It provides load balancing, fallbacks, spend tracking, and virtual keys."
+    ,"docs": "/docs/packages/ai/litellm"
+    ,"playbook": "210-setup-litellm.yml"
+    ,"priority": 51
+    ,"checkCommand": "kubectl get pods -n ai -l app=litellm --no-headers 2>/dev/null | grep -q Running"
+  }
+,
+  {
+    "@type": "SoftwareApplication",
+    "id": "openwebui",
+    "name": "Open WebUI",
+    "description": "User-friendly interface for AI models",
+    "category": "AI",
+    "tags": ["ai", "llm", "chat", "interface", "openai", "ollama"],
+    "abstract": "Self-hosted AI interface supporting multiple model providers",
+    "logo": "openwebui-logo.webp",
+    "website": "https://openwebui.com"
+    ,"summary": "Open WebUI is an extensible, feature-rich, and user-friendly self-hosted AI interface. It supports various LLM runners including Ollama and OpenAI-compatible APIs."
+    ,"docs": "/docs/packages/ai/openwebui"
+    ,"playbook": "200-setup-open-webui.yml"
+    ,"priority": 50
+    ,"checkCommand": "kubectl get pods -n ai -l app=open-webui --no-headers 2>/dev/null | grep -q Running"
+  }
+,
+  {
+    "@type": "SoftwareApplication",
+    "id": "authentik",
+    "name": "Authentik",
+    "description": "Identity provider and SSO solution",
+    "category": "AUTHENTICATION",
+    "tags": ["authentication", "sso", "identity", "oauth", "saml", "ldap", "mfa"],
+    "abstract": "Open-source identity provider with SSO, MFA, and user management",
+    "logo": "authentik-logo.webp",
+    "website": "https://goauthentik.io"
+    ,"summary": "Authentik is an open-source Identity Provider focused on flexibility and versatility. It supports SAML, OAuth/OIDC, LDAP, and proxy authentication with built-in MFA support."
+    ,"docs": "/docs/packages/authentication/authentik"
+    ,"playbook": "070-setup-authentik.yml"
+    ,"priority": 40
+    ,"checkCommand": "kubectl get pods -n authentik -l app.kubernetes.io/name=authentik --no-headers 2>/dev/null | grep -q Running"
+    ,"requires": ["postgresql", "redis"]
+  }
+,
+  {
+    "@type": "SoftwareApplication",
+    "id": "nginx",
+    "name": "Nginx",
+    "description": "Web server and reverse proxy",
+    "category": "CORE",
+    "tags": ["webserver", "proxy", "reverse-proxy", "load-balancer", "http"],
+    "abstract": "High-performance web server and reverse proxy",
+    "logo": "nginx-logo.webp",
+    "website": "https://nginx.org"
+    ,"summary": "Nginx is a high-performance HTTP server and reverse proxy, known for its stability, rich feature set, simple configuration, and low resource consumption."
+    ,"docs": "/docs/packages/core/nginx"
+    ,"playbook": "020-setup-nginx.yml"
+    ,"priority": 1
+    ,"checkCommand": "kubectl get pods -n default -l app=nginx --no-headers 2>/dev/null | grep -q Running"
+    ,"removePlaybook": "020-remove-nginx.yml"
+  }
+,
+  {
+    "@type": "SoftwareApplication",
+    "id": "whoami",
+    "name": "Whoami",
+    "description": "Test service for debugging",
+    "category": "CORE",
+    "tags": ["testing", "debug", "ingress", "traefik", "development"],
+    "abstract": "Lightweight test container for debugging ingress and authentication",
+    "logo": "",
+    "website": "https://github.com/traefik/whoami"
+    ,"summary": "Whoami is a tiny Go webserver that prints OS information and HTTP request details. Its useful for testing ingress configurations, authentication flows, and debugging network issues."
+    ,"docs": "/docs/packages/core/whoami"
+    ,"playbook": "025-setup-whoami-testpod.yml"
+    ,"priority": 2
+    ,"checkCommand": "kubectl get pods -n default -l app=whoami --no-headers 2>/dev/null | grep -q Running"
+  }
+,
+  {
+    "@type": "SoftwareApplication",
+    "id": "mongodb",
+    "name": "MongoDB",
+    "description": "Document-oriented NoSQL database",
+    "category": "DATABASES",
+    "tags": ["database", "nosql", "document", "json", "flexible-schema"],
+    "abstract": "General purpose document database",
+    "logo": "mongodb-logo.webp",
+    "website": "https://www.mongodb.com"
+    ,"summary": "MongoDB is a document-oriented NoSQL database designed for high-volume data storage. It stores data in flexible, JSON-like documents, meaning fields can vary from document to document."
+    ,"docs": "/docs/packages/databases/mongodb"
+    ,"playbook": "040-setup-mongodb.yml"
+    ,"priority": 31
+    ,"checkCommand": "kubectl get pods -n databases -l app=mongodb --no-headers 2>/dev/null | grep -q Running"
+    ,"removePlaybook": "040-remove-database-mongodb.yml"
+  }
+,
+  {
+    "@type": "SoftwareApplication",
+    "id": "mysql",
+    "name": "MySQL",
+    "description": "Open-source relational database",
+    "category": "DATABASES",
+    "tags": ["database", "sql", "relational", "mysql", "rdbms"],
+    "abstract": "Popular open-source relational database for web applications",
+    "logo": "mysql-logo.webp",
+    "website": "https://www.mysql.com"
+    ,"summary": "MySQL is the worlds most popular open-source relational database management system. It powers many of the most accessed applications including Facebook, Twitter, and YouTube."
+    ,"docs": "/docs/packages/databases/mysql"
+    ,"playbook": "040-database-mysql.yml"
+    ,"priority": 31
+    ,"checkCommand": "kubectl get pods -n databases -l app.kubernetes.io/name=mysql --no-headers 2>/dev/null | grep -q Running"
+    ,"removePlaybook": "040-remove-database-mysql.yml"
+  }
+,
+  {
+    "@type": "SoftwareApplication",
+    "id": "postgresql",
+    "name": "PostgreSQL",
+    "description": "Open-source relational database",
+    "category": "DATABASES",
+    "tags": ["database", "sql", "relational", "postgres", "rdbms"],
+    "abstract": "Worlds most advanced open-source relational database",
+    "logo": "postgresql-logo.webp",
+    "website": "https://www.postgresql.org"
+    ,"summary": "PostgreSQL is a powerful, open-source object-relational database system with over 35 years of active development. It has earned a strong reputation for reliability, feature robustness, and performance."
+    ,"docs": "/docs/packages/databases/postgresql"
+    ,"playbook": "040-database-postgresql.yml"
+    ,"priority": 30
+    ,"checkCommand": "kubectl get pods -n databases -l app=postgresql --no-headers 2>/dev/null | grep -q Running"
+    ,"removePlaybook": "040-remove-database-postgresql.yml"
+  }
+,
+  {
+    "@type": "SoftwareApplication",
+    "id": "qdrant",
+    "name": "Qdrant",
+    "description": "Vector similarity search engine",
+    "category": "DATABASES",
+    "tags": ["vector-database", "ai", "embeddings", "similarity-search", "semantic-search"],
+    "abstract": "High-performance vector database for AI applications",
+    "logo": "qdrant-logo.webp",
+    "website": "https://qdrant.tech"
+    ,"summary": "Qdrant is a vector similarity search engine and database designed for AI applications. It provides extended filtering support, making it useful for neural network or semantic-based matching."
+    ,"docs": "/docs/packages/databases/qdrant"
+    ,"playbook": "044-setup-qdrant.yml"
+    ,"priority": 33
+    ,"checkCommand": "kubectl get pods -n databases -l app=qdrant --no-headers 2>/dev/null | grep -q Running"
+    ,"removePlaybook": "044-remove-qdrant.yml"
+  }
+,
+  {
+    "@type": "SoftwareApplication",
+    "id": "redis",
+    "name": "Redis",
+    "description": "In-memory data store and cache",
+    "category": "DATABASES",
+    "tags": ["cache", "in-memory", "key-value", "message-broker", "session"],
+    "abstract": "In-memory data structure store for caching and messaging",
+    "logo": "redis-logo.webp",
+    "website": "https://redis.io"
+    ,"summary": "Redis is an open-source, in-memory data structure store used as a database, cache, message broker, and streaming engine. It supports various data structures like strings, hashes, lists, and sets."
+    ,"docs": "/docs/packages/databases/redis"
+    ,"playbook": "050-setup-redis.yml"
+    ,"priority": 32
+    ,"checkCommand": "kubectl get pods -n databases -l app=redis --no-headers 2>/dev/null | grep -q Running"
+  }
+,
+  {
+    "@type": "SoftwareApplication",
+    "id": "jupyterhub",
+    "name": "JupyterHub",
+    "description": "Multi-user Jupyter notebook server",
+    "category": "DATASCIENCE",
+    "tags": ["notebooks", "jupyter", "python", "data-science", "collaboration"],
+    "abstract": "Multi-user server for Jupyter notebooks enabling collaborative data science",
+    "logo": "jupyterhub-logo.webp",
+    "website": "https://jupyter.org/hub"
+    ,"summary": "JupyterHub is a multi-user server that manages and proxies multiple instances of Jupyter notebooks. It enables teams to share computational environments and collaborate on data science projects."
+    ,"docs": "/docs/packages/datascience/jupyterhub"
+    ,"playbook": "350-setup-jupyterhub.yml"
+    ,"priority": 92
+    ,"checkCommand": "kubectl get pods -n datascience -l app.kubernetes.io/name=jupyterhub --no-headers 2>/dev/null | grep -q Running"
+  }
+,
+  {
+    "@type": "SoftwareApplication",
+    "id": "spark",
+    "name": "Apache Spark",
+    "description": "Unified analytics engine for big data",
+    "category": "DATASCIENCE",
+    "tags": ["big-data", "analytics", "distributed-computing", "etl", "machine-learning"],
+    "abstract": "Fast and general-purpose cluster computing system for big data processing",
+    "logo": "spark-logo.webp",
+    "website": "https://spark.apache.org"
+    ,"summary": "Apache Spark is a unified analytics engine for large-scale data processing. It provides high-level APIs in Java, Scala, Python, and R, and supports SQL queries, streaming data, machine learning, and graph processing."
+    ,"docs": "/docs/packages/datascience/spark"
+    ,"playbook": "330-setup-spark.yml"
+    ,"priority": 91
+    ,"checkCommand": "kubectl get pods -n datascience -l app.kubernetes.io/name=spark --no-headers 2>/dev/null | grep -q Running"
+  }
+,
+  {
+    "@type": "SoftwareApplication",
+    "id": "unity-catalog",
+    "name": "Unity Catalog",
+    "description": "Open-source data catalog and governance",
+    "category": "DATASCIENCE",
+    "tags": ["data-catalog", "governance", "metadata", "lakehouse", "data-lineage"],
+    "abstract": "Open-source data catalog for unified governance across data and AI assets",
+    "logo": "unity-catalog-logo.webp",
+    "website": "https://www.unitycatalog.io"
+    ,"summary": "Unity Catalog is an open-source data catalog that provides unified governance for data and AI assets. It enables fine-grained access control, data lineage tracking, and metadata management across your data lakehouse."
+    ,"docs": "/docs/packages/datascience/unity-catalog"
+    ,"playbook": "320-setup-unity-catalog.yml"
+    ,"priority": 90
+    ,"checkCommand": "kubectl get pods -n datascience -l app.kubernetes.io/name=unity-catalog --no-headers 2>/dev/null | grep -q Running"
+  }
+,
+  {
+    "@type": "SoftwareApplication",
+    "id": "argocd",
+    "name": "ArgoCD",
+    "description": "GitOps continuous delivery for Kubernetes",
+    "category": "MANAGEMENT",
+    "tags": ["gitops", "cd", "continuous-delivery", "kubernetes", "deployment"],
+    "abstract": "Declarative GitOps CD for Kubernetes",
+    "logo": "argocd-logo.webp",
+    "website": "https://argo-cd.readthedocs.io"
+    ,"summary": "ArgoCD is a declarative, GitOps continuous delivery tool for Kubernetes. It automates the deployment of applications to specified target environments, keeping them synchronized with their Git repository definitions."
+    ,"docs": "/docs/packages/management/argocd"
+    ,"playbook": "220-setup-argocd.yml"
+    ,"priority": 80
+    ,"checkCommand": "kubectl get pods -n argocd -l app.kubernetes.io/name=argocd-server --no-headers 2>/dev/null | grep -q Running"
+  }
+,
+  {
+    "@type": "SoftwareApplication",
+    "id": "gravitee",
+    "name": "Gravitee",
+    "description": "API management and gateway platform",
+    "category": "MANAGEMENT",
+    "tags": ["api-gateway", "api-management", "rest", "graphql", "security"],
+    "abstract": "Open-source API management platform for designing, deploying, and managing APIs",
+    "logo": "gravitee-logo.webp",
+    "website": "https://www.gravitee.io"
+    ,"summary": "Gravitee is an open-source API management platform that helps you design, deploy, and manage APIs. It provides a gateway, management console, and developer portal for comprehensive API lifecycle management."
+    ,"docs": "/docs/packages/management/gravitee"
+    ,"playbook": "090-setup-gravitee.yml"
+    ,"priority": 81
+    ,"checkCommand": "kubectl get pods -n gravitee -l app.kubernetes.io/name=gravitee --no-headers 2>/dev/null | grep -q Running"
+  }
+,
+  {
+    "@type": "SoftwareApplication",
+    "id": "grafana",
+    "name": "Grafana",
+    "description": "Visualization and dashboards for observability",
+    "category": "MONITORING",
+    "tags": ["monitoring", "dashboards", "visualization", "observability", "metrics", "logs"],
+    "abstract": "Observability platform for metrics, logs, and distributed tracing",
+    "logo": "grafana-logo.webp",
+    "website": "https://grafana.com"
+    ,"summary": "Grafana is the open-source analytics and monitoring solution for every database. Create, explore, and share dashboards with your team and foster a data-driven culture."
+    ,"docs": "/docs/packages/monitoring/grafana"
+    ,"playbook": "034-setup-grafana.yml"
+    ,"priority": 20
+    ,"checkCommand": "kubectl get pods -n monitoring -l app.kubernetes.io/name=grafana --no-headers 2>/dev/null | grep -q Running"
+    ,"removePlaybook": "034-remove-grafana.yml"
+    ,"requires": ["prometheus"]
+  }
+,
+  {
+    "@type": "SoftwareApplication",
+    "id": "loki",
+    "name": "Loki",
+    "description": "Log aggregation and storage",
+    "category": "MONITORING",
+    "tags": ["logging", "logs", "aggregation", "observability", "monitoring"],
+    "abstract": "Horizontally-scalable log aggregation system",
+    "logo": "loki-logo.webp",
+    "website": "https://grafana.com/oss/loki/"
+    ,"summary": "Loki is a horizontally-scalable, highly-available, multi-tenant log aggregation system inspired by Prometheus. It indexes labels, not log content, making it cost-effective and easy to operate."
+    ,"docs": "/docs/packages/monitoring/loki"
+    ,"playbook": "032-setup-loki.yml"
+    ,"priority": 11
+    ,"checkCommand": "kubectl get pods -n monitoring -l app.kubernetes.io/name=loki --no-headers 2>/dev/null | grep -q Running"
+    ,"removePlaybook": "032-remove-loki.yml"
+  }
+,
+  {
+    "@type": "SoftwareApplication",
+    "id": "otel-collector",
+    "name": "OpenTelemetry Collector",
+    "description": "Telemetry data collection and processing",
+    "category": "MONITORING",
+    "tags": ["telemetry", "opentelemetry", "otel", "observability", "traces", "metrics", "logs"],
+    "abstract": "Vendor-agnostic telemetry collection and processing",
+    "logo": "opentelemetry-logo.webp",
+    "website": "https://opentelemetry.io"
+    ,"summary": "The OpenTelemetry Collector offers a vendor-agnostic implementation to receive, process, and export telemetry data. It removes the need to run multiple agents/collectors."
+    ,"docs": "/docs/packages/monitoring/otel-collector"
+    ,"playbook": "033-setup-otel-collector.yml"
+    ,"priority": 13
+    ,"checkCommand": "kubectl get pods -n monitoring -l app.kubernetes.io/name=opentelemetry-collector --no-headers 2>/dev/null | grep -q Running"
+    ,"removePlaybook": "033-remove-otel-collector.yml"
+  }
+,
+  {
+    "@type": "SoftwareApplication",
+    "id": "prometheus",
+    "name": "Prometheus",
+    "description": "Metrics collection and storage for observability",
+    "category": "MONITORING",
+    "tags": ["monitoring", "metrics", "alerting", "time-series", "observability"],
+    "abstract": "Time-series database for metrics collection, storage, and alerting",
+    "logo": "prometheus-logo.webp",
+    "website": "https://prometheus.io"
+    ,"summary": "Prometheus is a systems monitoring and alerting toolkit that collects metrics from configured targets, stores them locally, and provides a powerful query language (PromQL) for analysis and alerting."
+    ,"docs": "/docs/packages/monitoring/prometheus"
+    ,"playbook": "030-setup-prometheus.yml"
+    ,"priority": 10
+    ,"checkCommand": "kubectl get pods -n monitoring -l app.kubernetes.io/name=prometheus --no-headers 2>/dev/null | grep -q Running"
+    ,"removePlaybook": "030-remove-prometheus.yml"
+  }
+,
+  {
+    "@type": "SoftwareApplication",
+    "id": "tempo",
+    "name": "Tempo",
+    "description": "Distributed tracing backend",
+    "category": "MONITORING",
+    "tags": ["tracing", "distributed-tracing", "observability", "monitoring", "spans"],
+    "abstract": "Open source distributed tracing backend",
+    "logo": "tempo-logo.webp",
+    "website": "https://grafana.com/oss/tempo/"
+    ,"summary": "Tempo is an open source, easy-to-use, high-scale distributed tracing backend. It requires only object storage to operate and integrates seamlessly with Grafana, Prometheus, and Loki."
+    ,"docs": "/docs/packages/monitoring/tempo"
+    ,"playbook": "031-setup-tempo.yml"
+    ,"priority": 12
+    ,"checkCommand": "kubectl get pods -n monitoring -l app.kubernetes.io/name=tempo --no-headers 2>/dev/null | grep -q Running"
+    ,"removePlaybook": "031-remove-tempo.yml"
+  }
+,
+  {
+    "@type": "SoftwareApplication",
+    "id": "cloudflare-tunnel",
+    "name": "Cloudflare Tunnel",
+    "description": "Secure tunnel to Cloudflare network",
+    "category": "NETWORK",
+    "tags": ["tunnel", "cloudflare", "cdn", "ddos-protection", "reverse-proxy"],
+    "abstract": "Secure outbound-only tunnel to expose services via Cloudflare",
+    "logo": "cloudflare-logo.webp",
+    "website": "https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/"
+    ,"summary": "Cloudflare Tunnel creates a secure, outbound-only connection between your origin and Cloudflares edge. No need to open public inbound ports - traffic is routed through Cloudflares network."
+    ,"docs": "/docs/packages/network/cloudflare"
+    ,"playbook": "820-setup-network-cloudflare-tunnel.yml"
+    ,"priority": 101
+    ,"checkCommand": "kubectl get pods -n network -l app.kubernetes.io/name=cloudflared --no-headers 2>/dev/null | grep -q Running"
+  }
+,
+  {
+    "@type": "SoftwareApplication",
+    "id": "tailscale-tunnel",
+    "name": "Tailscale Tunnel",
+    "description": "Secure mesh VPN tunnel",
+    "category": "NETWORK",
+    "tags": ["vpn", "wireguard", "mesh-network", "remote-access", "zero-trust"],
+    "abstract": "Zero-config WireGuard-based mesh VPN for secure remote access",
+    "logo": "tailscale-logo.webp",
+    "website": "https://tailscale.com"
+    ,"summary": "Tailscale creates a secure, private network between your servers, computers, and cloud instances using WireGuard encryption. It provides zero-config networking with built-in NAT traversal."
+    ,"docs": "/docs/packages/network/tailscale"
+    ,"playbook": "801-setup-network-tailscale-tunnel.yml"
+    ,"priority": 100
+    ,"checkCommand": "kubectl get pods -n network -l app.kubernetes.io/name=tailscale --no-headers 2>/dev/null | grep -q Running"
+  }
+,
+  {
+    "@type": "SoftwareApplication",
+    "id": "rabbitmq",
+    "name": "RabbitMQ",
+    "description": "Message broker for async communication",
+    "category": "QUEUES",
+    "tags": ["message-queue", "amqp", "messaging", "async", "pubsub"],
+    "abstract": "Reliable message broker supporting multiple messaging protocols",
+    "logo": "rabbitmq-logo.webp",
+    "website": "https://www.rabbitmq.com"
+    ,"summary": "RabbitMQ is a reliable and mature messaging broker that supports multiple messaging protocols including AMQP. It provides features like message persistence, delivery acknowledgment, and flexible routing."
+    ,"docs": "/docs/packages/queues/rabbitmq"
+    ,"playbook": "080-setup-rabbitmq.yml"
+    ,"priority": 60
+    ,"checkCommand": "kubectl get pods -n queues -l app=rabbitmq --no-headers 2>/dev/null | grep -q Running"
+  }
+,
+  {
+    "@type": "SoftwareApplication",
+    "id": "elasticsearch",
+    "name": "Elasticsearch",
+    "description": "Distributed search and analytics engine",
+    "category": "SEARCH",
+    "tags": ["search", "full-text", "analytics", "indexing", "distributed"],
+    "abstract": "RESTful search and analytics engine for all types of data",
+    "logo": "elasticsearch-logo.webp",
+    "website": "https://www.elastic.co/elasticsearch"
+    ,"summary": "Elasticsearch is a distributed, RESTful search and analytics engine capable of addressing a growing number of use cases. It centrally stores your data for lightning fast search and fine-tuned relevancy."
+    ,"docs": "/docs/packages/search/elasticsearch"
+    ,"playbook": "060-setup-elasticsearch.yml"
+    ,"priority": 70
+    ,"checkCommand": "kubectl get pods -n search -l app=elasticsearch --no-headers 2>/dev/null | grep -q Running"
+  }
+]}

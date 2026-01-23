@@ -1,0 +1,14 @@
+# UIS Enabled Tools
+# These are tools installed in the uis-provision-host container
+# Format: One TOOL_ID per line
+
+# === Always Available (built into container) ===
+kubectl
+k9s
+helm
+ansible
+
+# === Cloud Provider CLIs (optional, install with 'uis tools install') ===
+# azure-cli        # ~637MB - Azure CLI
+# aws-cli          # AWS CLI
+# gcp-cli          # Google Cloud CLI

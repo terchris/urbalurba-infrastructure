@@ -10,6 +10,14 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONTAINER_NAME="uis-provision-host"
 IMAGE="${UIS_IMAGE:-ghcr.io/terchris/uis-provision-host:latest}"
+KUBECONFIG_DIR="${UIS_KUBECONFIG_DIR:-$HOME/.kube}"
+
+# Detect if we have a TTY for interactive commands
+if [ -t 0 ] && [ -t 1 ]; then
+    DOCKER_IT="-it"
+else
+    DOCKER_IT=""
+fi
 
 # Colors for output
 RED='\033[0;31m'
@@ -54,6 +62,21 @@ check_image() {
     exit 1
 }
 
+# Create config directories on first run
+init_config_dirs() {
+    # Create .uis.extend if it doesn't exist
+    if [ ! -d "$SCRIPT_DIR/.uis.extend" ]; then
+        log_info "Creating .uis.extend/ configuration directory..."
+        mkdir -p "$SCRIPT_DIR/.uis.extend"
+    fi
+
+    # Create .uis.secrets if it doesn't exist
+    if [ ! -d "$SCRIPT_DIR/.uis.secrets" ]; then
+        log_info "Creating .uis.secrets/ directory..."
+        mkdir -p "$SCRIPT_DIR/.uis.secrets"
+    fi
+}
+
 # Start container if not running
 start_container() {
     if docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
@@ -62,19 +85,34 @@ start_container() {
 
     check_topsecret
     check_image
+    init_config_dirs
 
     log_info "Starting UIS container..."
 
     # Remove old container if exists
     docker rm -f "$CONTAINER_NAME" 2>/dev/null || true
 
+    # Build volume mount arguments
+    local VOLUME_ARGS=(
+        -v "$SCRIPT_DIR/topsecret:/mnt/urbalurbadisk/topsecret"
+        -v "$SCRIPT_DIR/.uis.extend:/mnt/urbalurbadisk/.uis.extend"
+        -v "$SCRIPT_DIR/.uis.secrets:/mnt/urbalurbadisk/.uis.secrets"
+    )
+
+    # Add kubeconfig mount if it exists
+    if [ -d "$KUBECONFIG_DIR" ]; then
+        VOLUME_ARGS+=(-v "$KUBECONFIG_DIR:/home/ansible/.kube:ro")
+    else
+        log_warn "Kubeconfig directory not found: $KUBECONFIG_DIR"
+        log_warn "Kubernetes commands will not work until kubeconfig is configured"
+    fi
+
     # Start with host network (so 127.0.0.1 in kubeconfig works)
     # This matches how the original provision-host container was configured
     docker run -d --name "$CONTAINER_NAME" \
         --network host \
         --privileged \
-        -v "$SCRIPT_DIR/topsecret:/mnt/urbalurbadisk/topsecret" \
-        -v "$HOME/.kube:/home/ansible/.kube:ro" \
+        "${VOLUME_ARGS[@]}" \
         "$IMAGE"
 
     # Wait for container to be ready
@@ -115,6 +153,7 @@ show_usage() {
     echo "  exec <cmd>  Execute a command in the container"
     echo "  logs        Show container logs"
     echo "  build       Build the container image locally"
+    echo "  test        Run container validation tests (CI/CD)"
     echo "  help        Show this help message"
     echo ""
     echo "Examples:"
@@ -124,7 +163,8 @@ show_usage() {
     echo "  ./uis exec kubectl get pods    # Run kubectl command"
     echo ""
     echo "Environment variables:"
-    echo "  UIS_IMAGE   Override the container image (default: ghcr.io/terchris/uis-provision-host:latest)"
+    echo "  UIS_IMAGE          Override the container image (default: ghcr.io/terchris/uis-provision-host:latest)"
+    echo "  UIS_KUBECONFIG_DIR Override kubeconfig directory (default: \$HOME/.kube)"
 }
 
 # Main command handler
@@ -151,12 +191,12 @@ case "${1:-help}" in
         ;;
     shell)
         start_container
-        docker exec -it "$CONTAINER_NAME" bash
+        docker exec $DOCKER_IT "$CONTAINER_NAME" bash
         ;;
     provision)
         start_container
         log_info "Running kubernetes provisioning..."
-        docker exec -it "$CONTAINER_NAME" bash -c \
+        docker exec $DOCKER_IT "$CONTAINER_NAME" bash -c \
             "cd /mnt/urbalurbadisk/provision-host/kubernetes && ./provision-kubernetes.sh rancher-desktop"
         ;;
     exec)
@@ -166,7 +206,7 @@ case "${1:-help}" in
             exit 1
         fi
         start_container
-        docker exec -it "$CONTAINER_NAME" "$@"
+        docker exec $DOCKER_IT "$CONTAINER_NAME" "$@"
         ;;
     logs)
         docker logs "$CONTAINER_NAME" ${2:---tail 50}
@@ -175,6 +215,42 @@ case "${1:-help}" in
         log_info "Building UIS container image..."
         docker build -f "$SCRIPT_DIR/Dockerfile.uis-provision-host" -t uis-provision-host:local "$SCRIPT_DIR"
         log_info "Build complete"
+        ;;
+    test)
+        # CI/CD test command - validates container without requiring kubernetes
+        log_info "Running UIS container validation tests..."
+        start_container
+
+        # Clean up old temp directories
+        docker exec "$CONTAINER_NAME" rm -rf /mnt/urbalurbadisk/.temp /mnt/urbalurbadisk/generate 2>/dev/null || true
+
+        # Test 1: uis-cli version
+        log_info "Test 1: uis-cli version"
+        docker exec "$CONTAINER_NAME" /mnt/urbalurbadisk/provision-host/uis/manage/uis-cli.sh version
+
+        # Test 2: uis-cli list
+        log_info "Test 2: uis-cli list"
+        docker exec "$CONTAINER_NAME" /mnt/urbalurbadisk/provision-host/uis/manage/uis-cli.sh list
+
+        # Test 3: uis-cli stack list
+        log_info "Test 3: uis-cli stack list"
+        docker exec "$CONTAINER_NAME" /mnt/urbalurbadisk/provision-host/uis/manage/uis-cli.sh stack list
+
+        # Test 4: JSON generation
+        log_info "Test 4: JSON generation"
+        docker exec "$CONTAINER_NAME" bash -c "cd /mnt/urbalurbadisk && ./provision-host/uis/manage/uis-docs.sh"
+
+        # Test 5: Schema validation
+        log_info "Test 5: Schema validation"
+        docker exec "$CONTAINER_NAME" bash -c "cd /mnt/urbalurbadisk && ./provision-host/uis/tests/validate-schemas.sh"
+
+        # Test 6: Enable/disable cycle
+        log_info "Test 6: Enable/disable service"
+        docker exec "$CONTAINER_NAME" /mnt/urbalurbadisk/provision-host/uis/manage/uis-cli.sh enable prometheus
+        docker exec "$CONTAINER_NAME" /mnt/urbalurbadisk/provision-host/uis/manage/uis-cli.sh list-enabled
+        docker exec "$CONTAINER_NAME" /mnt/urbalurbadisk/provision-host/uis/manage/uis-cli.sh disable prometheus
+
+        log_info "All tests passed!"
         ;;
     help|--help|-h)
         show_usage
