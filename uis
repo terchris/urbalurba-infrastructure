@@ -122,6 +122,11 @@ start_container() {
         VOLUME_ARGS+=(-v "$SCRIPT_DIR/topsecret:/mnt/urbalurbadisk/topsecret:ro")
     fi
 
+    # Mount secrets directory if it exists (backwards compatibility for SSH keys)
+    if [ -d "$SCRIPT_DIR/secrets" ]; then
+        VOLUME_ARGS+=(-v "$SCRIPT_DIR/secrets:/mnt/urbalurbadisk/secrets:ro")
+    fi
+
     # Add kubeconfig mount if it exists
     if [ -d "$KUBECONFIG_DIR" ]; then
         VOLUME_ARGS+=(-v "$KUBECONFIG_DIR:/home/ansible/.kube:ro")
@@ -141,10 +146,22 @@ start_container() {
     # Wait for container to be ready
     sleep 2
 
-    # Create kubeconfig symlink for playbooks that expect the old path
-    docker exec "$CONTAINER_NAME" bash -c \
-        "mkdir -p /mnt/urbalurbadisk/kubeconfig && ln -sf /home/ansible/.kube/config /mnt/urbalurbadisk/kubeconfig/kubeconf-all" \
-        2>/dev/null || true
+    # Create kubeconfig directories and symlinks for backwards compatibility
+    # This ensures scripts expecting either path will work
+    docker exec "$CONTAINER_NAME" bash -c '
+        # Create legacy kubeconfig path
+        mkdir -p /mnt/urbalurbadisk/kubeconfig
+
+        # Create new kubeconfig path if .uis.secrets exists
+        if [ -d /mnt/urbalurbadisk/.uis.secrets ]; then
+            mkdir -p /mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig
+            # Symlink from new path to host kubeconfig
+            ln -sf /home/ansible/.kube/config /mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all
+        fi
+
+        # Symlink legacy path to host kubeconfig (for backwards compat)
+        ln -sf /home/ansible/.kube/config /mnt/urbalurbadisk/kubeconfig/kubeconf-all
+    ' 2>/dev/null || true
 
     log_info "Container started"
 }

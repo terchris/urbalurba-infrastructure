@@ -279,5 +279,80 @@ else
     skip_test "File not found"
 fi
 
+# ============================================================================
+# Test: UIS wrapper mounts (Phase 8)
+# ============================================================================
+
+print_test_section "UIS Wrapper Mount Tests"
+
+start_test "uis wrapper mounts .uis.extend"
+if grep -q '\.uis\.extend:/mnt/urbalurbadisk/\.uis\.extend' "$REPO_ROOT/uis"; then
+    pass_test
+else
+    fail_test "Missing .uis.extend mount"
+fi
+
+start_test "uis wrapper mounts .uis.secrets"
+if grep -q '\.uis\.secrets:/mnt/urbalurbadisk/\.uis\.secrets' "$REPO_ROOT/uis"; then
+    pass_test
+else
+    fail_test "Missing .uis.secrets mount"
+fi
+
+start_test "uis wrapper mounts topsecret (backwards compat)"
+if grep -q 'topsecret:/mnt/urbalurbadisk/topsecret' "$REPO_ROOT/uis"; then
+    pass_test
+else
+    fail_test "Missing topsecret mount"
+fi
+
+start_test "uis wrapper mounts secrets directory (backwards compat)"
+if grep -q 'secrets:/mnt/urbalurbadisk/secrets' "$REPO_ROOT/uis"; then
+    pass_test
+else
+    fail_test "Missing secrets mount"
+fi
+
+start_test "uis wrapper creates kubeconfig symlinks"
+if grep -q 'kubeconfig/kubeconf-all' "$REPO_ROOT/uis"; then
+    pass_test
+else
+    fail_test "Missing kubeconfig symlink creation"
+fi
+
+# ============================================================================
+# Test: Kubeconfig playbook supports both paths (Phase 8)
+# ============================================================================
+
+print_test_section "Kubeconfig Playbook Tests"
+
+start_test "04-merge-kubeconf.yml has new path variable"
+if grep -q 'new_kubernetes_files_path' "$REPO_ROOT/ansible/playbooks/04-merge-kubeconf.yml"; then
+    pass_test
+else
+    fail_test "Missing new_kubernetes_files_path variable"
+fi
+
+start_test "04-merge-kubeconf.yml has legacy path variable"
+if grep -q 'legacy_kubernetes_files_path' "$REPO_ROOT/ansible/playbooks/04-merge-kubeconf.yml"; then
+    pass_test
+else
+    fail_test "Missing legacy_kubernetes_files_path variable"
+fi
+
+start_test "04-merge-kubeconf.yml checks which path exists"
+if grep -q 'Check if new kubeconfig path exists' "$REPO_ROOT/ansible/playbooks/04-merge-kubeconf.yml"; then
+    pass_test
+else
+    fail_test "Missing path existence check"
+fi
+
+start_test "04-merge-kubeconf.yml shows deprecation warning"
+if grep -q 'Using legacy kubeconfig path' "$REPO_ROOT/ansible/playbooks/04-merge-kubeconf.yml"; then
+    pass_test
+else
+    fail_test "Missing deprecation warning"
+fi
+
 # Print summary
 print_summary

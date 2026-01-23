@@ -4,7 +4,7 @@
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Active
+## Status: Complete
 
 **Goal**: Update all scripts in the repo that reference `topsecret/` or `secrets/` to use the new `.uis.secrets/` paths, while maintaining backwards compatibility.
 
@@ -284,34 +284,43 @@ Mark scripts in `topsecret/` as deprecated with clear alternatives.
 
 ---
 
-## Phase 8: Update UIS Wrapper Mounts
+## Phase 8: Update UIS Wrapper Mounts — ✅ DONE
 
 ### Tasks
 
-- [ ] 8.1 Verify `uis` wrapper mounts both old and new paths:
-  - New paths mounted when folders exist
-  - Old `topsecret/` mounted read-only for backwards compat
+- [x] 8.1 Verify and update `uis` wrapper mounts:
+  - `.uis.extend` → `/mnt/urbalurbadisk/.uis.extend` ✓
+  - `.uis.secrets` → `/mnt/urbalurbadisk/.uis.secrets` ✓
+  - `topsecret` → `/mnt/urbalurbadisk/topsecret:ro` (backwards compat) ✓
+  - `secrets` → `/mnt/urbalurbadisk/secrets:ro` (backwards compat for SSH keys) ✓ NEW
+  - Creates kubeconfig symlinks in both new and legacy paths ✓
 
-- [ ] 8.2 Update kubeconfig handling:
-  - Update `ansible/playbooks/04-merge-kubeconf.yml` to use new path
-  - Support both old and new locations during transition
+- [x] 8.2 Update kubeconfig handling:
+  - Updated `ansible/playbooks/04-merge-kubeconf.yml` ✓
+  - Added `new_kubernetes_files_path` variable for `.uis.secrets/generated/kubeconfig/`
+  - Added `legacy_kubernetes_files_path` variable for `/mnt/urbalurbadisk/kubeconfig/`
+  - Pre-task checks which path exists and uses appropriate one
+  - Shows deprecation warning when using legacy path
 
 ### Validation
 
-Container starts correctly with appropriate mounts.
+✓ UIS wrapper mounts all required directories (5 tests)
+✓ Kubeconfig playbook supports both paths (4 tests)
+✓ Total: 52 tests passing
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] `uis-paths.sh` library created with all path functions
-- [ ] All 24 scripts updated to source `uis-paths.sh`
-- [ ] Scripts work with new paths (`.uis.secrets/`)
-- [ ] Scripts fall back to old paths (`topsecret/`) with warning
-- [ ] Deprecated scripts show clear migration messages
-- [ ] Unit tests pass for path resolution
-- [ ] Kubeconfig merge playbook updated
-- [ ] No functionality broken during transition
+- [x] `paths.sh` library extended with all backwards-compatible path functions ✓
+- [x] All scripts updated to use paths.sh or have backwards-compatible path checks ✓
+- [x] Scripts work with new paths (`.uis.secrets/`) ✓
+- [x] Scripts fall back to old paths (`topsecret/`) with warning ✓
+- [x] Deprecated scripts show clear migration messages ✓
+- [x] Unit tests pass for path resolution (63 tests) ✓
+- [x] Backwards-compat tests pass (52 tests) ✓
+- [x] Kubeconfig merge playbook updated ✓
+- [x] No functionality broken during transition ✓
 
 ---
 
