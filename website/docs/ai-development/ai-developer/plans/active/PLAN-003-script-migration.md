@@ -4,17 +4,19 @@
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Backlog
+## Status: Active
 
 **Goal**: Update all scripts in the repo that reference `topsecret/` or `secrets/` to use the new `.uis.secrets/` paths, while maintaining backwards compatibility.
 
-**Last Updated**: 2025-01-23
+**Last Updated**: 2026-01-23
 
 **Branch**: `feature/secrets-migration`
 
-**Prerequisites**: PLAN-001 and PLAN-002 should be complete
+**Prerequisites**: PLAN-001 ✓ and PLAN-002 ✓ complete
 
-**Related**: [INVESTIGATE-secrets-consolidation.md](./INVESTIGATE-secrets-consolidation.md)
+**Related**: [INVESTIGATE-secrets-consolidation.md](../backlog/INVESTIGATE-secrets-consolidation.md)
+
+**Note**: PLAN-002 created `paths.sh` with base path detection functions. This plan extends that with backwards-compatible path resolution and deprecation warnings for topsecret/ paths.
 
 ---
 
@@ -76,11 +78,11 @@ The investigation identified 24 scripts that reference the old paths:
 
 ---
 
-## Phase 1: Create Path Resolution Library
+## Phase 1: Create Path Resolution Library — ✅ DONE
 
 ### Tasks
 
-- [ ] 1.1 Create `provision-host/uis/lib/uis-paths.sh` with path resolution:
+- [x] 1.1 Extended `provision-host/uis/lib/paths.sh` with backwards-compatible path resolution:
   ```bash
   # Base paths inside container
   NEW_SECRETS_BASE="/mnt/urbalurbadisk/.uis.secrets"
@@ -130,30 +132,22 @@ The investigation identified 24 scripts that reference the old paths:
   }
   ```
 
-- [ ] 1.2 Add deprecation warning function:
-  ```bash
-  warn_deprecated_path() {
-    local old_path="$1"
-    local new_path="$2"
-    echo "⚠️  WARNING: Using deprecated path: $old_path" >&2
-    echo "   Please migrate to: $new_path" >&2
-    echo "   Run './uis' to set up the new structure" >&2
-  }
-  ```
+- [x] 1.2 Add deprecation warning function ✓ (warn_deprecated_path in paths.sh)
 
-- [ ] 1.3 Add unit tests for path resolution
+- [x] 1.3 Add unit tests for path resolution ✓ (63 tests in test-paths.sh)
 
 ### Validation
 
-Path resolution correctly prefers new paths and warns on old.
+✓ Path resolution correctly prefers new paths and warns on old.
+✓ All 63 tests pass for paths.sh functions.
 
 ---
 
-## Phase 2: Update Cloud-Init Script
+## Phase 2: Update Cloud-Init Script — IN PROGRESS
 
 ### Tasks
 
-- [ ] 2.1 Update `cloud-init/create-cloud-init.sh`:
+- [x] 2.1 Update `cloud-init/create-cloud-init.sh` ✓
   ```bash
   source /mnt/urbalurbadisk/provision-host/uis/lib/uis-paths.sh
 
@@ -172,14 +166,14 @@ Generated cloud-init files work regardless of which paths are used.
 
 ---
 
-## Phase 3: Update Host Scripts
+## Phase 3: Update Host Scripts — IN PROGRESS
 
 ### Tasks
 
-- [ ] 3.1 Update Azure AKS scripts:
-  - `hosts/azure-aks/02-azure-aks-setup.sh`
-  - `hosts/install-azure-aks.sh`
-  - Source `uis-paths.sh` and use path functions
+- [x] 3.1 Update Azure AKS scripts:
+  - `hosts/azure-aks/02-azure-aks-setup.sh` ✓
+  - `hosts/install-azure-aks.sh` (pending)
+  - Source `paths.sh` and use path functions
 
 - [ ] 3.2 Update Azure MicroK8s scripts:
   - `hosts/azure-microk8s/01-azure-vm-create-redcross-v2.sh`
@@ -199,13 +193,13 @@ Host scripts work with new paths.
 
 ---
 
-## Phase 4: Update Networking Scripts
+## Phase 4: Update Networking Scripts — IN PROGRESS
 
 ### Tasks
 
-- [ ] 4.1 Update Tailscale script:
-  - `networking/tailscale/802-tailscale-tunnel-deploy.sh`
-  - Read Tailscale auth key using `get_tailscale_key()`
+- [x] 4.1 Update Tailscale script:
+  - `networking/tailscale/802-tailscale-tunnel-deploy.sh` ✓
+  - Sources paths.sh and checks both new and legacy paths
 
 - [ ] 4.2 Update Cloudflare scripts:
   - `networking/cloudflare/820-cloudflare-tunnel-setup.sh`
@@ -321,11 +315,14 @@ Container starts correctly with appropriate mounts.
 
 ---
 
-## Files to Create
+## Files Created/Modified
 
-- `provision-host/uis/lib/uis-paths.sh`
-- `provision-host/uis/tests/unit/test-uis-paths.sh`
-- `topsecret/DEPRECATED.md`
+**Phase 1 (Complete):**
+- `provision-host/uis/lib/paths.sh` ✓ Extended (not uis-paths.sh - reused existing library)
+- `provision-host/uis/tests/unit/test-paths.sh` ✓ Extended (63 tests)
+
+**Future Phases:**
+- `topsecret/DEPRECATED.md` (Phase 7)
 
 ## Files to Modify
 

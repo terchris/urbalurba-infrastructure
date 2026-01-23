@@ -13,9 +13,20 @@
 
 set -eo pipefail
 
-# Constants
-KUBERNETES_SECRETS_FILE="../topsecret/kubernetes/kubernetes-secrets.yml"
-SSH_PUBLIC_KEY_FILE="../secrets/id_rsa_ansible.pub"
+# Source centralized path library for backwards-compatible path resolution
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ -f "$SCRIPT_DIR/../provision-host/uis/lib/paths.sh" ]]; then
+    source "$SCRIPT_DIR/../provision-host/uis/lib/paths.sh"
+    # Use backwards-compatible path resolution
+    KUBERNETES_SECRETS_PATH=$(get_kubernetes_secrets_path)
+    KUBERNETES_SECRETS_FILE="$KUBERNETES_SECRETS_PATH/kubernetes-secrets.yml"
+    SSH_KEY_PATH=$(get_ssh_key_path)
+    SSH_PUBLIC_KEY_FILE="$SSH_KEY_PATH/id_rsa_ansible.pub"
+else
+    # Fallback to old hardcoded paths if paths.sh not available
+    KUBERNETES_SECRETS_FILE="../topsecret/kubernetes/kubernetes-secrets.yml"
+    SSH_PUBLIC_KEY_FILE="../secrets/id_rsa_ansible.pub"
+fi
 
 # Function to check if a file exists
 check_file_exists() {

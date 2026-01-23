@@ -50,6 +50,11 @@ fi
 
 source "$CONFIG_FILE"
 
+# Source centralized path library for backwards-compatible path resolution
+if [[ -f "/mnt/urbalurbadisk/provision-host/uis/lib/paths.sh" ]]; then
+    source "/mnt/urbalurbadisk/provision-host/uis/lib/paths.sh"
+fi
+
 # Function to wait for pod to be ready
 wait_for_pod() {
     local namespace="$1"
@@ -119,8 +124,13 @@ main() {
     
     # Step 4: Deploy secrets
     print_status "Checking for secrets configuration..."
-    
-    SECRETS_FILE="/mnt/urbalurbadisk/topsecret/kubernetes/kubernetes-secrets.yml"
+
+    # Use backwards-compatible path resolution
+    if type get_kubernetes_secrets_path &>/dev/null; then
+        SECRETS_FILE="$(get_kubernetes_secrets_path)/kubernetes-secrets.yml"
+    else
+        SECRETS_FILE="/mnt/urbalurbadisk/topsecret/kubernetes/kubernetes-secrets.yml"
+    fi
     if [[ -f "$SECRETS_FILE" ]]; then
         print_status "Applying kubernetes secrets..."
         kubectl apply -f "$SECRETS_FILE"
