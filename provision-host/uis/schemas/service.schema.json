@@ -1,0 +1,92 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "service.schema.json",
+  "title": "Infrastructure Service",
+  "description": "Schema for services in the Urbalurba Infrastructure Stack",
+  "type": "object",
+  "required": ["id", "name", "description", "category", "tags", "abstract", "website", "summary", "docs"],
+  "properties": {
+    "@type": {
+      "type": "string",
+      "const": "SoftwareApplication",
+      "description": "Schema.org type"
+    },
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for the service (lowercase, hyphenated)",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "name": {
+      "type": "string",
+      "description": "Display name of the service"
+    },
+    "description": {
+      "type": "string",
+      "description": "Brief description of the service (1-2 sentences)"
+    },
+    "category": {
+      "type": "string",
+      "description": "Reference to category ID in categories.json",
+      "pattern": "^[A-Z]+$"
+    },
+    "tags": {
+      "type": "array",
+      "description": "Keywords for search and filtering",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9-]+$"
+      },
+      "minItems": 1
+    },
+    "abstract": {
+      "type": "string",
+      "description": "Brief one-line description"
+    },
+    "logo": {
+      "type": "string",
+      "description": "Logo filename (SVG preferred, WebP fallback). Empty string if no logo available.",
+      "pattern": "^([a-z0-9-]+-logo\\.(svg|webp))?$"
+    },
+    "website": {
+      "type": "string",
+      "description": "Official project website URL",
+      "format": "uri"
+    },
+    "summary": {
+      "type": "string",
+      "description": "Detailed description of the service"
+    },
+    "docs": {
+      "type": "string",
+      "description": "Path to documentation within the site",
+      "pattern": "^/docs/"
+    },
+    "playbook": {
+      "type": "string",
+      "description": "Ansible playbook filename for installation",
+      "pattern": "^\\d{3}-[a-z0-9-]+\\.yml$"
+    },
+    "priority": {
+      "type": "integer",
+      "description": "Deployment order priority (lower = earlier)",
+      "minimum": 0
+    },
+    "checkCommand": {
+      "type": "string",
+      "description": "Shell command to verify service is running"
+    },
+    "removePlaybook": {
+      "type": "string",
+      "description": "Ansible playbook filename for removal",
+      "pattern": "^\\d{3}-[a-z0-9-]+\\.yml$"
+    },
+    "requires": {
+      "type": "array",
+      "description": "IDs of services this service depends on (hard dependencies)",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9-]+$"
+      }
+    }
+  }
+}

@@ -10,18 +10,29 @@
 
 set -euo pipefail
 
-# Paths
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
-WEBSITE_DATA="$PROJECT_ROOT/website/src/data"
-SCHEMA_DIR="$WEBSITE_DATA/schemas"
-
-# Colors
+# Colors (defined first for error messages)
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
+
+# Paths
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+
+# Detect data directory - container uses .temp/, host uses website/src/data
+if [[ -d "$PROJECT_ROOT/website/src/data" ]]; then
+    WEBSITE_DATA="$PROJECT_ROOT/website/src/data"
+    SCHEMA_DIR="$WEBSITE_DATA/schemas"
+elif [[ -d "$PROJECT_ROOT/.temp" ]]; then
+    WEBSITE_DATA="$PROJECT_ROOT/.temp"
+    # Schemas are in the UIS folder for container testing
+    SCHEMA_DIR="$SCRIPT_DIR/../schemas"
+else
+    echo -e "${RED}Error: Cannot find data directory (website/src/data or .temp)${NC}"
+    exit 1
+fi
 
 # Validation pairs: json_file:schema_file
 declare -a VALIDATIONS=(
@@ -151,13 +162,13 @@ run_validation() {
         if result=$(validate_json "$json_file" "$schema_file" 2>&1); then
             local count="${result#OK:}"
             echo -e "${GREEN}✓ PASS${NC} ($count items)"
-            ((passed++))
+            ((++passed))
         else
             local error_count="${result#FAIL:}"
             error_count="${error_count%%$'\n'*}"
             echo -e "${RED}✗ FAIL${NC} ($error_count errors)"
             echo "$result" | tail -n +2
-            ((failed++))
+            ((++failed))
         fi
     done
 

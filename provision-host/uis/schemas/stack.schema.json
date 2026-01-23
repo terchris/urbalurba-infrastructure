@@ -1,0 +1,89 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "stack.schema.json",
+  "title": "Service Stack",
+  "description": "Schema for service stacks in the Urbalurba Infrastructure Stack - groups of services that work together",
+  "type": "object",
+  "required": ["identifier", "name", "description", "category", "tags", "abstract", "summary", "docs", "components"],
+  "properties": {
+    "@type": {
+      "type": "string",
+      "const": "SoftwareSourceCode",
+      "description": "Schema.org type"
+    },
+    "identifier": {
+      "type": "string",
+      "description": "Unique identifier for the stack (lowercase, hyphenated)",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "name": {
+      "type": "string",
+      "description": "Display name of the stack"
+    },
+    "description": {
+      "type": "string",
+      "description": "Brief description of what the stack provides"
+    },
+    "category": {
+      "type": "string",
+      "description": "Reference to category ID",
+      "pattern": "^[A-Z]+$"
+    },
+    "tags": {
+      "type": "array",
+      "description": "Keywords for search and filtering",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9-]+$"
+      },
+      "minItems": 1
+    },
+    "abstract": {
+      "type": "string",
+      "description": "Brief one-line description of the stack"
+    },
+    "logo": {
+      "type": "string",
+      "description": "Logo filename (SVG or PNG) in static/img/stacks/",
+      "pattern": "^[a-z0-9-]+-logo\\.(svg|png|webp)$"
+    },
+    "summary": {
+      "type": "string",
+      "description": "Detailed description of the stack and its purpose"
+    },
+    "docs": {
+      "type": "string",
+      "description": "Path to stack documentation within the site",
+      "pattern": "^/docs/"
+    },
+    "components": {
+      "type": "array",
+      "description": "Services that make up this stack, in installation order",
+      "items": {
+        "type": "object",
+        "required": ["service", "position"],
+        "properties": {
+          "service": {
+            "type": "string",
+            "description": "Service identifier from services.json"
+          },
+          "position": {
+            "type": "integer",
+            "description": "Installation order (1 = first)",
+            "minimum": 1
+          },
+          "optional": {
+            "type": "boolean",
+            "description": "If true, this component is optional for the stack to function",
+            "default": false
+          },
+          "note": {
+            "type": "string",
+            "description": "Additional context about this component's role"
+          }
+        }
+      },
+      "minItems": 2
+    }
+  }
+}

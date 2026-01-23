@@ -62,7 +62,7 @@ run_test_level() {
 
     local test_count=0
     for test_script in "$test_dir"/test-*.sh; do
-        [[ -f "$test_script" ]] && ((test_count++))
+        [[ -f "$test_script" ]] && ((++test_count))
     done
 
     if [[ "$test_count" -eq 0 ]]; then
@@ -77,7 +77,7 @@ run_test_level() {
     for test_script in "$test_dir"/test-*.sh; do
         [[ -f "$test_script" ]] || continue
 
-        ((TOTAL_SCRIPTS++))
+        ((++TOTAL_SCRIPTS))
         local script_name
         script_name=$(basename "$test_script")
 
@@ -85,9 +85,9 @@ run_test_level() {
         echo -e "→ ${BOLD}$script_name${NC}"
 
         if bash "$test_script"; then
-            ((SCRIPTS_PASSED++))
+            ((++SCRIPTS_PASSED))
         else
-            ((SCRIPTS_FAILED++))
+            ((++SCRIPTS_FAILED))
             echo -e "${RED}✗ $script_name failed${NC}"
         fi
     done

@@ -43,3 +43,6 @@ CLAUDE.md
 
 # Generated kubernetes secrets (anywhere in repo)
 /topsecret/kubernetes/kubernetes-secrets.yml
+
+# Temp folder for container JSON generation testing
+.temp/

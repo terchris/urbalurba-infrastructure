@@ -41,6 +41,7 @@ check_dirs=(
     "$UIS_ROOT/lib"
     "$UIS_ROOT/manage"
     "$UIS_ROOT/services"
+    "$UIS_ROOT/tests"
 )
 
 # Pattern: ((identifier++)) - post-increment that returns old value

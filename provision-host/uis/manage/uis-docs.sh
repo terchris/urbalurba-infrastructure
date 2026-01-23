@@ -53,8 +53,8 @@ _detect_output_dir() {
         return 0
     fi
 
-    # Fallback
-    echo "./website/src/data"
+    # Fallback: temp folder for container testing (not committed)
+    echo "./.temp"
 }
 
 OUTPUT_DIR="${OUTPUT_DIR:-$(_detect_output_dir "${1:-}")}"

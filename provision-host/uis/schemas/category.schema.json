@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "category.schema.json",
+  "title": "Service Category",
+  "description": "Schema for service categories in the Urbalurba Infrastructure Stack",
+  "type": "object",
+  "required": ["id", "name", "order", "description", "icon"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for the category (uppercase)",
+      "pattern": "^[A-Z]+$"
+    },
+    "name": {
+      "type": "string",
+      "description": "Display name of the category"
+    },
+    "order": {
+      "type": "integer",
+      "description": "Sort order for display (0-based)",
+      "minimum": 0
+    },
+    "description": {
+      "type": "string",
+      "description": "Brief description of the category"
+    },
+    "icon": {
+      "type": "string",
+      "description": "Icon name for display (e.g., 'server', 'database', 'brain')",
+      "pattern": "^[a-z-]+$"
+    }
+  }
+}
