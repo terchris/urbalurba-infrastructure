@@ -1,5 +1,29 @@
 #!/bin/bash
 # filename: update-kubernetes-secrets-rancher.sh
+#
+# ============================================================================
+# DEPRECATED - This script is deprecated and will be removed in a future release
+# ============================================================================
+#
+# REPLACEMENT:
+#   The new UIS secrets system handles this automatically.
+#
+#   To apply secrets to a cluster:
+#     docker exec -it provision-host bash
+#     kubectl apply -f /mnt/urbalurbadisk/.uis.secrets/generated/kubernetes/kubernetes-secrets.yml
+#
+#   Or use the new location directly from your host:
+#     kubectl apply -f .uis.secrets/generated/kubernetes/kubernetes-secrets.yml
+#
+# MIGRATION:
+#   1. Run './uis' to set up the new secrets structure
+#   2. Your secrets will be in .uis.secrets/generated/kubernetes/
+#   3. The container automatically mounts this directory
+#
+# For more information, see: topsecret/DEPRECATED.md
+# ============================================================================
+#
+# ORIGINAL DESCRIPTION:
 # Script that pushes Kubernetes secrets to the specified context via the provision-host container
 #
 # This script performs the following actions:
@@ -20,8 +44,28 @@
 #   - Kubernetes secrets file located at ./kubernetes/kubernetes-secrets.yml
 #
 # Example usage:
-#   ./update-kubernetes-secrets-rancher.sh 
+#   ./update-kubernetes-secrets-rancher.sh
 #   ./update-kubernetes-secrets-rancher.sh rancher-desktop
+
+# Show deprecation warning
+echo ""
+echo "============================================================================"
+echo "WARNING: This script is DEPRECATED"
+echo "============================================================================"
+echo ""
+echo "Please use the new secrets location instead:"
+echo "  kubectl apply -f .uis.secrets/generated/kubernetes/kubernetes-secrets.yml"
+echo ""
+echo "Or from inside the provision-host container:"
+echo "  kubectl apply -f /mnt/urbalurbadisk/.uis.secrets/generated/kubernetes/kubernetes-secrets.yml"
+echo ""
+echo "Run './uis' to set up the new secrets structure."
+echo "See topsecret/DEPRECATED.md for migration details."
+echo ""
+echo "============================================================================"
+echo ""
+echo "Continuing with legacy behavior for backwards compatibility..."
+echo ""
 
 # Variables
 CONTAINER_NAME="provision-host"

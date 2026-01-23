@@ -236,5 +236,48 @@ else
     fail_test "Missing dynamic SSH key path"
 fi
 
+# ============================================================================
+# Test: Deprecated scripts have deprecation notices
+# ============================================================================
+
+print_test_section "Deprecation Notice Tests"
+
+DEPRECATED_SCRIPTS=(
+    "topsecret/update-kubernetes-secrets-rancher.sh"
+    "topsecret/kubeconf-copy2local.sh"
+    "topsecret/copy-secrets2host.sh"
+)
+
+for script in "${DEPRECATED_SCRIPTS[@]}"; do
+    start_test "$script has DEPRECATED header"
+    if [[ -f "$REPO_ROOT/$script" ]]; then
+        if grep -q "DEPRECATED" "$REPO_ROOT/$script"; then
+            pass_test
+        else
+            fail_test "Missing DEPRECATED notice"
+        fi
+    else
+        skip_test "Script not found"
+    fi
+done
+
+start_test "topsecret/DEPRECATED.md exists"
+if [[ -f "$REPO_ROOT/topsecret/DEPRECATED.md" ]]; then
+    pass_test
+else
+    fail_test "DEPRECATED.md not found"
+fi
+
+start_test "DEPRECATED.md explains migration"
+if [[ -f "$REPO_ROOT/topsecret/DEPRECATED.md" ]]; then
+    if grep -q "Migration Guide" "$REPO_ROOT/topsecret/DEPRECATED.md"; then
+        pass_test
+    else
+        fail_test "Missing migration guide"
+    fi
+else
+    skip_test "File not found"
+fi
+
 # Print summary
 print_summary

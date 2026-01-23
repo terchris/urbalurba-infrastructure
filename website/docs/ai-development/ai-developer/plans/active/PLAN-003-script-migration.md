@@ -250,33 +250,37 @@ The investigation identified 24 scripts that reference the old paths:
 
 ---
 
-## Phase 7: Deprecate topsecret Scripts
+## Phase 7: Deprecate topsecret Scripts — ✅ DONE
 
 Mark scripts in `topsecret/` as deprecated with clear alternatives.
 
 ### Tasks
 
-- [ ] 7.1 Add deprecation notice to `topsecret/update-kubernetes-secrets-rancher.sh`:
-  ```bash
-  #!/bin/bash
-  echo "⚠️  DEPRECATED: This script is deprecated."
-  echo "   Use './uis secrets generate' instead."
-  echo ""
-  echo "   To migrate, run './uis' to set up the new structure."
-  exit 1
-  ```
+- [x] 7.1 Add deprecation notice to `topsecret/update-kubernetes-secrets-rancher.sh` ✓
+  - Header explains script is deprecated
+  - Shows replacement: `kubectl apply -f .uis.secrets/generated/kubernetes/kubernetes-secrets.yml`
+  - Runtime warning displayed before executing legacy behavior
 
-- [ ] 7.2 Add deprecation notice to `topsecret/kubeconf-copy2local.sh`:
-  - Point to new kubeconfig location
+- [x] 7.2 Add deprecation notice to `topsecret/kubeconf-copy2local.sh` ✓
+  - Explains kubeconfig is now auto-managed via container mounts
+  - No manual copying needed
 
-- [ ] 7.3 Add deprecation notice to `topsecret/copy-secrets2host.sh`:
-  - This functionality now handled by container mounts
+- [x] 7.3 Add deprecation notice to `topsecret/copy-secrets2host.sh` ✓
+  - Explains .uis.secrets/ is mounted directly
+  - Changes sync automatically, no copying needed
 
-- [ ] 7.4 Create `topsecret/DEPRECATED.md` explaining migration
+- [x] 7.4 Create `topsecret/DEPRECATED.md` explaining migration ✓
+  - Full migration guide from old to new system
+  - Script replacement table
+  - New directory structure documentation
+  - Backwards compatibility explanation
 
 ### Validation
 
-Deprecated scripts show clear messages and alternatives.
+✓ All 3 deprecated scripts have DEPRECATED headers
+✓ All 3 scripts show runtime deprecation warnings
+✓ DEPRECATED.md exists with migration guide
+✓ Tests verify deprecation notices (5 new tests)
 
 ---
 
