@@ -17,6 +17,7 @@ LIB_DIR="$UIS_DIR/lib"
 source "$LIB_DIR/logging.sh"
 source "$LIB_DIR/utilities.sh"
 source "$LIB_DIR/categories.sh"
+source "$LIB_DIR/stacks.sh"
 source "$LIB_DIR/service-scanner.sh"
 source "$LIB_DIR/first-run.sh"
 source "$LIB_DIR/service-deployment.sh"
@@ -50,11 +51,18 @@ Service Discovery:
   list                    List available services with status
   status                  Show deployed services health
   categories              List service categories
+  stacks                  List service stacks
   cluster types           List available cluster types
 
 Service Deployment:
   deploy [service]        Deploy all enabled services, or specific service
   remove <service>        Remove a specific service
+
+Stack Deployment:
+  stack list              List available service stacks
+  stack info <stack>      Show stack details and components
+  stack install <stack>   Install all services in a stack
+  stack remove <stack>    Remove all services in a stack
 
 Configuration:
   enable <service>        Add service to enabled-services.conf
@@ -86,6 +94,8 @@ Examples:
   uis list                # Show all available services
   uis enable prometheus   # Enable prometheus
   uis deploy              # Deploy all enabled services
+  uis stack list          # Show available stacks
+  uis stack install observability  # Install full observability stack
   uis secrets init        # Initialize secrets configuration
   uis secrets status      # Show what's configured
   uis tools list          # Show available tools
@@ -323,7 +333,7 @@ cmd_list_enabled() {
 
     while IFS= read -r service_id; do
         [[ -z "$service_id" ]] && continue
-        ((count++))
+        ((++count))
 
         script=$(find_service_script "$service_id")
         local name="$service_id"
@@ -349,7 +359,7 @@ cmd_list_enabled() {
         fi
 
         printf "%-15s %-25s %s\n" "$service_id" "${name:0:25}" "$deployed"
-    done < <(read_enabled_services)
+    done < <(list_enabled_services)
 
     echo ""
     if [[ $count -eq 0 ]]; then
@@ -409,6 +419,214 @@ cmd_tools_install() {
     fi
 
     install_tool "$tool_id"
+}
+
+# ============================================================
+# Stack Commands
+# ============================================================
+
+cmd_stack() {
+    local subcmd="${1:-list}"
+    shift || true
+
+    case "$subcmd" in
+        list|ls)
+            cmd_stack_list
+            ;;
+        info)
+            cmd_stack_info "$@"
+            ;;
+        install)
+            cmd_stack_install "$@"
+            ;;
+        remove|rm)
+            cmd_stack_remove "$@"
+            ;;
+        *)
+            log_error "Unknown stack subcommand: $subcmd"
+            echo "Usage: uis stack [list|info|install|remove] <stack>"
+            exit "$EXIT_GENERAL_ERROR"
+            ;;
+    esac
+}
+
+cmd_stack_list() {
+    print_section "Available Service Stacks"
+    print_stacks_table
+    echo ""
+    echo "Use 'uis stack info <stack>' for details"
+    echo "Use 'uis stack install <stack>' to install all services in a stack"
+}
+
+cmd_stack_info() {
+    local stack_id="${1:-}"
+
+    if [[ -z "$stack_id" ]]; then
+        log_error "Usage: uis stack info <stack>"
+        exit "$EXIT_GENERAL_ERROR"
+    fi
+
+    print_stack_info "$stack_id"
+}
+
+cmd_stack_install() {
+    local stack_id="${1:-}"
+    local skip_optional=false
+
+    # Parse args
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --skip-optional) skip_optional=true; shift ;;
+            -*) log_error "Unknown option: $1"; exit "$EXIT_GENERAL_ERROR" ;;
+            *) stack_id="$1"; shift ;;
+        esac
+    done
+
+    if [[ -z "$stack_id" ]]; then
+        log_error "Usage: uis stack install <stack> [--skip-optional]"
+        exit "$EXIT_GENERAL_ERROR"
+    fi
+
+    if ! is_valid_stack "$stack_id"; then
+        log_error "Unknown stack: $stack_id"
+        log_info "Run 'uis stack list' to see available stacks"
+        exit "$EXIT_CONFIG_ERROR"
+    fi
+
+    local stack_name
+    stack_name=$(get_stack_name "$stack_id")
+    print_section "Installing Stack: $stack_name"
+
+    # Get services list
+    local services optional
+    services=$(get_stack_services_list "$stack_id")
+    optional=$(get_stack_optional_services "$stack_id")
+
+    log_info "Services to install:"
+    local pos=1
+    for service in $services; do
+        local marker=""
+        if is_optional_service "$stack_id" "$service"; then
+            if [[ "$skip_optional" == "true" ]]; then
+                marker=" (optional - SKIPPING)"
+            else
+                marker=" (optional)"
+            fi
+        fi
+        echo "  $pos. $service$marker"
+        ((++pos))
+    done
+    echo ""
+
+    # Install each service in order
+    local failed_services=""
+    for service in $services; do
+        # Skip optional services if requested
+        if [[ "$skip_optional" == "true" ]] && is_optional_service "$stack_id" "$service"; then
+            log_info "Skipping optional service: $service"
+            continue
+        fi
+
+        log_info "Installing service: $service"
+
+        # Check if service exists
+        local script
+        script=$(find_service_script "$service")
+        if [[ -z "$script" ]]; then
+            log_warn "Service '$service' not found, skipping"
+            failed_services="$failed_services $service"
+            continue
+        fi
+
+        # Deploy the service
+        if deploy_single_service "$service"; then
+            # Auto-enable
+            if type enable_service &>/dev/null && ! is_service_enabled "$service" 2>/dev/null; then
+                enable_service "$service" 2>/dev/null || true
+            fi
+        else
+            log_warn "Failed to deploy $service"
+            failed_services="$failed_services $service"
+        fi
+    done
+
+    echo ""
+    if [[ -z "$failed_services" ]]; then
+        log_success "Stack '$stack_name' installed successfully"
+    else
+        log_warn "Stack '$stack_name' installed with warnings"
+        log_warn "Failed services:$failed_services"
+    fi
+}
+
+cmd_stack_remove() {
+    local stack_id="${1:-}"
+
+    if [[ -z "$stack_id" ]]; then
+        log_error "Usage: uis stack remove <stack>"
+        exit "$EXIT_GENERAL_ERROR"
+    fi
+
+    if ! is_valid_stack "$stack_id"; then
+        log_error "Unknown stack: $stack_id"
+        log_info "Run 'uis stack list' to see available stacks"
+        exit "$EXIT_CONFIG_ERROR"
+    fi
+
+    local stack_name
+    stack_name=$(get_stack_name "$stack_id")
+    print_section "Removing Stack: $stack_name"
+
+    # Get services list (reverse order for removal)
+    local services
+    services=$(get_stack_services_list "$stack_id")
+
+    # Reverse the list for removal (last installed = first removed)
+    local reversed=""
+    for service in $services; do
+        reversed="$service $reversed"
+    done
+
+    log_info "Services to remove (reverse order):"
+    for service in $reversed; do
+        echo "  - $service"
+    done
+    echo ""
+
+    # Remove each service
+    local failed_services=""
+    for service in $reversed; do
+        log_info "Removing service: $service"
+
+        local script
+        script=$(find_service_script "$service")
+        if [[ -z "$script" ]]; then
+            log_warn "Service '$service' not found, skipping"
+            continue
+        fi
+
+        if remove_single_service "$service"; then
+            # Auto-disable
+            if type disable_service &>/dev/null && is_service_enabled "$service" 2>/dev/null; then
+                disable_service "$service" 2>/dev/null || true
+            fi
+        else
+            log_warn "Failed to remove $service"
+            failed_services="$failed_services $service"
+        fi
+    done
+
+    echo ""
+    if [[ -z "$failed_services" ]]; then
+        log_success "Stack '$stack_name' removed successfully"
+    else
+        log_warn "Stack '$stack_name' removed with warnings"
+        log_warn "Failed to remove:$failed_services"
+    fi
+}
+
+cmd_stacks() {
+    cmd_stack_list
 }
 
 # ============================================================
@@ -809,6 +1027,12 @@ main() {
             ;;
         categories|cats)
             cmd_categories
+            ;;
+        stacks)
+            cmd_stacks
+            ;;
+        stack)
+            cmd_stack "$@"
             ;;
         deploy)
             cmd_deploy "$@"

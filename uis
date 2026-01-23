@@ -10,6 +10,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONTAINER_NAME="uis-provision-host"
 IMAGE="${UIS_IMAGE:-ghcr.io/terchris/uis-provision-host:latest}"
+KUBECONFIG_DIR="${UIS_KUBECONFIG_DIR:-$HOME/.kube}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -54,6 +55,21 @@ check_image() {
     exit 1
 }
 
+# Create config directories on first run
+init_config_dirs() {
+    # Create .uis.extend if it doesn't exist
+    if [ ! -d "$SCRIPT_DIR/.uis.extend" ]; then
+        log_info "Creating .uis.extend/ configuration directory..."
+        mkdir -p "$SCRIPT_DIR/.uis.extend"
+    fi
+
+    # Create .uis.secrets if it doesn't exist
+    if [ ! -d "$SCRIPT_DIR/.uis.secrets" ]; then
+        log_info "Creating .uis.secrets/ directory..."
+        mkdir -p "$SCRIPT_DIR/.uis.secrets"
+    fi
+}
+
 # Start container if not running
 start_container() {
     if docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
@@ -62,19 +78,34 @@ start_container() {
 
     check_topsecret
     check_image
+    init_config_dirs
 
     log_info "Starting UIS container..."
 
     # Remove old container if exists
     docker rm -f "$CONTAINER_NAME" 2>/dev/null || true
 
+    # Build volume mount arguments
+    local VOLUME_ARGS=(
+        -v "$SCRIPT_DIR/topsecret:/mnt/urbalurbadisk/topsecret"
+        -v "$SCRIPT_DIR/.uis.extend:/mnt/urbalurbadisk/.uis.extend"
+        -v "$SCRIPT_DIR/.uis.secrets:/mnt/urbalurbadisk/.uis.secrets"
+    )
+
+    # Add kubeconfig mount if it exists
+    if [ -d "$KUBECONFIG_DIR" ]; then
+        VOLUME_ARGS+=(-v "$KUBECONFIG_DIR:/home/ansible/.kube:ro")
+    else
+        log_warn "Kubeconfig directory not found: $KUBECONFIG_DIR"
+        log_warn "Kubernetes commands will not work until kubeconfig is configured"
+    fi
+
     # Start with host network (so 127.0.0.1 in kubeconfig works)
     # This matches how the original provision-host container was configured
     docker run -d --name "$CONTAINER_NAME" \
         --network host \
         --privileged \
-        -v "$SCRIPT_DIR/topsecret:/mnt/urbalurbadisk/topsecret" \
-        -v "$HOME/.kube:/home/ansible/.kube:ro" \
+        "${VOLUME_ARGS[@]}" \
         "$IMAGE"
 
     # Wait for container to be ready
@@ -124,7 +155,8 @@ show_usage() {
     echo "  ./uis exec kubectl get pods    # Run kubectl command"
     echo ""
     echo "Environment variables:"
-    echo "  UIS_IMAGE   Override the container image (default: ghcr.io/terchris/uis-provision-host:latest)"
+    echo "  UIS_IMAGE          Override the container image (default: ghcr.io/terchris/uis-provision-host:latest)"
+    echo "  UIS_KUBECONFIG_DIR Override kubeconfig directory (default: \$HOME/.kube)"
 }
 
 # Main command handler

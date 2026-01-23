@@ -28,12 +28,16 @@ This epic is split into 4 implementation plans. Execute them in order:
 | [PLAN-004B: Menu & Secrets](../completed/PLAN-004B-menu-secrets.md) | 5-6 | TUI menu, init wizard, secrets | ✅ Complete |
 | [PLAN-004C: Distribution](../completed/PLAN-004C-distribution.md) | 7-8 | Install script, cross-platform | ✅ Complete |
 | [PLAN-004D: Website & Testing](../completed/PLAN-004D-website-testing.md) | 9-10 | JSON generation, test framework | ✅ Complete |
+| [PLAN-004E: JSON Schema Validation](../completed/PLAN-004E-json-schema-validation.md) | - | Schema validation framework | ✅ Complete |
+| [PLAN-004F: Build and Test](../active/PLAN-004F-build-and-test.md) | - | Build container, run tests | 🚧 In Progress |
 
 **Delivery Summary**:
 - **004A**: `uis list`, `uis deploy`, `uis enable/disable`, first-run initialization
 - **004B**: `uis setup` (TUI), `uis init`, `uis secrets`, `uis tools`
 - **004C**: `curl ... | bash` install, Windows PowerShell support
 - **004D**: `services.json`, test framework, CI/CD
+- **004E**: Schema validation script, schema alignment for all JSON files
+- **004F**: Container build, end-to-end testing, validation
 
 **Note**: 004C and 004D can be done in parallel after 004A is complete.
 

@@ -4,7 +4,7 @@
   "title": "Service Stack",
   "description": "Schema for service stacks in the Urbalurba Infrastructure Stack - groups of services that work together",
   "type": "object",
-  "required": ["identifier", "name", "description", "category", "components"],
+  "required": ["identifier", "name", "description", "category", "tags", "abstract", "summary", "docs", "components"],
   "properties": {
     "@type": {
       "type": "string",
@@ -29,10 +29,32 @@
       "description": "Reference to category ID",
       "pattern": "^[A-Z]+$"
     },
+    "tags": {
+      "type": "array",
+      "description": "Keywords for search and filtering",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9-]+$"
+      },
+      "minItems": 1
+    },
+    "abstract": {
+      "type": "string",
+      "description": "Brief one-line description of the stack"
+    },
     "logo": {
       "type": "string",
       "description": "Logo filename (SVG or PNG) in static/img/stacks/",
       "pattern": "^[a-z0-9-]+-logo\\.(svg|png|webp)$"
+    },
+    "summary": {
+      "type": "string",
+      "description": "Detailed description of the stack and its purpose"
+    },
+    "docs": {
+      "type": "string",
+      "description": "Path to stack documentation within the site",
+      "pattern": "^/docs/"
     },
     "components": {
       "type": "array",
@@ -62,10 +84,6 @@
         }
       },
       "minItems": 2
-    },
-    "summary": {
-      "type": "string",
-      "description": "Detailed description of the stack and its purpose"
     }
   }
 }

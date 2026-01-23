@@ -10,6 +10,7 @@
 # Outputs:
 #   - services.json   - All services with metadata
 #   - categories.json - Category definitions
+#   - stacks.json     - Service stacks (groups of related services)
 #   - tools.json      - Optional CLI tools
 #
 # Environment:
@@ -26,6 +27,7 @@ TOOLS_DIR="$UIS_DIR/tools"
 # Source libraries
 source "$LIB_DIR/logging.sh"
 source "$LIB_DIR/categories.sh"
+source "$LIB_DIR/stacks.sh"
 source "$LIB_DIR/service-scanner.sh"
 
 # Default output directory
@@ -91,7 +93,9 @@ generate_services_json() {
         [[ "$(basename "$script")" == _* ]] && continue
 
         # Extract metadata by parsing the file
-        local id="" name="" desc="" cat="" abstract="" logo="" website="" playbook="" manifest="" priority=""
+        local id="" name="" desc="" cat="" abstract="" logo="" website=""
+        local playbook="" priority="" tags="" summary="" docs=""
+        local check_command="" remove_playbook="" requires=""
 
         while IFS= read -r line; do
             case "$line" in
@@ -135,15 +139,40 @@ generate_services_json() {
                     playbook="${playbook//\"/}"
                     playbook="${playbook//\'/}"
                     ;;
-                SCRIPT_MANIFEST=*)
-                    manifest="${line#SCRIPT_MANIFEST=}"
-                    manifest="${manifest//\"/}"
-                    manifest="${manifest//\'/}"
-                    ;;
                 SCRIPT_PRIORITY=*)
                     priority="${line#SCRIPT_PRIORITY=}"
                     priority="${priority//\"/}"
                     priority="${priority//\'/}"
+                    ;;
+                SCRIPT_TAGS=*)
+                    tags="${line#SCRIPT_TAGS=}"
+                    tags="${tags//\"/}"
+                    tags="${tags//\'/}"
+                    ;;
+                SCRIPT_SUMMARY=*)
+                    summary="${line#SCRIPT_SUMMARY=}"
+                    summary="${summary//\"/}"
+                    summary="${summary//\'/}"
+                    ;;
+                SCRIPT_DOCS=*)
+                    docs="${line#SCRIPT_DOCS=}"
+                    docs="${docs//\"/}"
+                    docs="${docs//\'/}"
+                    ;;
+                SCRIPT_CHECK_COMMAND=*)
+                    check_command="${line#SCRIPT_CHECK_COMMAND=}"
+                    check_command="${check_command//\"/}"
+                    check_command="${check_command//\'/}"
+                    ;;
+                SCRIPT_REMOVE_PLAYBOOK=*)
+                    remove_playbook="${line#SCRIPT_REMOVE_PLAYBOOK=}"
+                    remove_playbook="${remove_playbook//\"/}"
+                    remove_playbook="${remove_playbook//\'/}"
+                    ;;
+                SCRIPT_REQUIRES=*)
+                    requires="${line#SCRIPT_REQUIRES=}"
+                    requires="${requires//\"/}"
+                    requires="${requires//\'/}"
                     ;;
             esac
         done < "$script"
@@ -159,23 +188,69 @@ generate_services_json() {
         name=$(json_escape "${name:-$id}")
         desc=$(json_escape "${desc:-}")
         abstract=$(json_escape "${abstract:-$desc}")
+        summary=$(json_escape "${summary:-}")
+        check_command=$(json_escape "${check_command:-}")
 
-        # Output JSON object
+        # Convert comma-separated tags to JSON array
+        local tags_json="[]"
+        if [[ -n "$tags" ]]; then
+            tags_json="["
+            local tag_first=true
+            IFS=',' read -ra tag_array <<< "$tags"
+            for tag in "${tag_array[@]}"; do
+                tag="${tag## }"  # trim leading space
+                tag="${tag%% }"  # trim trailing space
+                [[ "$tag_first" != "true" ]] && tags_json+=", "
+                tag_first=false
+                tags_json+="\"$tag\""
+            done
+            tags_json+="]"
+        fi
+
+        # Convert space-separated requires to JSON array
+        local requires_json="[]"
+        if [[ -n "$requires" ]]; then
+            requires_json="["
+            local req_first=true
+            # Use space as delimiter (SCRIPT_REQUIRES uses space-separated values)
+            read -ra req_array <<< "$requires"
+            for req in "${req_array[@]}"; do
+                req="${req## }"  # trim leading space
+                req="${req%% }"  # trim trailing space
+                [[ -z "$req" ]] && continue
+                [[ "$req_first" != "true" ]] && requires_json+=", "
+                req_first=false
+                requires_json+="\"$req\""
+            done
+            requires_json+="]"
+        fi
+
+        # Start JSON object
         cat >> "$temp_file" <<EOF
   {
+    "@type": "SoftwareApplication",
     "id": "$id",
-    "type": "service",
     "name": "$name",
     "description": "$desc",
     "category": "${cat:-CORE}",
+    "tags": $tags_json,
     "abstract": "$abstract",
     "logo": "${logo:-}",
-    "website": "${website:-}",
-    "playbook": "${playbook:-}",
-    "manifest": "${manifest:-}",
-    "priority": ${priority:-50}
-  }
+    "website": "${website:-}"
 EOF
+
+        # Add optional fields if present
+        [[ -n "$summary" ]] && echo "    ,\"summary\": \"$summary\"" >> "$temp_file"
+        [[ -n "$docs" ]] && echo "    ,\"docs\": \"$docs\"" >> "$temp_file"
+        [[ -n "$playbook" ]] && echo "    ,\"playbook\": \"$playbook\"" >> "$temp_file"
+        [[ -n "$priority" ]] && echo "    ,\"priority\": $priority" >> "$temp_file"
+        [[ -n "$check_command" ]] && echo "    ,\"checkCommand\": \"$check_command\"" >> "$temp_file"
+        [[ -n "$remove_playbook" ]] && echo "    ,\"removePlaybook\": \"$remove_playbook\"" >> "$temp_file"
+        [[ -n "$requires" ]] && echo "    ,\"requires\": $requires_json" >> "$temp_file"
+
+        # Close JSON object
+        echo "  }" >> "$temp_file"
+
     done < <(find "$SERVICES_DIR" -name "*.sh" -type f -print0 2>/dev/null | sort -z)
 
     echo ']}' >> "$temp_file"
@@ -197,6 +272,19 @@ generate_categories_json() {
     local count
     count=$(grep -c '"id":' "$output_file" || echo 0)
     log_success "Generated $output_file ($count categories)"
+}
+
+# Generate stacks.json from stacks.sh definitions
+generate_stacks_json() {
+    local output_file="$OUTPUT_DIR/stacks.json"
+    log_info "Generating stacks.json..."
+
+    # Use the function from stacks.sh
+    generate_stacks_json_internal > "$output_file"
+
+    local count
+    count=$(grep -c '"identifier":' "$output_file" || echo 0)
+    log_success "Generated $output_file ($count stacks)"
 }
 
 # Generate tools.json from tool scripts
@@ -227,8 +315,8 @@ generate_tools_json() {
 
         cat >> "$temp_file" <<EOF
   {
+    "@type": "SoftwareApplication",
     "id": "$id",
-    "type": "tool",
     "name": "$name",
     "description": "$desc",
     "builtin": true
@@ -290,11 +378,11 @@ EOF
 
         cat >> "$temp_file" <<EOF
   {
+    "@type": "SoftwareApplication",
     "id": "$id",
-    "type": "tool",
     "name": "$name",
     "description": "$desc",
-    "category": "${cat:-TOOLS}",
+    "category": "${cat:-CLOUD_TOOLS}",
     "size": "${size:-unknown}",
     "website": "${website:-}",
     "builtin": false
@@ -345,6 +433,7 @@ main() {
     # Generate JSON files
     generate_services_json
     generate_categories_json
+    generate_stacks_json
     generate_tools_json
 
     echo ""
@@ -353,6 +442,7 @@ main() {
     local all_valid=true
     validate_json "$OUTPUT_DIR/services.json" "services.json" || all_valid=false
     validate_json "$OUTPUT_DIR/categories.json" "categories.json" || all_valid=false
+    validate_json "$OUTPUT_DIR/stacks.json" "stacks.json" || all_valid=false
     validate_json "$OUTPUT_DIR/tools.json" "tools.json" || all_valid=false
 
     echo ""

@@ -150,7 +150,7 @@ generate_categories_json_internal() {
       "icon": "$icon"
     }
 EOF
-        ((order++))
+        ((++order))
     done
 
     echo ']}'

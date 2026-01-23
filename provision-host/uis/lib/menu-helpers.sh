@@ -128,7 +128,7 @@ show_menu() {
             tags+=("$1")
             echo "  $i. $1 - $2"
             shift 2
-            ((i++))
+            ((++i))
         done
         echo ""
         read -p "Choice [1-$((i-1))]: " choice
@@ -172,7 +172,7 @@ show_checklist() {
             [[ "$state" == "on" ]] && marker="[*]"
             echo "  $i. $marker $1 - $2"
             shift 3
-            ((i++))
+            ((++i))
         done
         echo ""
         echo "Enter numbers to toggle (space-separated), then press Enter:"

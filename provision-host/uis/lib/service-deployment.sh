@@ -62,7 +62,7 @@ deploy_enabled_services() {
     local failed=0
     for service_id in "${services[@]}"; do
         if ! deploy_single_service "$service_id"; then
-            ((failed++))
+            ((++failed))
             log_error "Failed to deploy $service_id"
             return 1  # Stop on first failure per design
         fi

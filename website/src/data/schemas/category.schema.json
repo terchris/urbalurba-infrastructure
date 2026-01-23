@@ -4,13 +4,8 @@
   "title": "Service Category",
   "description": "Schema for service categories in the Urbalurba Infrastructure Stack",
   "type": "object",
-  "required": ["id", "name", "order", "tags", "abstract", "summary", "logo", "manifest_range"],
+  "required": ["id", "name", "order", "description", "icon"],
   "properties": {
-    "@type": {
-      "type": "string",
-      "const": "CategoryCode",
-      "description": "Schema.org type"
-    },
     "id": {
       "type": "string",
       "description": "Unique identifier for the category (uppercase)",
@@ -22,35 +17,17 @@
     },
     "order": {
       "type": "integer",
-      "description": "Sort order for display",
-      "minimum": 1
+      "description": "Sort order for display (0-based)",
+      "minimum": 0
     },
-    "tags": {
-      "type": "array",
-      "description": "Keywords for search and filtering",
-      "items": {
-        "type": "string",
-        "pattern": "^[a-z0-9-]+$"
-      },
-      "minItems": 1
-    },
-    "abstract": {
+    "description": {
       "type": "string",
-      "description": "Brief one-line description"
+      "description": "Brief description of the category"
     },
-    "summary": {
+    "icon": {
       "type": "string",
-      "description": "Detailed description of the category"
-    },
-    "logo": {
-      "type": "string",
-      "description": "Logo filename (SVG preferred, WebP fallback)",
-      "pattern": "^[a-z-]+-logo\\.(svg|webp)$"
-    },
-    "manifest_range": {
-      "type": "string",
-      "description": "Kubernetes manifest number range for this category",
-      "pattern": "^\\d{3}-\\d{3}$"
+      "description": "Icon name for display (e.g., 'server', 'database', 'brain')",
+      "pattern": "^[a-z-]+$"
     }
   }
 }

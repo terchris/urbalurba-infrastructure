@@ -4,7 +4,7 @@
   "title": "Infrastructure Service",
   "description": "Schema for services in the Urbalurba Infrastructure Stack",
   "type": "object",
-  "required": ["id", "name", "description", "category", "tags", "abstract", "logo", "website", "summary", "manifest", "docs"],
+  "required": ["id", "name", "description", "category", "tags", "abstract", "website", "summary", "docs"],
   "properties": {
     "@type": {
       "type": "string",
@@ -44,8 +44,8 @@
     },
     "logo": {
       "type": "string",
-      "description": "Logo filename (SVG preferred, WebP fallback)",
-      "pattern": "^[a-z0-9-]+-logo\\.(svg|webp)$"
+      "description": "Logo filename (SVG preferred, WebP fallback). Empty string if no logo available.",
+      "pattern": "^([a-z0-9-]+-logo\\.(svg|webp))?$"
     },
     "website": {
       "type": "string",
@@ -56,23 +56,29 @@
       "type": "string",
       "description": "Detailed description of the service"
     },
-    "manifest": {
-      "type": "string",
-      "description": "Main Kubernetes manifest filename",
-      "pattern": "^\\d{3}-[a-z0-9-]+\\.yaml$"
-    },
     "docs": {
       "type": "string",
       "description": "Path to documentation within the site",
       "pattern": "^/docs/"
     },
-    "related": {
-      "type": "array",
-      "description": "IDs of related services (informational)",
-      "items": {
-        "type": "string",
-        "pattern": "^[a-z0-9-]+$"
-      }
+    "playbook": {
+      "type": "string",
+      "description": "Ansible playbook filename for installation",
+      "pattern": "^\\d{3}-[a-z0-9-]+\\.yml$"
+    },
+    "priority": {
+      "type": "integer",
+      "description": "Deployment order priority (lower = earlier)",
+      "minimum": 0
+    },
+    "checkCommand": {
+      "type": "string",
+      "description": "Shell command to verify service is running"
+    },
+    "removePlaybook": {
+      "type": "string",
+      "description": "Ansible playbook filename for removal",
+      "pattern": "^\\d{3}-[a-z0-9-]+\\.yml$"
     },
     "requires": {
       "type": "array",
