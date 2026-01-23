@@ -1,0 +1,18 @@
+
+╔════════════════════════════════════════════════════════════════════╗
+║         Welcome to UIS (Urbalurba Infrastructure System)           ║
+╚════════════════════════════════════════════════════════════════════╝
+
+Created:
+  .uis.extend/           Your configuration (safe to commit)
+  .uis.secrets/          Your secrets (gitignored)
+
+Quick Start:
+  ./uis deploy           Deploy services to local Rancher Desktop
+  ./uis host add         Add a new Kubernetes cluster
+  ./uis secrets status   Check your secrets configuration
+  ./uis help             Show all commands
+
+Documentation: https://uis.sovereignsky.no/docs
+
+────────────────────────────────────────────────────────────────────

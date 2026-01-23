@@ -1,0 +1,104 @@
+#cloud-config
+
+# ====================================================================
+# File: URB_CLOUD_INIT_FILE
+# Cloud-init Configuration for Provisioning Host with Tailscale
+# ====================================================================
+#
+# This file was automatically created on: URB_CREATION_DATE
+# using the template file: URB_TEMPLATE_FILE
+#
+# Note: The script replaces variables starting with URB_ in the template
+#
+# ====================================================================
+
+# Variables
+ssh_authorized_key: &ssh_key "URB_SSH_AUTHORIZED_KEY_VARIABLE"
+the_hostname: &hostname "URB_HOSTNAME_VARIABLE"
+the_timezone: &timezone "URB_TIMEZONE_VARIABLE"
+tailscale_authkey: &tailscale_key "URB_TAILSCALE_SECRET_VARIABLE"
+
+# System configuration
+hostname: *hostname
+manage_etc_hosts: true
+timezone: *timezone
+
+# User configuration
+users:
+  - name: ansible
+    groups: [sudo]
+    shell: /bin/bash
+    sudo: ['ALL=(ALL) NOPASSWD:ALL']
+    ssh_authorized_keys:
+      - *ssh_key
+    create_home: true
+
+# Package management
+package_update: true
+package_upgrade: true
+
+# APT configuration
+apt:
+  conf: |
+    Acquire {
+      Check-Date "false";
+    };
+
+# SSH Configuration
+ssh:
+  install-server: true
+  permit_root_login: false
+ssh_pwauth: false
+
+# Write files that sets up path stuff for the ansible user
+write_files:
+  # Global PATH configuration
+  - path: /etc/profile.d/ansible_path.sh
+    content: |
+      # This file sets a consistent PATH for all users, including the ansible user
+      # It ensures that all necessary directories are included in the PATH
+      export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
+    permissions: '0644'
+
+  # Ansible user's bash profile
+  - path: /home/ansible/.bash_profile
+    content: |
+      # This is the ansible user's personal bash profile
+      # It sources the global profile and the user's .bashrc file
+
+      # Source global definitions
+      if [ -f /etc/profile ]; then
+          . /etc/profile
+      fi
+
+      # Source user's .bashrc if it exists
+      if [ -f ~/.bashrc ]; then
+          . ~/.bashrc
+      fi
+    owner: ansible:ansible
+    permissions: '0644'
+
+
+
+# Run commands
+runcmd:
+  # Set correct permissions for ansible user's home directory
+  - 'sudo chown -R ansible:ansible /home/ansible'
+  - 'sudo chmod 750 /home/ansible'
+  
+  # Ensure .ssh directory exists with correct permissions
+  - 'sudo mkdir -p /home/ansible/.ssh'
+  - 'sudo chown -R ansible:ansible /home/ansible/.ssh'
+  - 'sudo chmod 700 /home/ansible/.ssh'
+  
+  - 'sudo chown ansible:ansible /home/ansible/.bash_profile'                      # Ensure correct ownership
+  - 'echo "source /etc/profile.d/ansible_path.sh" | sudo tee -a /etc/bash.bashrc' # Source global PATH in bash
+  - 'sudo systemctl restart ssh' # Restart SSH to apply changes
+  
+
+# Tailscale installation and setup
+  - ['sh', '-c', 'curl -fsSL https://tailscale.com/install.sh | sh']
+  - ['sh', '-c', "echo 'net.ipv4.ip_forward = 1' | tee -a /etc/sysctl.d/99-tailscale.conf && echo 'net.ipv6.conf.all.forwarding = 1' | tee -a /etc/sysctl.d/99-tailscale.conf && sysctl -p /etc/sysctl.d/99-tailscale.conf"]
+  - ['systemctl', 'enable', 'tailscaled']
+  - ['tailscale', 'up', '--authkey', *tailscale_key, '--hostname', *hostname, '--accept-routes', '--accept-dns', '--advertise-tags=tag:provision-host']
+  - ['tailscale', 'set', '--auto-update', '--ssh', '--accept-routes', '--accept-dns']

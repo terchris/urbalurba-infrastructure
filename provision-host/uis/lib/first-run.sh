@@ -130,12 +130,30 @@ copy_defaults_if_missing() {
         fi
     fi
 
-    # Create secrets subdirectories if missing
+    # Create secrets subdirectories if missing (original structure)
     local subdirs=("secrets-config" "kubernetes" "api-keys")
     for subdir in "${subdirs[@]}"; do
         if [[ ! -d "$SECRETS_DIR/$subdir" ]]; then
             mkdir -p "$SECRETS_DIR/$subdir"
             log_info "Created $SECRETS_DIR/$subdir/"
+        fi
+    done
+
+    # Create new secrets subdirectories (for secrets consolidation)
+    local new_subdirs=("ssh" "cloud-accounts" "service-keys" "network" "generated/kubernetes" "generated/ubuntu-cloud-init" "generated/kubeconfig")
+    for subdir in "${new_subdirs[@]}"; do
+        if [[ ! -d "$SECRETS_DIR/$subdir" ]]; then
+            mkdir -p "$SECRETS_DIR/$subdir"
+            log_info "Created $SECRETS_DIR/$subdir/"
+        fi
+    done
+
+    # Create hosts subdirectories in .uis.extend/
+    local host_subdirs=("hosts/managed" "hosts/cloud-vm" "hosts/physical" "hosts/local")
+    for subdir in "${host_subdirs[@]}"; do
+        if [[ ! -d "$EXTEND_DIR/$subdir" ]]; then
+            mkdir -p "$EXTEND_DIR/$subdir"
+            log_info "Created $EXTEND_DIR/$subdir/"
         fi
     done
 }
@@ -223,4 +241,41 @@ is_using_default_secrets() {
         return 1
     fi
     return 0
+}
+
+# Generate SSH keys for ansible user (used for VM provisioning)
+# Keys are created in .uis.secrets/ssh/
+# Returns: 0 if keys exist or created successfully, 1 on error
+generate_ssh_keys() {
+    local ssh_dir="$SECRETS_DIR/ssh"
+    local private_key="$ssh_dir/id_rsa_ansible"
+    local public_key="$ssh_dir/id_rsa_ansible.pub"
+
+    # Ensure directory exists
+    mkdir -p "$ssh_dir"
+
+    # Check if keys already exist
+    if [[ -f "$private_key" && -f "$public_key" ]]; then
+        log_info "SSH keys already exist"
+        return 0
+    fi
+
+    # Generate new key pair
+    log_info "Generating SSH keys for ansible user..."
+    if ssh-keygen -t rsa -b 4096 -f "$private_key" -N "" -C "ansible@uis" >/dev/null 2>&1; then
+        chmod 600 "$private_key"
+        chmod 644 "$public_key"
+        log_success "SSH keys generated: $ssh_dir/"
+        return 0
+    else
+        log_error "Failed to generate SSH keys"
+        return 1
+    fi
+}
+
+# Check if SSH keys exist
+# Returns: 0 if keys exist, 1 if not
+ssh_keys_exist() {
+    local ssh_dir="$SECRETS_DIR/ssh"
+    [[ -f "$ssh_dir/id_rsa_ansible" && -f "$ssh_dir/id_rsa_ansible.pub" ]]
 }

@@ -29,14 +29,13 @@ log_info() { echo -e "${GREEN}[UIS]${NC} $1"; }
 log_warn() { echo -e "${YELLOW}[UIS]${NC} $1"; }
 log_error() { echo -e "${RED}[UIS]${NC} $1"; }
 
-# Check if topsecret folder exists
+# Check if topsecret folder exists (optional - for backwards compatibility)
+# Returns: 0 if exists, 1 if not
 check_topsecret() {
-    if [ ! -d "$SCRIPT_DIR/topsecret" ]; then
-        log_error "topsecret/ folder not found!"
-        log_info "Create it with: mkdir -p topsecret/config topsecret/secrets-config"
-        log_info "Then copy templates: cp -r topsecret/secrets-templates/* topsecret/secrets-config/"
-        exit 1
+    if [ -d "$SCRIPT_DIR/topsecret" ]; then
+        return 0
     fi
+    return 1
 }
 
 # Check if image exists, pull if needed
@@ -64,16 +63,37 @@ check_image() {
 
 # Create config directories on first run
 init_config_dirs() {
+    local first_run=false
+
     # Create .uis.extend if it doesn't exist
     if [ ! -d "$SCRIPT_DIR/.uis.extend" ]; then
         log_info "Creating .uis.extend/ configuration directory..."
         mkdir -p "$SCRIPT_DIR/.uis.extend"
+        first_run=true
     fi
 
     # Create .uis.secrets if it doesn't exist
     if [ ! -d "$SCRIPT_DIR/.uis.secrets" ]; then
         log_info "Creating .uis.secrets/ directory..."
         mkdir -p "$SCRIPT_DIR/.uis.secrets"
+        first_run=true
+    fi
+
+    # Ensure .uis.secrets is in .gitignore (if .gitignore exists)
+    if [ -f "$SCRIPT_DIR/.gitignore" ]; then
+        if ! grep -q "^\.uis\.secrets" "$SCRIPT_DIR/.gitignore" 2>/dev/null; then
+            echo "" >> "$SCRIPT_DIR/.gitignore"
+            echo "# UIS secrets (auto-added)" >> "$SCRIPT_DIR/.gitignore"
+            echo ".uis.secrets/" >> "$SCRIPT_DIR/.gitignore"
+            log_info "Added .uis.secrets/ to .gitignore"
+        fi
+    fi
+
+    # Show welcome message on first run
+    if [ "$first_run" = true ]; then
+        if [ -f "$SCRIPT_DIR/provision-host/uis/templates/welcome.txt" ]; then
+            cat "$SCRIPT_DIR/provision-host/uis/templates/welcome.txt"
+        fi
     fi
 }
 
@@ -83,7 +103,6 @@ start_container() {
         return 0
     fi
 
-    check_topsecret
     check_image
     init_config_dirs
 
@@ -94,10 +113,14 @@ start_container() {
 
     # Build volume mount arguments
     local VOLUME_ARGS=(
-        -v "$SCRIPT_DIR/topsecret:/mnt/urbalurbadisk/topsecret"
         -v "$SCRIPT_DIR/.uis.extend:/mnt/urbalurbadisk/.uis.extend"
         -v "$SCRIPT_DIR/.uis.secrets:/mnt/urbalurbadisk/.uis.secrets"
     )
+
+    # Mount topsecret if it exists (backwards compatibility)
+    if check_topsecret; then
+        VOLUME_ARGS+=(-v "$SCRIPT_DIR/topsecret:/mnt/urbalurbadisk/topsecret:ro")
+    fi
 
     # Add kubeconfig mount if it exists
     if [ -d "$KUBECONFIG_DIR" ]; then

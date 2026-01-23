@@ -1,4 +1,8 @@
-# Ignore everything in this directory except README
+# Ignore everything in this directory except README and templates
 *
 !.gitignore
 !README.md
+!README-secrets.md
+!*.template
+!*/
+!*/*.template

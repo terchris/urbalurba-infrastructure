@@ -1,0 +1,27 @@
+# Azure AKS Cluster Configuration
+# Copy to .uis.extend/hosts/managed/<name>-azure-aks.conf and edit
+#
+# This configures a managed Azure Kubernetes Service cluster.
+# Azure handles the control plane; you manage worker nodes.
+
+# Which credentials to use (references file in .uis.secrets/cloud-accounts/)
+CREDENTIALS="azure-default"
+
+# Resource group (will be created if doesn't exist)
+RESOURCE_GROUP="rg-urbalurba-aks"
+
+# Cluster name
+CLUSTER_NAME="my-aks-cluster"
+
+# Azure region
+LOCATION="westeurope"
+
+# Node pool configuration
+NODE_COUNT=3
+NODE_SIZE="Standard_B2ms"
+
+# Kubernetes version (leave empty for latest)
+KUBERNETES_VERSION=""
+
+# Optional: Tags for Azure resources
+# TAGS="environment=dev,project=urbalurba"

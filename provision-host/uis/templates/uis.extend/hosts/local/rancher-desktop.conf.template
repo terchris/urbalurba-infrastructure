@@ -1,0 +1,11 @@
+# Rancher Desktop Configuration
+# Copy to .uis.extend/hosts/local/<name>-rancher-desktop.conf and edit
+#
+# Local development environment using Rancher Desktop.
+# No cloud credentials or SSH keys needed.
+
+# Cluster name (for reference)
+CLUSTER_NAME="rancher-desktop"
+
+# This is the default local development environment.
+# No additional configuration required.

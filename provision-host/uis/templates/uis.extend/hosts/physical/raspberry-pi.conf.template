@@ -1,0 +1,19 @@
+# Raspberry Pi Configuration
+# Copy to .uis.extend/hosts/physical/<name>-raspberry-pi.conf and edit
+#
+# This generates cloud-init configuration for a Raspberry Pi.
+# Flash the SD card with Ubuntu, then copy the generated cloud-init file.
+
+# Hostname for the device
+HOSTNAME="my-raspberry-pi"
+
+# Network connectivity
+REQUIRES_TAILSCALE=true
+
+# WiFi configuration (set to true if not using ethernet)
+REQUIRES_WIFI=false
+
+# Optional: Static IP configuration (leave empty for DHCP)
+# STATIC_IP=""
+# GATEWAY=""
+# DNS=""

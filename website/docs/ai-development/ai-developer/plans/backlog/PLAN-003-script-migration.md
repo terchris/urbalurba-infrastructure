@@ -1,0 +1,344 @@
+# PLAN-003: Migrate Scripts to New Secrets Paths
+
+> **IMPLEMENTATION RULES:** Before implementing this plan, read and follow:
+> - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
+> - [PLANS.md](../../PLANS.md) - Plan structure and best practices
+
+## Status: Backlog
+
+**Goal**: Update all scripts in the repo that reference `topsecret/` or `secrets/` to use the new `.uis.secrets/` paths, while maintaining backwards compatibility.
+
+**Last Updated**: 2025-01-23
+
+**Branch**: `feature/secrets-migration`
+
+**Prerequisites**: PLAN-001 and PLAN-002 should be complete
+
+**Related**: [INVESTIGATE-secrets-consolidation.md](./INVESTIGATE-secrets-consolidation.md)
+
+---
+
+## Context: Contributor vs User
+
+**We are contributors** - we update scripts in the repo to use new path conventions.
+
+**At runtime**, these scripts run inside the container and access:
+- `/mnt/urbalurbadisk/.uis.secrets/` (user's secrets, mounted)
+- `/mnt/urbalurbadisk/.uis.extend/` (user's config, mounted)
+- `/mnt/urbalurbadisk/topsecret/` (old path, mounted for backwards compat)
+
+The scripts we update need to:
+1. Prefer new paths when available
+2. Fall back to old paths for backwards compatibility
+3. Warn users when old paths are detected
+
+---
+
+## Overview
+
+The investigation identified 24 scripts that reference the old paths:
+
+**cloud-init (1):**
+- `cloud-init/create-cloud-init.sh`
+
+**hosts (8):**
+- `hosts/azure-aks/02-azure-aks-setup.sh`
+- `hosts/azure-microk8s/01-azure-vm-create-redcross-v2.sh`
+- `hosts/azure-microk8s/02-azure-ansible-inventory-v2.sh`
+- `hosts/raspberry-microk8s/install-raspberry.sh`
+- `hosts/install-azure-aks.sh`
+- `hosts/install-azure-microk8s-v2.sh`
+- `hosts/install-multipass-microk8s.sh`
+- `hosts/install-rancher-kubernetes.sh`
+
+**topsecret (3) - to be deprecated:**
+- `topsecret/update-kubernetes-secrets-rancher.sh`
+- `topsecret/kubeconf-copy2local.sh`
+- `topsecret/copy-secrets2host.sh`
+
+**networking (4):**
+- `networking/tailscale/802-tailscale-tunnel-deploy.sh`
+- `networking/cloudflare/820-cloudflare-tunnel-setup.sh`
+- `networking/cloudflare/821-cloudflare-tunnel-deploy.sh`
+- `networking/cloudflare/822-cloudflare-tunnel-delete.sh`
+
+**provision-host (6):**
+- `provision-host/provision-host-02-kubetools.sh`
+- `provision-host/provision-host-vm-create.sh`
+- `provision-host/provision-host-sshconf.sh`
+- `provision-host/uis/lib/secrets-management.sh`
+- `provision-host/uis/tests/unit/test-phase6-secrets.sh`
+
+**other (3):**
+- `copy2provisionhost.sh`
+- `install-rancher.sh`
+- `provision-host-rancher/provision-host-container-create.sh`
+
+---
+
+## Phase 1: Create Path Resolution Library
+
+### Tasks
+
+- [ ] 1.1 Create `provision-host/uis/lib/uis-paths.sh` with path resolution:
+  ```bash
+  # Base paths inside container
+  NEW_SECRETS_BASE="/mnt/urbalurbadisk/.uis.secrets"
+  OLD_SECRETS_BASE="/mnt/urbalurbadisk/topsecret"
+  OLD_SSH_BASE="/mnt/urbalurbadisk/secrets"
+
+  # Returns path to use, preferring new location
+  get_secrets_base_path() {
+    if [ -d "$NEW_SECRETS_BASE" ]; then
+      echo "$NEW_SECRETS_BASE"
+    elif [ -d "$OLD_SECRETS_BASE" ]; then
+      warn_deprecated_path "$OLD_SECRETS_BASE" "$NEW_SECRETS_BASE"
+      echo "$OLD_SECRETS_BASE"
+    else
+      echo "$NEW_SECRETS_BASE"  # Default to new
+    fi
+  }
+
+  get_ssh_key_path() {
+    # New: .uis.secrets/ssh/
+    # Old: secrets/
+  }
+
+  get_kubernetes_secrets_path() {
+    # New: .uis.secrets/generated/kubernetes/
+    # Old: topsecret/kubernetes/
+  }
+
+  get_cloud_init_output_path() {
+    # New: .uis.secrets/generated/ubuntu-cloud-init/
+    # Old: cloud-init/
+  }
+
+  get_kubeconfig_path() {
+    # New: .uis.secrets/generated/kubeconfig/
+    # Old: (various locations)
+  }
+
+  get_tailscale_key() {
+    # New: .uis.secrets/service-keys/tailscale.env
+    # Old: topsecret/kubernetes/kubernetes-secrets.yml
+  }
+
+  get_cloudflare_token() {
+    # New: .uis.secrets/service-keys/cloudflare.env
+    # Old: topsecret/...
+  }
+  ```
+
+- [ ] 1.2 Add deprecation warning function:
+  ```bash
+  warn_deprecated_path() {
+    local old_path="$1"
+    local new_path="$2"
+    echo "⚠️  WARNING: Using deprecated path: $old_path" >&2
+    echo "   Please migrate to: $new_path" >&2
+    echo "   Run './uis' to set up the new structure" >&2
+  }
+  ```
+
+- [ ] 1.3 Add unit tests for path resolution
+
+### Validation
+
+Path resolution correctly prefers new paths and warns on old.
+
+---
+
+## Phase 2: Update Cloud-Init Script
+
+### Tasks
+
+- [ ] 2.1 Update `cloud-init/create-cloud-init.sh`:
+  ```bash
+  source /mnt/urbalurbadisk/provision-host/uis/lib/uis-paths.sh
+
+  SSH_KEY_PATH=$(get_ssh_key_path)
+  SECRETS_PATH=$(get_kubernetes_secrets_path)
+  OUTPUT_PATH=$(get_cloud_init_output_path)
+
+  # Rest of script uses these variables
+  ```
+
+- [ ] 2.2 Test cloud-init generation works with both path structures
+
+### Validation
+
+Generated cloud-init files work regardless of which paths are used.
+
+---
+
+## Phase 3: Update Host Scripts
+
+### Tasks
+
+- [ ] 3.1 Update Azure AKS scripts:
+  - `hosts/azure-aks/02-azure-aks-setup.sh`
+  - `hosts/install-azure-aks.sh`
+  - Source `uis-paths.sh` and use path functions
+
+- [ ] 3.2 Update Azure MicroK8s scripts:
+  - `hosts/azure-microk8s/01-azure-vm-create-redcross-v2.sh`
+  - `hosts/azure-microk8s/02-azure-ansible-inventory-v2.sh`
+  - `hosts/install-azure-microk8s-v2.sh`
+
+- [ ] 3.3 Update Raspberry Pi scripts:
+  - `hosts/raspberry-microk8s/install-raspberry.sh`
+
+- [ ] 3.4 Update other host scripts:
+  - `hosts/install-multipass-microk8s.sh`
+  - `hosts/install-rancher-kubernetes.sh`
+
+### Validation
+
+Host scripts work with new paths.
+
+---
+
+## Phase 4: Update Networking Scripts
+
+### Tasks
+
+- [ ] 4.1 Update Tailscale script:
+  - `networking/tailscale/802-tailscale-tunnel-deploy.sh`
+  - Read Tailscale auth key using `get_tailscale_key()`
+
+- [ ] 4.2 Update Cloudflare scripts:
+  - `networking/cloudflare/820-cloudflare-tunnel-setup.sh`
+  - `networking/cloudflare/821-cloudflare-tunnel-deploy.sh`
+  - `networking/cloudflare/822-cloudflare-tunnel-delete.sh`
+  - Read Cloudflare tokens using `get_cloudflare_token()`
+
+### Validation
+
+Networking scripts work with new paths.
+
+---
+
+## Phase 5: Update Provision-Host Scripts
+
+### Tasks
+
+- [ ] 5.1 Update core provision-host scripts:
+  - `provision-host/provision-host-02-kubetools.sh`
+  - `provision-host/provision-host-vm-create.sh`
+  - `provision-host/provision-host-sshconf.sh`
+
+- [ ] 5.2 Update or replace `provision-host/uis/lib/secrets-management.sh`:
+  - May be superseded by new `uis-secrets.sh` from PLAN-002
+  - Or updated to use `uis-paths.sh`
+
+- [ ] 5.3 Update tests:
+  - `provision-host/uis/tests/unit/test-phase6-secrets.sh`
+
+### Validation
+
+Provision-host scripts work correctly.
+
+---
+
+## Phase 6: Update Root Scripts
+
+### Tasks
+
+- [ ] 6.1 Update `copy2provisionhost.sh`:
+  - Use new paths when copying secrets
+
+- [ ] 6.2 Update `install-rancher.sh`:
+  - Use new paths if applicable
+
+- [ ] 6.3 Update `provision-host-rancher/provision-host-container-create.sh`:
+  - Volume mount logic may need updating
+
+### Validation
+
+Root scripts work with new paths.
+
+---
+
+## Phase 7: Deprecate topsecret Scripts
+
+Mark scripts in `topsecret/` as deprecated with clear alternatives.
+
+### Tasks
+
+- [ ] 7.1 Add deprecation notice to `topsecret/update-kubernetes-secrets-rancher.sh`:
+  ```bash
+  #!/bin/bash
+  echo "⚠️  DEPRECATED: This script is deprecated."
+  echo "   Use './uis secrets generate' instead."
+  echo ""
+  echo "   To migrate, run './uis' to set up the new structure."
+  exit 1
+  ```
+
+- [ ] 7.2 Add deprecation notice to `topsecret/kubeconf-copy2local.sh`:
+  - Point to new kubeconfig location
+
+- [ ] 7.3 Add deprecation notice to `topsecret/copy-secrets2host.sh`:
+  - This functionality now handled by container mounts
+
+- [ ] 7.4 Create `topsecret/DEPRECATED.md` explaining migration
+
+### Validation
+
+Deprecated scripts show clear messages and alternatives.
+
+---
+
+## Phase 8: Update UIS Wrapper Mounts
+
+### Tasks
+
+- [ ] 8.1 Verify `uis` wrapper mounts both old and new paths:
+  - New paths mounted when folders exist
+  - Old `topsecret/` mounted read-only for backwards compat
+
+- [ ] 8.2 Update kubeconfig handling:
+  - Update `ansible/playbooks/04-merge-kubeconf.yml` to use new path
+  - Support both old and new locations during transition
+
+### Validation
+
+Container starts correctly with appropriate mounts.
+
+---
+
+## Acceptance Criteria
+
+- [ ] `uis-paths.sh` library created with all path functions
+- [ ] All 24 scripts updated to source `uis-paths.sh`
+- [ ] Scripts work with new paths (`.uis.secrets/`)
+- [ ] Scripts fall back to old paths (`topsecret/`) with warning
+- [ ] Deprecated scripts show clear migration messages
+- [ ] Unit tests pass for path resolution
+- [ ] Kubeconfig merge playbook updated
+- [ ] No functionality broken during transition
+
+---
+
+## Files to Create
+
+- `provision-host/uis/lib/uis-paths.sh`
+- `provision-host/uis/tests/unit/test-uis-paths.sh`
+- `topsecret/DEPRECATED.md`
+
+## Files to Modify
+
+- All 24 scripts listed in Overview
+- `ansible/playbooks/04-merge-kubeconf.yml`
+
+---
+
+## Testing Strategy
+
+For each script:
+1. Test with new paths only (fresh setup)
+2. Test with old paths only (legacy setup)
+3. Test with both (migration in progress)
+
+Use mock folders in test environment to simulate both scenarios.
