@@ -87,14 +87,22 @@ check_command_success "Mounting host directory"
 multipass info $VM_NAME
 check_command_success "Get VM info"
 
-# Copy ansible secret key
-if [ -f "../secrets/id_rsa_ansible" ]; then
+# Copy ansible secret key (check both new and legacy paths)
+SSH_KEY_FILE=""
+if [ -f "../.uis.secrets/ssh/id_rsa_ansible" ]; then
+    SSH_KEY_FILE="../.uis.secrets/ssh/id_rsa_ansible"
+elif [ -f "../secrets/id_rsa_ansible" ]; then
+    SSH_KEY_FILE="../secrets/id_rsa_ansible"
+fi
+
+if [ -n "$SSH_KEY_FILE" ]; then
     echo "Now copying ansible secret key to /mnt/urbalurbadisk/ansible/secrets/id_rsa_ansible.secret-key"
     multipass exec $VM_NAME -- sudo mkdir -p /mnt/urbalurbadisk/ansible/secrets
-    multipass transfer ../secrets/id_rsa_ansible $VM_NAME:/mnt/urbalurbadisk/ansible/secrets/id_rsa_ansible.secret-key
+    multipass transfer "$SSH_KEY_FILE" $VM_NAME:/mnt/urbalurbadisk/ansible/secrets/id_rsa_ansible.secret-key
     check_command_success "Transferring ansible secret key"
 else
     echo "Warning: ansible secret key does not exist. Skipping transfer."
+    echo "Looked for: ../.uis.secrets/ssh/id_rsa_ansible or ../secrets/id_rsa_ansible"
     STATUS+=("Transferring ansible secret key: Skipped")
     ERROR=1
 fi
@@ -138,7 +146,13 @@ rsync -av --delete ../provision-host/ $VM_NAME:/mnt/urbalurbadisk/provision-host
 rsync -av --delete ../ansible/ $VM_NAME:/mnt/urbalurbadisk/ansible/
 rsync -av --delete ../kubernetes/ $VM_NAME:/mnt/urbalurbadisk/kubernetes/
 rsync -av --delete ../manifests/ $VM_NAME:/mnt/urbalurbadisk/manifests/
-rsync -av --delete ../topsecret/ $VM_NAME:/mnt/urbalurbadisk/topsecret/
+# Copy secrets - prefer new path, fall back to legacy
+if [ -d "../.uis.secrets" ]; then
+    rsync -av --delete ../.uis.secrets/ $VM_NAME:/mnt/urbalurbadisk/.uis.secrets/
+fi
+if [ -d "../topsecret" ]; then
+    rsync -av --delete ../topsecret/ $VM_NAME:/mnt/urbalurbadisk/topsecret/
+fi
 check_command_success "Copy files to VM"
 
 # Execute provision-host-provision.sh on the VM

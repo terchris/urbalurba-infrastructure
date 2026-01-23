@@ -91,11 +91,19 @@ fi
 
 TUNNEL_NAME="cloudflare-tunnel"
 
+# Source centralized path library for backwards-compatible path resolution
+if [[ -f "/mnt/urbalurbadisk/provision-host/uis/lib/paths.sh" ]]; then
+    source "/mnt/urbalurbadisk/provision-host/uis/lib/paths.sh"
+    K8S_SECRETS_PATH=$(get_kubernetes_secrets_path)
+else
+    K8S_SECRETS_PATH="/mnt/urbalurbadisk/topsecret/kubernetes"
+fi
+
 # Variables
 PROVISION_HOST="provision-host"
 PLAYBOOK_PATH_SETUP_CLOUDFLARETUNNEL="/mnt/urbalurbadisk/ansible/playbooks/820-setup-network-cloudflare-tunnel.yml"
 KUBECONFIG_PATH="/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
-SECRETS_FILE="/mnt/urbalurbadisk/topsecret/kubernetes/kubernetes-secrets.yml"
+SECRETS_FILE="$K8S_SECRETS_PATH/kubernetes-secrets.yml"
 FULL_TUNNEL_NAME="cloudflare-tunnel"
 SECRET_NAME="cloudflared-credentials"
 STATUS=()

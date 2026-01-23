@@ -94,11 +94,17 @@ install_ansible_kubernetes() {
     # Create global Ansible config directory if it doesn't exist
     sudo mkdir -p /etc/ansible
 
+    # Determine SSH key path (prefer new paths, fall back to legacy)
+    local SSH_KEY_PATH="/mnt/urbalurbadisk/secrets/id_rsa_ansible"
+    if [ -d "/mnt/urbalurbadisk/.uis.secrets/ssh" ]; then
+        SSH_KEY_PATH="/mnt/urbalurbadisk/.uis.secrets/ssh/id_rsa_ansible"
+    fi
+
     # Create or update the ansible.cfg file using sudo tee
-    sudo tee /etc/ansible/ansible.cfg > /dev/null << 'ENDCONFIG'
+    sudo tee /etc/ansible/ansible.cfg > /dev/null << ENDCONFIG
 [defaults]
 inventory = /mnt/urbalurbadisk/ansible/inventory.yml
-private_key_file = /mnt/urbalurbadisk/secrets/id_rsa_ansible
+private_key_file = $SSH_KEY_PATH
 host_key_checking = False
 roles_path = /mnt/urbalurbadisk/ansible/roles
 

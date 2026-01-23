@@ -29,6 +29,14 @@ declare -A STATUS
 declare -A ERRORS
 ERROR=0  # Global error tracker
 
+# Source centralized path library for backwards-compatible path resolution
+if [[ -f "/mnt/urbalurbadisk/provision-host/uis/lib/paths.sh" ]]; then
+    source "/mnt/urbalurbadisk/provision-host/uis/lib/paths.sh"
+    SSH_KEY_DIR=$(get_ssh_key_path)
+else
+    SSH_KEY_DIR="/mnt/urbalurbadisk/secrets"
+fi
+
 # Default Variables
 CONFIG_FILE="./azure-vm-config-redcross-sandbox.sh"
 ANSIBLE_DIR="/mnt/urbalurbadisk/ansible"
@@ -234,8 +242,8 @@ update_ansible_inventory() {
         add_status "Network" "SSH Connectivity" "OK"
     fi
     
-    # Using the SSH key from secrets directory
-    SSH_KEY="/mnt/urbalurbadisk/secrets/id_rsa_ansible"
+    # Using the SSH key from secrets directory (backwards-compatible path)
+    SSH_KEY="$SSH_KEY_DIR/id_rsa_ansible"
     
     # Now run the Ansible playbook with explicit SSH key
     display_substep "Running Ansible playbook to update inventory"
@@ -268,8 +276,8 @@ test_ansible_connection() {
         add_status "Network" "ICMP Ping" "OK"
     fi
     
-    # Point directly to the SSH key in the secrets directory
-    SSH_KEY="/mnt/urbalurbadisk/secrets/id_rsa_ansible"
+    # Point directly to the SSH key (backwards-compatible path)
+    SSH_KEY="$SSH_KEY_DIR/id_rsa_ansible"
     
     # Check if the key exists
     display_substep "Checking if SSH key exists: $SSH_KEY"

@@ -87,13 +87,15 @@ run_script_from_directory() {
 # Function to check if required files exist
 check_required_files() {
     local missing_files=()
-    
-    # Check for required directories and files
-    if [ ! -d "topsecret" ]; then
-        missing_files+=("topsecret directory")
+
+    # Check for required directories and files (support both new and legacy paths)
+    # Secrets can be in .uis.secrets/ (new) or topsecret/ (legacy)
+    if [ ! -d ".uis.secrets" ] && [ ! -d "topsecret" ]; then
+        missing_files+=(".uis.secrets or topsecret directory")
     fi
-    if [ ! -d "secrets" ]; then
-        missing_files+=("secrets directory")
+    # SSH keys can be in .uis.secrets/ssh/ (new) or secrets/ (legacy)
+    if [ ! -d ".uis.secrets/ssh" ] && [ ! -d "secrets" ]; then
+        missing_files+=(".uis.secrets/ssh or secrets directory")
     fi
     if [ ! -d "provision-host-rancher" ]; then
         missing_files+=("provision-host-rancher directory")
@@ -104,7 +106,7 @@ check_required_files() {
     if [ ! -d "networking" ]; then
         missing_files+=("networking directory")
     fi
-    
+
     if [ ${#missing_files[@]} -ne 0 ]; then
         echo "Error: The following required files/directories are missing:"
         printf '%s\n' "${missing_files[@]}"
@@ -129,13 +131,28 @@ if docker ps -a --format '{{.Names}}' | grep -q 'provision-host'; then
     exit 1
 fi
 
-# Create Kubernetes secrets
-run_script_from_directory "topsecret" "create-kubernetes-secrets.sh"
+# Create Kubernetes secrets (prefer new path, fall back to legacy)
+if [ -d ".uis.secrets" ] && [ -f ".uis.secrets/scripts/create-kubernetes-secrets.sh" ]; then
+    run_script_from_directory ".uis.secrets/scripts" "create-kubernetes-secrets.sh"
+elif [ -d "topsecret" ]; then
+    run_script_from_directory "topsecret" "create-kubernetes-secrets.sh"
+fi
 
-# Check and create secrets if they don't exist
-if [ ! -f "secrets/id_rsa_ansible.pub" ] || [ ! -f "secrets/id_rsa_ansible" ]; then
-    echo "==========------------------> Step 0.1: Create secrets"
-    run_script_from_directory "secrets" "create-secrets.sh"
+# Check and create SSH keys if they don't exist (support both new and legacy paths)
+SSH_KEY_EXISTS=false
+if [ -f ".uis.secrets/ssh/id_rsa_ansible.pub" ] && [ -f ".uis.secrets/ssh/id_rsa_ansible" ]; then
+    SSH_KEY_EXISTS=true
+elif [ -f "secrets/id_rsa_ansible.pub" ] && [ -f "secrets/id_rsa_ansible" ]; then
+    SSH_KEY_EXISTS=true
+fi
+
+if [ "$SSH_KEY_EXISTS" = false ]; then
+    echo "==========------------------> Step 0.1: Create SSH keys"
+    if [ -d "secrets" ]; then
+        run_script_from_directory "secrets" "create-secrets.sh"
+    else
+        echo "Warning: No secrets directory found. SSH keys need to be created manually."
+    fi
 fi
 
 # Check if Rancher Desktop is running and Kubernetes is enabled

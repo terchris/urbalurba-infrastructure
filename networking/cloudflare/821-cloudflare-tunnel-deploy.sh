@@ -27,6 +27,14 @@ if [ -z "$BASH_VERSION" ]; then
     exit 1
 fi
 
+# Source centralized path library for backwards-compatible path resolution
+if [[ -f "/mnt/urbalurbadisk/provision-host/uis/lib/paths.sh" ]]; then
+    source "/mnt/urbalurbadisk/provision-host/uis/lib/paths.sh"
+    K8S_SECRETS_PATH=$(get_kubernetes_secrets_path)
+else
+    K8S_SECRETS_PATH="/mnt/urbalurbadisk/topsecret/kubernetes"
+fi
+
 # Extract domain from existing Secret
 TUNNEL_NAME="cloudflare-tunnel"
 TARGET_HOST="current-cluster"
@@ -50,7 +58,7 @@ fi
 # Variables
 PROVISION_HOST="provision-host"
 PLAYBOOK_PATH_DEPLOY_CLOUDFLARETUNNEL="/mnt/urbalurbadisk/ansible/playbooks/821-deploy-network-cloudflare-tunnel.yml"
-KUBERNETES_SECRETS_FILE="/mnt/urbalurbadisk/topsecret/kubernetes/kubernetes-secrets.yml"
+KUBERNETES_SECRETS_FILE="$K8S_SECRETS_PATH/kubernetes-secrets.yml"
 STATUS=()
 ERROR=0
 
@@ -64,10 +72,17 @@ check_command_success() {
     fi
 }
 
-# Ensure we can access required directories and files (more flexible check)
-if [ ! -d "/mnt/urbalurbadisk/ansible" ] || [ ! -d "/mnt/urbalurbadisk/topsecret" ]; then
+# Check environment - accept either new .uis.secrets or legacy topsecret
+SECRETS_DIR_OK=false
+if [ -d "/mnt/urbalurbadisk/.uis.secrets" ]; then
+    SECRETS_DIR_OK=true
+elif [ -d "/mnt/urbalurbadisk/topsecret" ]; then
+    SECRETS_DIR_OK=true
+fi
+
+if [ ! -d "/mnt/urbalurbadisk/ansible" ] || [ "$SECRETS_DIR_OK" = false ]; then
     echo "This script must be run from within the provision-host container"
-    echo "Required directories not found: /mnt/urbalurbadisk/ansible or /mnt/urbalurbadisk/topsecret"
+    echo "Required directories not found: /mnt/urbalurbadisk/ansible or /mnt/urbalurbadisk/.uis.secrets (or /mnt/urbalurbadisk/topsecret)"
     echo "Current directory: $PWD"
     STATUS+=("Environment check: Fail")
     ERROR=1
