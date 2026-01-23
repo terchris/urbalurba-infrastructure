@@ -8,7 +8,8 @@
   gather_facts: false
 
   vars:
-    target_host: "{{ target_host | default('rancher-desktop') }}"
+    # target_host passed via -e, use _target for internal reference to avoid recursion
+    _target: "{{ target_host | default('rancher-desktop') }}"
     namespace: "monitoring"
     component_name: "otel-collector"
     manifests_folder: "/mnt/urbalurbadisk/manifests"
@@ -25,7 +26,7 @@
           - "====================================="
           - "OpenTelemetry Collector Deployment"
           - "====================================="
-          - "Target Host: {{ target_host }}"
+          - "Target Host: {{ _target }}"
           - "Namespace: {{ namespace }}"
           - "Component: {{ component_name }}"
           - "Config File: {{ otel_config_file }}"
@@ -36,7 +37,7 @@
         api_version: v1
         kind: Namespace
         state: present
-        context: "{{ target_host }}"
+        context: "{{ _target }}"
 
     - name: 3. Add/update Helm repositories
       kubernetes.core.helm_repository:
@@ -55,7 +56,7 @@
         --namespace {{ namespace }}
         --create-namespace
         --timeout 600s
-        --kube-context {{ target_host }}
+        --kube-context {{ _target }}
       register: otel_helm_result
       changed_when: true
 
@@ -65,7 +66,7 @@
         namespace: "{{ namespace }}"
         label_selectors:
           - app.kubernetes.io/name=opentelemetry-collector
-        context: "{{ target_host }}"
+        context: "{{ _target }}"
       register: otel_pods
       retries: 20
       delay: 15
@@ -77,7 +78,7 @@
     - name: 7. Test OTLP HTTP endpoint
       ansible.builtin.command: >
         kubectl run curl-test-otlp-http --image=curlimages/curl --rm -i --restart=Never
-        -n {{ namespace }} --context {{ target_host }} --
+        -n {{ namespace }} --context {{ _target }} --
         curl -s -o /dev/null -w "HTTP_CODE:%{http_code}"
         http://otel-collector-opentelemetry-collector.{{ namespace }}.svc.cluster.local:4318/
       register: otlp_http_test
@@ -89,7 +90,7 @@
     - name: 8. Test health check endpoint
       ansible.builtin.command: >
         kubectl run curl-test-otel-health --image=curlimages/curl --rm -i --restart=Never
-        -n {{ namespace }} --context {{ target_host }} --
+        -n {{ namespace }} --context {{ _target }} --
         curl -s -o /dev/null -w "HTTP_CODE:%{http_code}"
         http://otel-collector-opentelemetry-collector.{{ namespace }}.svc.cluster.local:13133/
       register: health_test
@@ -101,7 +102,7 @@
     - name: 9. Test OTEL metrics endpoint
       ansible.builtin.command: >
         kubectl run curl-test-otel-metrics --image=curlimages/curl --rm -i --restart=Never
-        -n {{ namespace }} --context {{ target_host }} --timeout=15s --
+        -n {{ namespace }} --context {{ _target }} --timeout=15s --
         curl -s "http://otel-collector-opentelemetry-collector.{{ namespace }}.svc.cluster.local:8888/metrics"
       register: otel_metrics_test
       retries: 3
@@ -112,7 +113,7 @@
     - name: 10. Test OTEL data ingestion
       ansible.builtin.command: >
         kubectl run otel-self-test --image=ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:latest --rm -i --restart=Never
-        -n {{ namespace }} --context {{ target_host }} --timeout=60s --
+        -n {{ namespace }} --context {{ _target }} --timeout=60s --
         logs --otlp-endpoint=otel-collector-opentelemetry-collector.{{ namespace }}.svc.cluster.local:4318
         --otlp-insecure --otlp-http --duration=5s --logs=5
         --service=otel-validation --body="OTEL validation test"
@@ -130,7 +131,7 @@
     - name: 12. Verify processing metrics
       ansible.builtin.command: >
         kubectl run curl-test-otel-processing --image=curlimages/curl --rm -i --restart=Never
-        -n {{ namespace }} --context {{ target_host }} --timeout=15s --
+        -n {{ namespace }} --context {{ _target }} --timeout=15s --
         curl -s "http://otel-collector-opentelemetry-collector.{{ namespace }}.svc.cluster.local:8888/metrics"
       register: otel_processing_test
       retries: 3
@@ -142,7 +143,7 @@
     - name: 13. Test Loki integration
       ansible.builtin.command: >
         kubectl run curl-test-loki-integration --image=curlimages/curl --rm -i --restart=Never
-        -n {{ namespace }} --context {{ target_host }} --timeout=15s --
+        -n {{ namespace }} --context {{ _target }} --timeout=15s --
         curl -s -o /dev/null -w "HTTP_CODE:%{http_code}"
         "http://loki-gateway.{{ namespace }}.svc.cluster.local:80/loki/api/v1/labels"
       register: loki_integration_test
@@ -154,7 +155,7 @@
     - name: 14. Test Tempo integration
       ansible.builtin.command: >
         kubectl run curl-test-tempo-integration --image=curlimages/curl --rm -i --restart=Never
-        -n {{ namespace }} --context {{ target_host }} --timeout=15s --
+        -n {{ namespace }} --context {{ _target }} --timeout=15s --
         curl -s -o /dev/null -w "HTTP_CODE:%{http_code}"
         "http://tempo.{{ namespace }}.svc.cluster.local:3200/api/echo"
       register: tempo_integration_test
@@ -166,7 +167,7 @@
     - name: 15. Test Prometheus integration
       ansible.builtin.command: >
         kubectl run curl-test-prometheus-integration --image=curlimages/curl --rm -i --restart=Never
-        -n {{ namespace }} --context {{ target_host }} --timeout=15s --
+        -n {{ namespace }} --context {{ _target }} --timeout=15s --
         curl -s -o /dev/null -w "HTTP_CODE:%{http_code}"
         "http://prometheus-server.{{ namespace }}.svc.cluster.local:80/api/v1/status/runtimeinfo"
       register: prometheus_integration_test
@@ -178,7 +179,7 @@
     - name: 16. END-TO-END TEST - Send test logs via OTEL to Loki
       ansible.builtin.shell: |
         kubectl run otel-e2e-logs --image=ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:latest --rm -i --restart=Never \
-        -n {{ namespace }} --context {{ target_host }} --timeout=60s -- \
+        -n {{ namespace }} --context {{ _target }} --timeout=60s -- \
         logs --otlp-endpoint=otel-collector-opentelemetry-collector.{{ namespace }}.svc.cluster.local:4318 \
         --otlp-insecure --otlp-http --duration=3s --logs=10 \
         --otlp-attributes service.name=\"otel-e2e-test\" --otlp-attributes test.type=\"end-to-end\" \
@@ -197,7 +198,7 @@
     - name: 18. VERIFY - Query Loki for OTEL-delivered logs
       ansible.builtin.command: >
         kubectl run loki-verify-otel-logs --image=curlimages/curl --rm -i --restart=Never
-        -n {{ namespace }} --context {{ target_host }} --timeout=20s --
+        -n {{ namespace }} --context {{ _target }} --timeout=20s --
         /bin/sh -c 'NOW=$(date +%s); START=$((NOW-300)); curl -s -G --data-urlencode "query={service_name=\"otel-e2e-test\"}" --data-urlencode "start=${START}000000000" --data-urlencode "end=${NOW}000000000" "http://loki-gateway.{{ namespace }}.svc.cluster.local:80/loki/api/v1/query_range"'
       register: loki_e2e_verify
       retries: 5
@@ -209,7 +210,7 @@
     - name: 19. END-TO-END TEST - Send test traces via OTEL to Tempo
       ansible.builtin.shell: |
         kubectl run otel-e2e-traces --image=ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:latest --rm -i --restart=Never \
-        -n {{ namespace }} --context {{ target_host }} --timeout=60s -- \
+        -n {{ namespace }} --context {{ _target }} --timeout=60s -- \
         traces --otlp-endpoint=otel-collector-opentelemetry-collector.{{ namespace }}.svc.cluster.local:4317 \
         --otlp-insecure --duration=3s --traces=5 \
         --telemetry-attributes service.name=\"otel-e2e-trace-test\" --telemetry-attributes test.type=\"end-to-end\"
@@ -227,7 +228,7 @@
     - name: 21. VERIFY - Query Tempo for OTEL-delivered traces
       ansible.builtin.command: >
         kubectl run tempo-verify-otel-traces --image=curlimages/curl --rm -i --restart=Never
-        -n {{ namespace }} --context {{ target_host }} --timeout=20s --
+        -n {{ namespace }} --context {{ _target }} --timeout=20s --
         /bin/sh -c 'NOW=$(date +%s); START=$((NOW-300)); curl -s -G --data-urlencode "q={.service.name=\"otel-e2e-trace-test\"}" --data-urlencode "start=$START" --data-urlencode "end=$NOW" "http://tempo.{{ namespace }}.svc.cluster.local:3200/api/search"'
       register: tempo_e2e_verify
       retries: 5
@@ -239,7 +240,7 @@
     - name: 22. END-TO-END TEST - Send test metrics via OTEL to Prometheus
       ansible.builtin.shell: |
         kubectl run otel-e2e-metrics --image=ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:latest --rm -i --restart=Never \
-        -n {{ namespace }} --context {{ target_host }} --timeout=60s -- \
+        -n {{ namespace }} --context {{ _target }} --timeout=60s -- \
         metrics --otlp-endpoint=otel-collector-opentelemetry-collector.{{ namespace }}.svc.cluster.local:4317 \
         --otlp-insecure --duration=3s --metrics=5 \
         --telemetry-attributes service.name=\"otel-e2e-metric-test\" --telemetry-attributes test.type=\"end-to-end\"
@@ -257,7 +258,7 @@
     - name: 24. VERIFY - Query Prometheus for OTEL-delivered metrics
       ansible.builtin.command: >
         kubectl run prometheus-verify-otel-metrics --image=curlimages/curl --rm -i --restart=Never
-        -n {{ namespace }} --context {{ target_host }} --timeout=20s --
+        -n {{ namespace }} --context {{ _target }} --timeout=20s --
         /bin/sh -c 'curl -s -G --data-urlencode "query=gen{service_name=\"otel-e2e-metric-test\"}" "http://prometheus-server.{{ namespace }}.svc.cluster.local:80/api/v1/query"'
       register: prometheus_e2e_verify
       retries: 5
@@ -285,7 +286,7 @@
       kubernetes.core.k8s:
         state: present
         src: "{{ manifests_folder }}/039-otel-collector-ingress.yaml"
-        context: "{{ target_host }}"
+        context: "{{ _target }}"
 
     - name: 27. Display deployment status
       ansible.builtin.debug:
@@ -332,6 +333,6 @@
           - "  📊 Metrics: OTLP → Prometheus (remote write)"
           - ""
           - "Manual verification:"
-          - "  kubectl get pods -n {{ namespace }} -l app.kubernetes.io/name=opentelemetry-collector --context={{ target_host }}"
-          - "  kubectl logs -n {{ namespace }} -l app.kubernetes.io/name=opentelemetry-collector --context={{ target_host }}"
-          - "  kubectl get ingressroute -n {{ namespace }} otel-collector --context={{ target_host }}"
+          - "  kubectl get pods -n {{ namespace }} -l app.kubernetes.io/name=opentelemetry-collector --context={{ _target }}"
+          - "  kubectl logs -n {{ namespace }} -l app.kubernetes.io/name=opentelemetry-collector --context={{ _target }}"
+          - "  kubectl get ingressroute -n {{ namespace }} otel-collector --context={{ _target }}"

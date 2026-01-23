@@ -7,7 +7,8 @@
   hosts: localhost
   gather_facts: false
   vars:
-    target_host: "{{ target_host | default('') }}"
+    # target_host passed via -e, use _target for internal reference to avoid recursion
+    _target: "{{ target_host | default('') }}"
     old_storage_path: "/var/snap/microk8s/common/default-storage"
     new_storage_path: "/mnt/urbalurbadisk/kubernetesstorage"
     backup_storage_path: "{{ old_storage_path }}.bak"
@@ -18,12 +19,12 @@
         msg: >-
           The variable 'target_host' is mandatory.
           Use -e target_host=your_host_name to specify it.
-      when: not target_host
+      when: not _target
 
     - name: 2. Print playbook description
       ansible.builtin.debug:
         msg: >-
-          Moving hostpath-storage on MicroK8s on host: {{ target_host }}
+          Moving hostpath-storage on MicroK8s on host: {{ _target }}
           from {{ old_storage_path }} to {{ new_storage_path }}.
           Backup will be stored at {{ backup_storage_path }}.
 
@@ -31,7 +32,7 @@
       ansible.builtin.stat:
         path: "{{ old_storage_path }}"
       register: old_storage_stat
-      delegate_to: "{{ target_host }}"
+      delegate_to: "{{ _target }}"
       become: true
 
     - name: 4. Create new storage path if it doesn't exist
@@ -41,12 +42,12 @@
         mode: '0755'
         owner: root
         group: root
-      delegate_to: "{{ target_host }}"
+      delegate_to: "{{ _target }}"
       become: true
 
     - name: 5. Stop MicroK8s
       ansible.builtin.command: microk8s stop
-      delegate_to: "{{ target_host }}"
+      delegate_to: "{{ _target }}"
       become: true
 
     - name: 6. Wait for MicroK8s to stop
@@ -64,7 +65,7 @@
       until: stop_result.stdout == "stopped"
       retries: 3
       delay: 5
-      delegate_to: "{{ target_host }}"
+      delegate_to: "{{ _target }}"
       become: true
 
     - name: 7. Fail if MicroK8s did not stop
@@ -74,13 +75,13 @@
 
     - name: 8. Copy existing data to the new location
       ansible.builtin.command: rsync -av {{ old_storage_path }}/ {{ new_storage_path }}/
-      delegate_to: "{{ target_host }}"
+      delegate_to: "{{ _target }}"
       become: true
       when: old_storage_stat.stat.exists
 
     - name: 9. Rename old storage directory to backup
       ansible.builtin.command: mv {{ old_storage_path }} {{ backup_storage_path }}
-      delegate_to: "{{ target_host }}"
+      delegate_to: "{{ _target }}"
       become: true
       when: old_storage_stat.stat.exists
 
@@ -91,17 +92,17 @@
         state: link
         owner: root
         group: root
-      delegate_to: "{{ target_host }}"
+      delegate_to: "{{ _target }}"
       become: true
 
     - name: 11. Start MicroK8s
       ansible.builtin.command: microk8s start
-      delegate_to: "{{ target_host }}"
+      delegate_to: "{{ _target }}"
       become: true
 
     - name: 12. Wait for MicroK8s to be ready
       ansible.builtin.command: microk8s status --wait-ready
-      delegate_to: "{{ target_host }}"
+      delegate_to: "{{ _target }}"
       become: true
       register: microk8s_ready
       until: microk8s_ready.rc == 0
@@ -112,7 +113,7 @@
       ansible.builtin.stat:
         path: "{{ old_storage_path }}"
       register: symlink_stat
-      delegate_to: "{{ target_host }}"
+      delegate_to: "{{ _target }}"
       become: true
 
     - name: 14. Display symbolic link information

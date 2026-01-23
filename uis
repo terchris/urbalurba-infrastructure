@@ -67,34 +67,43 @@ init_config_dirs() {
 
     # Create .uis.extend if it doesn't exist
     if [ ! -d "$SCRIPT_DIR/.uis.extend" ]; then
-        log_info "Creating .uis.extend/ configuration directory..."
+        log_info "Creating .uis.extend/ configuration directory..." >&2
         mkdir -p "$SCRIPT_DIR/.uis.extend"
         first_run=true
     fi
 
     # Create .uis.secrets if it doesn't exist
     if [ ! -d "$SCRIPT_DIR/.uis.secrets" ]; then
-        log_info "Creating .uis.secrets/ directory..."
+        log_info "Creating .uis.secrets/ directory..." >&2
         mkdir -p "$SCRIPT_DIR/.uis.secrets"
         first_run=true
     fi
 
-    # Ensure .uis.secrets is in .gitignore (if .gitignore exists)
-    if [ -f "$SCRIPT_DIR/.gitignore" ]; then
-        if ! grep -q "^\.uis\.secrets" "$SCRIPT_DIR/.gitignore" 2>/dev/null; then
-            echo "" >> "$SCRIPT_DIR/.gitignore"
-            echo "# UIS secrets (auto-added)" >> "$SCRIPT_DIR/.gitignore"
-            echo ".uis.secrets/" >> "$SCRIPT_DIR/.gitignore"
-            log_info "Added .uis.secrets/ to .gitignore"
-        fi
+    # Ensure .uis.secrets is in .gitignore (create file if needed)
+    if [ ! -f "$SCRIPT_DIR/.gitignore" ]; then
+        # Create .gitignore with .uis.secrets entry
+        echo "# UIS secrets - do not commit" > "$SCRIPT_DIR/.gitignore"
+        echo ".uis.secrets/" >> "$SCRIPT_DIR/.gitignore"
+        log_info "Created .gitignore with .uis.secrets/" >&2
+    elif ! grep -q "^\.uis\.secrets" "$SCRIPT_DIR/.gitignore" 2>/dev/null; then
+        # Append to existing .gitignore
+        echo "" >> "$SCRIPT_DIR/.gitignore"
+        echo "# UIS secrets (auto-added)" >> "$SCRIPT_DIR/.gitignore"
+        echo ".uis.secrets/" >> "$SCRIPT_DIR/.gitignore"
+        log_info "Added .uis.secrets/ to .gitignore" >&2
     fi
 
-    # Show welcome message on first run
-    if [ "$first_run" = true ]; then
-        if [ -f "$SCRIPT_DIR/provision-host/uis/templates/welcome.txt" ]; then
-            cat "$SCRIPT_DIR/provision-host/uis/templates/welcome.txt"
+    # Return first_run status for welcome message (shown after container starts)
+    echo "$first_run"
+}
+
+# Show welcome message from inside container
+show_welcome() {
+    docker exec "$CONTAINER_NAME" bash -c '
+        if [ -f /mnt/urbalurbadisk/provision-host/uis/templates/welcome.txt ]; then
+            cat /mnt/urbalurbadisk/provision-host/uis/templates/welcome.txt
         fi
-    fi
+    ' 2>/dev/null || true
 }
 
 # Start container if not running
@@ -104,7 +113,8 @@ start_container() {
     fi
 
     check_image
-    init_config_dirs
+    local first_run
+    first_run=$(init_config_dirs)
 
     log_info "Starting UIS container..."
 
@@ -164,6 +174,11 @@ start_container() {
     ' 2>/dev/null || true
 
     log_info "Container started"
+
+    # Show welcome message on first run
+    if [ "$first_run" = "true" ]; then
+        show_welcome
+    fi
 }
 
 # Stop container

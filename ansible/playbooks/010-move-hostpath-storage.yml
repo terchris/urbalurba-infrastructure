@@ -8,7 +8,8 @@
   hosts: localhost
   gather_facts: false
   vars:
-    target_host: "{{ target_host | default('') }}"
+    # target_host passed via -e, use _target for internal reference to avoid recursion
+    _target: "{{ target_host | default('') }}"
     old_storage_path: "/var/snap/microk8s/common/default-storage"
     new_storage_path: "/mnt/urbalurbadisk/kubernetesstorage"
     backup_storage_path: "{{ old_storage_path }}.bak"
@@ -19,13 +20,13 @@
         msg: >-
           The variable 'target_host' is mandatory.
           Use -e target_host=your_host_name to specify it.
-      when: not target_host
+      when: not _target
 
     - name: 2. Determine environment (Azure or Multipass)
       ansible.builtin.stat:
         path: /etc/waagent.conf
       register: azure_check
-      delegate_to: "{{ target_host }}"
+      delegate_to: "{{ _target }}"
 
     - name: 3. Set environment fact
       set_fact:
@@ -34,7 +35,7 @@
     - name: 4. Print playbook description
       ansible.builtin.debug:
         msg: >-
-          Moving hostpath-storage on MicroK8s on host: {{ target_host }} ({{ 'Azure' if is_azure else 'Multipass' }} environment)
+          Moving hostpath-storage on MicroK8s on host: {{ _target }} ({{ 'Azure' if is_azure else 'Multipass' }} environment)
           from {{ old_storage_path }} to {{ new_storage_path }}.
           Backup will be stored at {{ backup_storage_path }}.
 
@@ -42,12 +43,12 @@
       ansible.builtin.stat:
         path: "{{ old_storage_path }}"
       register: old_storage_stat
-      delegate_to: "{{ target_host }}"
+      delegate_to: "{{ _target }}"
       become: true
 
     - name: 6. Stop MicroK8s
       ansible.builtin.command: microk8s stop
-      delegate_to: "{{ target_host }}"
+      delegate_to: "{{ _target }}"
       become: true
 
     - name: 7. Wait for MicroK8s to stop
@@ -65,7 +66,7 @@
       until: stop_result.stdout == "stopped"
       retries: 3
       delay: 5
-      delegate_to: "{{ target_host }}"
+      delegate_to: "{{ _target }}"
       become: true
 
     - name: 8. Fail if MicroK8s did not stop
@@ -80,7 +81,7 @@
         mode: '0755'
         owner: "{{ 'root' if is_azure else 'ubuntu' }}"
         group: "{{ 'root' if is_azure else 'ubuntu' }}"
-      delegate_to: "{{ target_host }}"
+      delegate_to: "{{ _target }}"
       become: true
 
     - name: 10. Copy existing data to the new location (if any)
@@ -95,14 +96,14 @@
         else
           echo "Old storage directory doesn't exist. Nothing to copy."
         fi
-      delegate_to: "{{ target_host }}"
+      delegate_to: "{{ _target }}"
       become: true
       register: copy_result
       changed_when: copy_result.stdout == "Data copied"
 
     - name: 11. Rename old storage directory to backup (if it exists)
       ansible.builtin.command: mv {{ old_storage_path }} {{ backup_storage_path }}
-      delegate_to: "{{ target_host }}"
+      delegate_to: "{{ _target }}"
       become: true
       when: old_storage_stat.stat.exists
       register: rename_result
@@ -117,17 +118,17 @@
         state: link
         owner: "{{ 'root' if is_azure else 'ubuntu' }}"
         group: "{{ 'root' if is_azure else 'ubuntu' }}"
-      delegate_to: "{{ target_host }}"
+      delegate_to: "{{ _target }}"
       become: true
 
     - name: 13. Start MicroK8s
       ansible.builtin.command: microk8s start
-      delegate_to: "{{ target_host }}"
+      delegate_to: "{{ _target }}"
       become: true
 
     - name: 14. Wait for MicroK8s to be ready
       ansible.builtin.command: microk8s status --wait-ready
-      delegate_to: "{{ target_host }}"
+      delegate_to: "{{ _target }}"
       become: true
       register: microk8s_ready
       until: microk8s_ready.rc == 0
@@ -138,7 +139,7 @@
       ansible.builtin.stat:
         path: "{{ old_storage_path }}"
       register: symlink_stat
-      delegate_to: "{{ target_host }}"
+      delegate_to: "{{ _target }}"
       become: true
 
     - name: 16. Display symbolic link information

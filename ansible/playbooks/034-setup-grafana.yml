@@ -8,7 +8,8 @@
   gather_facts: false
 
   vars:
-    target_host: "{{ target_host | default('rancher-desktop') }}"
+    # target_host passed via -e, use _target for internal reference to avoid recursion
+    _target: "{{ target_host | default('rancher-desktop') }}"
     namespace: "monitoring"
     component_name: "grafana"
     manifests_folder: "/mnt/urbalurbadisk/manifests"
@@ -26,7 +27,7 @@
           - "Grafana Deployment"
           - "File: ansible/playbooks/034-setup-grafana.yml"
           - "======================================"
-          - "Target Host: {{ target_host }}"
+          - "Target Host: {{ _target }}"
           - "Namespace: {{ namespace }}"
           - "Component: {{ component_name }}"
           - "Config File: {{ grafana_config_file }}"
@@ -37,7 +38,7 @@
         api_version: v1
         kind: Namespace
         state: present
-        context: "{{ target_host }}"
+        context: "{{ _target }}"
 
     - name: 3. Add/update Helm repositories
       kubernetes.core.helm_repository:
@@ -66,7 +67,7 @@
         release_namespace: "{{ namespace }}"
         create_namespace: true
         state: present
-        context: "{{ target_host }}"
+        context: "{{ _target }}"
         values_files:
           - "{{ grafana_config_file }}"
 
@@ -76,7 +77,7 @@
         namespace: "{{ namespace }}"
         label_selectors:
           - app.kubernetes.io/name=grafana
-        context: "{{ target_host }}"
+        context: "{{ _target }}"
       register: grafana_pods
       retries: 20
       delay: 15
@@ -88,7 +89,7 @@
     - name: 9. Test Grafana health endpoint
       ansible.builtin.command: >
         kubectl run curl-test-grafana-health --image=curlimages/curl --rm -i --restart=Never
-        -n {{ namespace }} --context {{ target_host }} --timeout=10s --
+        -n {{ namespace }} --context {{ _target }} --timeout=10s --
         curl -s -o /dev/null -w "HTTP_CODE:%{http_code}"
         http://grafana.{{ namespace }}.svc.cluster.local:80/api/health
       register: grafana_health_test
@@ -100,7 +101,7 @@
     - name: 10. Test Prometheus datasource connectivity
       ansible.builtin.command: >
         kubectl run curl-test-grafana-prometheus --image=curlimages/curl --rm -i --restart=Never
-        -n {{ namespace }} --context {{ target_host }} --timeout=10s --
+        -n {{ namespace }} --context {{ _target }} --timeout=10s --
         curl -s -u admin:SecretPassword1 -o /dev/null -w "HTTP_CODE:%{http_code}"
         "http://grafana.{{ namespace }}.svc.cluster.local:80/api/datasources/proxy/1/api/v1/status/runtimeinfo"
       register: grafana_prometheus_test
@@ -112,7 +113,7 @@
     - name: 11. Test Loki datasource connectivity
       ansible.builtin.command: >
         kubectl run curl-test-grafana-loki --image=curlimages/curl --rm -i --restart=Never
-        -n {{ namespace }} --context {{ target_host }} --timeout=10s --
+        -n {{ namespace }} --context {{ _target }} --timeout=10s --
         curl -s -u admin:SecretPassword1 -o /dev/null -w "HTTP_CODE:%{http_code}"
         "http://grafana.{{ namespace }}.svc.cluster.local:80/api/datasources/proxy/2/loki/api/v1/labels"
       register: grafana_loki_test
@@ -124,7 +125,7 @@
     - name: 12. Test Tempo datasource connectivity
       ansible.builtin.command: >
         kubectl run curl-test-grafana-tempo --image=curlimages/curl --rm -i --restart=Never
-        -n {{ namespace }} --context {{ target_host }} --timeout=10s --
+        -n {{ namespace }} --context {{ _target }} --timeout=10s --
         curl -s -u admin:SecretPassword1 -o /dev/null -w "HTTP_CODE:%{http_code}"
         "http://grafana.{{ namespace }}.svc.cluster.local:80/api/datasources/proxy/3/ready"
       register: grafana_tempo_test
@@ -136,7 +137,7 @@
     - name: 13. Test Prometheus data query via Grafana
       ansible.builtin.command: >
         kubectl run curl-test-grafana-prometheus-data --image=curlimages/curl --rm -i --restart=Never
-        -n {{ namespace }} --context {{ target_host }} --timeout=15s --
+        -n {{ namespace }} --context {{ _target }} --timeout=15s --
         curl -s -u admin:SecretPassword1 -w "HTTP_CODE:%{http_code}"
         --data-urlencode 'query=up'
         "http://grafana.{{ namespace }}.svc.cluster.local:80/api/datasources/proxy/1/api/v1/query"
@@ -149,7 +150,7 @@
     - name: 14. E2E TEST - Send test logs via OTEL to Loki
       ansible.builtin.command: >
         kubectl run grafana-e2e-logs --image=ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:latest --rm -i --restart=Never
-        -n {{ namespace }} --context {{ target_host }} --timeout=60s --
+        -n {{ namespace }} --context {{ _target }} --timeout=60s --
         logs --otlp-endpoint=otel-collector-opentelemetry-collector.{{ namespace }}.svc.cluster.local:4318
         --otlp-insecure --otlp-http --duration=3s --logs=10
         --telemetry-attributes service.name=\"grafana-e2e-validation\" --telemetry-attributes test.type=\"grafana-datasource-test\"
@@ -168,7 +169,7 @@
     - name: 16. VERIFY - Query Loki via Grafana for E2E test logs
       ansible.builtin.command: >
         kubectl run grafana-verify-loki-e2e --image=curlimages/curl --rm -i --restart=Never
-        -n {{ namespace }} --context {{ target_host }} --timeout=20s --
+        -n {{ namespace }} --context {{ _target }} --timeout=20s --
         /bin/sh -c 'NOW=$(date +%s); START=$((NOW-120)); curl -s -u admin:SecretPassword1 -G --data-urlencode "query={service_name=\"telemetrygen\"}" --data-urlencode "start=${START}000000000" --data-urlencode "end=${NOW}000000000" --data-urlencode "limit=5" "http://grafana.{{ namespace }}.svc.cluster.local:80/api/datasources/proxy/2/loki/api/v1/query_range"'
       register: grafana_loki_e2e_verify
       retries: 3
@@ -180,7 +181,7 @@
     - name: 17. E2E TEST - Send test traces via OTEL to Tempo
       ansible.builtin.command: >
         kubectl run grafana-e2e-traces --image=ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:latest --rm -i --restart=Never
-        -n {{ namespace }} --context {{ target_host }} --timeout=60s --
+        -n {{ namespace }} --context {{ _target }} --timeout=60s --
         traces --otlp-endpoint=otel-collector-opentelemetry-collector.{{ namespace }}.svc.cluster.local:4317
         --otlp-insecure --duration=3s --traces=5
         --telemetry-attributes service.name=\"grafana-e2e-validation\" --telemetry-attributes test.type=\"grafana-datasource-test\"
@@ -198,7 +199,7 @@
     - name: 19. VERIFY - Query Tempo via Grafana for E2E test traces
       ansible.builtin.command: >
         kubectl run grafana-verify-tempo-e2e --image=curlimages/curl --rm -i --restart=Never
-        -n {{ namespace }} --context {{ target_host }} --timeout=20s --
+        -n {{ namespace }} --context {{ _target }} --timeout=20s --
         /bin/sh -c 'NOW=$(date +%s); START=$((NOW-120)); curl -s -u admin:SecretPassword1 -G --data-urlencode "q={.service.name=\"grafana-e2e-validation\"}" --data-urlencode "start=$START" --data-urlencode "end=$NOW" --data-urlencode "limit=5" "http://grafana.{{ namespace }}.svc.cluster.local:80/api/datasources/proxy/3/api/search"'
       register: grafana_tempo_e2e_verify
       retries: 3
@@ -237,13 +238,13 @@
       kubernetes.core.k8s:
         state: present
         src: "{{ manifests_folder }}/035-grafana-test-dashboards.yaml"
-        context: "{{ target_host }}"
+        context: "{{ _target }}"
 
     - name: 22. Deploy sovdev-logger Overview dashboard
       kubernetes.core.k8s:
         state: present
         src: "{{ manifests_folder }}/036-grafana-sovdev-metrics.yaml"
-        context: "{{ target_host }}"
+        context: "{{ _target }}"
 
     - name: 23. Wait for dashboard ConfigMaps to be created
       kubernetes.core.k8s_info:
@@ -251,7 +252,7 @@
         namespace: "{{ namespace }}"
         label_selectors:
           - grafana_dashboard=1
-        context: "{{ target_host }}"
+        context: "{{ _target }}"
       register: dashboard_configmaps
       retries: 5
       delay: 2
@@ -260,7 +261,7 @@
     - name: 24. Generate test data - Send logs for dashboard
       ansible.builtin.command: >
         kubectl run telemetrygen-dashboard-logs --image=ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:latest --rm -i --restart=Never
-        -n {{ namespace }} --context {{ target_host }} --timeout=60s --
+        -n {{ namespace }} --context {{ _target }} --timeout=60s --
         logs --otlp-endpoint=otel-collector-opentelemetry-collector.{{ namespace }}.svc.cluster.local:4318
         --otlp-insecure --otlp-http --duration=10s --logs=100 --service telemetrygen-logs
         --body "Test log entry for Installation Test Suite dashboard"
@@ -273,7 +274,7 @@
     - name: 25. Generate test data - Send traces for dashboard
       ansible.builtin.command: >
         kubectl run telemetrygen-dashboard-traces --image=ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:latest --rm -i --restart=Never
-        -n {{ namespace }} --context {{ target_host }} --timeout=60s --
+        -n {{ namespace }} --context {{ _target }} --timeout=60s --
         traces --otlp-endpoint=otel-collector-opentelemetry-collector.{{ namespace }}.svc.cluster.local:4317
         --otlp-insecure --duration=5s --traces=20 --service telemetrygen-traces
       register: test_traces
@@ -290,7 +291,7 @@
       kubernetes.core.k8s:
         state: present
         src: "{{ manifests_folder }}/038-grafana-ingressroute.yaml"
-        context: "{{ target_host }}"
+        context: "{{ _target }}"
 
     - name: 28. Wait for IngressRoute to be ready
       kubernetes.core.k8s_info:
@@ -298,7 +299,7 @@
         name: grafana
         namespace: "{{ namespace }}"
         api_version: traefik.io/v1alpha1
-        context: "{{ target_host }}"
+        context: "{{ _target }}"
       register: grafana_ingressroute
       retries: 5
       delay: 2
@@ -350,10 +351,10 @@
           - ""
           - "Access Grafana UI:"
           - "  http://grafana.localhost (via ingress)"
-          - "  kubectl port-forward -n {{ namespace }} svc/grafana 3000:80 --context={{ target_host }}"
+          - "  kubectl port-forward -n {{ namespace }} svc/grafana 3000:80 --context={{ _target }}"
           - "  Open: http://localhost:3000"
           - ""
           - "Manual verification:"
-          - "  kubectl get pods -n {{ namespace }} -l app.kubernetes.io/name=grafana --context={{ target_host }}"
-          - "  kubectl get configmaps -n {{ namespace }} -l grafana_dashboard=1 --context={{ target_host }}"
-          - "  kubectl get ingressroute -n {{ namespace }} grafana --context={{ target_host }}"
+          - "  kubectl get pods -n {{ namespace }} -l app.kubernetes.io/name=grafana --context={{ _target }}"
+          - "  kubectl get configmaps -n {{ namespace }} -l grafana_dashboard=1 --context={{ _target }}"
+          - "  kubectl get ingressroute -n {{ namespace }} grafana --context={{ _target }}"

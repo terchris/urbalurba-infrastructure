@@ -8,7 +8,8 @@
   gather_facts: false
 
   vars:
-    target_host: "{{ target_host | default('rancher-desktop') }}"
+    # target_host passed via -e, use _target for internal reference to avoid recursion
+    _target: "{{ target_host | default('rancher-desktop') }}"
     target_namespace: "monitoring"
     component_name: "testdata"
 
@@ -19,7 +20,7 @@
           - "======================================="
           - "OpenTelemetry Pipeline Validation"
           - "======================================="
-          - "Target Host: {{ target_host }}"
+          - "Target Host: {{ _target }}"
           - "Namespace: {{ target_namespace }}"
           - ""
           - "📋 Test Plan:"
@@ -53,7 +54,7 @@
       kubernetes.core.k8s_info:
         kind: Namespace
         name: "{{ target_namespace }}"
-        context: "{{ target_host }}"
+        context: "{{ _target }}"
       register: namespace_check
       failed_when: namespace_check.resources | length == 0
 
@@ -63,7 +64,7 @@
         namespace: "{{ target_namespace }}"
         label_selectors:
           - app.kubernetes.io/name=opentelemetry-collector
-        context: "{{ target_host }}"
+        context: "{{ _target }}"
       register: otel_pods
       failed_when: >
         otel_pods.resources | length == 0 or
@@ -76,7 +77,7 @@
         label_selectors:
           - app.kubernetes.io/component=gateway
           - app.kubernetes.io/name=loki
-        context: "{{ target_host }}"
+        context: "{{ _target }}"
       register: loki_pods
       failed_when: >
         loki_pods.resources | length == 0 or
@@ -89,7 +90,7 @@
         label_selectors:
           - app.kubernetes.io/name=prometheus
           - app.kubernetes.io/component=server
-        context: "{{ target_host }}"
+        context: "{{ _target }}"
       register: prometheus_pods
       failed_when: >
         prometheus_pods.resources | length == 0 or
@@ -101,7 +102,7 @@
         namespace: "{{ target_namespace }}"
         label_selectors:
           - app.kubernetes.io/name=tempo
-        context: "{{ target_host }}"
+        context: "{{ _target }}"
       register: tempo_pods
       failed_when: >
         tempo_pods.resources | length == 0 or
@@ -131,7 +132,7 @@
     - name: 12. Deploy telemetrygen logs generator job
       kubernetes.core.k8s:
         state: present
-        context: "{{ target_host }}"
+        context: "{{ _target }}"
         definition:
           apiVersion: batch/v1
           kind: Job
@@ -174,7 +175,7 @@
         kind: Job
         namespace: "{{ target_namespace }}"
         name: telemetrygen-logs
-        context: "{{ target_host }}"
+        context: "{{ _target }}"
       register: logs_job
       retries: 3
       delay: 35
@@ -194,7 +195,7 @@
         START_TIME=$((END_TIME - 300))
 
         kubectl run curl-test-loki-logs-{{ 99999999 | random | string }} --image=curlimages/curl --rm -i --restart=Never \
-          -n {{ target_namespace }} --context {{ target_host }} -- \
+          -n {{ target_namespace }} --context {{ _target }} -- \
           curl -s -G \
           --data-urlencode 'query={service_name="telemetrygen-logs"} |~ "{{ test_id }}"' \
           --data-urlencode "start=${START_TIME}" \
@@ -235,7 +236,7 @@
     - name: 18. Deploy telemetrygen metrics generator job
       kubernetes.core.k8s:
         state: present
-        context: "{{ target_host }}"
+        context: "{{ _target }}"
         definition:
           apiVersion: batch/v1
           kind: Job
@@ -275,7 +276,7 @@
         kind: Job
         namespace: "{{ target_namespace }}"
         name: telemetrygen-metrics
-        context: "{{ target_host }}"
+        context: "{{ _target }}"
       register: metrics_job
       retries: 3
       delay: 35
@@ -291,7 +292,7 @@
     - name: 21. Test Prometheus API for any metrics
       ansible.builtin.command: >
         kubectl run curl-test-prometheus-{{ 99999999 | random | string }} --image=curlimages/curl --rm -i --restart=Never
-        -n {{ target_namespace }} --context {{ target_host }} --
+        -n {{ target_namespace }} --context {{ _target }} --
         curl -s -G
         --data-urlencode 'query=up{namespace="monitoring"}'
         http://prometheus-server.{{ target_namespace }}.svc.cluster.local:80/api/v1/query
@@ -327,7 +328,7 @@
     - name: 24. Deploy telemetrygen traces generator job
       kubernetes.core.k8s:
         state: present
-        context: "{{ target_host }}"
+        context: "{{ _target }}"
         definition:
           apiVersion: batch/v1
           kind: Job
@@ -368,7 +369,7 @@
         kind: Job
         namespace: "{{ target_namespace }}"
         name: telemetrygen-traces
-        context: "{{ target_host }}"
+        context: "{{ _target }}"
       register: traces_job
       retries: 3
       delay: 35
@@ -384,7 +385,7 @@
     - name: 27. Test Tempo API for generated traces
       ansible.builtin.command: >
         kubectl run curl-test-tempo-{{ 99999999 | random | string }} --image=curlimages/curl --rm -i --restart=Never
-        -n {{ target_namespace }} --context {{ target_host }} --
+        -n {{ target_namespace }} --context {{ _target }} --
         curl -s 'http://tempo.{{ target_namespace }}.svc.cluster.local:3200/api/search?tags=service.name=telemetrygen-traces'
       register: tempo_traces_test
       retries: 3
@@ -415,7 +416,7 @@
     - name: 30. Deploy Grafana installation test dashboards ConfigMap
       kubernetes.core.k8s:
         state: present
-        context: "{{ target_host }}"
+        context: "{{ _target }}"
         definition:
           apiVersion: v1
           kind: ConfigMap
@@ -536,7 +537,7 @@
     - name: 31. Test Grafana health endpoint
       ansible.builtin.command: >
         kubectl run curl-test-grafana-{{ 99999999 | random | string }} --image=curlimages/curl --rm -i --restart=Never
-        -n {{ target_namespace }} --context {{ target_host }} --
+        -n {{ target_namespace }} --context {{ _target }} --
         curl -s http://grafana.{{ target_namespace }}.svc.cluster.local:80/api/health
       register: grafana_health_test
       retries: 3
@@ -578,5 +579,5 @@
           - "  - Test Data - Traces (link to Tempo Explore)"
           - ""
           - "🧹 Cleanup After Validation:"
-          - "  kubectl delete configmap installation-test-dashboards -n {{ target_namespace }} --context={{ target_host }}"
-          - "  kubectl delete jobs -n {{ target_namespace }} -l app=telemetrygen --context={{ target_host }}"
+          - "  kubectl delete configmap installation-test-dashboards -n {{ target_namespace }} --context={{ _target }}"
+          - "  kubectl delete jobs -n {{ target_namespace }} -l app=telemetrygen --context={{ _target }}"

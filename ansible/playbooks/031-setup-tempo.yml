@@ -8,7 +8,8 @@
   gather_facts: false
 
   vars:
-    target_host: "{{ target_host | default('rancher-desktop') }}"
+    # target_host passed via -e, use _target for internal reference to avoid recursion
+    _target: "{{ target_host | default('rancher-desktop') }}"
     namespace: "monitoring"
     component_name: "tempo"
     manifests_folder: "/mnt/urbalurbadisk/manifests"
@@ -25,7 +26,7 @@
           - "====================================="
           - "Grafana Tempo Deployment"
           - "====================================="
-          - "Target Host: {{ target_host }}"
+          - "Target Host: {{ _target }}"
           - "Namespace: {{ namespace }}"
           - "Component: {{ component_name }}"
           - "Config File: {{ tempo_config_file }}"
@@ -36,7 +37,7 @@
         api_version: v1
         kind: Namespace
         state: present
-        context: "{{ target_host }}"
+        context: "{{ _target }}"
 
     - name: 3. Add/update Helm repositories
       kubernetes.core.helm_repository:
@@ -55,7 +56,7 @@
         --namespace {{ namespace }}
         --create-namespace
         --timeout 600s
-        --kube-context {{ target_host }}
+        --kube-context {{ _target }}
       register: tempo_helm_result
       changed_when: true
 
@@ -65,7 +66,7 @@
         namespace: "{{ namespace }}"
         label_selectors:
           - app.kubernetes.io/name=tempo
-        context: "{{ target_host }}"
+        context: "{{ _target }}"
       register: tempo_pods
       retries: 20
       delay: 15
@@ -77,7 +78,7 @@
     - name: 7. Test Tempo HTTP API endpoint from within cluster
       ansible.builtin.command: >
         kubectl run curl-test-tempo-api --image=curlimages/curl --rm -i --restart=Never
-        -n {{ namespace }} --context {{ target_host }} --
+        -n {{ namespace }} --context {{ _target }} --
         curl -s -o /dev/null -w "HTTP_CODE:%{http_code}"
         http://tempo.{{ namespace }}.svc.cluster.local:3200/api/echo
       register: tempo_api_test
@@ -89,7 +90,7 @@
     - name: 8. Test Tempo ready endpoint from within cluster
       ansible.builtin.command: >
         kubectl run curl-test-tempo-ready --image=curlimages/curl --rm -i --restart=Never
-        -n {{ namespace }} --context {{ target_host }} --
+        -n {{ namespace }} --context {{ _target }} --
         curl -s -o /dev/null -w "HTTP_CODE:%{http_code}"
         http://tempo.{{ namespace }}.svc.cluster.local:3200/ready
       register: tempo_ready_test
@@ -101,7 +102,7 @@
     - name: 9. Test Tempo metrics endpoint
       ansible.builtin.command: >
         kubectl run curl-test-tempo-metrics --image=curlimages/curl --rm -i --restart=Never
-        -n {{ namespace }} --context {{ target_host }} --timeout=15s --
+        -n {{ namespace }} --context {{ _target }} --timeout=15s --
         curl -s http://tempo.{{ namespace }}.svc.cluster.local:3200/metrics
       register: tempo_metrics_test
       retries: 3
@@ -112,7 +113,7 @@
     - name: 10. Test Tempo search API
       ansible.builtin.command: >
         kubectl run curl-test-tempo-search --image=curlimages/curl --rm -i --restart=Never
-        -n {{ namespace }} --context {{ target_host }} --timeout=15s --
+        -n {{ namespace }} --context {{ _target }} --timeout=15s --
         curl -s "http://tempo.{{ namespace }}.svc.cluster.local:3200/api/search"
       register: tempo_search_api_test
       retries: 3
@@ -123,7 +124,7 @@
     - name: 11. Test Tempo OTLP gRPC port accessibility
       ansible.builtin.command: >
         kubectl run curl-test-tempo-otlp-grpc --image=curlimages/curl --rm -i --restart=Never
-        -n {{ namespace }} --context {{ target_host }} --timeout=10s --
+        -n {{ namespace }} --context {{ _target }} --timeout=10s --
         curl -v telnet://tempo.{{ namespace }}.svc.cluster.local:4317
       register: tempo_otlp_grpc_test
       retries: 3
@@ -134,7 +135,7 @@
     - name: 12. Test Tempo OTLP HTTP port accessibility
       ansible.builtin.command: >
         kubectl run curl-test-tempo-otlp-http --image=curlimages/curl --rm -i --restart=Never
-        -n {{ namespace }} --context {{ target_host }} --timeout=10s --
+        -n {{ namespace }} --context {{ _target }} --timeout=10s --
         curl -s -o /dev/null -w "HTTP_CODE:%{http_code}"
         http://tempo.{{ namespace }}.svc.cluster.local:4318/
       register: tempo_otlp_http_test
@@ -168,5 +169,5 @@
           - "  🔍 Search API: {{ 'PASS' if tempo_search_api_test.stdout.find('\"traces\"') != -1 and tempo_search_api_test.stdout.find('completedJobs') != -1 else 'FAIL' }}"
           - ""
           - "Manual verification:"
-          - "  kubectl get pods -n {{ namespace }} -l app.kubernetes.io/name=tempo --context={{ target_host }}"
-          - "  kubectl logs -n {{ namespace }} -l app.kubernetes.io/name=tempo --context={{ target_host }}"
+          - "  kubectl get pods -n {{ namespace }} -l app.kubernetes.io/name=tempo --context={{ _target }}"
+          - "  kubectl logs -n {{ namespace }} -l app.kubernetes.io/name=tempo --context={{ _target }}"
