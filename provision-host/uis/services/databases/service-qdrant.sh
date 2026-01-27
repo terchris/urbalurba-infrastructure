@@ -12,7 +12,7 @@ SCRIPT_CATEGORY="DATABASES"
 # === UIS-Specific (Optional) ===
 SCRIPT_PLAYBOOK="044-setup-qdrant.yml"
 SCRIPT_MANIFEST=""
-SCRIPT_CHECK_COMMAND="kubectl get pods -n databases -l app=qdrant --no-headers 2>/dev/null | grep -q Running"
+SCRIPT_CHECK_COMMAND="kubectl get pods -n default -l app.kubernetes.io/name=qdrant --no-headers 2>/dev/null | grep -q Running"
 SCRIPT_REMOVE_PLAYBOOK="044-remove-qdrant.yml"
 SCRIPT_REQUIRES=""
 SCRIPT_PRIORITY="33"

@@ -157,8 +157,8 @@
         
     - name: 14a. Verify Elasticsearch connectivity
       ansible.builtin.shell: |
-        kubectl exec -n {{ gravitee_namespace }} $(kubectl get pods -n {{ gravitee_namespace }} -l app.kubernetes.io/name=elasticsearch -o jsonpath='{.items[0].metadata.name}') -- \
-        curl -s -u "elastic:{{ elasticsearch_password_fact }}" -X GET "http://localhost:9200/_cluster/health?pretty"
+        kubectl exec -n default $(kubectl get pods -n default -l app=elasticsearch-master -o jsonpath='{.items[0].metadata.name}') -- \
+        curl -s -X GET "http://localhost:9200/_cluster/health?pretty"
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
       register: elasticsearch_health

@@ -24,7 +24,7 @@ mongo:
 # Elasticsearch configuration
 es:
   endpoints:
-    - http://elasticsearch.default.svc.cluster.local:9200
+    - http://elasticsearch-master.default.svc.cluster.local:9200
   security:
     enabled: false
 

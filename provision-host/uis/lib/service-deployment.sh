@@ -109,8 +109,18 @@ deploy_single_service() {
         if [[ ! -f "$playbook_path" ]]; then
             die_config "Playbook not found: $SCRIPT_PLAYBOOK"
         fi
-        log_info "Running Ansible playbook: $SCRIPT_PLAYBOOK"
-        if ! ansible-playbook "$playbook_path"; then
+
+        # Load cluster config for target_host
+        local cluster_config="$CONFIG_DIR/cluster-config.sh"
+        local target_host="rancher-desktop"  # Default
+        if [[ -f "$cluster_config" ]]; then
+            # shellcheck source=/dev/null
+            source "$cluster_config"
+            target_host="${TARGET_HOST:-rancher-desktop}"
+        fi
+
+        log_info "Running Ansible playbook: $SCRIPT_PLAYBOOK (target: $target_host)"
+        if ! ansible-playbook "$playbook_path" -e "target_host=$target_host"; then
             die_k8s "Playbook failed: $SCRIPT_PLAYBOOK"
         fi
 
@@ -166,12 +176,28 @@ remove_single_service() {
 
     log_info "Removing $SCRIPT_NAME ($service_id)..."
 
-    # Check for removal playbook first
+    # Load cluster config for target_host
+    local cluster_config="$CONFIG_DIR/cluster-config.sh"
+    local target_host="rancher-desktop"  # Default
+    if [[ -f "$cluster_config" ]]; then
+        # shellcheck source=/dev/null
+        source "$cluster_config"
+        target_host="${TARGET_HOST:-rancher-desktop}"
+    fi
+
+    # Option 1: Removal playbook (can include extra params like "-e operation=delete")
     if [[ -n "$SCRIPT_REMOVE_PLAYBOOK" ]]; then
-        local remove_playbook="$ANSIBLE_DIR/$SCRIPT_REMOVE_PLAYBOOK"
+        # Extract just the playbook filename (first word) to check if it exists
+        local playbook_file="${SCRIPT_REMOVE_PLAYBOOK%% *}"
+        local extra_params="${SCRIPT_REMOVE_PLAYBOOK#* }"
+        # If no space found, extra_params equals playbook_file, so clear it
+        [[ "$extra_params" == "$playbook_file" ]] && extra_params=""
+
+        local remove_playbook="$ANSIBLE_DIR/$playbook_file"
         if [[ -f "$remove_playbook" ]]; then
-            log_info "Running removal playbook: $SCRIPT_REMOVE_PLAYBOOK"
-            if ! ansible-playbook "$remove_playbook"; then
+            log_info "Running removal: $SCRIPT_REMOVE_PLAYBOOK"
+            # shellcheck disable=SC2086
+            if ! ansible-playbook "$remove_playbook" -e "target_host=$target_host" $extra_params; then
                 die_k8s "Removal playbook failed"
             fi
             log_success "$SCRIPT_NAME removed"
@@ -179,7 +205,7 @@ remove_single_service() {
         fi
     fi
 
-    # Fall back to manifest deletion
+    # Option 2: Fall back to manifest deletion
     if [[ -n "$SCRIPT_MANIFEST" ]]; then
         local manifest_path="$MANIFESTS_DIR/$SCRIPT_MANIFEST"
         if [[ -f "$manifest_path" ]]; then
