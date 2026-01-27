@@ -52,13 +52,63 @@
           - "{{ litellm_db_result.stdout_lines }}"
       when: litellm_db_result.rc != 0
 
-    - name: 3. Verify LiteLLM ConfigMap exists
-      ansible.builtin.command: kubectl get configmap litellm-config -n {{ ai_namespace }}
+    - name: 3. Check if LiteLLM ConfigMap exists (ai-models-litellm)
+      ansible.builtin.command: kubectl get configmap ai-models-litellm -n {{ ai_namespace }}
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
       register: configmap_check
       changed_when: false
-      failed_when: configmap_check.rc != 0
+      failed_when: false
+
+    - name: 3.1. Create default LiteLLM ConfigMap if missing
+      kubernetes.core.k8s:
+        kubeconfig: "{{ merged_kubeconf_file }}"
+        state: present
+        definition:
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: ai-models-litellm
+            namespace: "{{ ai_namespace }}"
+            labels:
+              managed-by: litellm-playbook
+          data:
+            config.yaml: |
+              # LiteLLM Default Configuration
+              # Created by 210-setup-litellm.yml playbook
+              #
+              # To add more models, edit this ConfigMap:
+              #   kubectl edit configmap ai-models-litellm -n ai
+              #
+              # Or apply your own ConfigMap from secrets.
+
+              general_settings:
+                master_key: os.environ/LITELLM_PROXY_MASTER_KEY
+                forward_client_headers_to_llm_api: true
+
+              litellm_settings:
+                request_timeout: 300
+                json_logs: true
+
+              model_list:
+                # Mac Ollama - accessible from cluster via host.docker.internal
+                - model_name: llama3.2
+                  litellm_params:
+                    model: ollama_chat/llama3.2
+                    api_base: "http://host.docker.internal:11434"
+
+                # Add your API models below (requires API keys in urbalurba-secrets)
+                # Example:
+                # - model_name: gpt-4o
+                #   litellm_params:
+                #     model: gpt-4o
+                #     api_key: "os.environ/OPENAI_API_KEY"
+      when: configmap_check.rc != 0
+      register: configmap_created
+
+    - name: 3.2. Display ConfigMap status
+      ansible.builtin.debug:
+        msg: "{{ 'Created default ai-models-litellm ConfigMap' if configmap_created.changed | default(false) else 'Using existing ai-models-litellm ConfigMap' }}"
 
     - name: 4. Deploy LiteLLM via Helm
       ansible.builtin.command: >

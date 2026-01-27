@@ -1,0 +1,97 @@
+---
+# file: ansible/playbooks/210-remove-litellm.yml
+# Description: Remove LiteLLM from Kubernetes
+#
+# This playbook removes:
+# - LiteLLM Helm release
+# - LiteLLM IngressRoute
+# - LiteLLM ConfigMap (optionally)
+#
+# Note: The PostgreSQL database 'litellm' is NOT deleted.
+#
+# Usage:
+# ansible-playbook playbooks/210-remove-litellm.yml -e target_host="rancher-desktop"
+
+- name: Remove LiteLLM from Kubernetes
+  hosts: localhost
+  gather_facts: false
+  vars:
+    manifests_folder: "/mnt/urbalurbadisk/manifests"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    ai_namespace: "ai"
+    litellm_ingress_file: "{{ manifests_folder }}/221-litellm-ingress.yaml"
+
+  tasks:
+    - name: 1. Display removal information
+      ansible.builtin.debug:
+        msg:
+          - "====================================="
+          - "LiteLLM Removal"
+          - "File: ansible/playbooks/210-remove-litellm.yml"
+          - "====================================="
+          - "Namespace: {{ ai_namespace }}"
+          - "Component: litellm"
+
+    - name: 2. Remove LiteLLM IngressRoute
+      kubernetes.core.k8s:
+        state: absent
+        src: "{{ litellm_ingress_file }}"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      failed_when: false
+
+    - name: 3. Uninstall LiteLLM Helm release
+      kubernetes.core.helm:
+        name: litellm
+        release_namespace: "{{ ai_namespace }}"
+        state: absent
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: litellm_removal
+      failed_when: false
+
+    - name: 4. Wait for LiteLLM pods to terminate
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ merged_kubeconf_file }}"
+        kind: Pod
+        namespace: "{{ ai_namespace }}"
+        label_selectors:
+          - app.kubernetes.io/name=litellm
+      register: litellm_pods
+      retries: 12
+      delay: 5
+      until: litellm_pods.resources | length == 0
+      failed_when: false
+
+    - name: 5. Remove LiteLLM ConfigMap (if exists)
+      kubernetes.core.k8s:
+        state: absent
+        api_version: v1
+        kind: ConfigMap
+        name: ai-models-litellm
+        namespace: "{{ ai_namespace }}"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      failed_when: false
+
+    - name: 6. Display removal status
+      ansible.builtin.debug:
+        msg:
+          - "==============================================="
+          - "LiteLLM Removal Status"
+          - "==============================================="
+          - ""
+          - "✅ LiteLLM resources removed"
+          - ""
+          - "Removed components:"
+          - "  🔌 LiteLLM Helm release"
+          - "  🌐 LiteLLM IngressRoute"
+          - "  📄 LiteLLM ConfigMap (ai-models-litellm)"
+          - ""
+          - "Note: The PostgreSQL database 'litellm' was NOT deleted."
+          - "To remove the database manually:"
+          - "  kubectl exec -n default postgresql-0 -- psql -U postgres -c \"DROP DATABASE litellm;\""
+          - ""
+          - "Verification:"
+          - "  kubectl get pods -n {{ ai_namespace }} -l app.kubernetes.io/name=litellm"
+          - "  kubectl get configmap -n {{ ai_namespace }} ai-models-litellm"
+          - "  (Both should show 'No resources found')"
+          - ""
+          - "==============================================="

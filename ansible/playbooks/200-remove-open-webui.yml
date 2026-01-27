@@ -1,0 +1,139 @@
+---
+# file: ansible/playbooks/200-remove-open-webui.yml
+# Description: Remove Open WebUI and its dependencies from Kubernetes
+#
+# This playbook removes:
+# - Open WebUI Helm release
+# - Apache Tika Helm release
+# - Open WebUI IngressRoute
+# - Persistent storage (PVCs)
+#
+# Note: The PostgreSQL database 'openwebui' is NOT deleted.
+#
+# Usage:
+# ansible-playbook playbooks/200-remove-open-webui.yml -e target_host="rancher-desktop"
+
+- name: Remove Open WebUI from Kubernetes
+  hosts: localhost
+  gather_facts: false
+  vars:
+    manifests_folder: "/mnt/urbalurbadisk/manifests"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    ai_namespace: "ai"
+    storage_config_file: "{{ manifests_folder }}/200-ai-persistent-storage.yaml"
+    openwebui_ingress_file: "{{ manifests_folder }}/210-openwebui-ingress.yaml"
+
+  tasks:
+    - name: 1. Display removal information
+      ansible.builtin.debug:
+        msg:
+          - "====================================="
+          - "Open WebUI Removal"
+          - "File: ansible/playbooks/200-remove-open-webui.yml"
+          - "====================================="
+          - "Namespace: {{ ai_namespace }}"
+          - "Components: Open WebUI, Tika"
+
+    - name: 2. Remove Open WebUI IngressRoute
+      kubernetes.core.k8s:
+        state: absent
+        src: "{{ openwebui_ingress_file }}"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      failed_when: false
+
+    - name: 3. Uninstall Open WebUI Helm release
+      kubernetes.core.helm:
+        name: open-webui
+        release_namespace: "{{ ai_namespace }}"
+        state: absent
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: openwebui_removal
+      failed_when: false
+
+    - name: 4. Wait for Open WebUI pods to terminate
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ merged_kubeconf_file }}"
+        kind: Pod
+        namespace: "{{ ai_namespace }}"
+        label_selectors:
+          - app.kubernetes.io/name=open-webui
+      register: openwebui_pods
+      retries: 12
+      delay: 5
+      until: openwebui_pods.resources | length == 0
+      failed_when: false
+
+    - name: 5. Uninstall Tika Helm release
+      kubernetes.core.helm:
+        name: tika
+        release_namespace: "{{ ai_namespace }}"
+        state: absent
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: tika_removal
+      failed_when: false
+
+    - name: 6. Wait for Tika pods to terminate
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ merged_kubeconf_file }}"
+        kind: Pod
+        namespace: "{{ ai_namespace }}"
+        label_selectors:
+          - app.kubernetes.io/name=tika
+      register: tika_pods
+      retries: 12
+      delay: 5
+      until: tika_pods.resources | length == 0
+      failed_when: false
+
+    - name: 7. Remove persistent storage resources
+      kubernetes.core.k8s:
+        state: absent
+        src: "{{ storage_config_file }}"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      failed_when: false
+
+    - name: 8. Check if ai namespace is empty
+      ansible.builtin.shell: |
+        kubectl get pods -n {{ ai_namespace }} --no-headers 2>/dev/null | wc -l | tr -d ' '
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: remaining_pods
+      changed_when: false
+      failed_when: false
+
+    - name: 9. Delete ai namespace if empty
+      kubernetes.core.k8s:
+        name: "{{ ai_namespace }}"
+        api_version: v1
+        kind: Namespace
+        state: absent
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      when: remaining_pods.stdout | int == 0
+      failed_when: false
+
+    - name: 10. Display removal status
+      ansible.builtin.debug:
+        msg:
+          - "==============================================="
+          - "Open WebUI Removal Status"
+          - "==============================================="
+          - ""
+          - "✅ Open WebUI resources removed"
+          - ""
+          - "Removed components:"
+          - "  🌐 Open WebUI Helm release"
+          - "  📄 Apache Tika Helm release"
+          - "  🔗 Open WebUI IngressRoute"
+          - "  💾 Persistent storage resources"
+          - "  {{ '🗂️ Namespace ai (was empty)' if remaining_pods.stdout | int == 0 else '⚠️ Namespace ai retained (still has ' + remaining_pods.stdout + ' pods)' }}"
+          - ""
+          - "Note: The PostgreSQL database 'openwebui' was NOT deleted."
+          - "To remove the database manually:"
+          - "  kubectl exec -n default postgresql-0 -- psql -U postgres -c \"DROP DATABASE openwebui;\""
+          - ""
+          - "Verification:"
+          - "  kubectl get pods -n {{ ai_namespace }} -l app.kubernetes.io/name=open-webui"
+          - "  kubectl get pods -n {{ ai_namespace }} -l app.kubernetes.io/name=tika"
+          - "  (Both should show 'No resources found')"
+          - ""
+          - "==============================================="
