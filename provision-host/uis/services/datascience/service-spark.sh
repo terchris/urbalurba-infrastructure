@@ -12,8 +12,8 @@ SCRIPT_CATEGORY="DATASCIENCE"
 # === UIS-Specific (Optional) ===
 SCRIPT_PLAYBOOK="330-setup-spark.yml"
 SCRIPT_MANIFEST=""
-SCRIPT_CHECK_COMMAND="kubectl get pods -n datascience -l app.kubernetes.io/name=spark --no-headers 2>/dev/null | grep -q Running"
-SCRIPT_REMOVE_PLAYBOOK=""
+SCRIPT_CHECK_COMMAND="kubectl get pods -n spark-operator -l app.kubernetes.io/name=spark-kubernetes-operator --no-headers 2>/dev/null | grep -q Running"
+SCRIPT_REMOVE_PLAYBOOK="330-remove-spark.yml"
 SCRIPT_REQUIRES=""
 SCRIPT_PRIORITY="91"
 

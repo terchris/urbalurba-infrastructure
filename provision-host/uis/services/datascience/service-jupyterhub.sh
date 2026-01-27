@@ -12,8 +12,8 @@ SCRIPT_CATEGORY="DATASCIENCE"
 # === UIS-Specific (Optional) ===
 SCRIPT_PLAYBOOK="350-setup-jupyterhub.yml"
 SCRIPT_MANIFEST=""
-SCRIPT_CHECK_COMMAND="kubectl get pods -n datascience -l app.kubernetes.io/name=jupyterhub --no-headers 2>/dev/null | grep -q Running"
-SCRIPT_REMOVE_PLAYBOOK=""
+SCRIPT_CHECK_COMMAND="kubectl get pods -n jupyterhub -l app=jupyterhub --no-headers 2>/dev/null | grep -q Running"
+SCRIPT_REMOVE_PLAYBOOK="350-remove-jupyterhub.yml"
 SCRIPT_REQUIRES=""
 SCRIPT_PRIORITY="92"
 
