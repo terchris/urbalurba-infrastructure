@@ -12,7 +12,7 @@ SCRIPT_CATEGORY="DATABASES"
 # === UIS-Specific (Optional) ===
 SCRIPT_PLAYBOOK="040-database-mysql.yml"
 SCRIPT_MANIFEST=""
-SCRIPT_CHECK_COMMAND="kubectl get pods -n databases -l app.kubernetes.io/name=mysql --no-headers 2>/dev/null | grep -q Running"
+SCRIPT_CHECK_COMMAND="kubectl get pods -n default -l app.kubernetes.io/name=mysql --no-headers 2>/dev/null | grep -q Running"
 SCRIPT_REMOVE_PLAYBOOK="040-remove-database-mysql.yml"
 SCRIPT_REQUIRES=""
 SCRIPT_PRIORITY="31"

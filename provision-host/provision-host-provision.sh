@@ -18,17 +18,30 @@ declare -A STATUS
 declare -A ERRORS
 
 # List of provisioning scripts to run
-PROVISION_SCRIPTS=(
-    "provision-host-00-coresw.sh"
-    "provision-host-01-cloudproviders.sh"
-    "provision-host-02-kubetools.sh"
-    "provision-host-03-net.sh"
-    "provision-host-04-helmrepo.sh"
-    # "provision-host-05-builddocs.sh"  # Removed - docs migrated to Docusaurus
-)
+# Note: In container builds, skip net tools (cloudflared, tailscale) as they're optional
+if [ "${DOCKER_BUILD:-}" = "true" ]; then
+    PROVISION_SCRIPTS=(
+        "provision-host-00-coresw.sh"
+        "provision-host-01-cloudproviders.sh"
+        "provision-host-02-kubetools.sh"
+        "provision-host-04-helmrepo.sh"
+    )
+else
+    PROVISION_SCRIPTS=(
+        "provision-host-00-coresw.sh"
+        "provision-host-01-cloudproviders.sh"
+        "provision-host-02-kubetools.sh"
+        "provision-host-03-net.sh"
+        "provision-host-04-helmrepo.sh"
+    )
+fi
 
-# Check if running in a container
+# Check if running in a container or Docker build
 is_container() {
+    # Check for Docker build environment variable
+    if [ "${DOCKER_BUILD:-}" = "true" ]; then
+        return 0
+    fi
     # Check for container-specific indicators
     if [ -f /.dockerenv ] || grep -q 'docker\|lxc' /proc/1/cgroup 2>/dev/null; then
         return 0  # True, is a container
@@ -157,6 +170,12 @@ main() {
     done
 
     print_summary
+
+    # In container builds, continue even if some scripts fail (e.g., snap not available)
+    if is_container && [ "$overall_exit_code" -ne 0 ]; then
+        echo "Some scripts failed but continuing (container build mode)"
+        exit 0
+    fi
 
     exit $overall_exit_code
 }

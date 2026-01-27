@@ -236,7 +236,7 @@ case "${1:-help}" in
         start_container
         log_info "UIS container restarted"
         ;;
-    status)
+    container)
         if docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
             log_info "Container is running"
             docker ps --filter "name=$CONTAINER_NAME" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
@@ -308,11 +308,22 @@ case "${1:-help}" in
         log_info "All tests passed!"
         ;;
     help|--help|-h)
-        show_usage
+        start_container
+        docker exec $DOCKER_IT "$CONTAINER_NAME" /mnt/urbalurbadisk/provision-host/uis/manage/uis-cli.sh help
+        echo ""
+        echo "Container management:"
+        echo "  start       Start the UIS container"
+        echo "  stop        Stop the UIS container"
+        echo "  restart     Restart the UIS container"
+        echo "  container   Show container status"
+        echo "  shell       Open a shell in the container"
+        echo "  logs        Show container logs"
+        echo "  build       Build the container image locally"
+        echo "  test        Run container validation tests"
         ;;
     *)
-        log_error "Unknown command: $1"
-        show_usage
-        exit 1
+        # Pass all other commands to uis-cli.sh inside the container
+        start_container
+        docker exec $DOCKER_IT "$CONTAINER_NAME" /mnt/urbalurbadisk/provision-host/uis/manage/uis-cli.sh "$@"
         ;;
 esac

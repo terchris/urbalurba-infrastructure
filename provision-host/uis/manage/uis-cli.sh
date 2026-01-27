@@ -56,8 +56,8 @@ Service Discovery:
   cluster types           List available cluster types
 
 Service Deployment:
-  deploy [service]        Deploy all enabled services, or specific service
-  remove <service>        Remove a specific service
+  deploy [service]        Deploy all autostart services, or a specific service
+  undeploy <service>      Remove service from cluster
 
 Stack Deployment:
   stack list              List available service stacks
@@ -66,9 +66,10 @@ Stack Deployment:
   stack remove <stack>    Remove all services in a stack
 
 Configuration:
-  enable <service>        Add service to enabled-services.conf
-  disable <service>       Remove service from enabled-services.conf
-  list-enabled            Show currently enabled services
+  enable <service>        Add service to autostart (deployed with 'uis deploy')
+  disable <service>       Remove service from autostart (does not undeploy)
+  list-enabled            Show services in autostart
+  sync                    Update autostart list to match what's running in cluster
 
 Host Management:
   host add                List available host templates
@@ -101,7 +102,7 @@ Examples:
   uis init                # Run first-time setup wizard
   uis list                # Show all available services
   uis enable prometheus   # Enable prometheus
-  uis deploy              # Deploy all enabled services
+  uis deploy              # Deploy all autostart services
   uis stack list          # Show available stacks
   uis stack install observability  # Install full observability stack
   uis host add            # List available host templates
@@ -178,11 +179,17 @@ cmd_list() {
 
     echo ""
     echo "Use 'uis enable <service>' to enable a service"
-    echo "Use 'uis deploy' to deploy all enabled services"
+    echo "Use 'uis deploy' to deploy all autostart services"
 }
 
 cmd_status() {
     print_section "Deployed Services Status"
+
+    # Show current kubectl context (target cluster)
+    local current_context
+    current_context=$(kubectl config current-context 2>/dev/null) || current_context="unknown"
+    echo "Target cluster: $current_context"
+    echo ""
 
     local has_deployed=false
     local service_id script
@@ -215,7 +222,7 @@ cmd_status() {
     if [[ "$has_deployed" != "true" ]]; then
         echo "No deployed services found."
         echo ""
-        echo "Use 'uis deploy' to deploy enabled services."
+        echo "Use 'uis deploy' to deploy autostart services."
     fi
 }
 
@@ -234,17 +241,17 @@ cmd_deploy() {
     fi
 
     if [[ -n "$service_id" ]]; then
-        # Deploy specific service
-        log_info "Deploying service: $service_id"
-
-        # Check if service exists
+        # Check if service exists first
         local script
-        script=$(find_service_script "$service_id")
+        script=$(find_service_script "$service_id" 2>/dev/null) || true
         if [[ -z "$script" ]]; then
             log_error "Service '$service_id' not found"
             log_info "Run 'uis list' to see available services"
-            exit "$EXIT_CONFIG_ERROR"
+            exit 1
         fi
+
+        # Deploy specific service
+        log_info "Deploying service: $service_id"
 
         # Deploy and auto-enable
         deploy_single_service "$service_id"
@@ -253,7 +260,7 @@ cmd_deploy() {
         if type enable_service &>/dev/null; then
             if ! is_service_enabled "$service_id"; then
                 enable_service "$service_id"
-                log_info "Service '$service_id' has been auto-enabled"
+                log_info "Service '$service_id' added to autostart"
             fi
         fi
     else
@@ -266,30 +273,25 @@ cmd_deploy() {
     fi
 }
 
-cmd_remove() {
+cmd_undeploy() {
     local service_id="${1:-}"
 
     if [[ -z "$service_id" ]]; then
-        log_error "Usage: uis remove <service>"
-        exit "$EXIT_GENERAL_ERROR"
+        log_error "Usage: uis undeploy <service>"
+        exit 1
     fi
 
     # Check if service exists
     local script
-    script=$(find_service_script "$service_id")
+    script=$(find_service_script "$service_id" 2>/dev/null) || true
     if [[ -z "$script" ]]; then
         log_error "Service '$service_id' not found"
         log_info "Run 'uis list' to see available services"
-        exit "$EXIT_CONFIG_ERROR"
+        exit 1
     fi
 
+    # Remove from kubernetes
     remove_single_service "$service_id"
-
-    # Prompt to disable if service-auto-enable is available
-    if type is_service_enabled &>/dev/null && is_service_enabled "$service_id"; then
-        log_warn "Service '$service_id' is still in enabled-services.conf"
-        log_info "Run 'uis disable $service_id' to remove from configuration"
-    fi
 }
 
 cmd_enable() {
@@ -374,11 +376,63 @@ cmd_list_enabled() {
 
     echo ""
     if [[ $count -eq 0 ]]; then
-        echo "No services enabled."
+        echo "No services in autostart."
         echo "Use 'uis enable <service>' to enable a service."
     else
-        echo "$count service(s) enabled"
-        echo "Use 'uis deploy' to deploy all enabled services"
+        echo "$count service(s) in autostart"
+        echo "Use 'uis deploy' to deploy all autostart services"
+    fi
+}
+
+cmd_sync() {
+    print_section "Syncing Enabled Services"
+
+    # Initialize if needed
+    if ! check_first_run; then
+        log_info "First run detected, initializing configuration..."
+        initialize_uis_config
+    fi
+
+    local synced=0
+    local already_enabled=0
+    local service_id script
+
+    echo "Checking deployed services..."
+    echo ""
+
+    for service_id in $(get_all_service_ids); do
+        script=$(find_service_script "$service_id")
+        [[ -z "$script" ]] && continue
+
+        # Load metadata
+        unset SCRIPT_ID SCRIPT_NAME SCRIPT_CHECK_COMMAND
+        # shellcheck source=/dev/null
+        source "$script" 2>/dev/null
+
+        # Skip if no check command
+        [[ -z "$SCRIPT_CHECK_COMMAND" ]] && continue
+
+        # Check if deployed
+        if check_service_deployed "$service_id" 2>/dev/null; then
+            # Check if already enabled
+            if is_service_enabled "$service_id" 2>/dev/null; then
+                ((++already_enabled))
+            else
+                # Enable it
+                enable_service "$service_id"
+                log_success "Synced: $service_id (${SCRIPT_NAME:-$service_id})"
+                ((++synced))
+            fi
+        fi
+    done
+
+    echo ""
+    if [[ $synced -eq 0 ]]; then
+        log_info "No new services to sync"
+        log_info "$already_enabled service(s) already in autostart"
+    else
+        log_success "Added $synced service(s) to autostart"
+        log_info "$already_enabled service(s) were already in autostart"
     fi
 }
 
@@ -1089,6 +1143,19 @@ main() {
     local command="${1:-help}"
     shift || true
 
+    # Initialize on first run for most commands (skip for version, help, setup)
+    case "$command" in
+        version|--version|-v|help|--help|-h|setup)
+            # These commands don't need initialization
+            ;;
+        *)
+            # Initialize if first run (creates enabled-services.conf, secrets, etc.)
+            if ! check_first_run; then
+                initialize_uis_config
+            fi
+            ;;
+    esac
+
     case "$command" in
         version|--version|-v)
             cmd_version
@@ -1132,8 +1199,8 @@ main() {
         deploy)
             cmd_deploy "$@"
             ;;
-        remove|rm)
-            cmd_remove "$@"
+        undeploy)
+            cmd_undeploy "$@"
             ;;
         enable)
             cmd_enable "$@"
@@ -1143,6 +1210,9 @@ main() {
             ;;
         list-enabled|enabled)
             cmd_list_enabled
+            ;;
+        sync)
+            cmd_sync
             ;;
         tools)
             cmd_tools "$@"

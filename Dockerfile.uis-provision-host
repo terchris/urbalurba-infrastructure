@@ -28,6 +28,7 @@ RUN apt-get update && \
     vim \
     bash-completion \
     jq \
+    gettext-base \
     iputils-ping \
     net-tools \
     dnsutils \
@@ -73,9 +74,10 @@ ENV RUNNING_IN_CONTAINER=true
 RUN mkdir -p ~/.local/bin ~/.config ~/.ssh
 
 # Run provisioning with CLOUD_PROVIDER=none (skip Azure CLI etc.)
+# DOCKER_BUILD=true allows provision scripts to continue on non-critical failures
 RUN cd /mnt/urbalurbadisk/provision-host && \
     chmod +x *.sh && \
-    ./provision-host-provision.sh none
+    DOCKER_BUILD=true ./provision-host-provision.sh none
 
 # Create mount points for user config/secrets
 USER root

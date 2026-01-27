@@ -228,52 +228,11 @@ show_secrets_status() {
 
 # Generate Kubernetes secrets from templates
 # Usage: generate_secrets
-# Creates: .uis.secrets/kubernetes/kubernetes-secrets.yml
+# Reads: .uis.secrets/secrets-config/
+# Creates: .uis.secrets/generated/kubernetes/kubernetes-secrets.yml
 generate_secrets() {
-    local secrets_dir
-    secrets_dir=$(get_user_secrets_dir)
-
-    if ! has_user_secrets; then
-        log_error "No secrets configuration found"
-        log_info "Run 'uis secrets init' first"
-        return 1
-    fi
-
-    local config_file="$secrets_dir/secrets-config/00-common-values.env.template"
-    local templates_dir
-    templates_dir=$(get_secrets_templates_dir)
-    local output_file="$secrets_dir/kubernetes/kubernetes-secrets.yml"
-
-    log_info "Generating Kubernetes secrets..."
-
-    # Source the configuration
-    set -a
-    # shellcheck source=/dev/null
-    source "$config_file"
-    set +a
-
-    # Check for main template
-    local main_template="$templates_dir/kubernetes-secrets.yml.template"
-    if [[ ! -f "$main_template" ]]; then
-        log_error "Secrets template not found: $main_template"
-        log_info "This file should exist in topsecret/secrets-templates/"
-        return 1
-    fi
-
-    # Generate using envsubst
-    if command -v envsubst &>/dev/null; then
-        envsubst < "$main_template" > "$output_file"
-    else
-        log_error "envsubst not found - cannot generate secrets"
-        log_info "Install gettext package: apt-get install gettext-base"
-        return 1
-    fi
-
-    local lines
-    lines=$(wc -l < "$output_file")
-    log_success "Generated: $output_file ($lines lines)"
-
-    return 0
+    # Use the generate function from first-run.sh
+    generate_kubernetes_secrets
 }
 
 # ============================================================
@@ -282,18 +241,37 @@ generate_secrets() {
 
 # Apply generated secrets to Kubernetes
 # Usage: apply_secrets
+# Checks multiple locations for secrets file:
+# 1. .uis.secrets/generated/kubernetes/kubernetes-secrets.yml (new location)
+# 2. .uis.secrets/kubernetes/kubernetes-secrets.yml (legacy location)
 apply_secrets() {
     local secrets_dir
     secrets_dir=$(get_user_secrets_dir)
-    local secrets_file="$secrets_dir/kubernetes/kubernetes-secrets.yml"
 
-    if [[ ! -f "$secrets_file" ]]; then
-        log_error "Generated secrets not found: $secrets_file"
-        log_info "Run 'uis secrets generate' first"
+    # Check for secrets file in order of preference
+    local secrets_file=""
+    local file_locations=(
+        "$secrets_dir/generated/kubernetes/kubernetes-secrets.yml"
+        "$secrets_dir/kubernetes/kubernetes-secrets.yml"
+    )
+
+    for location in "${file_locations[@]}"; do
+        if [[ -f "$location" ]]; then
+            secrets_file="$location"
+            break
+        fi
+    done
+
+    if [[ -z "$secrets_file" ]]; then
+        log_error "No secrets file found"
+        log_info "Expected at: ${file_locations[0]}"
+        log_info ""
+        log_info "Run 'uis list' to trigger initialization (creates default secrets)"
+        log_info "Or run 'uis secrets generate' for custom secrets"
         return 1
     fi
 
-    log_info "Applying secrets to Kubernetes..."
+    log_info "Applying secrets from: $secrets_file"
 
     if ! kubectl apply -f "$secrets_file"; then
         log_error "Failed to apply secrets"

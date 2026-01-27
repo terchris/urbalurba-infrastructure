@@ -13,7 +13,7 @@ SCRIPT_CATEGORY="CORE"
 # === UIS-Specific (Optional) ===
 SCRIPT_PLAYBOOK="020-setup-nginx.yml"
 SCRIPT_MANIFEST=""
-SCRIPT_CHECK_COMMAND="kubectl get pods -n default -l app=nginx --no-headers 2>/dev/null | grep -q Running"
+SCRIPT_CHECK_COMMAND="kubectl get pods -n default -l app.kubernetes.io/name=nginx --no-headers 2>/dev/null | grep -q Running"
 SCRIPT_REMOVE_PLAYBOOK="020-remove-nginx.yml"
 SCRIPT_REQUIRES=""
 SCRIPT_PRIORITY="1"
