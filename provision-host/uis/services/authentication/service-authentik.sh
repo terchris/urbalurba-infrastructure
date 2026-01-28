@@ -13,7 +13,7 @@ SCRIPT_CATEGORY="AUTHENTICATION"
 SCRIPT_PLAYBOOK="070-setup-authentik.yml"
 SCRIPT_MANIFEST=""
 SCRIPT_CHECK_COMMAND="kubectl get pods -n authentik -l app.kubernetes.io/name=authentik --no-headers 2>/dev/null | grep -q Running"
-SCRIPT_REMOVE_PLAYBOOK=""
+SCRIPT_REMOVE_PLAYBOOK="070-remove-authentik.yml"
 SCRIPT_REQUIRES="postgresql redis"
 SCRIPT_PRIORITY="40"
 
