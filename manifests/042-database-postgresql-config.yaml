@@ -73,6 +73,15 @@ primary:
     enabled: true
     size: 8Gi  # Adjust size as needed
 
+  # PostgreSQL 16 defaults to scram-sha-256 password encryption, but the
+  # Bitnami chart v18+ generates pg_hba.conf with md5 auth method.
+  # This mismatch causes "password authentication failed" on fresh installs.
+  # Fix: use scram-sha-256 in pg_hba.conf to match the password storage format.
+  pgHbaConfiguration: |-
+    local all all scram-sha-256
+    host all all 0.0.0.0/0 scram-sha-256
+    host all all ::/0 scram-sha-256
+
   # Enable all available extensions at startup
   # All 8 extensions are pre-built into the custom container
   initdb:

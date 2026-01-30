@@ -59,7 +59,8 @@
 
     - name: 7. Deploy PostgreSQL using Helm if not already installed
       ansible.builtin.command: >
-        helm install postgresql bitnami/postgresql 
+        helm install postgresql bitnami/postgresql
+        --version 18.2.3
         --namespace default
         -f {{ postgres_config_file }}
         --set auth.postgresPassword="{{ postgres_password }}"

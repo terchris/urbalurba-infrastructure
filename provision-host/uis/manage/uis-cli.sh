@@ -240,6 +240,9 @@ cmd_deploy() {
         initialize_uis_config
     fi
 
+    # Ensure secrets are applied to cluster (idempotent, handles cluster reset)
+    ensure_secrets_applied
+
     if [[ -n "$service_id" ]]; then
         # Check if service exists first
         local script

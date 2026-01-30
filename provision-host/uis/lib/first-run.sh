@@ -254,10 +254,10 @@ copy_secrets_templates() {
         # Set development-friendly defaults (sed in-place)
         sed -i.bak \
             -e 's/DEFAULT_ADMIN_EMAIL=.*/DEFAULT_ADMIN_EMAIL=admin@localhost/' \
-            -e 's/DEFAULT_ADMIN_PASSWORD=.*/DEFAULT_ADMIN_PASSWORD=LocalDev123!/' \
-            -e 's/DEFAULT_DATABASE_PASSWORD=.*/DEFAULT_DATABASE_PASSWORD=LocalDevDB456!/' \
+            -e 's/DEFAULT_ADMIN_PASSWORD=.*/DEFAULT_ADMIN_PASSWORD=LocalDev123/' \
+            -e 's/DEFAULT_DATABASE_PASSWORD=.*/DEFAULT_DATABASE_PASSWORD=LocalDevDB456/' \
             -e 's/ADMIN_EMAIL=.*/ADMIN_EMAIL=admin@localhost/' \
-            -e 's/ADMIN_PASSWORD=.*/ADMIN_PASSWORD=LocalDev123!/' \
+            -e 's/ADMIN_PASSWORD=.*/ADMIN_PASSWORD=LocalDev123/' \
             "$common_values"
         rm -f "$common_values.bak"
         log_success "Set development defaults in 00-common-values.env.template"
@@ -321,6 +321,24 @@ generate_kubernetes_secrets() {
     log_success "Generated: $output_file ($lines lines)"
 
     return 0
+}
+
+# Ensure Kubernetes secrets are generated and applied to the cluster
+# This is idempotent - safe to call on every deploy
+# Handles the case where host files exist but cluster was reset (e.g. factory reset)
+# Returns: 0 on success, 1 on error
+ensure_secrets_applied() {
+    local secrets_file="$SECRETS_DIR/generated/kubernetes/kubernetes-secrets.yml"
+
+    # Generate secrets if the file doesn't exist yet
+    if [[ ! -f "$secrets_file" ]]; then
+        log_info "Secrets file not found, generating..."
+        copy_secrets_templates
+        generate_kubernetes_secrets || return 1
+    fi
+
+    # Always apply to cluster (idempotent)
+    apply_kubernetes_secrets
 }
 
 # Apply generated Kubernetes secrets to the cluster

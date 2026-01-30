@@ -124,10 +124,10 @@ init_secrets() {
 
 # Admin credentials
 DEFAULT_ADMIN_EMAIL="admin@localhost"
-DEFAULT_ADMIN_PASSWORD="LocalDev123!"
+DEFAULT_ADMIN_PASSWORD="LocalDev123"
 
 # Database credentials
-DEFAULT_DATABASE_PASSWORD="LocalDevDB456!"
+DEFAULT_DATABASE_PASSWORD="LocalDevDB456"
 
 # External services (configure when needed)
 # TAILSCALE_SECRET=""
@@ -322,11 +322,11 @@ validate_secrets() {
     done
 
     # Check for weak default passwords if using custom config
-    if [[ "${DEFAULT_ADMIN_PASSWORD:-}" == "LocalDev123!" ]]; then
+    if [[ "${DEFAULT_ADMIN_PASSWORD:-}" == "LocalDev123" ]]; then
         log_warn "Using default admin password - change for production"
     fi
 
-    if [[ "${DEFAULT_DATABASE_PASSWORD:-}" == "LocalDevDB456!" ]]; then
+    if [[ "${DEFAULT_DATABASE_PASSWORD:-}" == "LocalDevDB456" ]]; then
         log_warn "Using default database password - change for production"
     fi
 

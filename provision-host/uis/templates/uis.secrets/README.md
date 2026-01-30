@@ -17,8 +17,8 @@ On first run, UIS automatically sets development-friendly defaults:
 | Variable | Default Value | Used By |
 |----------|---------------|---------|
 | `DEFAULT_ADMIN_EMAIL` | `admin@localhost` | All admin accounts |
-| `DEFAULT_ADMIN_PASSWORD` | `LocalDev123!` | All admin accounts |
-| `DEFAULT_DATABASE_PASSWORD` | `LocalDevDB456!` | PostgreSQL, MySQL, MongoDB |
+| `DEFAULT_ADMIN_PASSWORD` | `LocalDev123` | All admin accounts |
+| `DEFAULT_DATABASE_PASSWORD` | `LocalDevDB456` | PostgreSQL, MySQL, MongoDB |
 
 **These defaults let you deploy services immediately without configuration.**
 
@@ -35,9 +35,14 @@ Change these key variables:
 ```bash
 # Change these to update ALL credentials at once:
 DEFAULT_ADMIN_EMAIL=your-email@example.com
-DEFAULT_ADMIN_PASSWORD=YourSecurePassword123!
-DEFAULT_DATABASE_PASSWORD=YourSecureDatabasePassword456!
+DEFAULT_ADMIN_PASSWORD=YourSecurePassword123
+DEFAULT_DATABASE_PASSWORD=YourSecureDatabasePassword456
 ```
+
+> **Password restriction:** Do NOT use `!`, `$`, `` ` ``, `\`, or `"` in passwords.
+> Bitnami Helm charts pass passwords through bash during container initialization,
+> which escapes these characters. For example, `Pass!` becomes `Pass\!` in the
+> database, causing authentication failures.
 
 ### Step 2: Regenerate secrets
 

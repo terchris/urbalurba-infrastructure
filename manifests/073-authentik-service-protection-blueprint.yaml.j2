@@ -192,6 +192,13 @@ data:
         attrs:
           name: "authentik Embedded Outpost"
           type: proxy
+          # Configuration for the embedded outpost
+          # WORKAROUND for Authentik bug #5922: embedded outpost ignores authentik_host_browser
+          # Set authentik_host to external URL for correct OAuth redirects
+          # The embedded outpost still reaches the server locally (same pod)
+          config:
+            authentik_host: "{{ domains.localhost.protocol }}://authentik.{{ domains.localhost.base_domain }}"
+            authentik_host_browser: "{{ domains.localhost.protocol }}://authentik.{{ domains.localhost.base_domain }}"
           # Link all proxy providers to the embedded outpost
           providers:
 {% for service in protected_services %}

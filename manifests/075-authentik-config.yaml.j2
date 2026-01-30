@@ -54,31 +54,16 @@ global:
         secretKeyRef:
           name: urbalurba-secrets
           key: AUTHENTIK_BOOTSTRAP_PASSWORD
-    # CRITICAL: Internal cluster URL for multi-domain support (localhost + external domains)
-    # This MUST use the internal service URL to enable dynamic domain detection
-    # When set to internal URL, Authentik detects the actual domain from X-Forwarded-Host header
-    # This allows both authentik.localhost (development) and authentik.urbalurba.no (production) to work
-    # DO NOT set this to a specific external domain - it will break other domains
+    # AUTHENTIK_HOST: Internal cluster URL for server-to-outpost communication
     - name: AUTHENTIK_HOST
       value: "http://authentik-server.authentik.svc.cluster.local"
-
-    # REMOVED: AUTHENTIK_HOST_BROWSER - DO NOT ADD BACK!
-    #
-    # WHY REMOVED:
-    # 1. AUTHENTIK_HOST_BROWSER hardcodes a specific domain (e.g., http://authentik.localhost)
-    # 2. This breaks multi-domain support - only works for one domain at a time
-    # 3. When removed, Authentik auto-detects the actual domain from request headers
-    # 4. This enables seamless support for both localhost AND external domains
-    # 5. No hardcoded values = truly dynamic, future-proof configuration
-    #
-    # CONSEQUENCES OF REMOVAL:
-    # ✅ Works with any domain automatically (localhost, urbalurba.no, etc.)
-    # ✅ No configuration changes needed when adding new domains
-    # ✅ OAuth redirects use the correct domain the user actually accessed
-    # ✅ CORS and security policies work correctly with actual domains
-    # ✅ Future-proof for any new domains you add
-    #
-    # DO NOT ADD AUTHENTIK_HOST_BROWSER BACK - IT BREAKS MULTI-DOMAIN SUPPORT!
+    # AUTHENTIK_HOST_BROWSER: URL for browser redirects (uses localhost domain from config)
+    # This is required for the embedded outpost to generate correct OAuth redirect URLs
+    # Note: This prioritizes localhost development. External domains (tailscale, cloudflare)
+    # will redirect to authentik.localhost first, which works for local testing.
+    # For production external domains, additional configuration may be needed.
+    - name: AUTHENTIK_HOST_BROWSER
+      value: "{{ domains.localhost.protocol }}://authentik.{{ domains.localhost.base_domain }}"
 
     # Allow HTTP (⚠️ dev only — don't use in production)
     - name: AUTHENTIK_INSECURE
