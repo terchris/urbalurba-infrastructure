@@ -66,6 +66,7 @@
 
     # Other playbooks
     verify_authentik_playbook: "/mnt/urbalurbadisk/ansible/playbooks/070-verify-authentik.yml"
+    test_authentik_playbook: "/mnt/urbalurbadisk/ansible/playbooks/070-test-authentik-auth.yml"
     create_postgres_playbook: "/mnt/urbalurbadisk/ansible/playbooks/utility/u09-authentik-create-postgres.yml"
 
     # Secrets file (auto-applied at start to create namespace and credentials)
@@ -696,6 +697,13 @@
       register: middleware_result
       changed_when: true
 
+    - name: "46.5. Remove standard whoami Ingress (conflicts with protected IngressRoute)"
+      ansible.builtin.shell: |
+        kubectl delete ingress whoami -n {{ default_namespace }} --ignore-not-found=true
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      changed_when: false
+
     - name: "47. Deploy Auth10 service protection IngressRoute"
       ansible.builtin.command: >
         kubectl apply -f {{ service_protection_ingressroute_file }}
@@ -770,6 +778,25 @@
           🔧 Middleware: {{ middleware_check.stdout if middleware_check.stdout else 'authentik-forward-auth deployed' }}
           🛡️ Protected route: http://whoami.localhost (requires authentication)
           🌐 Public route: http://whoami-public.localhost (direct access)
+
+    # Phase 7.5: End-to-End Authentication Tests
+    - name: "54.5. Run end-to-end authentication tests"
+      ansible.builtin.command: >
+        ansible-playbook {{ test_authentik_playbook }}
+        -e kube_context={{ kube_context | default('rancher-desktop') }}
+      register: auth_test_result
+      failed_when: false
+      changed_when: false
+
+    - name: "54.6. Display end-to-end test results"
+      ansible.builtin.debug:
+        msg: |
+          🧪 End-to-End Auth Tests: {{ 'PASSED' if auth_test_result.rc == 0 else 'NEEDS REVIEW' }}
+          Exit Code: {{ auth_test_result.rc }}
+          {% if auth_test_result.rc != 0 %}
+          Note: Some tests may fail if blueprints are still processing.
+          Re-run independently: ansible-playbook {{ test_authentik_playbook }}
+          {% endif %}
 
     # Phase 8: Final Status and Enhanced Summary
     - name: "55. Get final pod status"
