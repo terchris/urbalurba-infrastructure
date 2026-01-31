@@ -4,11 +4,11 @@
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: In Progress
+## Status: Complete ✅
 
-**Goal**: Make Authentik deployment fully automatic by applying secrets at the start of the playbook, eliminating the need for manual `kubectl apply` before deployment.
+**Goal**: Make Authentik deployment fully automatic by applying secrets at the start of the playbook, eliminating the need for manual `kubectl apply` before deployment. Extended to include end-to-end authentication testing.
 
-**Last Updated**: 2026-01-28
+**Last Updated**: 2026-01-31
 
 **Branch**: `feature/secrets-migration`
 
@@ -162,7 +162,8 @@ When authenticating via Authentik forward auth, the redirect URL goes to `http:/
       authentik_host_browser: {{ domains.localhost.protocol }}://authentik.{{ domains.localhost.base_domain }}
     ```
 
-- [ ] 3.5 Rebuild container and verify fix persists after redeploy
+- [x] 3.5 Rebuild container and verify fix persists after redeploy
+  - Verified during Phase 4 Round 6: full deployment from scratch with redirect working correctly
 
 ### Technical Details
 
@@ -177,7 +178,7 @@ The redirect URL uses the localhost domain configuration. External domains (e.g.
 
 ---
 
-## Phase 4: End-to-End Auth Testing in Playbook — NOT STARTED
+## Phase 4: End-to-End Auth Testing in Playbook — COMPLETE
 
 ### Problem
 
@@ -189,42 +190,97 @@ The playbook tests public and protected URLs using cluster-internal curl pods (v
 
 All of these were tested manually by the tester. They should be automated in the playbook.
 
-### Solution
+### Solution — What Was Built
 
-Extend the existing playbook tests with three levels:
+Instead of extending the existing tests inline, a **standalone test playbook** was created: `ansible/playbooks/070-test-authentik-auth.yml`. This can run independently or is called automatically by the deployment playbook at task 54.5.
 
-**Level 1 — Redirect URL verification:** Check that the protected URL's `Location` header contains the correct Authentik domain (not `0.0.0.0:9000`). This runs from a cluster-internal curl pod (same as existing tests).
+The test playbook has **5 critical tests** (all must pass):
 
-**Level 2 — Full login flow:** From a curl pod inside the cluster, perform the complete OAuth authentication:
-1. GET protected URL → capture 302 redirect Location
-2. Follow redirect to Authentik login page → extract CSRF token / flow execution URL
-3. POST test user credentials (`it1@urbalurba.no` / `Password123`)
-4. Follow redirects back to protected URL
-5. Verify response contains whoami output with Authentik auth headers (`X-authentik-username`, etc.)
+| Test | What it verifies |
+|------|-----------------|
+| **A** — Redirect URL Verification | Protected `whoami.localhost` → 302 redirect to `authentik.localhost` |
+| **B** — Full Login Flow | 3-step API login flow for `it1@urbalurba.no` via `/api/v3/flows/executor/default-authentication-flow/` |
+| **C** — Public URL Content | Public `whoami-public.localhost` returns `Hostname:` content without `X-authentik-username` header |
+| **D** — Post-Login Protected Access | After login, authenticated user gets HTTP 200 from protected whoami with `X-Authentik-Username: it1` |
+| **E** — Wrong Credentials Rejected | Login with `WrongPassword999` is correctly denied (no `xak-flow-redirect`) |
 
-**Level 3 — Public URL content verification:** Confirm public URL returns actual whoami content (not just HTTP 200).
+Additionally, task **46.5** was added to `070-setup-authentik.yml` to delete the standard `whoami` Ingress before deploying the protected IngressRoute (security fix — see issues #10 and #11 below).
 
 ### Tasks
 
-- [ ] 4.1 Add redirect URL content check to existing protected URL test
-  - After task 50 (which checks for 302), add a task that extracts the `Location` header
-  - Verify it contains `authentik.localhost` (or the configured domain)
-  - Fail with clear message if it contains `0.0.0.0:9000` or internal cluster URL
+- [x] 4.1 Add redirect URL content check (Test A)
+  - Curl pod hits `whoami.localhost` via Traefik ClusterIP using `--resolve`
+  - Captures `Location` header, asserts it contains `authentik.localhost`
+  - CRITICAL — fails the playbook if wrong
 
-- [ ] 4.2 Add full login flow test
-  - Use a curl pod with cookie jar support (`-b` / `-c` flags)
-  - Step through the OAuth flow with test user credentials
-  - Verify final response contains `X-authentik-username` header
-  - This test runs AFTER Authentik has had time to process blueprints (after task 33 pause)
+- [x] 4.2 Add full login flow test (Test B)
+  - Pre-check: queries Authentik DB to verify `it1@urbalurba.no` exists (retries 6×15s for blueprint processing)
+  - 3-step API POST with `-L` (follow redirects): start flow → submit username → submit password
+  - Checks for `xak-flow-redirect` success marker
+  - CRITICAL — fails the playbook if login doesn't succeed
 
-- [ ] 4.3 Add public URL content verification
-  - Extend task 21 to check response body contains `Hostname:` (whoami output)
-  - Verify no auth headers are present (public route should not have them)
+- [x] 4.3 Add public URL content verification (Test C)
+  - Curl pod hits `whoami-public.localhost` via Traefik
+  - Asserts body contains `Hostname:` (real whoami content)
+  - Asserts no `X-authentik-username` header (public route, no auth)
+  - CRITICAL
 
-- [ ] 4.4 Handle test failures gracefully
-  - Login flow test should be `failed_when: false` with clear diagnostic output
-  - Blueprint processing may not be complete on first deploy — test should retry or warn
-  - Document which tests are critical (must pass) vs advisory (may fail on slow clusters)
+- [x] 4.4 Add post-login protected access test (Test D — added per tester feedback)
+  - Logs in through `authentik.localhost` via `--resolve` (sets cookie on correct domain)
+  - Hits protected `whoami.localhost` following full OAuth redirect chain
+  - Verifies HTTP 200, body contains `Hostname:`, response has `X-Authentik-Username: it1`
+  - CRITICAL
+
+- [x] 4.5 Add wrong credentials rejection test (Test E — added per tester feedback)
+  - Same 3-step login flow with password `WrongPassword999`
+  - Asserts no `xak-flow-redirect` in response
+  - CRITICAL
+
+- [x] 4.6 Integrate test playbook into deployment
+  - Task 54.5 in `070-setup-authentik.yml` calls test playbook with `failed_when: false`
+  - Task 54.6 displays results (PASSED/NEEDS REVIEW with exit code)
+
+- [x] 4.7 Fix Ingress conflict (security fix)
+  - Task 46.5 deletes standard `whoami` Ingress before deploying protected IngressRoute
+  - Prevents forward auth bypass when `025-setup-whoami-testpod.yml` was run first
+
+- [x] 4.8 Bake files into container image
+  - Rebuilt container with `uis-provision-host:local`
+  - Both `070-test-authentik-auth.yml` and modified `070-setup-authentik.yml` baked in
+  - Verified with full deployment from scratch (Round 6)
+
+### Testing Rounds
+
+Phase 4 went through **6 rounds** of iterative testing with UIS-USER1 via `talk.md`:
+
+| Round | What was tested | Result | Key findings |
+|-------|----------------|--------|-------------|
+| **1** | Tests A, B, C standalone (docker cp) | A ✅ B ⚠️ C ✅ | Test B INCONCLUSIVE — curl missing `-L` flag, wrong success check |
+| **2** | Fixed Test B (follow redirects, check `xak-flow-redirect`) | A ✅ B ✅ C ✅ | All pass. Tester requested Tests D and E |
+| **3** | Added Tests D and E | A ✅ B ✅ C ✅ D ❌ E not reached | Test D failed — cookie domain mismatch |
+| **4** | Fixed Test D (login through `authentik.localhost` via `--resolve`) | A ✅ B ✅ C ✅ D ✅ E ✅ | All 5 tests pass standalone |
+| **5** | Container rebuild + full deployment | 5a ✅ 5b ❌ at task 52 | Standard whoami Ingress conflicts with protected IngressRoute |
+| **6** | Added task 46.5 (Ingress cleanup) + full deployment | All ✅ | 81 ok, 0 failed. Task 54.5 runs E2E tests automatically |
+
+### Technical Details
+
+**How tests run inside the cluster:**
+- Ephemeral `curlimages/curl` pods with `--rm --restart=Never`
+- Route through Traefik ClusterIP using `--resolve` flag (maps hostnames without DNS)
+- Pod names: `curl-test-redirect`, `curl-test-login`, `curl-test-public-content`, `curl-test-postlogin`, `curl-test-badlogin`
+
+**How Test D works (the tricky one):**
+1. Logs in through `authentik.localhost` via Traefik using `--resolve` — session cookie lands on `authentik.localhost` domain
+2. Hits `whoami.localhost` through Traefik — Traefik's forward auth sends to Authentik's outpost
+3. Outpost redirects to OAuth authorize endpoint on `authentik.localhost` — session cookie is present, auto-approves
+4. OAuth callback sets proxy auth cookie, redirects back to protected URL
+5. Protected URL returns whoami content with `X-Authentik-Username: it1`
+
+**Why `-L` is needed on login API calls:**
+Authentik's flow executor returns 302 redirects after each stage submission (identification → password → redirect). Without `-L`, curl gets empty bodies and the flow never completes.
+
+**Cookie domain scoping:**
+API login to `authentik-server.authentik.svc.cluster.local` sets cookies on that domain. OAuth authorize goes to `authentik.localhost`. The cookie domains don't match, so Authentik sees an unauthenticated request. Fix: route login through `authentik.localhost` via `--resolve`.
 
 ---
 
@@ -239,9 +295,14 @@ Extend the existing playbook tests with three levels:
 - [x] Authentication redirect fix persists after container rebuild (verified Test 14)
 - [x] Task 28 database setup succeeds (exit code 0, verified Test 14)
 - [x] Fail-fast stops playbook on database failure (verified Test 13)
-- [ ] Playbook verifies redirect URL content (not just status code)
-- [ ] Playbook performs full login flow test with test user
-- [ ] Playbook verifies public URL returns content without auth
+- [x] Playbook verifies redirect URL content (Test A — verified Round 6)
+- [x] Playbook performs full login flow test with test user (Test B — verified Round 6)
+- [x] Playbook verifies public URL returns content without auth (Test C — verified Round 6)
+- [x] Playbook verifies post-login access to protected resource (Test D — verified Round 6)
+- [x] Playbook verifies wrong credentials are rejected (Test E — verified Round 6)
+- [x] Standard whoami Ingress conflict resolved (task 46.5 — verified Round 6)
+- [x] Full deployment completes end-to-end (81 ok, 0 failed — Round 6)
+- [x] Test playbook baked into container image
 
 ---
 
@@ -277,6 +338,23 @@ If issues occur, remove the added tasks (1.5 and 1.6) from the playbook. The man
 8. **Playbook continues after database failure**: Task 28 had `failed_when: false` with no subsequent failure check, so Authentik deployed even when the database didn't exist (pods crash-loop). **Fix**: Added task 29.1 with `ansible.builtin.fail` when `postgres_setup_result.rc != 0`.
 
 9. **Sub-playbook exit code 4**: Task 28 called `u09-authentik-create-postgres.yml` via `ansible.builtin.command` with `chdir: /mnt/urbalurbadisk/ansible`. This made the child process find `ansible/ansible.cfg` which sets `collections_path` to a directory where collections aren't installed. The global `/etc/ansible/ansible.cfg` uses default paths where they are. **Fix**: Removed `args: chdir:` from tasks 28 and 44 (all paths are absolute).
+
+10. **Missing `-L` flag on curl login API calls (Phase 4, Round 1)**: Test B was INCONCLUSIVE because curl wasn't following 302 redirects from Authentik's flow executor. Each stage submission (identification, password) returns a 302 redirect. Without `-L`, curl got empty bodies. **Fix**: Added `-L` to all curl calls in the login flow. Also fixed success check from `"redirect"` to `"xak-flow-redirect"`.
+
+11. **Cookie domain mismatch in Test D (Phase 4, Round 3)**: API login to `authentik-server.authentik.svc.cluster.local` sets the session cookie on that internal domain. The OAuth authorize endpoint is on `authentik.localhost` — different domain, so curl doesn't send the cookie. Authentik sees an unauthenticated request and returns the login page (HTTP 200 but HTML, not whoami content). **Fix**: Changed Test D to login through `authentik.localhost` via Traefik using `--resolve` flags so the session cookie lands on the correct domain.
+
+12. **Standard whoami Ingress bypasses forward auth (Phase 4, Round 5)**: The `025-setup-whoami-testpod.yml` playbook creates a standard Kubernetes `Ingress` for `whoami.localhost` that routes directly to whoami WITHOUT forward auth middleware. This standard Ingress takes priority over (or competes with) the `whoami-protected` IngressRoute that has the `authentik-forward-auth` middleware. Traffic hits the bare Ingress and bypasses authentication entirely — a security issue. **Fix**: Added task 46.5 in `070-setup-authentik.yml` that deletes the standard `whoami` Ingress before deploying the protected IngressRoute. Uses `--ignore-not-found=true` for idempotency.
+
+13. **Docker build context vs running image mismatch (Phase 4, Round 5)**: The `uis` wrapper script defaults to `IMAGE="${UIS_IMAGE:-ghcr.io/terchris/uis-provision-host:latest}"` (registry image). After rebuilding locally with `docker build ... -t uis-provision-host:local`, the container was still running the registry image. New files appeared missing from the container. **Fix**: Start container with `UIS_IMAGE=uis-provision-host:local ./uis restart` to use the locally built image.
+
+---
+
+## Commits
+
+| Commit | Description |
+|--------|-------------|
+| `7c877a4` | Complete PLAN-007: Authentik automatic secrets and deployment fixes (Phases 0–3) |
+| `a413c7e` | Add end-to-end authentication test playbook and fix Ingress conflict (Phase 4) |
 
 ---
 
