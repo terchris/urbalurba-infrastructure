@@ -13,7 +13,7 @@ SCRIPT_CATEGORY="CORE"
 SCRIPT_PLAYBOOK="025-setup-whoami-testpod.yml"
 SCRIPT_MANIFEST=""
 SCRIPT_CHECK_COMMAND="kubectl get pods -n default -l app=whoami --no-headers 2>/dev/null | grep -q Running"
-SCRIPT_REMOVE_PLAYBOOK=""
+SCRIPT_REMOVE_PLAYBOOK="025-setup-whoami-testpod.yml -e operation=delete"
 SCRIPT_REQUIRES=""
 SCRIPT_PRIORITY="2"
 

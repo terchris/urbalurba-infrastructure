@@ -1,0 +1,66 @@
+---
+# file: ansible/playbooks/320-remove-unity-catalog.yml
+# Description: Remove Unity Catalog from Kubernetes
+#
+# Usage:
+# ansible-playbook playbooks/320-remove-unity-catalog.yml -e target_host="rancher-desktop"
+
+- name: Remove Unity Catalog from Kubernetes
+  hosts: localhost
+  gather_facts: false
+  vars:
+    manifests_folder: "/mnt/urbalurbadisk/manifests"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    unity_catalog_namespace: "unity-catalog"
+
+  tasks:
+    - name: 1. Print playbook description
+      ansible.builtin.debug:
+        msg: |
+          Removing Unity Catalog from Kubernetes
+          Namespace: {{ unity_catalog_namespace }}
+
+    - name: 2. Delete Unity Catalog ingress
+      kubernetes.core.k8s:
+        src: "{{ manifests_folder }}/321-unity-catalog-ingress.yaml"
+        state: absent
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      ignore_errors: true
+
+    - name: 3. Delete Unity Catalog deployment
+      kubernetes.core.k8s:
+        src: "{{ manifests_folder }}/320-unity-catalog-deployment.yaml"
+        state: absent
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      ignore_errors: true
+
+    - name: 4. Wait for pods to terminate
+      ansible.builtin.shell: |
+        kubectl wait --for=delete pod -l app=unity-catalog -n {{ unity_catalog_namespace }} --timeout=60s 2>/dev/null || true
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      changed_when: false
+
+    - name: 5. Delete unity-catalog namespace
+      kubernetes.core.k8s:
+        name: "{{ unity_catalog_namespace }}"
+        api_version: v1
+        kind: Namespace
+        state: absent
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      ignore_errors: true
+
+    - name: 6. Display removal status
+      ansible.builtin.debug:
+        msg: |
+          ===============================================
+          Unity Catalog Removal Status
+          ===============================================
+
+          ✅ Unity Catalog resources removed
+
+          Note: The PostgreSQL database 'unity_catalog' was NOT deleted.
+          To remove the database manually:
+            kubectl exec -n default postgresql-0 -- psql -U postgres -c "DROP DATABASE unity_catalog;"
+
+          ===============================================

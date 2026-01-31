@@ -22,16 +22,13 @@
     manifests_folder: "/mnt/urbalurbadisk/manifests"
     merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
     postgres_config_file: "{{ manifests_folder }}/042-database-postgresql-config.yaml"
+    # Use _target internally to provide default value
+    _target: "{{ target_host | default('rancher-desktop') }}"
 
   tasks:
-    - name: 1. Check if target_host is provided
-      ansible.builtin.fail:
-        msg: "The variable 'target_host' is mandatory. Use -e target_host=your_host_name to specify it."
-      when: target_host is not defined
-
-    - name: 2. Print playbook description
+    - name: 1. Print playbook description
       ansible.builtin.debug:
-        msg: "Setting up PostgreSQL on MicroK8s on Ubuntu host: {{ target_host }} with manifests from: {{ manifests_folder }}. Use -e target_host=your_host_name to change settings."
+        msg: "Setting up PostgreSQL on Kubernetes cluster: {{ _target }} with manifests from: {{ manifests_folder }}."
 
     - name: 3. Verify PostgreSQL secret values
       kubernetes.core.k8s_info:
@@ -62,7 +59,8 @@
 
     - name: 7. Deploy PostgreSQL using Helm if not already installed
       ansible.builtin.command: >
-        helm install postgresql bitnami/postgresql 
+        helm install postgresql bitnami/postgresql
+        --version 18.2.3
         --namespace default
         -f {{ postgres_config_file }}
         --set auth.postgresPassword="{{ postgres_password }}"

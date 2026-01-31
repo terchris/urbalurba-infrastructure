@@ -15,8 +15,10 @@
 #
 # Prerequisites:
 # - Kubernetes cluster with proper RBAC permissions
-# - urbalurba-secrets in authentik namespace with required keys
+# - Generated secrets file at .uis.secrets/generated/kubernetes/kubernetes-secrets.yml
 # - DNS resolution for *.localhost (for external testing)
+#
+# Note: Secrets are automatically applied at playbook start (creates namespace + secrets)
 #
 # Usage:
 # ansible-playbook ansible/playbooks/070-setup-authentik.yml -e kube_context="rancher-desktop"
@@ -64,7 +66,11 @@
 
     # Other playbooks
     verify_authentik_playbook: "/mnt/urbalurbadisk/ansible/playbooks/070-verify-authentik.yml"
+    test_authentik_playbook: "/mnt/urbalurbadisk/ansible/playbooks/070-test-authentik-auth.yml"
     create_postgres_playbook: "/mnt/urbalurbadisk/ansible/playbooks/utility/u09-authentik-create-postgres.yml"
+
+    # Secrets file (auto-applied at start to create namespace and credentials)
+    secrets_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubernetes/kubernetes-secrets.yml"
 
   tasks:
 
@@ -75,6 +81,22 @@
           🚀 Authentik Authentication System Deployment
           ===============================================
           📝 Target: {{ kube_context | default('default') }}
+
+    - name: "1.5. Apply secrets file to create namespace and credentials"
+      ansible.builtin.command: >
+        kubectl apply -f {{ secrets_file }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: secrets_apply_result
+      changed_when: "'created' in secrets_apply_result.stdout or 'configured' in secrets_apply_result.stdout"
+
+    - name: "1.6. Display secrets application status"
+      ansible.builtin.debug:
+        msg: |
+          ✅ Secrets applied successfully
+          📁 Source: {{ secrets_file }}
+          🔧 Created: authentik namespace and urbalurba-secrets
+          📋 Output: {{ secrets_apply_result.stdout_lines | default([]) | select('search', 'authentik') | list }}
 
     - name: "2. Check if authentik namespace exists"
       kubernetes.core.k8s_info:
@@ -462,8 +484,6 @@
         ansible-playbook {{ create_postgres_playbook }}
         -e operation=create
         -e kube_context={{ kube_context | default('rancher-desktop') }}
-      args:
-        chdir: /mnt/urbalurbadisk/ansible
       register: postgres_setup_result
       failed_when: false
       changed_when: true
@@ -471,15 +491,26 @@
     - name: "29. Display database setup completion"
       ansible.builtin.debug:
         msg: |
-          📊 PostgreSQL Database Setup: {{ 'COMPLETED' if postgres_setup_result.rc == 0 else 'NEEDS REVIEW' }}
+          📊 PostgreSQL Database Setup: {{ 'COMPLETED' if postgres_setup_result.rc == 0 else 'FAILED' }}
           Exit Code: {{ postgres_setup_result.rc }}
-          ✅ Authentik PostgreSQL database setup initiated
+          {% if postgres_setup_result.rc == 0 %}
+          ✅ Authentik PostgreSQL database setup completed
           📊 Database: authentik (with full permissions)
           👤 User: authentik (with CREATEDB privilege)
           🔐 Compatible with PostgreSQL 15+ and Django migrations
-          {% if postgres_setup_result.rc != 0 %}
-          ⚠️ Note: Database setup may have encountered issues. Check the full output above.
+          {% else %}
+          ❌ Database setup failed - cannot continue without database
           {% endif %}
+
+    - name: "29.1. Fail if database setup failed"
+      ansible.builtin.fail:
+        msg: |
+          ❌ Authentik PostgreSQL database setup failed (exit code {{ postgres_setup_result.rc }}).
+          Without the 'authentik' database and user, Authentik pods will crash-loop.
+
+          Debug: Run manually inside the container:
+            ansible-playbook /mnt/urbalurbadisk/ansible/playbooks/utility/u09-authentik-create-postgres.yml -e operation=create -v
+      when: postgres_setup_result.rc != 0
 
     # Phase 6: Authentik Deployment via Helm with Enhanced Monitoring
     - name: "30. Deploy Authentik via Helm (Helm version: {{ authentik_version }})"
@@ -547,7 +578,34 @@
         seconds: 60
         prompt: "Waiting for Authentik to process blueprints and initialize..."
 
-    - name: "34. Test Authentik UI accessibility via cluster"
+    # Phase 6.1: Deploy CSP Middleware and Authentik IngressRoute (CRITICAL - required for UI access)
+    - name: "34. Deploy Authentik CSP middleware for mixed content resolution"
+      ansible.builtin.command: >
+        kubectl apply -f {{ authentik_csp_middleware_file }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: authentik_csp_middleware_result
+      changed_when: true
+
+    - name: "35. Deploy Auth10 Authentik IngressRoute (unified localhost + external domains)"
+      ansible.builtin.command: >
+        kubectl apply -f {{ authentik_ingressroute_file }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: authentik_ingressroute_result
+      changed_when: true
+
+    - name: "36. Wait for Authentik IngressRoutes to be ready"
+      ansible.builtin.shell: |
+        kubectl wait --for=condition=Ready ingressroute authentik-server --timeout=60s -n {{ authentik_namespace }} && \
+        kubectl wait --for=condition=Ready ingressroute authentik-server-localhost --timeout=60s -n {{ authentik_namespace }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: authentik_ingressroute_wait
+      failed_when: false
+      changed_when: false
+
+    - name: "37. Test Authentik UI accessibility via cluster"
       ansible.builtin.shell: |
         kubectl run curl-test-authentik --image=curlimages/curl --rm -i --restart=Never --command -- \
           curl -s -H "Host: authentik.localhost" -w "HTTP_STATUS:%{http_code}" \
@@ -558,7 +616,7 @@
       failed_when: false
       changed_when: false
 
-    - name: "35. Verify Authentik UI is accessible"
+    - name: "38. Verify Authentik UI is accessible"
       ansible.builtin.fail:
         msg: |
           ❌ Authentik UI accessibility test failed!
@@ -566,49 +624,22 @@
           Troubleshooting: kubectl get pods -n {{ authentik_namespace }}
       when: "'200' not in authentik_ui_test.stdout and '302' not in authentik_ui_test.stdout"
 
-    - name: "36. Display Authentik accessibility test results"
+    - name: "39. Display Authentik accessibility test results"
       ansible.builtin.debug:
         msg: |
           ✅ Authentik UI Test: PASS - Accessible via Traefik
           Status: {{ 'Redirect (302)' if '302' in authentik_ui_test.stdout else 'Direct (200)' if '200' in authentik_ui_test.stdout else 'Unknown' }}
           Note: External access from host requires DNS resolution for *.localhost
 
-    - name: "37. Display Authentik deployment status"
+    - name: "40. Display Authentik deployment status"
       ansible.builtin.debug:
         msg: |
           ✅ Authentik server and worker pods are running
           📝 Blueprint processing: {{ 'Found in logs' if 'blueprint' in blueprint_logs.stdout.lower() else 'Completed or initializing' }}
           📋 Specific blueprints: {{ 'Found references' if specific_blueprint_logs.stdout and 'No specific blueprint logs found yet' not in specific_blueprint_logs.stdout else 'Processing or completed' }}
-          🔧 Ready for IngressRoute deployment and forward authentication setup
+          🔧 IngressRoutes deployed, ready for forward authentication setup
 
-    # Phase 6.1: Deploy CSP Middleware and Authentik IngressRoute (CRITICAL - required for access)
-    - name: "38. Deploy Authentik CSP middleware for mixed content resolution"
-      ansible.builtin.command: >
-        kubectl apply -f {{ authentik_csp_middleware_file }}
-      environment:
-        KUBECONFIG: "{{ merged_kubeconf_file }}"
-      register: authentik_csp_middleware_result
-      changed_when: true
-
-    - name: "39. Deploy Auth10 Authentik IngressRoute (unified localhost + external domains)"
-      ansible.builtin.command: >
-        kubectl apply -f {{ authentik_ingressroute_file }}
-      environment:
-        KUBECONFIG: "{{ merged_kubeconf_file }}"
-      register: authentik_ingressroute_result
-      changed_when: true
-
-    - name: "40. Wait for Authentik IngressRoutes to be ready"
-      ansible.builtin.shell: |
-        kubectl wait --for=condition=Ready ingressroute authentik-server --timeout=60s -n {{ authentik_namespace }} && \
-        kubectl wait --for=condition=Ready ingressroute authentik-server-localhost --timeout=60s -n {{ authentik_namespace }}
-      environment:
-        KUBECONFIG: "{{ merged_kubeconf_file }}"
-      register: authentik_ingressroute_wait
-      failed_when: false
-      changed_when: false
-
-    - name: "42. Test Authentik access via new IngressRoute"
+    - name: "41. Test Authentik access via IngressRoute"
       ansible.builtin.shell: |
         kubectl run curl-test-authentik-ingressroute --image=curlimages/curl --rm -i --restart=Never --command -- \
           curl -s -H "Host: authentik.localhost" -w "HTTP_STATUS:%{http_code}" \
@@ -627,7 +658,7 @@
           Troubleshooting: kubectl get ingressroute authentik-server -n {{ authentik_namespace }}
       when: "'200' not in authentik_ingressroute_test.stdout and '302' not in authentik_ingressroute_test.stdout"
 
-    - name: "42. Display Authentik IngressRoute deployment status"
+    - name: "43. Display Authentik IngressRoute deployment status"
       ansible.builtin.debug:
         msg: |
           ✅ Authentik IngressRoute deployed successfully
@@ -637,18 +668,16 @@
           📊 Status: {{ 'SUCCESS (200/302)' if '200' in authentik_ingressroute_test.stdout or '302' in authentik_ingressroute_test.stdout else 'NEEDS_REVIEW' }}
           🚀 Ready for OAuth integration and CoreDNS resolution
 
-    - name: "43. Run comprehensive deployment verification"
+    - name: "44. Run comprehensive deployment verification"
       ansible.builtin.command: >
         ansible-playbook {{ verify_authentik_playbook }}
         -e app_name=whoami
         -e kube_context={{ kube_context | default('rancher-desktop') }}
-      args:
-        chdir: /mnt/urbalurbadisk/ansible
       register: verification_result
       failed_when: false
       changed_when: false
 
-    - name: "44. Display verification results"
+    - name: "45. Display verification results"
       ansible.builtin.debug:
         msg: |
           🔍 Deployment Verification Results:
@@ -660,7 +689,7 @@
           {% endif %}
 
     # Phase 7: Forward Authentication Setup
-    - name: "45. Deploy forward auth middleware"
+    - name: "46. Deploy forward auth middleware"
       ansible.builtin.command: >
         kubectl apply -f {{ forward_auth_middleware_file }}
       environment:
@@ -668,7 +697,14 @@
       register: middleware_result
       changed_when: true
 
-    - name: "46. Deploy Auth10 service protection IngressRoute"
+    - name: "46.5. Remove standard whoami Ingress (conflicts with protected IngressRoute)"
+      ansible.builtin.shell: |
+        kubectl delete ingress whoami -n {{ default_namespace }} --ignore-not-found=true
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      changed_when: false
+
+    - name: "47. Deploy Auth10 service protection IngressRoute"
       ansible.builtin.command: >
         kubectl apply -f {{ service_protection_ingressroute_file }}
       environment:
@@ -676,7 +712,7 @@
       register: protected_route_result
       changed_when: true
 
-    - name: "47. Verify middleware deployment"
+    - name: "48. Verify middleware deployment"
       ansible.builtin.shell: |
         kubectl get middleware -n {{ default_namespace }} | grep authentik-forward-auth
       environment:
@@ -684,7 +720,7 @@
       register: middleware_check
       changed_when: false
 
-    - name: "48. Wait for middleware to propagate"
+    - name: "49. Wait for middleware to propagate"
       ansible.builtin.shell: |
         kubectl wait --for=condition=Ready ingressroute whoami-protected --timeout=30s -n {{ default_namespace }}
       environment:
@@ -693,7 +729,7 @@
       failed_when: false
       changed_when: false
 
-    - name: "49. Test whoami authentication requirement via cluster"
+    - name: "50. Test whoami authentication requirement via cluster"
       ansible.builtin.shell: |
         kubectl run curl-test-auth --image=curlimages/curl --rm -i --restart=Never --command -- \
           curl -s -H "Host: whoami.localhost" -w "HTTP_STATUS:%{http_code}" \
@@ -704,7 +740,7 @@
       failed_when: false
       changed_when: false
 
-    - name: "50. Test cluster-internal routing"
+    - name: "51. Test cluster-internal routing"
       ansible.builtin.shell: |
         kubectl run curl-test-auth-internal --image=curlimages/curl --rm -i --restart=Never --command -- \
           curl -s -H "Host: whoami.localhost" -w "HTTP_STATUS:%{http_code}" \
@@ -715,7 +751,7 @@
       failed_when: false
       changed_when: false
 
-    - name: "51. Verify authentication flow is working"
+    - name: "52. Verify authentication flow is working"
       ansible.builtin.fail:
         msg: |
           ❌ Authentication flow test failed!
@@ -725,7 +761,7 @@
           - kubectl get ingressroute whoami-protected -n {{ default_namespace }}
       when: "'302' not in whoami_auth_test.stdout and '302' not in whoami_internal_auth_test.stdout"
 
-    - name: "52. Display authentication test results"
+    - name: "53. Display authentication test results"
       ansible.builtin.debug:
         msg: |
           ✅ Authentication Flow Tests: PASS
@@ -735,7 +771,7 @@
           Expected: 302 redirect to Authentik login (indicates auth working)
           Note: External access from host requires DNS resolution for *.localhost
 
-    - name: "53. Display forward auth setup status"
+    - name: "54. Display forward auth setup status"
       ansible.builtin.debug:
         msg: |
           ✅ Forward authentication configured
@@ -743,8 +779,27 @@
           🛡️ Protected route: http://whoami.localhost (requires authentication)
           🌐 Public route: http://whoami-public.localhost (direct access)
 
+    # Phase 7.5: End-to-End Authentication Tests
+    - name: "54.5. Run end-to-end authentication tests"
+      ansible.builtin.command: >
+        ansible-playbook {{ test_authentik_playbook }}
+        -e kube_context={{ kube_context | default('rancher-desktop') }}
+      register: auth_test_result
+      failed_when: false
+      changed_when: false
+
+    - name: "54.6. Display end-to-end test results"
+      ansible.builtin.debug:
+        msg: |
+          🧪 End-to-End Auth Tests: {{ 'PASSED' if auth_test_result.rc == 0 else 'NEEDS REVIEW' }}
+          Exit Code: {{ auth_test_result.rc }}
+          {% if auth_test_result.rc != 0 %}
+          Note: Some tests may fail if blueprints are still processing.
+          Re-run independently: ansible-playbook {{ test_authentik_playbook }}
+          {% endif %}
+
     # Phase 8: Final Status and Enhanced Summary
-    - name: "54. Get final pod status"
+    - name: "55. Get final pod status"
       ansible.builtin.shell: |
         kubectl get pods -n {{ authentik_namespace }}
       environment:
@@ -752,7 +807,7 @@
       register: final_pods
       changed_when: false
 
-    - name: "54.1. Get detailed pod status with conditions"
+    - name: "55.1. Get detailed pod status with conditions"
       ansible.builtin.shell: |
         kubectl get pods -n {{ authentik_namespace }} -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.phase}{"\t"}{.status.conditions[?(@.type=="Ready")].status}{"\n"}{end}'
       environment:
@@ -760,7 +815,7 @@
       register: detailed_pod_status
       changed_when: false
 
-    - name: "55. Count running pods for success determination"
+    - name: "56. Count running pods for success determination"
       ansible.builtin.shell: |
         kubectl get pods -n {{ authentik_namespace }} | grep -v NAME | grep -c Running || echo "0"
       environment:
@@ -768,7 +823,7 @@
       register: running_pods_count
       changed_when: false
 
-    - name: "55.1. Check resource usage"
+    - name: "56.1. Check resource usage"
       ansible.builtin.shell: |
         kubectl top pods -n {{ authentik_namespace }} || echo "Metrics not available"
       environment:
@@ -777,11 +832,11 @@
       changed_when: false
       failed_when: false
 
-    - name: "56. Determine overall installation success"
+    - name: "57. Determine overall installation success"
       ansible.builtin.set_fact:
         installation_successful: "{{ (running_pods_count.stdout | int >= 2) }}"
 
-    - name: "57. Display comprehensive final status with enhanced monitoring"
+    - name: "58. Display comprehensive final status with enhanced monitoring"
       ansible.builtin.debug:
         msg:
           - "==============================================="
@@ -867,7 +922,7 @@
           - "{{ '🎉 INSTALLATION SUCCESSFUL - OAuth Integration Ready!' if installation_successful else '⚠️ INSTALLATION STATUS: Some components may still be starting' }}"
           - "==============================================="
 
-    - name: "58. Final success check with enhanced error reporting"
+    - name: "59. Final success check with enhanced error reporting"
       ansible.builtin.fail:
         msg: |
           ❌ Installation did not complete successfully

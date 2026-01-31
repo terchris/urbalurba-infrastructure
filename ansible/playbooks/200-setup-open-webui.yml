@@ -166,14 +166,26 @@
         seconds: 30
         prompt: "Giving OpenWebUI time to complete database migrations and internal setup"
 
-    - name: 14. Verify LiteLLM dependency is available
+    - name: 14. Check if LiteLLM is available (optional dependency)
       ansible.builtin.shell: |
         kubectl get svc litellm -n {{ ai_namespace }} -o jsonpath='{.metadata.name}'
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
       register: litellm_check
       changed_when: false
-      failed_when: litellm_check.rc != 0
+      failed_when: false
+
+    - name: 14.1. Display LiteLLM availability warning
+      ansible.builtin.debug:
+        msg: |
+          ⚠️ LiteLLM service not found in namespace '{{ ai_namespace }}'.
+          OpenWebUI is running but may have limited model access.
+
+          To enable full model access, deploy LiteLLM first:
+            uis deploy litellm
+
+          Or OpenWebUI can connect directly to external Ollama via OLLAMA_API_BASE_URL.
+      when: litellm_check.rc != 0
 
     - name: 15. Test OpenWebUI service connectivity from within cluster
       ansible.builtin.shell: |

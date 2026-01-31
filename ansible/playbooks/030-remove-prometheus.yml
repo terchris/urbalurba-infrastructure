@@ -8,7 +8,8 @@
   gather_facts: false
 
   vars:
-    target_host: "{{ target_host | default('rancher-desktop') }}"
+    # target_host passed via -e, use _target for internal reference to avoid recursion
+    _target: "{{ target_host | default('rancher-desktop') }}"
     namespace: "monitoring"
     component_name: "prometheus"
 
@@ -19,7 +20,7 @@
           - "====================================="
           - "Prometheus Removal"
           - "====================================="
-          - "Target Host: {{ target_host }}"
+          - "Target Host: {{ _target }}"
           - "Namespace: {{ namespace }}"
           - "Component: {{ component_name }}"
 
@@ -28,7 +29,7 @@
         name: prometheus
         release_namespace: "{{ namespace }}"
         state: absent
-        context: "{{ target_host }}"
+        context: "{{ _target }}"
       register: prometheus_removal
       failed_when: false
 
@@ -38,7 +39,7 @@
         namespace: "{{ namespace }}"
         label_selectors:
           - app.kubernetes.io/name=prometheus
-        context: "{{ target_host }}"
+        context: "{{ _target }}"
       register: prometheus_pods
       retries: 10
       delay: 5
@@ -57,5 +58,5 @@
           - "  📊 Kube-state-metrics"
           - ""
           - "Verification:"
-          - "  kubectl get pods -n {{ namespace }} -l app.kubernetes.io/name=prometheus --context={{ target_host }}"
+          - "  kubectl get pods -n {{ namespace }} -l app.kubernetes.io/name=prometheus --context={{ _target }}"
           - "  (Should show 'No resources found')"

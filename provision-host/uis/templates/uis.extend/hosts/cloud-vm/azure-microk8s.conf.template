@@ -1,0 +1,30 @@
+# Azure VM with MicroK8s Configuration
+# Copy to .uis.extend/hosts/cloud-vm/<name>-azure-microk8s.conf and edit
+#
+# This creates an Azure VM running Ubuntu with MicroK8s installed via cloud-init.
+# Tailscale is required for network connectivity (VM has no public IP).
+
+# Which credentials to use (references file in .uis.secrets/cloud-accounts/)
+CREDENTIALS="azure-default"
+
+# Resource group (will be created if doesn't exist)
+RESOURCE_GROUP="rg-urbalurba-vm"
+
+# VM name
+VM_NAME="my-microk8s-vm"
+
+# Azure region
+LOCATION="westeurope"
+
+# VM size
+VM_SIZE="Standard_B2ms"
+
+# Disk configuration (GB)
+OS_DISK_SIZE=64
+DATA_DISK_SIZE=128
+
+# Network connectivity (required - VM has no public IP)
+REQUIRES_TAILSCALE=true
+
+# Optional: Tags for Azure resources
+# TAGS="environment=dev,project=urbalurba"

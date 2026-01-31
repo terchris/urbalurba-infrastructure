@@ -103,10 +103,21 @@ if ! kubectl get nodes &> /dev/null; then
     exit 1
 fi
 
-# Check if kubernetes-secrets.yml exists
-if [ ! -f "../topsecret/kubernetes/kubernetes-secrets.yml" ]; then
-    echo "Error: Kubernetes secrets file not found at ../topsecret/kubernetes/kubernetes-secrets.yml"
-    echo "Please run: cd topsecret && ./create-kubernetes-secrets.sh new"
+# Check if kubernetes-secrets.yml exists (support both new and legacy paths)
+SECRETS_FILE=""
+if [ -f "../.uis.secrets/generated/kubernetes/kubernetes-secrets.yml" ]; then
+    SECRETS_FILE="../.uis.secrets/generated/kubernetes/kubernetes-secrets.yml"
+elif [ -f "../topsecret/kubernetes/kubernetes-secrets.yml" ]; then
+    SECRETS_FILE="../topsecret/kubernetes/kubernetes-secrets.yml"
+    echo "Note: Using legacy secrets path. Consider migrating to .uis.secrets/"
+fi
+
+if [ -z "$SECRETS_FILE" ]; then
+    echo "Error: Kubernetes secrets file not found"
+    echo "Looked for:"
+    echo "  - ../.uis.secrets/generated/kubernetes/kubernetes-secrets.yml (new)"
+    echo "  - ../topsecret/kubernetes/kubernetes-secrets.yml (legacy)"
+    echo "Please run: ./uis secrets generate"
     exit 1
 fi
 

@@ -47,11 +47,19 @@ fi
 
 # backup existing kubernetes-secrets.yml file inside provision-host container
 echo "Creating backup of existing kubernetes-secrets.yml file..."
-if docker exec provision-host test -f /mnt/urbalurbadisk/topsecret/kubernetes/kubernetes-secrets.yml 2>/dev/null; then
-  # Create backup inside the container using sudo to avoid permission issues
+# Check new path first, then legacy
+if docker exec provision-host test -f /mnt/urbalurbadisk/.uis.secrets/generated/kubernetes/kubernetes-secrets.yml 2>/dev/null; then
+  SECRETS_BACKUP_PATH="/mnt/urbalurbadisk/.uis.secrets/generated/kubernetes"
+elif docker exec provision-host test -f /mnt/urbalurbadisk/topsecret/kubernetes/kubernetes-secrets.yml 2>/dev/null; then
+  SECRETS_BACKUP_PATH="/mnt/urbalurbadisk/topsecret/kubernetes"
+else
+  SECRETS_BACKUP_PATH=""
+fi
+
+if [ -n "$SECRETS_BACKUP_PATH" ]; then
   BACKUP_RESULT=$(docker exec provision-host bash -c "
-    BACKUP_FILE=\"/mnt/urbalurbadisk/topsecret/kubernetes/kubernetes-secrets.yml.backup.\$(date +%Y%m%d_%H%M%S)\"
-    if sudo cp /mnt/urbalurbadisk/topsecret/kubernetes/kubernetes-secrets.yml \"\$BACKUP_FILE\" 2>/dev/null; then
+    BACKUP_FILE=\"${SECRETS_BACKUP_PATH}/kubernetes-secrets.yml.backup.\$(date +%Y%m%d_%H%M%S)\"
+    if sudo cp ${SECRETS_BACKUP_PATH}/kubernetes-secrets.yml \"\$BACKUP_FILE\" 2>/dev/null; then
       sudo chown \$(whoami):\$(whoami) \"\$BACKUP_FILE\" 2>/dev/null || true
       echo 'Backup created successfully inside container'
     else
@@ -63,11 +71,20 @@ else
   echo "No existing file to backup"
 fi
 
-# copy topsecret folder to the provision-host container
-docker cp topsecret/. provision-host:/mnt/urbalurbadisk/topsecret
-if [ $? -ne 0 ]; then
-    echo "Error copying topsecret folder to provision-host container"
-    exit 1
+# copy secrets folders to the provision-host container (support both new and legacy)
+if [ -d ".uis.secrets" ]; then
+    docker cp .uis.secrets/. provision-host:/mnt/urbalurbadisk/.uis.secrets
+    if [ $? -ne 0 ]; then
+        echo "Error copying .uis.secrets folder to provision-host container"
+        exit 1
+    fi
+fi
+if [ -d "topsecret" ]; then
+    docker cp topsecret/. provision-host:/mnt/urbalurbadisk/topsecret
+    if [ $? -ne 0 ]; then
+        echo "Error copying topsecret folder to provision-host container"
+        exit 1
+    fi
 fi
 
 # Fix ownership of copied files to match container user (ansible)

@@ -2,8 +2,8 @@
 # filename: provision-host-02-kubetools.sh
 # description: Installs Kubernetes-related software on the provision host using snap where possible.
 
-# Run systemctl daemon-reload to address unit file changes
-sudo systemctl daemon-reload
+# Run systemctl daemon-reload to address unit file changes (ignore if not available in container)
+sudo systemctl daemon-reload 2>/dev/null || true
 
 # Initialize associative arrays for status and errors
 declare -A STATUS
@@ -69,11 +69,55 @@ install_ansible_kubernetes() {
         check_command_success "Ansible" "Installation" || return 1
 
         # Install only required Ansible collections (used in our playbooks)
+        # Galaxy is often down, so try Galaxy first then fall back to GitHub
         echo "Installing required Ansible collections..."
-        ansible-galaxy collection install kubernetes.core --force || return 1
-        ansible-galaxy collection install community.postgresql --force || return 1
-        ansible-galaxy collection install community.general --force || return 1
-        add_status "Ansible Collections" "Status" "kubernetes.core, community.postgresql, community.general"
+
+        install_collection() {
+            local collection="$1"
+            local github_url="$2"
+
+            echo "Installing $collection from Galaxy..."
+            local output
+            output=$(ansible-galaxy collection install "$collection" --force 2>&1)
+            echo "$output"
+
+            # Check if Galaxy returned 500 error
+            if echo "$output" | grep -q "HTTP Code: 500"; then
+                # Galaxy failed, try GitHub
+                if [ -n "$github_url" ]; then
+                    echo "Galaxy unavailable, installing $collection from GitHub..."
+                    output=$(ansible-galaxy collection install "$github_url" --force 2>&1)
+                    echo "$output"
+                    if echo "$output" | grep -q "was installed successfully"; then
+                        echo "Successfully installed $collection from GitHub"
+                        return 0
+                    fi
+                fi
+                echo "Warning: Failed to install $collection"
+                return 1
+            fi
+
+            # Galaxy succeeded
+            if echo "$output" | grep -q "was installed successfully\|is already installed"; then
+                echo "Successfully installed $collection from Galaxy"
+                return 0
+            fi
+
+            echo "Warning: Failed to install $collection"
+            return 1
+        }
+
+        local collections_failed=0
+        install_collection kubernetes.core "git+https://github.com/ansible-collections/kubernetes.core.git,6.2.0" || collections_failed=1
+        install_collection community.postgresql "git+https://github.com/ansible-collections/community.postgresql.git,3.4.0" || collections_failed=1
+        install_collection community.general "git+https://github.com/ansible-collections/community.general.git,8.6.0" || collections_failed=1
+
+        if [ "$collections_failed" -eq 0 ]; then
+            add_status "Ansible Collections" "Status" "kubernetes.core, community.postgresql, community.general"
+        else
+            add_status "Ansible Collections" "Status" "Some collections failed"
+            echo "Note: Playbooks requiring these collections won't work"
+        fi
 
         ANSIBLE_VERSION=$(ansible --version 2>&1 | head -n1 | sed -E 's/ansible \[core ([0-9.]+)\].*/\1/')
         add_status "Ansible" "Status" "Installed (${ANSIBLE_VERSION})"
@@ -94,11 +138,17 @@ install_ansible_kubernetes() {
     # Create global Ansible config directory if it doesn't exist
     sudo mkdir -p /etc/ansible
 
+    # Determine SSH key path (prefer new paths, fall back to legacy)
+    local SSH_KEY_PATH="/mnt/urbalurbadisk/secrets/id_rsa_ansible"
+    if [ -d "/mnt/urbalurbadisk/.uis.secrets/ssh" ]; then
+        SSH_KEY_PATH="/mnt/urbalurbadisk/.uis.secrets/ssh/id_rsa_ansible"
+    fi
+
     # Create or update the ansible.cfg file using sudo tee
-    sudo tee /etc/ansible/ansible.cfg > /dev/null << 'ENDCONFIG'
+    sudo tee /etc/ansible/ansible.cfg > /dev/null << ENDCONFIG
 [defaults]
 inventory = /mnt/urbalurbadisk/ansible/inventory.yml
-private_key_file = /mnt/urbalurbadisk/secrets/id_rsa_ansible
+private_key_file = $SSH_KEY_PATH
 host_key_checking = False
 roles_path = /mnt/urbalurbadisk/ansible/roles
 

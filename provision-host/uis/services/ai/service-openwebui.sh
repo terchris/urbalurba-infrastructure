@@ -12,9 +12,9 @@ SCRIPT_CATEGORY="AI"
 # === UIS-Specific (Optional) ===
 SCRIPT_PLAYBOOK="200-setup-open-webui.yml"
 SCRIPT_MANIFEST=""
-SCRIPT_CHECK_COMMAND="kubectl get pods -n ai -l app=open-webui --no-headers 2>/dev/null | grep -q Running"
-SCRIPT_REMOVE_PLAYBOOK=""
-SCRIPT_REQUIRES=""
+SCRIPT_CHECK_COMMAND="kubectl get pods -n ai -l app.kubernetes.io/name=open-webui --no-headers 2>/dev/null | grep -q Running"
+SCRIPT_REMOVE_PLAYBOOK="200-remove-open-webui.yml"
+SCRIPT_REQUIRES="postgresql"
 SCRIPT_PRIORITY="50"
 
 # === Website Metadata (Optional) ===

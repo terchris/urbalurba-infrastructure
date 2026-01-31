@@ -12,8 +12,8 @@ SCRIPT_CATEGORY="DATABASES"
 # === UIS-Specific (Optional) ===
 SCRIPT_PLAYBOOK="050-setup-redis.yml"
 SCRIPT_MANIFEST=""
-SCRIPT_CHECK_COMMAND="kubectl get pods -n databases -l app=redis --no-headers 2>/dev/null | grep -q Running"
-SCRIPT_REMOVE_PLAYBOOK=""
+SCRIPT_CHECK_COMMAND="kubectl get pods -n default -l app.kubernetes.io/name=redis --no-headers 2>/dev/null | grep -q Running"
+SCRIPT_REMOVE_PLAYBOOK="050-remove-redis.yml"
 SCRIPT_REQUIRES=""
 SCRIPT_PRIORITY="32"
 

@@ -31,6 +31,11 @@ fi
 
 set -e
 
+# Source centralized path library for backwards-compatible path resolution
+if [[ -f "/mnt/urbalurbadisk/provision-host/uis/lib/paths.sh" ]]; then
+    source "/mnt/urbalurbadisk/provision-host/uis/lib/paths.sh"
+fi
+
 # Variables
 KUBECONFIG_PATH="/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
 OPERATOR_PLAYBOOK_PATH="/mnt/urbalurbadisk/ansible/playbooks/802-deploy-network-tailscale-tunnel.yml"
@@ -84,10 +89,17 @@ check_command_success() {
     fi
 }
 
-# Check environment
-if [ ! -d "/mnt/urbalurbadisk/ansible" ] || [ ! -d "/mnt/urbalurbadisk/topsecret" ]; then
+# Check environment - accept either new .uis.secrets or legacy topsecret
+SECRETS_DIR_OK=false
+if [ -d "/mnt/urbalurbadisk/.uis.secrets" ]; then
+    SECRETS_DIR_OK=true
+elif [ -d "/mnt/urbalurbadisk/topsecret" ]; then
+    SECRETS_DIR_OK=true
+fi
+
+if [ ! -d "/mnt/urbalurbadisk/ansible" ] || [ "$SECRETS_DIR_OK" = false ]; then
     echo "This script must be run from within the provision-host container"
-    echo "Required directories not found: /mnt/urbalurbadisk/ansible or /mnt/urbalurbadisk/topsecret"
+    echo "Required directories not found: /mnt/urbalurbadisk/ansible or /mnt/urbalurbadisk/.uis.secrets (or /mnt/urbalurbadisk/topsecret)"
     STATUS+=("Environment check: Fail")
     ERROR=1
 else

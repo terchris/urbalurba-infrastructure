@@ -12,9 +12,9 @@ SCRIPT_CATEGORY="DATASCIENCE"
 # === UIS-Specific (Optional) ===
 SCRIPT_PLAYBOOK="320-setup-unity-catalog.yml"
 SCRIPT_MANIFEST=""
-SCRIPT_CHECK_COMMAND="kubectl get pods -n datascience -l app.kubernetes.io/name=unity-catalog --no-headers 2>/dev/null | grep -q Running"
-SCRIPT_REMOVE_PLAYBOOK=""
-SCRIPT_REQUIRES=""
+SCRIPT_CHECK_COMMAND="kubectl get pods -n unity-catalog -l app=unity-catalog,component=server --no-headers 2>/dev/null | grep -q Running"
+SCRIPT_REMOVE_PLAYBOOK="320-remove-unity-catalog.yml"
+SCRIPT_REQUIRES="postgresql"
 SCRIPT_PRIORITY="90"
 
 # === Website Metadata (Optional) ===

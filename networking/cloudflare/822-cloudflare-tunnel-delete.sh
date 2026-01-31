@@ -20,6 +20,14 @@ if [ -z "$BASH_VERSION" ]; then
     exit 1
 fi
 
+# Source centralized path library for backwards-compatible path resolution
+if [[ -f "/mnt/urbalurbadisk/provision-host/uis/lib/paths.sh" ]]; then
+    source "/mnt/urbalurbadisk/provision-host/uis/lib/paths.sh"
+    K8S_SECRETS_PATH=$(get_kubernetes_secrets_path)
+else
+    K8S_SECRETS_PATH="/mnt/urbalurbadisk/topsecret/kubernetes"
+fi
+
 # Extract domain from existing Secret
 TUNNEL_NAME="cloudflare-tunnel"
 KUBECONFIG_PATH="/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
@@ -213,7 +221,7 @@ echo ""
 echo "Step 5: Cleaning up Kubernetes secrets..."
 echo "------------------------------------------"
 
-SECRETS_FILE="/mnt/urbalurbadisk/topsecret/kubernetes/kubernetes-secrets.yml"
+SECRETS_FILE="$K8S_SECRETS_PATH/kubernetes-secrets.yml"
 
 # Check if yq is available
 if command -v yq &> /dev/null; then

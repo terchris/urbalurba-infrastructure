@@ -22,9 +22,15 @@ fi
 # Variables
 VM_NAME=${1:-"provision-host"}
 SSH_USER=${2:-"ansible"}
-SSH_KEY_PATH="$(cd .. && pwd)/secrets/id_rsa_ansible"
 REMOTE_SCRIPT="/tmp/verify_user.sh"
 SSH_CONFIG="$HOME/.ssh/config"
+
+# Determine SSH key path (prefer new paths, fall back to legacy)
+if [ -f "$(cd .. && pwd)/.uis.secrets/ssh/id_rsa_ansible" ]; then
+    SSH_KEY_PATH="$(cd .. && pwd)/.uis.secrets/ssh/id_rsa_ansible"
+else
+    SSH_KEY_PATH="$(cd .. && pwd)/secrets/id_rsa_ansible"
+fi
 
 # Arrays to store status and errors
 STEPS=()

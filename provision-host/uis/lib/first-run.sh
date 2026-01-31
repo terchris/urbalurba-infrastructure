@@ -16,69 +16,9 @@ _FIRSTRUN_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Source dependencies
 source "$_FIRSTRUN_SCRIPT_DIR/logging.sh"
 source "$_FIRSTRUN_SCRIPT_DIR/utilities.sh"
+source "$_FIRSTRUN_SCRIPT_DIR/paths.sh"
 
-# Auto-detect templates directory
-_detect_templates_dir() {
-    # If already set, use it
-    [[ -n "${TEMPLATES_DIR:-}" ]] && echo "$TEMPLATES_DIR" && return 0
-
-    # Container path
-    if [[ -d "/mnt/urbalurbadisk/provision-host/uis/templates" ]]; then
-        echo "/mnt/urbalurbadisk/provision-host/uis/templates"
-        return 0
-    fi
-
-    # Host path: derive from this script's location
-    local script_dir
-    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    local templates_dir="$(dirname "$script_dir")/templates"
-    if [[ -d "$templates_dir" ]]; then
-        echo "$templates_dir"
-        return 0
-    fi
-
-    # Fallback to container path
-    echo "/mnt/urbalurbadisk/provision-host/uis/templates"
-}
-
-# Auto-detect extend directory
-_detect_extend_dir() {
-    # If already set, use it
-    [[ -n "${EXTEND_DIR:-}" ]] && echo "$EXTEND_DIR" && return 0
-
-    # Container path
-    if [[ -d "/mnt/urbalurbadisk/.uis.extend" ]]; then
-        echo "/mnt/urbalurbadisk/.uis.extend"
-        return 0
-    fi
-
-    # Host path: use get_base_path
-    local base_path
-    base_path=$(get_base_path)
-    echo "$base_path/.uis.extend"
-}
-
-# Auto-detect secrets directory
-_detect_secrets_dir() {
-    # If already set, use it
-    [[ -n "${SECRETS_DIR:-}" ]] && echo "$SECRETS_DIR" && return 0
-
-    # Container path
-    if [[ -d "/mnt/urbalurbadisk/.uis.secrets" ]]; then
-        echo "/mnt/urbalurbadisk/.uis.secrets"
-        return 0
-    fi
-
-    # Host path: use get_base_path
-    local base_path
-    base_path=$(get_base_path)
-    echo "$base_path/.uis.secrets"
-}
-
-# Default paths (auto-detected)
-TEMPLATES_DIR="${TEMPLATES_DIR:-$(_detect_templates_dir)}"
-EXTEND_DIR="${EXTEND_DIR:-$(_detect_extend_dir)}"
-SECRETS_DIR="${SECRETS_DIR:-$(_detect_secrets_dir)}"
+# Note: TEMPLATES_DIR, EXTEND_DIR, SECRETS_DIR are set by paths.sh
 
 # Check if first-run setup has been completed
 # Returns: 0 if configured, 1 if needs setup
@@ -130,7 +70,7 @@ copy_defaults_if_missing() {
         fi
     fi
 
-    # Create secrets subdirectories if missing
+    # Create secrets subdirectories if missing (original structure)
     local subdirs=("secrets-config" "kubernetes" "api-keys")
     for subdir in "${subdirs[@]}"; do
         if [[ ! -d "$SECRETS_DIR/$subdir" ]]; then
@@ -138,6 +78,29 @@ copy_defaults_if_missing() {
             log_info "Created $SECRETS_DIR/$subdir/"
         fi
     done
+
+    # Create new secrets subdirectories (for secrets consolidation)
+    local new_subdirs=("ssh" "cloud-accounts" "service-keys" "network" "generated/kubernetes" "generated/ubuntu-cloud-init" "generated/kubeconfig")
+    for subdir in "${new_subdirs[@]}"; do
+        if [[ ! -d "$SECRETS_DIR/$subdir" ]]; then
+            mkdir -p "$SECRETS_DIR/$subdir"
+            log_info "Created $SECRETS_DIR/$subdir/"
+        fi
+    done
+
+    # Create hosts subdirectories in .uis.extend/
+    local host_subdirs=("hosts/managed" "hosts/cloud-vm" "hosts/physical" "hosts/local")
+    for subdir in "${host_subdirs[@]}"; do
+        if [[ ! -d "$EXTEND_DIR/$subdir" ]]; then
+            mkdir -p "$EXTEND_DIR/$subdir"
+            log_info "Created $EXTEND_DIR/$subdir/"
+        fi
+    done
+
+    # Copy secrets templates, generate, and apply Kubernetes secrets
+    copy_secrets_templates
+    generate_kubernetes_secrets
+    apply_kubernetes_secrets
 }
 
 # Validate that config structure is correct
@@ -223,4 +186,196 @@ is_using_default_secrets() {
         return 1
     fi
     return 0
+}
+
+# Generate SSH keys for ansible user (used for VM provisioning)
+# Keys are created in .uis.secrets/ssh/
+# Returns: 0 if keys exist or created successfully, 1 on error
+generate_ssh_keys() {
+    local ssh_dir="$SECRETS_DIR/ssh"
+    local private_key="$ssh_dir/id_rsa_ansible"
+    local public_key="$ssh_dir/id_rsa_ansible.pub"
+
+    # Ensure directory exists
+    mkdir -p "$ssh_dir"
+
+    # Check if keys already exist
+    if [[ -f "$private_key" && -f "$public_key" ]]; then
+        log_info "SSH keys already exist"
+        return 0
+    fi
+
+    # Generate new key pair
+    log_info "Generating SSH keys for ansible user..."
+    if ssh-keygen -t rsa -b 4096 -f "$private_key" -N "" -C "ansible@uis" >/dev/null 2>&1; then
+        chmod 600 "$private_key"
+        chmod 644 "$public_key"
+        log_success "SSH keys generated: $ssh_dir/"
+        return 0
+    else
+        log_error "Failed to generate SSH keys"
+        return 1
+    fi
+}
+
+# Check if SSH keys exist
+# Returns: 0 if keys exist, 1 if not
+ssh_keys_exist() {
+    local ssh_dir="$SECRETS_DIR/ssh"
+    [[ -f "$ssh_dir/id_rsa_ansible" && -f "$ssh_dir/id_rsa_ansible.pub" ]]
+}
+
+# Copy secrets templates to .uis.secrets/secrets-config/ on first run
+# This enables the same workflow as topsecret: edit secrets-config/, then generate
+# Returns: 0 if copied or already exists
+copy_secrets_templates() {
+    local templates_src="$TEMPLATES_DIR/secrets-templates"
+    local secrets_config="$SECRETS_DIR/secrets-config"
+
+    # Skip if secrets-config already has templates
+    if [[ -f "$secrets_config/00-common-values.env.template" ]]; then
+        return 0
+    fi
+
+    # Check if templates exist in container
+    if [[ ! -d "$templates_src" ]]; then
+        log_warn "Secrets templates not found at: $templates_src"
+        return 1
+    fi
+
+    log_info "Copying secrets templates to $secrets_config/"
+
+    # Copy all template files
+    cp -r "$templates_src"/* "$secrets_config/" 2>/dev/null || true
+
+    # Update the common values with development defaults for localhost
+    local common_values="$secrets_config/00-common-values.env.template"
+    if [[ -f "$common_values" ]]; then
+        # Set development-friendly defaults (sed in-place)
+        sed -i.bak \
+            -e 's/DEFAULT_ADMIN_EMAIL=.*/DEFAULT_ADMIN_EMAIL=admin@localhost/' \
+            -e 's/DEFAULT_ADMIN_PASSWORD=.*/DEFAULT_ADMIN_PASSWORD=LocalDev123/' \
+            -e 's/DEFAULT_DATABASE_PASSWORD=.*/DEFAULT_DATABASE_PASSWORD=LocalDevDB456/' \
+            -e 's/ADMIN_EMAIL=.*/ADMIN_EMAIL=admin@localhost/' \
+            -e 's/ADMIN_PASSWORD=.*/ADMIN_PASSWORD=LocalDev123/' \
+            "$common_values"
+        rm -f "$common_values.bak"
+        log_success "Set development defaults in 00-common-values.env.template"
+    fi
+
+    log_success "Secrets templates copied to: $secrets_config/"
+    return 0
+}
+
+# Generate Kubernetes secrets using envsubst (same approach as create-kubernetes-secrets.sh)
+# Reads: .uis.secrets/secrets-config/
+# Writes: .uis.secrets/generated/kubernetes/kubernetes-secrets.yml
+# Returns: 0 on success, 1 on error
+generate_kubernetes_secrets() {
+    local secrets_config="$SECRETS_DIR/secrets-config"
+    local output_dir="$SECRETS_DIR/generated/kubernetes"
+    local output_file="$output_dir/kubernetes-secrets.yml"
+    local common_values="$secrets_config/00-common-values.env.template"
+    local master_template="$secrets_config/00-master-secrets.yml.template"
+
+    # Ensure output directory exists
+    mkdir -p "$output_dir"
+
+    # Check required files
+    if [[ ! -f "$common_values" ]]; then
+        log_error "Common values not found: $common_values"
+        log_info "Run 'uis list' to initialize, or copy templates manually"
+        return 1
+    fi
+
+    if [[ ! -f "$master_template" ]]; then
+        log_error "Master template not found: $master_template"
+        return 1
+    fi
+
+    log_info "Generating Kubernetes secrets..."
+
+    # Load common values as environment variables
+    set -a
+    # shellcheck source=/dev/null
+    source "$common_values" || {
+        log_error "Failed to load common values"
+        return 1
+    }
+    set +a
+
+    # Generate using envsubst
+    if ! command -v envsubst &>/dev/null; then
+        log_error "envsubst not found - cannot generate secrets"
+        log_info "Install gettext package: apt-get install gettext-base"
+        return 1
+    fi
+
+    envsubst < "$master_template" > "$output_file" || {
+        log_error "Failed to generate secrets file"
+        return 1
+    }
+
+    local lines
+    lines=$(wc -l < "$output_file")
+    log_success "Generated: $output_file ($lines lines)"
+
+    return 0
+}
+
+# Ensure Kubernetes secrets are generated and applied to the cluster
+# This is idempotent - safe to call on every deploy
+# Handles the case where host files exist but cluster was reset (e.g. factory reset)
+# Returns: 0 on success, 1 on error
+ensure_secrets_applied() {
+    local secrets_file="$SECRETS_DIR/generated/kubernetes/kubernetes-secrets.yml"
+
+    # Generate secrets if the file doesn't exist yet
+    if [[ ! -f "$secrets_file" ]]; then
+        log_info "Secrets file not found, generating..."
+        copy_secrets_templates
+        generate_kubernetes_secrets || return 1
+    fi
+
+    # Always apply to cluster (idempotent)
+    apply_kubernetes_secrets
+}
+
+# Apply generated Kubernetes secrets to the cluster
+# Reads: .uis.secrets/generated/kubernetes/kubernetes-secrets.yml
+# Returns: 0 on success, 1 on error
+apply_kubernetes_secrets() {
+    local secrets_file="$SECRETS_DIR/generated/kubernetes/kubernetes-secrets.yml"
+
+    # Check if secrets file exists
+    if [[ ! -f "$secrets_file" ]]; then
+        log_warn "Secrets file not found: $secrets_file"
+        log_info "Run 'uis secrets generate' first"
+        return 1
+    fi
+
+    # Check if kubectl is available
+    if ! command -v kubectl &>/dev/null; then
+        log_warn "kubectl not found - skipping secrets apply"
+        log_info "Apply manually: kubectl apply -f $secrets_file"
+        return 1
+    fi
+
+    # Check if cluster is reachable
+    if ! kubectl cluster-info &>/dev/null 2>&1; then
+        log_warn "Kubernetes cluster not reachable - skipping secrets apply"
+        log_info "Start your cluster, then run: uis secrets apply"
+        return 1
+    fi
+
+    log_info "Applying secrets to Kubernetes cluster..."
+
+    if kubectl apply -f "$secrets_file" 2>&1; then
+        log_success "Secrets applied to cluster"
+        return 0
+    else
+        log_error "Failed to apply secrets"
+        log_info "Try manually: kubectl apply -f $secrets_file"
+        return 1
+    fi
 }

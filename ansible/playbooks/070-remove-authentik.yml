@@ -1,0 +1,170 @@
+---
+# file: ansible/playbooks/070-remove-authentik.yml
+# Description: Remove Authentik authentication system from Kubernetes
+#
+# This playbook removes:
+# - Authentik Helm release (server and worker)
+# - Whoami test service and deployment
+# - All IngressRoutes (authentik, whoami-public, whoami-protected)
+# - Forward auth middleware
+# - CSP middleware
+# - Blueprint ConfigMaps
+# - Authentik namespace (if empty)
+#
+# Note: The PostgreSQL database 'authentik' is NOT deleted.
+#
+# Usage:
+# ansible-playbook playbooks/070-remove-authentik.yml
+
+- name: Remove Authentik from Kubernetes
+  hosts: localhost
+  gather_facts: false
+  vars:
+    manifests_folder: "/mnt/urbalurbadisk/manifests"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    authentik_namespace: "authentik"
+    default_namespace: "default"
+
+    # Manifest files to remove
+    whoami_service_file: "{{ manifests_folder }}/070-whoami-service-and-deployment.yaml"
+    whoami_public_ingress_file: "{{ manifests_folder }}/071-whoami-public-ingressroute.yaml"
+    service_protection_ingressroute_file: "{{ manifests_folder }}/078-service-protection-ingressroute.yaml"
+    authentik_csp_middleware_file: "{{ manifests_folder }}/076-authentik-csp-middleware.yaml"
+    authentik_ingressroute_file: "{{ manifests_folder }}/076-authentik-ingressroute.yaml"
+    forward_auth_middleware_file: "{{ manifests_folder }}/077-authentik-forward-auth-middleware.yaml"
+
+  tasks:
+    - name: 1. Display removal information
+      ansible.builtin.debug:
+        msg:
+          - "====================================="
+          - "Authentik Removal"
+          - "File: ansible/playbooks/070-remove-authentik.yml"
+          - "====================================="
+          - "Authentik namespace: {{ authentik_namespace }}"
+          - "Default namespace: {{ default_namespace }}"
+
+    - name: 2. Remove service protection IngressRoute
+      kubernetes.core.k8s:
+        state: absent
+        src: "{{ service_protection_ingressroute_file }}"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      failed_when: false
+
+    - name: 3. Remove forward auth middleware
+      kubernetes.core.k8s:
+        state: absent
+        src: "{{ forward_auth_middleware_file }}"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      failed_when: false
+
+    - name: 4. Remove whoami public IngressRoute
+      kubernetes.core.k8s:
+        state: absent
+        src: "{{ whoami_public_ingress_file }}"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      failed_when: false
+
+    - name: 5. Remove whoami service and deployment
+      kubernetes.core.k8s:
+        state: absent
+        src: "{{ whoami_service_file }}"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      failed_when: false
+
+    - name: 6. Remove Authentik IngressRoutes
+      kubernetes.core.k8s:
+        state: absent
+        src: "{{ authentik_ingressroute_file }}"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      failed_when: false
+
+    - name: 7. Remove Authentik CSP middleware
+      kubernetes.core.k8s:
+        state: absent
+        src: "{{ authentik_csp_middleware_file }}"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      failed_when: false
+
+    - name: 8. Uninstall Authentik Helm release
+      kubernetes.core.helm:
+        name: authentik
+        release_namespace: "{{ authentik_namespace }}"
+        state: absent
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: authentik_removal
+      failed_when: false
+
+    - name: 9. Wait for Authentik pods to terminate
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ merged_kubeconf_file }}"
+        kind: Pod
+        namespace: "{{ authentik_namespace }}"
+        label_selectors:
+          - app.kubernetes.io/name=authentik
+      register: authentik_pods
+      retries: 20
+      delay: 5
+      until: authentik_pods.resources | length == 0
+      failed_when: false
+
+    - name: 10. Remove blueprint ConfigMaps
+      ansible.builtin.shell: |
+        kubectl delete configmap -n {{ authentik_namespace }} -l app.kubernetes.io/managed-by=authentik-blueprints --ignore-not-found=true
+        kubectl delete configmap -n {{ authentik_namespace }} test-users-groups-blueprint --ignore-not-found=true
+        kubectl delete configmap -n {{ authentik_namespace }} openwebui-blueprint --ignore-not-found=true
+        kubectl delete configmap -n {{ authentik_namespace }} app-slot1-blueprint --ignore-not-found=true
+        kubectl delete configmap -n {{ authentik_namespace }} service-protection-blueprint --ignore-not-found=true
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      failed_when: false
+      changed_when: false
+
+    - name: 11. Check if authentik namespace is empty
+      ansible.builtin.shell: |
+        kubectl get pods -n {{ authentik_namespace }} --no-headers 2>/dev/null | wc -l | tr -d ' '
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: remaining_pods
+      changed_when: false
+      failed_when: false
+
+    - name: 12. Delete authentik namespace if empty
+      kubernetes.core.k8s:
+        name: "{{ authentik_namespace }}"
+        api_version: v1
+        kind: Namespace
+        state: absent
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      when: remaining_pods.stdout | int == 0
+      failed_when: false
+
+    - name: 13. Display removal status
+      ansible.builtin.debug:
+        msg:
+          - "==============================================="
+          - "Authentik Removal Status"
+          - "==============================================="
+          - ""
+          - "✅ Authentik resources removed"
+          - ""
+          - "Removed components:"
+          - "  🔐 Authentik Helm release (server + worker)"
+          - "  🌐 Authentik IngressRoutes"
+          - "  🔧 Forward auth middleware"
+          - "  🔒 CSP middleware"
+          - "  📄 Blueprint ConfigMaps"
+          - "  🧪 Whoami test service and deployment"
+          - "  {{ '🗂️ Namespace authentik (was empty)' if remaining_pods.stdout | int == 0 else '⚠️ Namespace authentik retained (still has ' + remaining_pods.stdout + ' pods)' }}"
+          - ""
+          - "Note: The PostgreSQL database 'authentik' was NOT deleted."
+          - "To remove the database manually:"
+          - "  ansible-playbook playbooks/utility/u09-authentik-create-postgres.yml -e operation=delete"
+          - ""
+          - "Verification:"
+          - "  kubectl get pods -n {{ authentik_namespace }}"
+          - "  kubectl get ingressroute -n {{ authentik_namespace }}"
+          - "  kubectl get middleware -n {{ default_namespace }} | grep authentik"
+          - "  (All should show 'No resources found')"
+          - ""
+          - "==============================================="

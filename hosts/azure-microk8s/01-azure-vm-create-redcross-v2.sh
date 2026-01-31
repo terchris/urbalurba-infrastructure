@@ -9,8 +9,15 @@ declare -A STATUS
 declare -A ERRORS
 ERROR=0  # Global error tracker
 
-# Variables
-ANSIBLE_KEY_PATH="/mnt/urbalurbadisk/secrets/id_rsa_ansible"
+# Source centralized path library for backwards-compatible path resolution
+if [[ -f "/mnt/urbalurbadisk/provision-host/uis/lib/paths.sh" ]]; then
+    source "/mnt/urbalurbadisk/provision-host/uis/lib/paths.sh"
+    SSH_KEY_DIR=$(get_ssh_key_path)
+    ANSIBLE_KEY_PATH="$SSH_KEY_DIR/id_rsa_ansible"
+else
+    # Fallback to old hardcoded path
+    ANSIBLE_KEY_PATH="/mnt/urbalurbadisk/secrets/id_rsa_ansible"
+fi
 CONFIG_FILE="./azure-vm-config-redcross-sandbox.sh"
 CLUSTER_NAME="azure-microk8s"
 CLOUD_INIT_FILE="/mnt/urbalurbadisk/cloud-init/azure-cloud-init.yml"

@@ -1,7 +1,50 @@
 #!/bin/bash
 # filename: topsecret/kubeconf-copy2local.sh
+#
+# ============================================================================
+# DEPRECATED - This script is deprecated and will be removed in a future release
+# ============================================================================
+#
+# REPLACEMENT:
+#   Kubeconfig is now automatically managed via container volume mounts.
+#   The provision-host container mounts your ~/.kube directory directly.
+#
+#   If you need to merge kubeconfig from a new cluster:
+#     docker exec -it provision-host bash
+#     # Kubeconfig is automatically available at /mnt/urbalurbadisk/kubeconfig/
+#
+#   Your local ~/.kube/config is shared with the container, so changes
+#   made inside the container are immediately available on your host.
+#
+# MIGRATION:
+#   1. The new UIS system mounts kubeconfig automatically
+#   2. No manual copying is needed
+#   3. Cluster configs are merged automatically when new clusters are created
+#
+# For more information, see: topsecret/DEPRECATED.md
+# ============================================================================
+#
+# ORIGINAL DESCRIPTION:
 # Script to copy the kubeconfig file from the multipass provision-host VM
 # to the local topsecret/kubernetes folder and then to the .kube folder, and set the KUBECONFIG environment variable
+
+# Show deprecation warning
+echo ""
+echo "============================================================================"
+echo "WARNING: This script is DEPRECATED"
+echo "============================================================================"
+echo ""
+echo "Kubeconfig is now automatically managed via container volume mounts."
+echo "Your ~/.kube directory is shared directly with the provision-host container."
+echo ""
+echo "No manual copying is needed - changes sync automatically."
+echo ""
+echo "See topsecret/DEPRECATED.md for migration details."
+echo ""
+echo "============================================================================"
+echo ""
+echo "Continuing with legacy behavior for backwards compatibility..."
+echo ""
 
 # Variables
 VM_NAME="provision-host"

@@ -98,7 +98,7 @@ masterkeySecretKey: LITELLM_PROXY_MASTER_KEY
 # Use existing ConfigMap instead of inline config
 configMapRef:
   name: ai-models-litellm
-  key: litellm.yaml
+  key: config.yaml
 
 # Disable Helm-managed ConfigMap creation and use our existing one
 proxyConfigMap:

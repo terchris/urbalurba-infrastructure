@@ -8,7 +8,8 @@
   gather_facts: false
 
   vars:
-    target_host: "{{ target_host | default('rancher-desktop') }}"
+    # target_host passed via -e, use _target for internal reference to avoid recursion
+    _target: "{{ target_host | default('rancher-desktop') }}"
     namespace: "monitoring"
     component_name: "prometheus"
     manifests_folder: "/mnt/urbalurbadisk/manifests"
@@ -25,7 +26,7 @@
           - "====================================="
           - "Prometheus Deployment"
           - "====================================="
-          - "Target Host: {{ target_host }}"
+          - "Target Host: {{ _target }}"
           - "Namespace: {{ namespace }}"
           - "Component: {{ component_name }}"
           - "Config File: {{ prometheus_config_file }}"
@@ -36,7 +37,7 @@
         api_version: v1
         kind: Namespace
         state: present
-        context: "{{ target_host }}"
+        context: "{{ _target }}"
 
     - name: 3. Add/update Helm repositories
       kubernetes.core.helm_repository:
@@ -55,7 +56,7 @@
         --namespace {{ namespace }}
         --create-namespace
         --timeout 600s
-        --kube-context {{ target_host }}
+        --kube-context {{ _target }}
       register: prometheus_helm_result
       changed_when: true
 
@@ -66,7 +67,7 @@
         label_selectors:
           - app.kubernetes.io/name=prometheus
           - app.kubernetes.io/component=server
-        context: "{{ target_host }}"
+        context: "{{ _target }}"
       register: prometheus_pods
       retries: 20
       delay: 15
@@ -78,7 +79,7 @@
     - name: 7. Test Prometheus server endpoint from within cluster
       ansible.builtin.command: >
         kubectl run curl-test-prometheus-server --image=curlimages/curl --rm -i --restart=Never
-        -n {{ namespace }} --context {{ target_host }} --timeout=10s --
+        -n {{ namespace }} --context {{ _target }} --timeout=10s --
         curl -s -o /dev/null -w "%{http_code}"
         http://prometheus-server.{{ namespace }}.svc.cluster.local:80/api/v1/status/runtimeinfo
       register: prometheus_test
@@ -90,7 +91,7 @@
     - name: 8. Test Prometheus metrics endpoint from within cluster
       ansible.builtin.command: >
         kubectl run curl-test-prometheus-metrics --image=curlimages/curl --rm -i --restart=Never
-        -n {{ namespace }} --context {{ target_host }} --timeout=10s --
+        -n {{ namespace }} --context {{ _target }} --timeout=10s --
         curl -s -o /dev/null -w "%{http_code}"
         http://prometheus-server.{{ namespace }}.svc.cluster.local:80/metrics
       register: prometheus_metrics_test
@@ -102,7 +103,7 @@
     - name: 9. Test Prometheus data ingestion via pushgateway
       ansible.builtin.command: >
         kubectl run prometheus-data-test --image=curlimages/curl --rm -i --restart=Never
-        -n {{ namespace }} --context {{ target_host }} --timeout=30s --
+        -n {{ namespace }} --context {{ _target }} --timeout=30s --
         /bin/sh -c 'echo "prometheus_validation_test 42" | curl -X POST --data-binary @- http://prometheus-prometheus-pushgateway.{{ namespace }}.svc.cluster.local:9091/metrics/job/validation-test/instance/test'
       register: prometheus_push_test
       retries: 3
@@ -117,7 +118,7 @@
     - name: 11. Query Prometheus for the test metric
       ansible.builtin.command: >
         kubectl run prometheus-query-test --image=curlimages/curl --rm -i --restart=Never
-        -n {{ namespace }} --context {{ target_host }} --timeout=15s --
+        -n {{ namespace }} --context {{ _target }} --timeout=15s --
         curl -s --data-urlencode 'query=prometheus_validation_test'
         "http://prometheus-server.{{ namespace }}.svc.cluster.local:80/api/v1/query"
       register: prometheus_query_test
@@ -146,5 +147,5 @@
           - "  📊 Query test metric: {{ 'PASS' if prometheus_query_test.stdout.find('\"status\":\"success\"') != -1 and prometheus_query_test.stdout.find('prometheus_validation_test') != -1 and prometheus_query_test.stdout.find('\"value\"') != -1 else 'FAIL' }}"
           - ""
           - "Manual verification:"
-          - "  kubectl get pods -n {{ namespace }} -l app.kubernetes.io/name=prometheus --context={{ target_host }}"
-          - "  kubectl logs -n {{ namespace }} -l app.kubernetes.io/name=prometheus --context={{ target_host }}"
+          - "  kubectl get pods -n {{ namespace }} -l app.kubernetes.io/name=prometheus --context={{ _target }}"
+          - "  kubectl logs -n {{ namespace }} -l app.kubernetes.io/name=prometheus --context={{ _target }}"

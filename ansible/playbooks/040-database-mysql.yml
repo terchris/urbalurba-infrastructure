@@ -1,19 +1,15 @@
 ---
 # File: playbooks/040-database-mysql.yml
-# Description: Set up MySQL database using Helm
+# Description: Set up MySQL database using official MySQL image (manifest-based)
 #
-# This playbook performs the following tasks:
-# 1. Verifies MySQL secret values
-# 2. Deploys MySQL using Helm
-# 3. Waits for MySQL pod to be running
-# 4. Verifies MySQL service is running
+# This playbook deploys MySQL using the official mysql:8.0 container image
+# with Kubernetes manifests (not Bitnami Helm chart).
 #
 # Prerequisites:
 # - Kubernetes cluster is set up and accessible
-# - Helm is installed on the provision-host
 # - urbalurba-secrets contains MYSQL_ROOT_PASSWORD, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DATABASE
 #
-# Usage: ansible-playbook playbooks/040-database-mysql.yml -e target_host="multipass-microk8s"
+# Usage: ansible-playbook playbooks/040-database-mysql.yml -e target_host="rancher-desktop"
 
 - name: Set up MySQL Database
   hosts: localhost
@@ -21,7 +17,9 @@
   vars:
     manifests_folder: "/mnt/urbalurbadisk/manifests"
     merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
-    mysql_config_file: "{{ manifests_folder }}/043-database-mysql-config.yaml"
+    mysql_manifest_file: "{{ manifests_folder }}/043-database-mysql-config.yaml"
+    mysql_namespace: "default"
+    mysql_pod_label: "app.kubernetes.io/name=mysql"
 
   tasks:
     - name: 1. Check if target_host is provided
@@ -31,13 +29,16 @@
 
     - name: 2. Print playbook description
       ansible.builtin.debug:
-        msg: "Setting up MySQL on MicroK8s on Ubuntu host: {{ target_host }} with manifests from: {{ manifests_folder }}. Use -e target_host=your_host_name to change settings."
+        msg: |
+          Setting up MySQL on Kubernetes cluster: {{ target_host }}
+          Using official mysql:8.0 image (manifest-based deployment)
+          Manifests from: {{ manifests_folder }}
 
-    - name: 3. Verify MySQL secret values
+    - name: 3. Verify MySQL secret values exist
       kubernetes.core.k8s_info:
         kind: Secret
         name: urbalurba-secrets
-        namespace: default
+        namespace: "{{ mysql_namespace }}"
         kubeconfig: "{{ merged_kubeconf_file }}"
       register: secret_info
 
@@ -45,56 +46,114 @@
       ansible.builtin.fail:
         msg: "MySQL secrets are not set correctly in urbalurba-secrets"
       when: >
+        secret_info.resources | length == 0 or
         secret_info.resources[0].data.MYSQL_ROOT_PASSWORD is not defined or
         secret_info.resources[0].data.MYSQL_USER is not defined or
         secret_info.resources[0].data.MYSQL_PASSWORD is not defined or
         secret_info.resources[0].data.MYSQL_DATABASE is not defined
 
-    - name: 5. Set MySQL secret facts
-      ansible.builtin.set_fact:
-        mysql_root_password: "{{ secret_info.resources[0].data.MYSQL_ROOT_PASSWORD | b64decode }}"
-        mysql_user: "{{ secret_info.resources[0].data.MYSQL_USER | b64decode }}"
-        mysql_password: "{{ secret_info.resources[0].data.MYSQL_PASSWORD | b64decode }}"
-        mysql_database: "{{ secret_info.resources[0].data.MYSQL_DATABASE | b64decode }}"
+    - name: 5. Display secret status
+      ansible.builtin.debug:
+        msg: "MySQL secrets found in urbalurba-secrets ✓"
 
-    - name: 6. Check if MySQL is already installed
-      ansible.builtin.command: >
-        helm list -n default -f mysql
-      register: helm_list
-      environment:
-        KUBECONFIG: "{{ merged_kubeconf_file }}"
-      changed_when: false
+    - name: 6. Apply MySQL manifests
+      kubernetes.core.k8s:
+        src: "{{ mysql_manifest_file }}"
+        state: present
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: mysql_apply_result
 
-    - name: 7. Deploy MySQL using Helm if not already installed
-      ansible.builtin.command: >
-        helm install mysql bitnami/mysql \
-        --namespace default \
-        -f {{ mysql_config_file }} \
-        --set auth.rootPassword="{{ mysql_root_password }}" \
-        --set auth.username="{{ mysql_user }}" \
-        --set auth.password="{{ mysql_password }}" \
-        --set auth.database="{{ mysql_database }}"
-      environment:
-        KUBECONFIG: "{{ merged_kubeconf_file }}"
-      when: "'mysql' not in helm_list.stdout"
+    - name: 7. Display apply result
+      ansible.builtin.debug:
+        msg: "MySQL manifests applied successfully"
 
     - name: 8. Wait for MySQL pod to be running
-      command: kubectl get pods -n default -l app.kubernetes.io/name=mysql -o jsonpath='{.items[0].status.phase}'
-      register: pod_status
-      until: pod_status.stdout == "Running"
-      retries: 20
-      delay: 15
-      environment:
-        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: "{{ mysql_namespace }}"
+        label_selectors:
+          - "{{ mysql_pod_label }}"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: mysql_pods
+      until: >
+        mysql_pods.resources | length > 0 and
+        mysql_pods.resources[0].status.phase == "Running"
+      retries: 30
+      delay: 10
 
-    - name: 9. Verify MySQL service is running
+    - name: 9. Wait for MySQL pod to be ready (1/1)
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: "{{ mysql_namespace }}"
+        label_selectors:
+          - "{{ mysql_pod_label }}"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: mysql_pods_ready
+      until: >
+        mysql_pods_ready.resources | length > 0 and
+        mysql_pods_ready.resources[0].status.containerStatuses is defined and
+        mysql_pods_ready.resources[0].status.containerStatuses | length > 0 and
+        mysql_pods_ready.resources[0].status.containerStatuses[0].ready == true
+      retries: 30
+      delay: 10
+
+    - name: 10. Verify MySQL service exists
       kubernetes.core.k8s_info:
         kubeconfig: "{{ merged_kubeconf_file }}"
         kind: Service
-        namespace: default
+        namespace: "{{ mysql_namespace }}"
         name: mysql
       register: mysql_svc
 
-    - name: 10. Display MySQL service details
+    - name: 11. Get MySQL pod name
+      ansible.builtin.command:
+        cmd: >
+          kubectl get pods -n {{ mysql_namespace }}
+          -l {{ mysql_pod_label }}
+          -o jsonpath='{.items[0].metadata.name}'
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: mysql_pod_name
+      changed_when: false
+
+    - name: 12. Test MySQL connectivity
+      ansible.builtin.command:
+        cmd: >
+          kubectl exec -n {{ mysql_namespace }} {{ mysql_pod_name.stdout }}
+          --kubeconfig {{ merged_kubeconf_file }}
+          -- mysqladmin ping -h localhost
+      register: mysql_ping
+      retries: 5
+      delay: 10
+      until: mysql_ping.rc == 0
+      changed_when: false
+
+    - name: 13. Display MySQL service details
       ansible.builtin.debug:
-        var: mysql_svc.resources[0].spec 
+        msg: |
+          ===============================================
+          MySQL Deployment Status
+          ===============================================
+
+          ✅ SUCCESS - MySQL deployed and ready
+
+          📊 Deployment Details:
+          • Image: mysql:8.0 (official)
+          • Namespace: {{ mysql_namespace }}
+          • Service: mysql:3306
+          • Pod: {{ mysql_pod_name.stdout }}
+
+          🔐 Credentials:
+          • Stored in: urbalurba-secrets
+          • Root password: MYSQL_ROOT_PASSWORD
+          • User: MYSQL_USER / MYSQL_PASSWORD
+          • Database: MYSQL_DATABASE
+
+          🌐 Access:
+          • Cluster internal: mysql.{{ mysql_namespace }}.svc.cluster.local:3306
+          • Port forward: kubectl port-forward svc/mysql 3306:3306 -n {{ mysql_namespace }}
+
+          🔧 Test connection:
+          kubectl exec -it {{ mysql_pod_name.stdout }} -n {{ mysql_namespace }} -- mysql -u root -p
+
+          ===============================================

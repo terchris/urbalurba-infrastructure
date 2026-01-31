@@ -12,8 +12,8 @@ SCRIPT_CATEGORY="SEARCH"
 # === UIS-Specific (Optional) ===
 SCRIPT_PLAYBOOK="060-setup-elasticsearch.yml"
 SCRIPT_MANIFEST=""
-SCRIPT_CHECK_COMMAND="kubectl get pods -n search -l app=elasticsearch --no-headers 2>/dev/null | grep -q Running"
-SCRIPT_REMOVE_PLAYBOOK=""
+SCRIPT_CHECK_COMMAND="kubectl get pods -n default -l app=elasticsearch-master --no-headers 2>/dev/null | grep -q Running"
+SCRIPT_REMOVE_PLAYBOOK="060-remove-elasticsearch.yml"
 SCRIPT_REQUIRES=""
 SCRIPT_PRIORITY="70"
 

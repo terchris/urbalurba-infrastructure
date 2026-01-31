@@ -1,0 +1,255 @@
+#cloud-config
+
+# ====================================================================
+# File: URB_CLOUD_INIT_FILE
+# Cloud-init Configuration for Raspberry Pi running Ubuntu Server
+# ====================================================================
+#
+# This file was automatically created on: URB_CREATION_DATE
+# using the template file: URB_TEMPLATE_FILE
+#
+# Note: The script replaces variables starting with URB_ in the template
+#
+# ====================================================================
+
+# Do this to prepare the SD card:
+# 1. Install ubuntu 24.04 server on the SD card using Raspberry Pi Imager
+# 2. Replace values in this file with your own values
+# 3. At the command line type: "diskutil list" and see the output
+# 4. Insert the SD card and type "diskutil list" again so that you can see what disk that was mounted Find "Windows_FAT_32" and note the identifier. Mine was disk6s1
+# 5. Mount the disk with the command: "sudo diskutil mount /dev/disk6s1" Output is "Volume system-boot on /dev/disk6s1 mounted"
+# 6. cd to the disk "cd /Volumes/system-boot" delete the existing "rm user-data" and "vi user-data" and paste in this file.
+# 7. cd out of the disk and then "sudo diskutil unmount /dev/disk6s1"
+# 8. Insert the SD card in the Pi and power it on. It takes a while and you should see the pi listed in https://login.tailscale.com/admin/machines
+
+# Variables
+ssh_authorized_key: &ssh_key "URB_SSH_AUTHORIZED_KEY_VARIABLE"
+the_hostname: &hostname "URB_HOSTNAME_VARIABLE"
+the_timezone: &timezone "URB_TIMEZONE_VARIABLE"
+tailscale_authkey: &tailscale_key "URB_TAILSCALE_SECRET_VARIABLE"
+wifi_ssid: &wifi_ssid "URB_WIFI_SSID_VARIABLE"
+wifi_password: &wifi_password "URB_WIFI_PASSWORD_VARIABLE"
+tec_password: &tec_password "URB_TEC_PASSWORD_VARIABLE"
+
+# System configuration
+hostname: *hostname
+manage_etc_hosts: true
+timezone: *timezone
+
+# User configuration
+users:
+  - name: ansible
+    groups: [sudo, users, dialout, audio, netdev, video, plugdev, cdrom, games, input, gpio, spi, i2c, render]
+    shell: /bin/bash
+    sudo: ['ALL=(ALL) NOPASSWD:ALL']
+    ssh_authorized_keys:
+      - *ssh_key
+    create_home: true
+
+  - name: tec
+    groups: [users, adm, dialout, audio, netdev, video, plugdev, cdrom, games, input, gpio, spi, i2c, render, sudo]
+    shell: /bin/bash
+    sudo: ['ALL=(ALL) NOPASSWD:ALL']
+    lock_passwd: false
+    plain_text_passwd: *tec_password
+    ssh_authorized_keys:
+      - *ssh_key
+    create_home: true
+
+# Package management
+package_update: true
+package_upgrade: true
+packages:
+  - avahi-daemon
+
+# APT configuration
+apt:
+  conf: |
+    Acquire {
+      Check-Date "false";
+    };
+
+# SSH Configuration
+ssh:
+  install-server: true
+ssh_pwauth: true
+
+# Snap package management
+snap:
+  commands:
+    - snap install microk8s --classic || (sleep 30 && snap install microk8s --classic)
+
+# Wi-Fi Configuration
+wifis:
+  wlan0:
+    dhcp4: true
+    optional: true
+    access-points:
+      *wifi_ssid:
+        password: *wifi_password
+
+
+
+# Write files
+write_files:
+  - path: /usr/local/bin/setup-disk.sh
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+
+      MOUNT_POINT="/mnt/urbalurbadisk"
+      STORAGE_DIR="$MOUNT_POINT/kubernetesstorage"
+      LOG_FILE="/var/log/setup-disk.log"
+
+      exec > >(tee -a $LOG_FILE) 2>&1
+
+      echo "Starting disk setup at $(date)"
+
+      # Function to get the device name of the USB disk
+      get_usb_device() {
+          lsblk -ndo NAME,TRAN | grep "usb" | cut -d' ' -f1 | head -n1
+      }
+
+      # Check if it's a Raspberry Pi
+      if grep -q "^Model.*Raspberry Pi" /proc/cpuinfo; then
+          echo "Running on Raspberry Pi"
+          USB_DEVICE=$(get_usb_device)
+          if [ -n "$USB_DEVICE" ]; then
+              echo "USB disk found: $USB_DEVICE"
+              USB_DEVICE="/dev/$USB_DEVICE"
+              
+              echo "Wiping all partitions on $USB_DEVICE"
+              sudo wipefs -a $USB_DEVICE
+              
+              echo "Creating new partition table"
+              sudo parted $USB_DEVICE mklabel gpt
+              
+              echo "Creating new partition"
+              sudo parted $USB_DEVICE mkpart primary ext4 0% 100%
+              
+              # Get the new partition name
+              USB_PARTITION="${USB_DEVICE}1"
+              
+              echo "Formatting $USB_PARTITION as ext4"
+              sudo mkfs.ext4 -F "$USB_PARTITION"
+              
+              # Create mount point
+              sudo mkdir -p "$MOUNT_POINT"
+              
+              # Attempt to mount
+              if sudo mount "$USB_PARTITION" "$MOUNT_POINT"; then
+                  echo "USB partition mounted successfully to $MOUNT_POINT"
+                  
+                  # Update /etc/fstab
+                  sudo sed -i '/\/mnt\/urbalurbadisk/d' /etc/fstab
+                  echo "$USB_PARTITION $MOUNT_POINT ext4 defaults,nofail 0 2" | sudo tee -a /etc/fstab
+                  echo "Updated /etc/fstab for persistent mounting"
+              else
+                  echo "Failed to mount USB partition. Creating directories on main filesystem."
+                  sudo mkdir -p "$MOUNT_POINT"
+              fi
+          else
+              echo "No USB disk found on Raspberry Pi. Creating directories on main filesystem."
+              sudo mkdir -p "$MOUNT_POINT"
+          fi
+      else
+          echo "Not running on Raspberry Pi. Creating directories on main filesystem."
+          sudo mkdir -p "$MOUNT_POINT"
+      fi
+
+      # Create kubernetes storage directory
+      sudo mkdir -p "$STORAGE_DIR"
+
+      # Set permissions
+      sudo chown -R ansible:microk8s "$MOUNT_POINT"
+      sudo chmod -R 775 "$MOUNT_POINT"
+
+      echo "Disk setup completed at $(date)"
+
+  - path: /usr/local/bin/setup-hostpath-storage.sh
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+
+      STORAGE_DIR="/mnt/urbalurbadisk/kubernetesstorage"
+
+      # Wait for MicroK8s to be ready
+      microk8s status --wait-ready
+
+      # Ensure the storage directory exists
+      sudo mkdir -p "$STORAGE_DIR"
+
+      # Patch hostpath-storage to use custom storage root
+      microk8s kubectl patch deployment hostpath-provisioner -n kube-system --patch '{
+        "spec": {
+          "template": {
+            "spec": {
+              "containers": [{
+                "name": "hostpath-provisioner",
+                "volumeMounts": [{
+                  "mountPath": "'$STORAGE_DIR'",
+                  "name": "pv-volume"
+                }]
+              }],
+              "volumes": [{
+                "name": "pv-volume",
+                "hostPath": {
+                  "path": "'$STORAGE_DIR'",
+                  "type": "DirectoryOrCreate"
+                }
+              }]
+            }
+          }
+        }
+      }'
+
+      # Verify hostpath-storage configuration
+      microk8s kubectl get deployment hostpath-provisioner -n kube-system -o json
+
+      echo "Hostpath storage setup completed"
+
+# Run commands
+runcmd:
+
+  # Tailscale installation and setup
+  - ['sh', '-c', 'curl -fsSL https://tailscale.com/install.sh | sh']
+  - ['sh', '-c', "echo 'net.ipv4.ip_forward = 1' | tee -a /etc/sysctl.d/99-tailscale.conf && echo 'net.ipv6.conf.all.forwarding = 1' | tee -a /etc/sysctl.d/99-tailscale.conf && sysctl -p /etc/sysctl.d/99-tailscale.conf"]
+  - ['tailscale', 'up', '--authkey', *tailscale_key, '--hostname', *hostname]
+  - ['tailscale', 'set', '--ssh']
+
+  # Find disk and pount it to /mnt/urbalurbadisk
+  - ['sh', '-c', '/usr/local/bin/setup-disk.sh']
+
+
+  # MicroK8s setup
+  - 'microk8s status --wait-ready'
+  - 'microk8s enable dns'
+  - 'microk8s enable hostpath-storage'
+  
+  # Set up microk8s hostpath storage to use the prepared disk
+  - ['sh', '-c', '/usr/local/bin/setup-hostpath-storage.sh']
+
+  # Make sure the ansible and tec user can manage microk8s
+  - 'usermod -a -G microk8s ansible'
+  - 'usermod -a -G microk8s tec'
+
+
+  - 'mkdir -p /home/ansible/.kube && chown -R ansible:ansible /home/ansible/.kube'
+  - 'mkdir -p /home/tec/.kube && chown -R tec:tec /home/tec/.kube'
+
+  # Ensure password login is enabled for SSH
+  - sed -i 's/^PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config
+  - systemctl restart ssh
+
+  # Set password for tec user (in case plain_text_passwd didn't work)
+  - echo 'tec:*tec_password' | chpasswd
+
+
+  # Additional setup (add or modify as needed)
+  - 'echo "Cloud-init configuration has finished. System will reboot in 2 minutes." | tee -a /var/log/cloud-init-output.log'
+
+# Enable services
+power_state:
+  delay: "+2min"
+  message: "Cloud-init configuration complete. Rebooting now."
+  mode: reboot

@@ -1,21 +1,25 @@
 ---
 # file: ansible/playbooks/040-remove-database-mysql.yml
 # Description: Remove MySQL database from Kubernetes cluster
-# This playbook:
-# - Uninstalls the MySQL Helm release
-# - Waits for MySQL pods to terminate
-# - Preserves urbalurba-secrets and namespace structure
+#
+# This playbook removes MySQL deployed via manifests (official mysql:8.0 image).
+# It preserves urbalurba-secrets and can optionally remove PVC data.
+#
 # Usage:
 # ansible-playbook playbooks/040-remove-database-mysql.yml -e target_host="rancher-desktop"
+# ansible-playbook playbooks/040-remove-database-mysql.yml -e target_host="rancher-desktop" -e remove_pvc=true
 
 - name: Remove MySQL Database from Kubernetes
   hosts: localhost
   gather_facts: false
   vars:
+    manifests_folder: "/mnt/urbalurbadisk/manifests"
     merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    mysql_manifest_file: "{{ manifests_folder }}/043-database-mysql-config.yaml"
     mysql_namespace: "default"
-    mysql_helm_release: "mysql"
     deletion_timeout: 120
+    # Use _remove_pvc internally to avoid recursive template issues
+    _remove_pvc: "{{ remove_pvc | default(false) }}"
 
   tasks:
     - name: 1. Print removal description
@@ -24,40 +28,91 @@
           🧹 Starting MySQL removal
           🎯 Target: {{ target_host | default('rancher-desktop') }}
           📁 Namespace: {{ mysql_namespace }}
-          🔐 PRESERVING: urbalurba-secrets and namespace structure
-          ⚠️  This will remove the MySQL Helm release and pods but KEEP authentication configuration
+          💾 Remove PVC: {{ _remove_pvc }}
+          🔐 PRESERVING: urbalurba-secrets
 
-    - name: 2. Check for MySQL Helm release
-      ansible.builtin.shell: helm list -n {{ mysql_namespace }} | grep {{ mysql_helm_release }}
+    - name: 2. Check if MySQL deployment exists
+      kubernetes.core.k8s_info:
+        kind: Deployment
+        name: mysql
+        namespace: "{{ mysql_namespace }}"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: mysql_deployment
+
+    - name: 3. Check for MySQL Helm release (legacy cleanup)
+      ansible.builtin.shell: helm list -n {{ mysql_namespace }} | grep -w mysql
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
       register: mysql_helm_check
       changed_when: false
       ignore_errors: true
 
-    - name: 3. Remove MySQL Helm release
-      ansible.builtin.shell: helm uninstall {{ mysql_helm_release }} -n {{ mysql_namespace }} --timeout {{ deletion_timeout }}s
+    - name: 4. Remove MySQL Helm release if exists (legacy cleanup)
+      ansible.builtin.shell: helm uninstall mysql -n {{ mysql_namespace }} --timeout {{ deletion_timeout }}s
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
-      register: mysql_helm_removal
       changed_when: true
       ignore_errors: true
       when: mysql_helm_check.rc == 0
 
-    - name: 4. Wait for MySQL pods to terminate
+    - name: 5. Delete MySQL Deployment
+      kubernetes.core.k8s:
+        kind: Deployment
+        name: mysql
+        namespace: "{{ mysql_namespace }}"
+        state: absent
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      when: mysql_deployment.resources | length > 0
+
+    - name: 6. Delete MySQL Service
+      kubernetes.core.k8s:
+        kind: Service
+        name: mysql
+        namespace: "{{ mysql_namespace }}"
+        state: absent
+        kubeconfig: "{{ merged_kubeconf_file }}"
+
+    - name: 7. Delete MySQL ConfigMap
+      kubernetes.core.k8s:
+        kind: ConfigMap
+        name: mysql-custom-config
+        namespace: "{{ mysql_namespace }}"
+        state: absent
+        kubeconfig: "{{ merged_kubeconf_file }}"
+
+    - name: 8. Delete MySQL PVC (if requested)
+      kubernetes.core.k8s:
+        kind: PersistentVolumeClaim
+        name: mysql-pvc
+        namespace: "{{ mysql_namespace }}"
+        state: absent
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      when: _remove_pvc | bool
+
+    - name: 9. Wait for MySQL pods to terminate
       ansible.builtin.shell: kubectl get pods -n {{ mysql_namespace }} -l app.kubernetes.io/name=mysql --no-headers 2>/dev/null | wc -l
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
       register: mysql_pods_count
       until: mysql_pods_count.stdout | int == 0
       retries: 20
-      delay: 10
+      delay: 5
       changed_when: false
 
-    - name: 5. Display MySQL removal result
+    - name: 10. Display MySQL removal result
       ansible.builtin.debug:
         msg: |
-          MySQL removal complete:
-          - Helm release: {{ 'Removed' if mysql_helm_check.rc == 0 else 'Not found' }}
-          - All MySQL pods terminated
-          - urbalurba-secrets and namespace preserved 
+          ===============================================
+          MySQL Removal Complete
+          ===============================================
+
+          ✅ MySQL resources removed:
+          • Deployment: Deleted
+          • Service: Deleted
+          • ConfigMap: Deleted
+          • PVC: {{ 'Deleted' if _remove_pvc | bool else 'Preserved (use -e remove_pvc=true to delete)' }}
+
+          🔐 Preserved:
+          • urbalurba-secrets (credentials remain for future deployments)
+
+          ===============================================

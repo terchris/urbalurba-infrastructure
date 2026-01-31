@@ -1,0 +1,378 @@
+---
+# file: ansible/playbooks/070-test-authentik-auth.yml
+# Description:
+# End-to-end authentication tests for the Authentik deployment.
+# Validates redirect behavior, login flow, post-login access, negative auth, and public access.
+#
+# Tests (all CRITICAL):
+#   A. Redirect URL verification - protected whoami must redirect to authentik.localhost
+#   B. Full login flow via Authentik API - 3-step flow must authenticate test user
+#   C. Public URL content verification - public whoami must respond without auth headers
+#   D. Post-login protected access - authenticated user must reach protected resource with auth headers
+#   E. Wrong credentials rejected - bad password must NOT authenticate
+#
+# Can be run standalone or called from 070-setup-authentik.yml
+#
+# Usage:
+# ansible-playbook ansible/playbooks/070-test-authentik-auth.yml -e kube_context="rancher-desktop"
+
+- name: End-to-End Authentik Authentication Tests
+  hosts: localhost
+  gather_facts: false
+  vars:
+    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    authentik_namespace: "authentik"
+    default_namespace: "default"
+
+  tasks:
+    - name: "0. Display test suite initiation"
+      ansible.builtin.debug:
+        msg: |
+          🧪 End-to-End Authentik Authentication Tests
+          ===============================================
+          Running 5 test groups (all CRITICAL)
+
+    - name: "0.1. Get Traefik ClusterIP for in-cluster hostname routing"
+      ansible.builtin.shell: |
+        kubectl get svc traefik -n kube-system -o jsonpath='{.spec.clusterIP}'
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: traefik_ip_result
+      changed_when: false
+
+    - name: "0.2. Store Traefik IP"
+      ansible.builtin.set_fact:
+        traefik_ip: "{{ traefik_ip_result.stdout }}"
+
+    # ===== Test A: Redirect URL verification (CRITICAL) =====
+    - name: "A1. Hit protected whoami and capture redirect headers"
+      ansible.builtin.shell: |
+        kubectl run curl-test-redirect --image=curlimages/curl --rm -i --restart=Never --command -- \
+          curl -s -o /dev/null -D - -H "Host: whoami.localhost" \
+          http://traefik.kube-system.svc.cluster.local
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: redirect_test
+      failed_when: false
+      changed_when: false
+
+    - name: "A2. Verify redirect points to authentik.localhost"
+      ansible.builtin.assert:
+        that:
+          - "'authentik.localhost' in redirect_test.stdout"
+        fail_msg: |
+          ❌ CRITICAL: Protected whoami did NOT redirect to authentik.localhost!
+          Expected Location header containing 'authentik.localhost'.
+          Got headers:
+          {{ redirect_test.stdout_lines | select('match', '(?i)^location:') | list | default(['No Location header found']) }}
+          Full output (first 500 chars): {{ redirect_test.stdout[:500] }}
+        success_msg: "✅ Test A PASSED: Protected whoami redirects to authentik.localhost"
+
+    - name: "A3. Display redirect test success"
+      ansible.builtin.debug:
+        msg: |
+          ✅ Test A: Redirect URL Verification — PASSED (CRITICAL)
+          📋 Protected whoami correctly redirects to authentik.localhost for login
+
+    # ===== Test B: Full login flow via Authentik API (CRITICAL) =====
+    - name: "B1. Wait for test user to be available (blueprint processing)"
+      ansible.builtin.shell: |
+        kubectl exec -n {{ authentik_namespace }} deployment/authentik-server -- \
+          python manage.py shell -c "from authentik.core.models import User; u = User.objects.get(email='it1@urbalurba.no'); print('USER_FOUND: ' + u.username)"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: user_check
+      retries: 6
+      delay: 15
+      until: "'USER_FOUND:' in user_check.stdout"
+      failed_when: false
+      changed_when: false
+
+    - name: "B2. Fail if test user not found after retries"
+      ansible.builtin.assert:
+        that:
+          - "'USER_FOUND:' in user_check.stdout"
+        fail_msg: |
+          ❌ CRITICAL: Test user it1@urbalurba.no not found in Authentik!
+          Blueprints may not have been processed. Check blueprint logs:
+            kubectl logs -n {{ authentik_namespace }} deployment/authentik-server | grep -i blueprint
+            kubectl logs -n {{ authentik_namespace }} deployment/authentik-worker | grep -i blueprint
+        success_msg: "✅ Test user it1@urbalurba.no exists in Authentik"
+
+    - name: "B3. Execute full login flow via Authentik API"
+      ansible.builtin.shell: |
+        kubectl run curl-test-login --image=curlimages/curl --rm -i --restart=Never --command -- \
+          sh -c '
+            AUTHENTIK_URL="http://authentik-server.authentik.svc.cluster.local"
+            FLOW_URL="$AUTHENTIK_URL/api/v3/flows/executor/default-authentication-flow/"
+            COOKIE_JAR="/tmp/cookies.txt"
+
+            # Step 1: Start the authentication flow (GET)
+            STEP1=$(curl -s -L -c "$COOKIE_JAR" -b "$COOKIE_JAR" \
+              -H "Content-Type: application/json" \
+              "$FLOW_URL")
+            echo "STEP1: $STEP1"
+
+            # Step 2: Submit username (POST, follow redirects to get next stage)
+            STEP2=$(curl -s -L -c "$COOKIE_JAR" -b "$COOKIE_JAR" \
+              -H "Content-Type: application/json" \
+              -d "{\"component\":\"ak-stage-identification\",\"uid_field\":\"it1@urbalurba.no\"}" \
+              "$FLOW_URL")
+            echo "STEP2: $STEP2"
+
+            # Step 3: Submit password (POST, follow redirects to get result)
+            STEP3=$(curl -s -L -c "$COOKIE_JAR" -b "$COOKIE_JAR" \
+              -H "Content-Type: application/json" \
+              -d "{\"component\":\"ak-stage-password\",\"password\":\"Password123\"}" \
+              "$FLOW_URL")
+            echo "STEP3: $STEP3"
+
+            # Check for successful authentication
+            if echo "$STEP3" | grep -q "xak-flow-redirect"; then
+              echo "LOGIN_RESULT: SUCCESS"
+            else
+              echo "LOGIN_RESULT: FAILED"
+            fi
+          '
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: login_test
+      retries: 3
+      delay: 10
+      until: "'LOGIN_RESULT: SUCCESS' in login_test.stdout"
+      failed_when: false
+      changed_when: false
+
+    - name: "B4. Verify login flow succeeded"
+      ansible.builtin.assert:
+        that:
+          - "'LOGIN_RESULT: SUCCESS' in login_test.stdout"
+        fail_msg: |
+          ❌ CRITICAL: Login flow for it1@urbalurba.no FAILED!
+          The 3-step authentication flow did not complete successfully.
+          Expected Step 3 to return xak-flow-redirect (authenticated redirect).
+
+          Debug output:
+          {{ login_test.stdout | default('No output captured') }}
+
+          Troubleshooting:
+          - Check user exists: kubectl exec -n {{ authentik_namespace }} deployment/authentik-server -- python manage.py shell -c "from authentik.core.models import User; print([u.username for u in User.objects.all()])"
+          - Check flow: kubectl exec -n {{ authentik_namespace }} deployment/authentik-server -- python manage.py shell -c "from authentik.flows.models import Flow; print([f.slug for f in Flow.objects.all()])"
+        success_msg: "✅ Test B PASSED: Login flow for it1@urbalurba.no completed successfully"
+
+    - name: "B5. Display login flow test success"
+      ansible.builtin.debug:
+        msg: |
+          ✅ Test B: Full Login Flow — PASSED (CRITICAL)
+          📋 Successfully authenticated as it1@urbalurba.no via Authentik API
+          🔐 3-step flow: identification → password → redirect (authenticated)
+
+    # ===== Test C: Public URL content verification (CRITICAL) =====
+    - name: "C1. Fetch public whoami with full headers and body"
+      ansible.builtin.shell: |
+        kubectl run curl-test-public-content --image=curlimages/curl --rm -i --restart=Never --command -- \
+          curl -s -D - -H "Host: whoami-public.localhost" \
+          http://traefik.kube-system.svc.cluster.local
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: public_content_test
+      failed_when: false
+      changed_when: false
+
+    - name: "C2. Verify public whoami returns service content (body contains Hostname:)"
+      ansible.builtin.assert:
+        that:
+          - "'Hostname:' in public_content_test.stdout"
+        fail_msg: |
+          ❌ CRITICAL: Public whoami did NOT return expected content!
+          Expected body to contain 'Hostname:' (standard whoami service response).
+          Got (first 500 chars): {{ public_content_test.stdout[:500] }}
+        success_msg: "✅ Test C.1 PASSED: Public whoami returns whoami service content"
+
+    - name: "C3. Verify public whoami has NO authentik auth headers"
+      ansible.builtin.assert:
+        that:
+          - "'X-authentik-username' not in public_content_test.stdout"
+        fail_msg: |
+          ❌ CRITICAL: Public whoami has X-authentik-username header!
+          The public route should NOT have authentication headers.
+          This suggests the public route is incorrectly going through forward auth.
+        success_msg: "✅ Test C.2 PASSED: Public whoami has no authentication headers (correctly unprotected)"
+
+    - name: "C4. Display public content test success"
+      ansible.builtin.debug:
+        msg: |
+          ✅ Test C: Public URL Content Verification — PASSED (CRITICAL)
+          📋 Public whoami returns service content without authentication headers
+
+    # ===== Test D: Post-login protected access (CRITICAL) =====
+    - name: "D1. Login via Traefik and access protected whoami through full OAuth flow"
+      ansible.builtin.shell: |
+        kubectl run curl-test-postlogin --image=curlimages/curl --rm -i --restart=Never --command -- \
+          sh -c '
+            TRAEFIK_IP="{{ traefik_ip }}"
+            RESOLVE="--resolve authentik.localhost:80:$TRAEFIK_IP --resolve whoami.localhost:80:$TRAEFIK_IP"
+            COOKIE_JAR="/tmp/cookies.txt"
+
+            # Login through authentik.localhost via Traefik (--resolve)
+            # This ensures the session cookie is on the authentik.localhost domain,
+            # which is required for the OAuth redirect chain to auto-approve
+            FLOW_URL="http://authentik.localhost/api/v3/flows/executor/default-authentication-flow/"
+
+            curl -s -L $RESOLVE -c "$COOKIE_JAR" -b "$COOKIE_JAR" \
+              -H "Content-Type: application/json" "$FLOW_URL" > /dev/null
+            curl -s -L $RESOLVE -c "$COOKIE_JAR" -b "$COOKIE_JAR" \
+              -H "Content-Type: application/json" \
+              -d "{\"component\":\"ak-stage-identification\",\"uid_field\":\"it1@urbalurba.no\"}" \
+              "$FLOW_URL" > /dev/null
+            LOGIN=$(curl -s -L $RESOLVE -c "$COOKIE_JAR" -b "$COOKIE_JAR" \
+              -H "Content-Type: application/json" \
+              -d "{\"component\":\"ak-stage-password\",\"password\":\"Password123\"}" \
+              "$FLOW_URL")
+
+            if ! echo "$LOGIN" | grep -q "xak-flow-redirect"; then
+              echo "LOGIN_FAILED"
+              exit 0
+            fi
+
+            # Access protected whoami through Traefik
+            # OAuth redirect chain auto-completes: whoami → authorize → callback → 200
+            RESPONSE=$(curl -s -L $RESOLVE \
+              -c "$COOKIE_JAR" -b "$COOKIE_JAR" \
+              -w "\nFINAL_HTTP_CODE:%{http_code}" \
+              http://whoami.localhost/)
+
+            echo "RESPONSE_BODY: $RESPONSE"
+          '
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: postlogin_test
+      retries: 2
+      delay: 10
+      until: "'FINAL_HTTP_CODE:200' in postlogin_test.stdout"
+      failed_when: false
+      changed_when: false
+
+    - name: "D2. Verify HTTP 200 (not redirect)"
+      ansible.builtin.assert:
+        that:
+          - "'FINAL_HTTP_CODE:200' in postlogin_test.stdout"
+        fail_msg: |
+          ❌ CRITICAL: Authenticated request to protected whoami did NOT return HTTP 200!
+          After login, the protected URL should serve content, not redirect.
+          {{ postlogin_test.stdout[:500] | default('No output') }}
+        success_msg: "✅ Test D.1 PASSED: Protected whoami returns HTTP 200 after login"
+
+    - name: "D3. Verify response contains whoami content"
+      ansible.builtin.assert:
+        that:
+          - "'Hostname:' in postlogin_test.stdout"
+        fail_msg: |
+          ❌ CRITICAL: Authenticated response does not contain 'Hostname:' (whoami content)!
+          Expected the whoami service response body after authentication.
+        success_msg: "✅ Test D.2 PASSED: Protected whoami returns service content after login"
+
+    - name: "D4. Verify X-Authentik-Username header present"
+      ansible.builtin.assert:
+        that:
+          - "'X-Authentik-Username: it1' in postlogin_test.stdout"
+        fail_msg: |
+          ❌ CRITICAL: Response missing X-Authentik-Username header with 'it1'!
+          The forward auth should inject the authenticated username into the request.
+          Headers found: {{ postlogin_test.stdout_lines | select('match', '(?i)^X-Authentik') | list | default(['None']) }}
+        success_msg: "✅ Test D.3 PASSED: X-Authentik-Username: it1 present in response"
+
+    - name: "D5. Display post-login access test success"
+      ansible.builtin.debug:
+        msg: |
+          ✅ Test D: Post-Login Protected Access — PASSED (CRITICAL)
+          📋 Authenticated user it1 can access protected whoami
+          🔐 Full OAuth flow: login → authorize → callback → proxy cookie → 200 OK
+          👤 X-Authentik-Username: it1 confirmed in response
+
+    # ===== Test E: Wrong credentials rejected (CRITICAL) =====
+    - name: "E1. Attempt login with wrong password"
+      ansible.builtin.shell: |
+        kubectl run curl-test-badlogin --image=curlimages/curl --rm -i --restart=Never --command -- \
+          sh -c '
+            AUTHENTIK_URL="http://authentik-server.authentik.svc.cluster.local"
+            FLOW_URL="$AUTHENTIK_URL/api/v3/flows/executor/default-authentication-flow/"
+            COOKIE_JAR="/tmp/cookies.txt"
+
+            # Step 1: Start flow
+            curl -s -L -c "$COOKIE_JAR" -b "$COOKIE_JAR" \
+              -H "Content-Type: application/json" "$FLOW_URL" > /dev/null
+
+            # Step 2: Submit username
+            curl -s -L -c "$COOKIE_JAR" -b "$COOKIE_JAR" \
+              -H "Content-Type: application/json" \
+              -d "{\"component\":\"ak-stage-identification\",\"uid_field\":\"it1@urbalurba.no\"}" \
+              "$FLOW_URL" > /dev/null
+
+            # Step 3: Submit WRONG password
+            STEP3=$(curl -s -L -c "$COOKIE_JAR" -b "$COOKIE_JAR" \
+              -H "Content-Type: application/json" \
+              -d "{\"component\":\"ak-stage-password\",\"password\":\"WrongPassword999\"}" \
+              "$FLOW_URL")
+            echo "STEP3: $STEP3"
+
+            # Check result
+            if echo "$STEP3" | grep -q "xak-flow-redirect"; then
+              echo "BAD_LOGIN_RESULT: WRONGLY_ACCEPTED"
+            else
+              echo "BAD_LOGIN_RESULT: CORRECTLY_REJECTED"
+            fi
+          '
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: badlogin_test
+      failed_when: false
+      changed_when: false
+
+    - name: "E2. Verify wrong password was rejected"
+      ansible.builtin.assert:
+        that:
+          - "'BAD_LOGIN_RESULT: CORRECTLY_REJECTED' in badlogin_test.stdout"
+        fail_msg: |
+          ❌ CRITICAL: Wrong password was ACCEPTED! Authentication is broken!
+          Login with it1@urbalurba.no / WrongPassword999 should have been rejected
+          but the flow returned xak-flow-redirect (success).
+          This means authentication is not actually verifying credentials.
+        success_msg: "✅ Test E PASSED: Wrong password correctly rejected"
+
+    - name: "E3. Display wrong credentials test success"
+      ansible.builtin.debug:
+        msg: |
+          ✅ Test E: Wrong Credentials Rejected — PASSED (CRITICAL)
+          📋 Login with wrong password correctly denied
+          🔒 Authentication is properly validating credentials
+
+    # ===== Summary =====
+    - name: "S1. Display comprehensive test results"
+      ansible.builtin.debug:
+        msg:
+          - "==============================================="
+          - "🧪 End-to-End Authentication Test Results"
+          - "==============================================="
+          - ""
+          - "Test A — Redirect URL Verification:    ✅ PASSED (CRITICAL)"
+          - "  Protected whoami → 302 → authentik.localhost"
+          - ""
+          - "Test B — Full Login Flow:               ✅ PASSED (CRITICAL)"
+          - "  API login as it1@urbalurba.no → xak-flow-redirect"
+          - ""
+          - "Test C — Public URL Content:            ✅ PASSED (CRITICAL)"
+          - "  C.1: Body contains Hostname:          ✅"
+          - "  C.2: No X-authentik-username header   ✅"
+          - ""
+          - "Test D — Post-Login Protected Access:   ✅ PASSED (CRITICAL)"
+          - "  D.1: HTTP 200 (not redirect)          ✅"
+          - "  D.2: Body contains Hostname:          ✅"
+          - "  D.3: X-Authentik-Username: it1        ✅"
+          - ""
+          - "Test E — Wrong Credentials Rejected:    ✅ PASSED (CRITICAL)"
+          - "  Bad password correctly denied          ✅"
+          - ""
+          - "==============================================="
+          - "🎉 ALL 5 CRITICAL TESTS PASSED"
+          - "==============================================="

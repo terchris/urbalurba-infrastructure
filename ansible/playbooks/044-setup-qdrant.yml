@@ -28,7 +28,8 @@
   hosts: localhost
   gather_facts: false
   vars:
-    include_verification: "{{ include_verification | default(false) }}"
+    # Use _include_verification internally to avoid recursive template issues
+    _include_verification: "{{ include_verification | default(false) }}"
     manifests_folder: "/mnt/urbalurbadisk/manifests"
     merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
     qdrant_namespace: "default"
@@ -253,4 +254,4 @@
     # ================================================================
     - name: 19. Run verification tests (when enabled)
       include_tasks: utility/u07-verify-qdrant-tasks.yml
-      when: include_verification | bool
+      when: _include_verification | bool

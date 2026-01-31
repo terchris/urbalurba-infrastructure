@@ -29,14 +29,13 @@ log_info() { echo -e "${GREEN}[UIS]${NC} $1"; }
 log_warn() { echo -e "${YELLOW}[UIS]${NC} $1"; }
 log_error() { echo -e "${RED}[UIS]${NC} $1"; }
 
-# Check if topsecret folder exists
+# Check if topsecret folder exists (optional - for backwards compatibility)
+# Returns: 0 if exists, 1 if not
 check_topsecret() {
-    if [ ! -d "$SCRIPT_DIR/topsecret" ]; then
-        log_error "topsecret/ folder not found!"
-        log_info "Create it with: mkdir -p topsecret/config topsecret/secrets-config"
-        log_info "Then copy templates: cp -r topsecret/secrets-templates/* topsecret/secrets-config/"
-        exit 1
+    if [ -d "$SCRIPT_DIR/topsecret" ]; then
+        return 0
     fi
+    return 1
 }
 
 # Check if image exists, pull if needed
@@ -64,17 +63,47 @@ check_image() {
 
 # Create config directories on first run
 init_config_dirs() {
+    local first_run=false
+
     # Create .uis.extend if it doesn't exist
     if [ ! -d "$SCRIPT_DIR/.uis.extend" ]; then
-        log_info "Creating .uis.extend/ configuration directory..."
+        log_info "Creating .uis.extend/ configuration directory..." >&2
         mkdir -p "$SCRIPT_DIR/.uis.extend"
+        first_run=true
     fi
 
     # Create .uis.secrets if it doesn't exist
     if [ ! -d "$SCRIPT_DIR/.uis.secrets" ]; then
-        log_info "Creating .uis.secrets/ directory..."
+        log_info "Creating .uis.secrets/ directory..." >&2
         mkdir -p "$SCRIPT_DIR/.uis.secrets"
+        first_run=true
     fi
+
+    # Ensure .uis.secrets is in .gitignore (create file if needed)
+    if [ ! -f "$SCRIPT_DIR/.gitignore" ]; then
+        # Create .gitignore with .uis.secrets entry
+        echo "# UIS secrets - do not commit" > "$SCRIPT_DIR/.gitignore"
+        echo ".uis.secrets/" >> "$SCRIPT_DIR/.gitignore"
+        log_info "Created .gitignore with .uis.secrets/" >&2
+    elif ! grep -q "^\.uis\.secrets" "$SCRIPT_DIR/.gitignore" 2>/dev/null; then
+        # Append to existing .gitignore
+        echo "" >> "$SCRIPT_DIR/.gitignore"
+        echo "# UIS secrets (auto-added)" >> "$SCRIPT_DIR/.gitignore"
+        echo ".uis.secrets/" >> "$SCRIPT_DIR/.gitignore"
+        log_info "Added .uis.secrets/ to .gitignore" >&2
+    fi
+
+    # Return first_run status for welcome message (shown after container starts)
+    echo "$first_run"
+}
+
+# Show welcome message from inside container
+show_welcome() {
+    docker exec "$CONTAINER_NAME" bash -c '
+        if [ -f /mnt/urbalurbadisk/provision-host/uis/templates/welcome.txt ]; then
+            cat /mnt/urbalurbadisk/provision-host/uis/templates/welcome.txt
+        fi
+    ' 2>/dev/null || true
 }
 
 # Start container if not running
@@ -83,9 +112,9 @@ start_container() {
         return 0
     fi
 
-    check_topsecret
     check_image
-    init_config_dirs
+    local first_run
+    first_run=$(init_config_dirs)
 
     log_info "Starting UIS container..."
 
@@ -94,10 +123,19 @@ start_container() {
 
     # Build volume mount arguments
     local VOLUME_ARGS=(
-        -v "$SCRIPT_DIR/topsecret:/mnt/urbalurbadisk/topsecret"
         -v "$SCRIPT_DIR/.uis.extend:/mnt/urbalurbadisk/.uis.extend"
         -v "$SCRIPT_DIR/.uis.secrets:/mnt/urbalurbadisk/.uis.secrets"
     )
+
+    # Mount topsecret if it exists (backwards compatibility)
+    if check_topsecret; then
+        VOLUME_ARGS+=(-v "$SCRIPT_DIR/topsecret:/mnt/urbalurbadisk/topsecret:ro")
+    fi
+
+    # Mount secrets directory if it exists (backwards compatibility for SSH keys)
+    if [ -d "$SCRIPT_DIR/secrets" ]; then
+        VOLUME_ARGS+=(-v "$SCRIPT_DIR/secrets:/mnt/urbalurbadisk/secrets:ro")
+    fi
 
     # Add kubeconfig mount if it exists
     if [ -d "$KUBECONFIG_DIR" ]; then
@@ -118,12 +156,29 @@ start_container() {
     # Wait for container to be ready
     sleep 2
 
-    # Create kubeconfig symlink for playbooks that expect the old path
-    docker exec "$CONTAINER_NAME" bash -c \
-        "mkdir -p /mnt/urbalurbadisk/kubeconfig && ln -sf /home/ansible/.kube/config /mnt/urbalurbadisk/kubeconfig/kubeconf-all" \
-        2>/dev/null || true
+    # Create kubeconfig directories and symlinks for backwards compatibility
+    # This ensures scripts expecting either path will work
+    docker exec "$CONTAINER_NAME" bash -c '
+        # Create legacy kubeconfig path
+        mkdir -p /mnt/urbalurbadisk/kubeconfig
+
+        # Create new kubeconfig path if .uis.secrets exists
+        if [ -d /mnt/urbalurbadisk/.uis.secrets ]; then
+            mkdir -p /mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig
+            # Symlink from new path to host kubeconfig
+            ln -sf /home/ansible/.kube/config /mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all
+        fi
+
+        # Symlink legacy path to host kubeconfig (for backwards compat)
+        ln -sf /home/ansible/.kube/config /mnt/urbalurbadisk/kubeconfig/kubeconf-all
+    ' 2>/dev/null || true
 
     log_info "Container started"
+
+    # Show welcome message on first run
+    if [ "$first_run" = "true" ]; then
+        show_welcome
+    fi
 }
 
 # Stop container
@@ -181,7 +236,7 @@ case "${1:-help}" in
         start_container
         log_info "UIS container restarted"
         ;;
-    status)
+    container)
         if docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
             log_info "Container is running"
             docker ps --filter "name=$CONTAINER_NAME" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
@@ -253,11 +308,22 @@ case "${1:-help}" in
         log_info "All tests passed!"
         ;;
     help|--help|-h)
-        show_usage
+        start_container
+        docker exec $DOCKER_IT "$CONTAINER_NAME" /mnt/urbalurbadisk/provision-host/uis/manage/uis-cli.sh help
+        echo ""
+        echo "Container management:"
+        echo "  start       Start the UIS container"
+        echo "  stop        Stop the UIS container"
+        echo "  restart     Restart the UIS container"
+        echo "  container   Show container status"
+        echo "  shell       Open a shell in the container"
+        echo "  logs        Show container logs"
+        echo "  build       Build the container image locally"
+        echo "  test        Run container validation tests"
         ;;
     *)
-        log_error "Unknown command: $1"
-        show_usage
-        exit 1
+        # Pass all other commands to uis-cli.sh inside the container
+        start_container
+        docker exec $DOCKER_IT "$CONTAINER_NAME" /mnt/urbalurbadisk/provision-host/uis/manage/uis-cli.sh "$@"
         ;;
 esac
