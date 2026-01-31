@@ -55,27 +55,20 @@
       "description": "Run AI models locally with a unified API and chat interface",
       "category": "AI",
       "tags": ["ai", "llm", "ollama", "openai", "chat", "local"],
-      "abstract": "Self-hosted AI with Ollama, LiteLLM, and Open WebUI",
+      "abstract": "Self-hosted AI with LiteLLM proxy and Open WebUI",
       "logo": "ai-local-stack-logo.svg",
-      "summary": "The local AI stack enables running large language models on your own infrastructure. Ollama runs the models, LiteLLM provides a unified OpenAI-compatible API, and Open WebUI offers a ChatGPT-like interface for users.",
+      "summary": "The local AI stack provides a unified LLM interface. LiteLLM proxies to external Ollama (on host Mac) and cloud providers, while Open WebUI offers a ChatGPT-like interface for users. Note: Ollama runs on the host machine, not in-cluster.",
       "docs": "/docs/stacks/ai-local",
       "components": [
         {
-          "service": "ollama",
-          "position": 1,
-          "note": "LLM inference engine"
-        }
-,
-        {
           "service": "litellm",
-          "position": 2,
-          "note": "Unified API gateway",
-          "optional": true
+          "position": 1,
+          "note": "Unified API gateway"
         }
 ,
         {
           "service": "openwebui",
-          "position": 3,
+          "position": 2,
           "note": "User-facing chat interface"
         }
       ]

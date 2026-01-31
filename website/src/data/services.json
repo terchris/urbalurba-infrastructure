@@ -13,7 +13,9 @@
     ,"docs": "/docs/packages/ai/litellm"
     ,"playbook": "210-setup-litellm.yml"
     ,"priority": 51
-    ,"checkCommand": "kubectl get pods -n ai -l app=litellm --no-headers 2>/dev/null | grep -q Running"
+    ,"checkCommand": "kubectl get pods -n ai -l app.kubernetes.io/name=litellm --no-headers 2>/dev/null | grep -q Running"
+    ,"removePlaybook": "210-remove-litellm.yml"
+    ,"requires": ["postgresql"]
   }
 ,
   {
@@ -30,7 +32,9 @@
     ,"docs": "/docs/packages/ai/openwebui"
     ,"playbook": "200-setup-open-webui.yml"
     ,"priority": 50
-    ,"checkCommand": "kubectl get pods -n ai -l app=open-webui --no-headers 2>/dev/null | grep -q Running"
+    ,"checkCommand": "kubectl get pods -n ai -l app.kubernetes.io/name=open-webui --no-headers 2>/dev/null | grep -q Running"
+    ,"removePlaybook": "200-remove-open-webui.yml"
+    ,"requires": ["postgresql"]
   }
 ,
   {
@@ -48,6 +52,7 @@
     ,"playbook": "070-setup-authentik.yml"
     ,"priority": 40
     ,"checkCommand": "kubectl get pods -n authentik -l app.kubernetes.io/name=authentik --no-headers 2>/dev/null | grep -q Running"
+    ,"removePlaybook": "070-remove-authentik.yml"
     ,"requires": ["postgresql", "redis"]
   }
 ,
@@ -65,7 +70,7 @@
     ,"docs": "/docs/packages/core/nginx"
     ,"playbook": "020-setup-nginx.yml"
     ,"priority": 1
-    ,"checkCommand": "kubectl get pods -n default -l app=nginx --no-headers 2>/dev/null | grep -q Running"
+    ,"checkCommand": "kubectl get pods -n default -l app.kubernetes.io/name=nginx --no-headers 2>/dev/null | grep -q Running"
     ,"removePlaybook": "020-remove-nginx.yml"
   }
 ,
@@ -84,6 +89,7 @@
     ,"playbook": "025-setup-whoami-testpod.yml"
     ,"priority": 2
     ,"checkCommand": "kubectl get pods -n default -l app=whoami --no-headers 2>/dev/null | grep -q Running"
+    ,"removePlaybook": "025-setup-whoami-testpod.yml -e operation=delete"
   }
 ,
   {
@@ -100,7 +106,7 @@
     ,"docs": "/docs/packages/databases/mongodb"
     ,"playbook": "040-setup-mongodb.yml"
     ,"priority": 31
-    ,"checkCommand": "kubectl get pods -n databases -l app=mongodb --no-headers 2>/dev/null | grep -q Running"
+    ,"checkCommand": "kubectl get pods -n default -l app=mongodb --no-headers 2>/dev/null | grep -q Running"
     ,"removePlaybook": "040-remove-database-mongodb.yml"
   }
 ,
@@ -118,7 +124,7 @@
     ,"docs": "/docs/packages/databases/mysql"
     ,"playbook": "040-database-mysql.yml"
     ,"priority": 31
-    ,"checkCommand": "kubectl get pods -n databases -l app.kubernetes.io/name=mysql --no-headers 2>/dev/null | grep -q Running"
+    ,"checkCommand": "kubectl get pods -n default -l app.kubernetes.io/name=mysql --no-headers 2>/dev/null | grep -q Running"
     ,"removePlaybook": "040-remove-database-mysql.yml"
   }
 ,
@@ -136,7 +142,7 @@
     ,"docs": "/docs/packages/databases/postgresql"
     ,"playbook": "040-database-postgresql.yml"
     ,"priority": 30
-    ,"checkCommand": "kubectl get pods -n databases -l app=postgresql --no-headers 2>/dev/null | grep -q Running"
+    ,"checkCommand": "kubectl get pods -n default -l app.kubernetes.io/name=postgresql --no-headers 2>/dev/null | grep -q Running"
     ,"removePlaybook": "040-remove-database-postgresql.yml"
   }
 ,
@@ -154,7 +160,7 @@
     ,"docs": "/docs/packages/databases/qdrant"
     ,"playbook": "044-setup-qdrant.yml"
     ,"priority": 33
-    ,"checkCommand": "kubectl get pods -n databases -l app=qdrant --no-headers 2>/dev/null | grep -q Running"
+    ,"checkCommand": "kubectl get pods -n default -l app.kubernetes.io/name=qdrant --no-headers 2>/dev/null | grep -q Running"
     ,"removePlaybook": "044-remove-qdrant.yml"
   }
 ,
@@ -172,7 +178,8 @@
     ,"docs": "/docs/packages/databases/redis"
     ,"playbook": "050-setup-redis.yml"
     ,"priority": 32
-    ,"checkCommand": "kubectl get pods -n databases -l app=redis --no-headers 2>/dev/null | grep -q Running"
+    ,"checkCommand": "kubectl get pods -n default -l app.kubernetes.io/name=redis --no-headers 2>/dev/null | grep -q Running"
+    ,"removePlaybook": "050-remove-redis.yml"
   }
 ,
   {
@@ -189,7 +196,8 @@
     ,"docs": "/docs/packages/datascience/jupyterhub"
     ,"playbook": "350-setup-jupyterhub.yml"
     ,"priority": 92
-    ,"checkCommand": "kubectl get pods -n datascience -l app.kubernetes.io/name=jupyterhub --no-headers 2>/dev/null | grep -q Running"
+    ,"checkCommand": "kubectl get pods -n jupyterhub -l app=jupyterhub --no-headers 2>/dev/null | grep -q Running"
+    ,"removePlaybook": "350-remove-jupyterhub.yml"
   }
 ,
   {
@@ -206,7 +214,8 @@
     ,"docs": "/docs/packages/datascience/spark"
     ,"playbook": "330-setup-spark.yml"
     ,"priority": 91
-    ,"checkCommand": "kubectl get pods -n datascience -l app.kubernetes.io/name=spark --no-headers 2>/dev/null | grep -q Running"
+    ,"checkCommand": "kubectl get pods -n spark-operator -l app.kubernetes.io/name=spark-kubernetes-operator --no-headers 2>/dev/null | grep -q Running"
+    ,"removePlaybook": "330-remove-spark.yml"
   }
 ,
   {
@@ -223,7 +232,9 @@
     ,"docs": "/docs/packages/datascience/unity-catalog"
     ,"playbook": "320-setup-unity-catalog.yml"
     ,"priority": 90
-    ,"checkCommand": "kubectl get pods -n datascience -l app.kubernetes.io/name=unity-catalog --no-headers 2>/dev/null | grep -q Running"
+    ,"checkCommand": "kubectl get pods -n unity-catalog -l app=unity-catalog,component=server --no-headers 2>/dev/null | grep -q Running"
+    ,"removePlaybook": "320-remove-unity-catalog.yml"
+    ,"requires": ["postgresql"]
   }
 ,
   {
@@ -399,7 +410,8 @@
     ,"docs": "/docs/packages/queues/rabbitmq"
     ,"playbook": "080-setup-rabbitmq.yml"
     ,"priority": 60
-    ,"checkCommand": "kubectl get pods -n queues -l app=rabbitmq --no-headers 2>/dev/null | grep -q Running"
+    ,"checkCommand": "kubectl get pods -n queues -l app.kubernetes.io/name=rabbitmq --no-headers 2>/dev/null | grep -q Running"
+    ,"removePlaybook": "080-remove-rabbitmq.yml"
   }
 ,
   {
@@ -416,6 +428,7 @@
     ,"docs": "/docs/packages/search/elasticsearch"
     ,"playbook": "060-setup-elasticsearch.yml"
     ,"priority": 70
-    ,"checkCommand": "kubectl get pods -n search -l app=elasticsearch --no-headers 2>/dev/null | grep -q Running"
+    ,"checkCommand": "kubectl get pods -n default -l app=elasticsearch-master --no-headers 2>/dev/null | grep -q Running"
+    ,"removePlaybook": "060-remove-elasticsearch.yml"
   }
 ]}
