@@ -14,7 +14,7 @@
 
 **Prerequisites**: PLAN-001, PLAN-002, and PLAN-003 must be complete and validated
 
-**Related**: [INVESTIGATE-secrets-consolidation](../completed/INVESTIGATE-secrets-consolidation.md) (completed), [INVESTIGATE-passwords](INVESTIGATE-passwords.md) (password architecture mismatch)
+**Related**: [INVESTIGATE-secrets-consolidation](INVESTIGATE-secrets-consolidation.md), [INVESTIGATE-passwords](INVESTIGATE-passwords.md) (password architecture mismatch)
 
 ---
 
