@@ -248,10 +248,11 @@
     "logo": "argocd-logo.webp",
     "website": "https://argo-cd.readthedocs.io"
     ,"summary": "ArgoCD is a declarative, GitOps continuous delivery tool for Kubernetes. It automates the deployment of applications to specified target environments, keeping them synchronized with their Git repository definitions."
-    ,"docs": "/docs/packages/management/argocd"
+    ,"docs": "/docs/packages/development/argocd"
     ,"playbook": "220-setup-argocd.yml"
     ,"priority": 80
     ,"checkCommand": "kubectl get pods -n argocd -l app.kubernetes.io/name=argocd-server --no-headers 2>/dev/null | grep -q Running"
+    ,"removePlaybook": "220-remove-argocd.yml"
   }
 ,
   {
