@@ -1,5 +1,7 @@
 # INVESTIGATE: Password Architecture
 
+**Related Plan**: [PLAN-004-secrets-cleanup](PLAN-004-secrets-cleanup.md) - Secrets migration cleanup and finalization
+
 ## Problem
 
 The password system has a design mismatch between two files that serve different roles.

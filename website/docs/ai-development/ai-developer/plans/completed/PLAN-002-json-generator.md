@@ -4,15 +4,24 @@
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Backlog
+## Status: Completed
 
 **Goal**: Create a script that generates `services.json` and optionally `stacks.json` by scanning metadata embedded in shell scripts.
 
-**Last Updated**: 2026-01-20
+**Last Updated**: 2026-02-18
 
 **Priority**: Medium (enhances maintainability, not blocking)
 
 **Depends On**: PLAN-001-branding-setup ✅ (completed)
+
+**Related Investigation**: [INVESTIGATE-docs-restructure](INVESTIGATE-docs-restructure.md) - Docs audit and prioritization
+
+**Implementation Notes**: The system was implemented with minor deviations from this plan:
+- Scripts located in `provision-host/uis/` instead of `provision-host/kubernetes/`
+- JSON format uses simpler field names (`id`, `category`, `website`) instead of JSON-LD (`identifier`, `applicationCategory`, `url`)
+- `data.ts` maps between JSON field names and TypeScript types
+- CI/CD pipeline handles JSON generation via `uis-docs.sh`
+- npm `generate:services` script deferred (CI handles generation)
 
 ---
 

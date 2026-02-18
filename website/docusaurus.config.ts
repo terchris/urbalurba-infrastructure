@@ -30,6 +30,7 @@ const config: Config = {
 
   markdown: {
     mermaid: true,
+    format: 'detect',
   },
 
   presets: [

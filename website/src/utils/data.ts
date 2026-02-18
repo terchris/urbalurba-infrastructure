@@ -13,16 +13,43 @@ import stacksData from '../data/stacks.json';
 
 /**
  * Get all services from services.json
+ * Maps JSON field names (id, category, website) to Service type fields
+ * (identifier, applicationCategory, url)
  */
 export function getServices(): Service[] {
-  return servicesData.itemListElement as Service[];
+  return servicesData.services.map((s) => ({
+    identifier: s.id,
+    name: s.name,
+    description: s.description,
+    applicationCategory: s.category,
+    tags: s.tags,
+    abstract: s.abstract,
+    logo: s.logo,
+    url: s.website,
+    summary: s.summary,
+    manifest: '',
+    docs: s.docs,
+    related: [],
+    requires: s.requires,
+  }));
 }
 
 /**
  * Get all categories from categories.json, sorted by order
+ * Maps JSON field names (id, description, icon) to Category type fields
+ * (codeValue, etc.)
  */
 export function getCategories(): Category[] {
-  const categories = categoriesData.hasCategoryCode as Category[];
+  const categories: Category[] = categoriesData.categories.map((c) => ({
+    codeValue: c.id,
+    name: c.name,
+    order: c.order,
+    tags: [],
+    abstract: c.description,
+    summary: c.description,
+    logo: '',
+    manifest_range: '',
+  }));
   return categories.sort((a, b) => a.order - b.order);
 }
 
