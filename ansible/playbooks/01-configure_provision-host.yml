@@ -27,7 +27,7 @@
     ansible_collections_path: '/mnt/urbalurbadisk/ansible/collections'
     ansible_inventory: '/mnt/urbalurbadisk/ansible/inventory.yml'
     ansible_config: '/mnt/urbalurbadisk/ansible/ansible.cfg'
-    ansible_private_key_file: '/mnt/urbalurbadisk/ansible/secrets/id_rsa_ansible.secret-key'
+    ansible_private_key_file: '/mnt/urbalurbadisk/.uis.secrets/ssh/id_rsa_ansible'
     ansible_library: '/usr/share/ansible'
     ansible_host_key_checking: false
     ansible_remote_user: 'ansible'
