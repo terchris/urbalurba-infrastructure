@@ -4,19 +4,19 @@
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Active
+## Status: Completed
 
 **Goal**: Complete ArgoCD migration to the UIS system — fix metadata, verify deployment with E2E tests, and document the devcontainer-toolbox integration path.
 
-**Last Updated**: 2026-02-01
+**Completed**: 2026-02-18
 
-**Related to**: [INVESTIGATE-argocd-migration](INVESTIGATE-argocd-migration.md), [STATUS-service-migration](STATUS-service-migration.md)
+**Related to**: [INVESTIGATE-argocd-migration](../backlog/INVESTIGATE-argocd-migration.md), [STATUS-service-migration](../backlog/STATUS-service-migration.md)
 
 ---
 
 ## Overview
 
-ArgoCD is 95% migrated. The deploy and remove playbooks work, the Helm config and IngressRoute are in place. What remains is fixing two metadata fields in the service script, verifying deployment in the new UIS system, and updating the migration status.
+ArgoCD was 95% migrated when this plan started. The deploy and remove playbooks worked, the Helm config and IngressRoute were in place. What remained was fixing metadata, verifying deployment, and adding E2E tests. During Phase 4 testing, the admin password setup required a complete rework (9 rounds of iteration), which also uncovered and fixed issues in the secrets framework and container dependencies.
 
 ### Testing Process
 
@@ -95,15 +95,16 @@ Following the pattern from Authentik (`070-test-authentik-auth.yml`), add an aut
 | C — UI via Traefik | `argocd.localhost` routes correctly through IngressRoute |
 | D — Wrong Credentials | Bad password is rejected (no token returned) |
 
-### Bugs fixed across Rounds 2-9
+### Bugs fixed and changes made across Rounds 2-9
 
 1. Echo newline in bcrypt hash — `echo` → `printf` (Round 2)
-2. Helm overwriting pre-created `argocd-secret` (Round 4) — pass hash via Helm values with `createSecret: true`
-3. `argocd-secret` in secrets framework conflicting with Helm (Round 5) — removed from `00-master-secrets.yml.template`
+2. Helm overwriting pre-created `argocd-secret` (Round 4) — changed `manifests/220-argocd-config.yaml` from `createSecret: false` to `createSecret: true`, pass bcrypt hash via Helm values
+3. `argocd-secret` in secrets framework conflicting with Helm (Round 5) — removed `argocd-secret` definition from `00-master-secrets.yml.template` (both `provision-host/uis/templates/` and `topsecret/` copies). Helm owns `argocd-secret` entirely.
 4. Stale `.uis.secrets/` templates on tester host (Round 6) — manual re-copy from container
 5. Ansible Jinja2/shell quoting conflict in debug lines (Round 7) — removed debug lines
-6. Missing `htpasswd` in container (Round 8) — replaced with Python bcrypt
+6. Missing `htpasswd` in container (Round 8) — replaced with Python bcrypt, added `python3-bcrypt` to `Dockerfile.uis-provision-host`
 7. Added fail-fast assertions for missing secrets and empty hash (Round 8)
+8. Complete rework of password handling in `220-setup-argocd.yml` tasks 7-10: read plaintext from `urbalurba-secrets`, generate bcrypt hash via Python, write to temp values file, pass to Helm with `-f`
 
 ### Validation
 
@@ -117,28 +118,55 @@ Tester reports all 4 E2E tests pass in Round 9 of `talk/talk.md`. Deploy, login,
 - [x] ArgoCD deploys successfully with `./uis deploy argocd` ✓
 - [x] ArgoCD removes cleanly with `./uis undeploy argocd` ✓
 - [x] E2E test playbook passes all 4 tests automatically during deploy ✓
+- [x] Admin password works correctly (bcrypt hash via Python, passed to Helm) ✓
+- [x] No conflicts between secrets framework and Helm (`argocd-secret` owned by Helm only) ✓
+- [x] `python3-bcrypt` pinned in Dockerfile for reliable bcrypt hashing ✓
+- [x] Unused numbered secrets template files (01-13) removed ✓
+- [x] Secrets documentation (`how-secrets-works.md`) updated with ArgoCD flow ✓
 - [x] STATUS-service-migration.md reflects ArgoCD as fully migrated ✓
 
 ---
 
 ## Out of Scope
 
-- **`dev-argocd` command in devcontainer-toolbox** — documented in [INVESTIGATE-argocd-migration.md](INVESTIGATE-argocd-migration.md) issue 6, separate repo
-- **Secret artifacts in topsecret/** — deferred to broader cleanup
+- **`dev-argocd` command in devcontainer-toolbox** — documented in [INVESTIGATE-argocd-migration.md](../backlog/INVESTIGATE-argocd-migration.md) issue 6, separate repo
+- **Secret artifacts in topsecret/** — partially addressed (numbered files removed), remaining cleanup deferred to PLAN-004
 - **Old boot scripts in not-in-use/** — part of previous deployment system, no action needed
 
 ---
 
-## Files to Modify
+## Files Modified
 
 | File | Change |
 |------|--------|
 | `provision-host/uis/services/management/service-argocd.sh` | Set `SCRIPT_REMOVE_PLAYBOOK`, fix `SCRIPT_DOCS` |
-| `ansible/playbooks/220-setup-argocd.yml` | Add call to E2E test playbook |
-| `website/docs/ai-development/ai-developer/plans/backlog/STATUS-service-migration.md` | Update ArgoCD status |
+| `ansible/playbooks/220-setup-argocd.yml` | Reworked password handling (tasks 7-10: fail-fast assertions, Python bcrypt, temp values file), added E2E test invocation (tasks 19-20) |
+| `manifests/220-argocd-config.yaml` | Changed `createSecret: false` to `createSecret: true` so Helm creates and owns `argocd-secret` |
+| `provision-host/uis/templates/secrets-templates/00-master-secrets.yml.template` | Removed `argocd-secret` definition — Helm owns it, not the secrets framework |
+| `topsecret/secrets-templates/00-master-secrets.yml.template` | Same `argocd-secret` removal as above (legacy copy) |
+| `Dockerfile.uis-provision-host` | Added `python3-bcrypt` to apt package list |
+| `provision-host/uis/templates/how-secrets-works.md` | Updated ArgoCD bcrypt flow documentation |
+| `website/docs/ai-development/ai-developer/plans/backlog/STATUS-service-migration.md` | Updated ArgoCD status to fully migrated |
 
-## Files to Create
+## Files Created
 
 | File | Purpose |
 |------|---------|
 | `ansible/playbooks/220-test-argocd.yml` | E2E test playbook — API health, login, Traefik routing, credential rejection |
+
+## Files Deleted
+
+| File | Reason |
+|------|--------|
+| `topsecret/secrets-templates/01-core-secrets.yml.template` | Unused dead code — `generate_kubernetes_secrets()` only reads `00-master-secrets.yml.template` |
+| `topsecret/secrets-templates/02-database-secrets.yml.template` | Same |
+| `topsecret/secrets-templates/04-search-secrets.yml.template` | Same |
+| `topsecret/secrets-templates/05-apim-secrets.yml.template` | Same |
+| `topsecret/secrets-templates/06-management-secrets.yml.template` | Same |
+| `topsecret/secrets-templates/07-ai-secrets.yml.template` | Same |
+| `topsecret/secrets-templates/08-development-secrets.yml.template` | Same — also contained hardcoded `argocd-secret` that conflicted with Helm |
+| `topsecret/secrets-templates/09-network-secrets.yml.template` | Same |
+| `topsecret/secrets-templates/10-datascience-secrets.yml.template` | Same |
+| `topsecret/secrets-templates/11-monitoring-secrets.yml.template` | Same |
+| `topsecret/secrets-templates/12-auth-secrets.yml.template` | Same |
+| `topsecret/secrets-templates/13-github-secrets.yml.template` | Same |
