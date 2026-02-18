@@ -1,0 +1,232 @@
+---
+# file: ansible/playbooks/220-test-argocd.yml
+# Description:
+# End-to-end tests for the ArgoCD deployment.
+# Validates API responsiveness, admin login, UI access via Traefik, and wrong credentials rejection.
+#
+# Tests (all CRITICAL):
+#   A. API health check - ArgoCD API must respond
+#   B. Admin login via API - session endpoint must return JWT token
+#   C. UI access via Traefik IngressRoute - argocd.localhost must be routable
+#   D. Wrong credentials rejected - bad password must NOT authenticate
+#
+# Can be run standalone or called from 220-setup-argocd.yml
+#
+# Usage:
+# ansible-playbook ansible/playbooks/220-test-argocd.yml -e kube_context="rancher-desktop"
+
+- name: End-to-End ArgoCD Tests
+  hosts: localhost
+  gather_facts: false
+  vars:
+    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    argocd_namespace: "argocd"
+
+  tasks:
+    - name: "0. Display test suite initiation"
+      ansible.builtin.debug:
+        msg: |
+          🧪 End-to-End ArgoCD Tests
+          ===============================================
+          Running 4 test groups (all CRITICAL)
+
+    - name: "0.1. Get Traefik ClusterIP for in-cluster hostname routing"
+      ansible.builtin.shell: |
+        kubectl get svc traefik -n kube-system -o jsonpath='{.spec.clusterIP}'
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: traefik_ip_result
+      changed_when: false
+
+    - name: "0.2. Store Traefik IP"
+      ansible.builtin.set_fact:
+        traefik_ip: "{{ traefik_ip_result.stdout }}"
+
+    - name: "0.3. Get ArgoCD admin password from urbalurba-secrets"
+      ansible.builtin.shell: |
+        kubectl get secret urbalurba-secrets -n {{ argocd_namespace }} -o jsonpath='{.data.ARGOCD_ADMIN_PASSWORD}' | base64 -d
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: argocd_password_result
+      changed_when: false
+
+    - name: "0.4. Store admin password"
+      ansible.builtin.set_fact:
+        argocd_admin_password: "{{ argocd_password_result.stdout }}"
+
+    # ===== Test A: API health check (CRITICAL) =====
+    - name: "A1. Check ArgoCD API version endpoint"
+      ansible.builtin.shell: |
+        kubectl run curl-test-api --image=curlimages/curl --rm -i --restart=Never -n {{ argocd_namespace }} -- \
+          curl -s -w "\nHTTP_CODE:%{http_code}" http://argocd-server.{{ argocd_namespace }}.svc.cluster.local/api/version
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: api_health_test
+      retries: 5
+      delay: 10
+      until: "'HTTP_CODE:200' in api_health_test.stdout"
+      failed_when: false
+      changed_when: false
+
+    - name: "A2. Verify API returns version info"
+      ansible.builtin.assert:
+        that:
+          - "'HTTP_CODE:200' in api_health_test.stdout"
+          - "'Version' in api_health_test.stdout or 'version' in api_health_test.stdout"
+        fail_msg: |
+          ❌ CRITICAL: ArgoCD API did not respond with version info!
+          Expected HTTP 200 with version JSON.
+          Got: {{ api_health_test.stdout[:500] | default('No output') }}
+        success_msg: "✅ Test A PASSED: ArgoCD API is responding with version info"
+
+    - name: "A3. Display API health test success"
+      ansible.builtin.debug:
+        msg: |
+          ✅ Test A: API Health Check — PASSED (CRITICAL)
+          📋 ArgoCD API responds at /api/version
+
+    # ===== Test B: Admin login via API (CRITICAL) =====
+    - name: "B1. Authenticate as admin via session API"
+      ansible.builtin.shell: |
+        kubectl run curl-test-login --image=curlimages/curl --rm -i --restart=Never -n {{ argocd_namespace }} -- \
+          sh -c '
+            RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}" \
+              -X POST http://argocd-server.{{ argocd_namespace }}.svc.cluster.local/api/v1/session \
+              -H "Content-Type: application/json" \
+              -d "{\"username\":\"admin\",\"password\":\"{{ argocd_admin_password }}\"}")
+            echo "$RESPONSE"
+            if echo "$RESPONSE" | grep -q "token"; then
+              echo "LOGIN_RESULT: SUCCESS"
+            else
+              echo "LOGIN_RESULT: FAILED"
+            fi
+          '
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: login_test
+      retries: 3
+      delay: 10
+      until: "'LOGIN_RESULT: SUCCESS' in login_test.stdout"
+      failed_when: false
+      changed_when: false
+
+    - name: "B2. Verify admin login succeeded"
+      ansible.builtin.assert:
+        that:
+          - "'LOGIN_RESULT: SUCCESS' in login_test.stdout"
+        fail_msg: |
+          ❌ CRITICAL: Admin login to ArgoCD FAILED!
+          Expected /api/v1/session to return a JWT token.
+          Got: {{ login_test.stdout[:500] | default('No output') }}
+
+          Troubleshooting:
+          - Check password: kubectl get secret urbalurba-secrets -n {{ argocd_namespace }} -o jsonpath='{.data.ARGOCD_ADMIN_PASSWORD}' | base64 -d
+          - Check argocd-secret: kubectl get secret argocd-secret -n {{ argocd_namespace }} -o yaml
+          - Check server logs: kubectl logs -n {{ argocd_namespace }} -l app.kubernetes.io/name=argocd-server --tail=50
+        success_msg: "✅ Test B PASSED: Admin login returned JWT token"
+
+    - name: "B3. Display login test success"
+      ansible.builtin.debug:
+        msg: |
+          ✅ Test B: Admin Login — PASSED (CRITICAL)
+          📋 POST /api/v1/session with admin credentials returned JWT token
+          🔐 Admin authentication is working correctly
+
+    # ===== Test C: UI access via Traefik IngressRoute (CRITICAL) =====
+    - name: "C1. Access ArgoCD UI via Traefik with Host header"
+      ansible.builtin.shell: |
+        kubectl run curl-test-ui --image=curlimages/curl --rm -i --restart=Never -n {{ argocd_namespace }} -- \
+          curl -s -o /dev/null -w "HTTP_CODE:%{http_code}" \
+          -H "Host: argocd.localhost" \
+          http://{{ traefik_ip }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: ui_access_test
+      retries: 3
+      delay: 10
+      until: "'HTTP_CODE:200' in ui_access_test.stdout"
+      failed_when: false
+      changed_when: false
+
+    - name: "C2. Verify UI is accessible via Traefik"
+      ansible.builtin.assert:
+        that:
+          - "'HTTP_CODE:200' in ui_access_test.stdout"
+        fail_msg: |
+          ❌ CRITICAL: ArgoCD UI not accessible via Traefik IngressRoute!
+          Expected HTTP 200 when accessing argocd.localhost through Traefik.
+          Got: {{ ui_access_test.stdout | default('No output') }}
+
+          Troubleshooting:
+          - Check IngressRoute: kubectl get ingressroute -n {{ argocd_namespace }}
+          - Check Traefik: kubectl get svc traefik -n kube-system
+        success_msg: "✅ Test C PASSED: ArgoCD UI accessible via argocd.localhost"
+
+    - name: "C3. Display UI access test success"
+      ansible.builtin.debug:
+        msg: |
+          ✅ Test C: UI Access via Traefik — PASSED (CRITICAL)
+          📋 argocd.localhost routes correctly through Traefik IngressRoute
+
+    # ===== Test D: Wrong credentials rejected (CRITICAL) =====
+    - name: "D1. Attempt login with wrong password"
+      ansible.builtin.shell: |
+        kubectl run curl-test-badlogin --image=curlimages/curl --rm -i --restart=Never -n {{ argocd_namespace }} -- \
+          sh -c '
+            RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}" \
+              -X POST http://argocd-server.{{ argocd_namespace }}.svc.cluster.local/api/v1/session \
+              -H "Content-Type: application/json" \
+              -d "{\"username\":\"admin\",\"password\":\"WrongPassword999\"}")
+            echo "$RESPONSE"
+            if echo "$RESPONSE" | grep -q "token"; then
+              echo "BAD_LOGIN_RESULT: WRONGLY_ACCEPTED"
+            else
+              echo "BAD_LOGIN_RESULT: CORRECTLY_REJECTED"
+            fi
+          '
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: badlogin_test
+      failed_when: false
+      changed_when: false
+
+    - name: "D2. Verify wrong password was rejected"
+      ansible.builtin.assert:
+        that:
+          - "'BAD_LOGIN_RESULT: CORRECTLY_REJECTED' in badlogin_test.stdout"
+        fail_msg: |
+          ❌ CRITICAL: Wrong password was ACCEPTED! Authentication is broken!
+          Login with admin / WrongPassword999 should have been rejected
+          but the session API returned a token.
+        success_msg: "✅ Test D PASSED: Wrong password correctly rejected"
+
+    - name: "D3. Display wrong credentials test success"
+      ansible.builtin.debug:
+        msg: |
+          ✅ Test D: Wrong Credentials Rejected — PASSED (CRITICAL)
+          📋 Login with wrong password correctly denied
+          🔒 Authentication is properly validating credentials
+
+    # ===== Summary =====
+    - name: "S1. Display comprehensive test results"
+      ansible.builtin.debug:
+        msg:
+          - "==============================================="
+          - "🧪 End-to-End ArgoCD Test Results"
+          - "==============================================="
+          - ""
+          - "Test A — API Health Check:              ✅ PASSED (CRITICAL)"
+          - "  /api/version returns 200 with version info"
+          - ""
+          - "Test B — Admin Login:                   ✅ PASSED (CRITICAL)"
+          - "  POST /api/v1/session returns JWT token"
+          - ""
+          - "Test C — UI Access via Traefik:         ✅ PASSED (CRITICAL)"
+          - "  argocd.localhost routes correctly"
+          - ""
+          - "Test D — Wrong Credentials Rejected:    ✅ PASSED (CRITICAL)"
+          - "  Bad password correctly denied"
+          - ""
+          - "==============================================="
+          - "🎉 ALL 4 CRITICAL TESTS PASSED"
+          - "==============================================="
