@@ -32,20 +32,20 @@ CURRENT_TEST=""
 # Usage: start_test "Test description"
 start_test() {
     CURRENT_TEST="$1"
-    ((TESTS_RUN++))
+    TESTS_RUN=$((TESTS_RUN + 1))
     echo -n "  Testing: $1... "
 }
 
 # Mark current test as passed
 pass_test() {
-    ((TESTS_PASSED++))
+    TESTS_PASSED=$((TESTS_PASSED + 1))
     echo -e "${TEST_GREEN}PASS${TEST_NC}"
 }
 
 # Mark current test as failed
 # Usage: fail_test [error_message]
 fail_test() {
-    ((TESTS_FAILED++))
+    TESTS_FAILED=$((TESTS_FAILED + 1))
     echo -e "${TEST_RED}FAIL${TEST_NC}"
     if [[ -n "$1" ]]; then
         echo -e "    ${TEST_RED}→ $1${TEST_NC}"
