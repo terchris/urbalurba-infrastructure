@@ -1,8 +1,13 @@
 {
-    "name": "DevContainer Toolbox",
-    "image": "devcontainer-toolbox:local",
+    // DevContainer Toolbox — pre-built image mode
+    // Docs: https://github.com/terchris/devcontainer-toolbox
+    //
+    // overrideCommand: false is REQUIRED so VS Code doesn't bypass the ENTRYPOINT.
+    // The entrypoint handles all startup — no lifecycle hooks needed.
+    "image": "ghcr.io/terchris/devcontainer-toolbox:latest",
+    "overrideCommand": false,
 
-    // VPN capabilities — runtime, can't be in image
+    // VPN capabilities
     "runArgs": [
         "--cap-add=NET_ADMIN",
         "--cap-add=NET_RAW",
@@ -12,7 +17,6 @@
         "--privileged"
     ],
 
-    // VS Code extensions — runtime, per-developer
     "customizations": {
         "vscode": {
             "extensions": [
@@ -25,44 +29,20 @@
         }
     },
 
-    "remoteUser": "vscode",
-    "containerUser": "vscode",
-
     "remoteEnv": {
-        "DOCKER_HOST": "unix:///var/run/docker.sock",
         "DCT_HOME": "/opt/devcontainer-toolbox",
-        "DCT_WORKSPACE": "/workspace",
-        // Host env vars — all 14 build args moved to remoteEnv
-        "DEV_MAC_LOGNAME": "${localEnv:LOGNAME}",
-        "DEV_MAC_USER": "${localEnv:USER}",
-        "DEV_LINUX_LOGNAME": "${localEnv:LOGNAME}",
-        "DEV_LINUX_USER": "${localEnv:USER}",
-        "DEV_WIN_USERNAME": "${localEnv:USERNAME}",
-        "DEV_WIN_COMPUTERNAME": "${localEnv:COMPUTERNAME}",
-        "DEV_WIN_OS": "${localEnv:OS}",
-        "DEV_WIN_USERDOMAIN": "${localEnv:USERDOMAIN}",
-        "DEV_WIN_PROCESSOR_ARCHITECTURE": "${localEnv:PROCESSOR_ARCHITECTURE}",
-        "DEV_WIN_NUMBER_OF_PROCESSORS": "${localEnv:NUMBER_OF_PROCESSORS}",
-        "DEV_WIN_PROCESSOR_IDENTIFIER": "${localEnv:PROCESSOR_IDENTIFIER}",
-        "DEV_WIN_ONEDRIVE": "${localEnv:OneDrive}",
-        "DEV_WIN_LOGONSERVER": "${localEnv:LOGONSERVER}",
-        "DEV_WIN_USERDNSDOMAIN": "${localEnv:USERDNSDOMAIN}",
-        "DEV_WIN_USERDOMAIN_ROAMINGPROFILE": "${localEnv:USERDOMAIN_ROAMINGPROFILE}"
+        "DCT_WORKSPACE": "/workspace"
     },
-
-    "mounts": [
-        // TODO: Podman uses a different socket path. Investigate for VS 2026 users.
-        "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind,consistency=cached"
-    ],
 
     "workspaceFolder": "/workspace",
     "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
+
+    // Capture host git identity before container starts
+    "initializeCommand": "mkdir -p .devcontainer.secrets/env-vars && (git config --global user.name > .devcontainer.secrets/env-vars/.git-host-name 2>/dev/null || true) && (git config --global user.email > .devcontainer.secrets/env-vars/.git-host-email 2>/dev/null || true)",
+
+    "remoteUser": "vscode",
+    "containerUser": "vscode",
     "shutdownAction": "stopContainer",
     "updateRemoteUserUID": true,
     "init": true
-
-    // NOTE: postCreateCommand and postStartCommand are NOT needed here.
-    // The image's ENTRYPOINT handles all startup logic (git safe, config
-    // restoration, service startup, project-installs.sh) — regardless of
-    // which IDE or tool starts the container.
 }

@@ -58,43 +58,47 @@
       ansible.builtin.command: helm repo update
       changed_when: false
     
-    # Install ArgoCD
-    - name: 7. Get ArgoCD credentials from urbalurba-secrets
+    # Generate bcrypt hash and pass it to Helm so the admin password is set correctly
+    # on first install. Helm manages argocd-secret — no pre-creating or patching needed.
+    - name: 7. Check for urbalurba-secrets in argocd namespace
       kubernetes.core.k8s_info:
         kind: Secret
         name: urbalurba-secrets
         namespace: "{{ argocd_namespace }}"
         kubeconfig: "{{ merged_kubeconf_file }}"
       register: argocd_secrets
-      failed_when: false
+
+    - name: 7b. Verify urbalurba-secrets exists
+      ansible.builtin.assert:
+        that:
+          - argocd_secrets.resources | length > 0
+        fail_msg: "FATAL: urbalurba-secrets not found in {{ argocd_namespace }} namespace. Secrets must be applied before deploying ArgoCD."
+        success_msg: "urbalurba-secrets found in {{ argocd_namespace }} namespace"
 
     - name: 8. Create bcrypt hash for ArgoCD admin password
       ansible.builtin.shell: |
         PASSWORD=$(kubectl get secret urbalurba-secrets -n {{ argocd_namespace }} -o jsonpath='{.data.ARGOCD_ADMIN_PASSWORD}' | base64 -d)
-        echo "$PASSWORD" | htpasswd -niBC 10 admin | cut -d ':' -f 2
+        printf '%s' "$PASSWORD" | python3 -c "import bcrypt,sys; print(bcrypt.hashpw(sys.stdin.buffer.read(), bcrypt.gensalt(10)).decode())"
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
       register: argocd_bcrypt_password
-      when: argocd_secrets.resources | length > 0
       changed_when: false
 
-    - name: 9. Create ArgoCD secret with hashed password
-      kubernetes.core.k8s:
-        kubeconfig: "{{ merged_kubeconf_file }}"
-        definition:
-          apiVersion: v1
-          kind: Secret
-          metadata:
-            name: argocd-secret
-            namespace: "{{ argocd_namespace }}"
-            labels:
-              app.kubernetes.io/name: argocd-secret
-              app.kubernetes.io/part-of: argocd
-          type: Opaque
-          stringData:
-            admin.password: "{{ argocd_bcrypt_password.stdout }}"
-            admin.passwordMtime: "{{ ansible_date_time.iso8601 }}"
-      when: argocd_secrets.resources | length > 0 and argocd_bcrypt_password.stdout is defined
+    - name: 8b. Verify bcrypt hash was generated
+      ansible.builtin.assert:
+        that:
+          - argocd_bcrypt_password.stdout | length > 0
+        fail_msg: "FATAL: bcrypt hash generation failed. stdout='{{ argocd_bcrypt_password.stdout }}' stderr='{{ argocd_bcrypt_password.stderr }}'"
+        success_msg: "bcrypt hash generated successfully ({{ argocd_bcrypt_password.stdout | length }} chars)"
+
+    - name: 9. Write temporary Helm values with bcrypt password
+      ansible.builtin.copy:
+        dest: /tmp/argocd-password-values.yaml
+        content: |
+          configs:
+            secret:
+              argocdServerAdminPassword: "{{ argocd_bcrypt_password.stdout }}"
+        mode: '0600'
 
     - name: 10. Deploy ArgoCD using Helm
       ansible.builtin.command: >
@@ -102,13 +106,20 @@
         --namespace {{ argocd_namespace }}
         --version {{ argocd_chart_version }}
         -f {{ argocd_config_file }}
+        -f /tmp/argocd-password-values.yaml
         --timeout {{ installation_timeout }}s
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
       register: argocd_result
       changed_when: true
 
-    # Rule 6: Two-Stage Pod Readiness Verification
+    - name: 10b. Clean up temporary password values file
+      ansible.builtin.file:
+        path: /tmp/argocd-password-values.yaml
+        state: absent
+      changed_when: false
+
+    # Two-Stage Pod Readiness Verification
     - name: 11. Wait for ArgoCD server pods to be ready (Stage 1 - Running)
       kubernetes.core.k8s_info:
         kind: Pod
@@ -136,6 +147,7 @@
       until: >
         argocd_pods_ready.resources | length > 0 and
         argocd_pods_ready.resources[0].status.containerStatuses[0].ready == true
+
     - name: 13. Verify ArgoCD service is running
       ansible.builtin.command:
         cmd: >
@@ -145,11 +157,7 @@
       register: argocd_svc
       changed_when: false
 
-    - name: 14. Display ArgoCD service details
-      ansible.builtin.debug:
-        var: argocd_svc.stdout_lines
-
-    - name: 15. Get ArgoCD server pod name
+    - name: 14. Get ArgoCD server pod name
       ansible.builtin.command:
         cmd: >
           kubectl get pods -n {{ argocd_namespace }}
@@ -159,8 +167,8 @@
       register: argocd_pod_name
       changed_when: false
 
-    # Rule 3: Cluster-Internal Testing - Test from within cluster
-    - name: 16. Test ArgoCD HTTP response from within cluster
+    # Cluster-Internal Testing - Test from within cluster
+    - name: 15. Test ArgoCD HTTP response from within cluster
       ansible.builtin.shell: |
         kubectl run curl-test --image=curlimages/curl --rm -i --restart=Never -n {{ argocd_namespace }} -- \
         curl -s -w "HTTP_CODE:%{http_code}" http://argocd-server:80/
@@ -171,14 +179,14 @@
       delay: 15
       until: argocd_http_response.rc == 0 and (argocd_http_response.stdout.find('HTTP_CODE:200') != -1 or argocd_http_response.stdout.find('HTTP_CODE:302') != -1)
 
-    - name: 17. Apply ArgoCD IngressRoute configuration
+    - name: 16. Apply ArgoCD IngressRoute configuration
       kubernetes.core.k8s:
         kubeconfig: "{{ merged_kubeconf_file }}"
         state: present
         src: "{{ argocd_ingress_config_file }}"
         namespace: "{{ argocd_namespace }}"
 
-    - name: 18. Verify ArgoCD IngressRoute is created
+    - name: 17. Verify ArgoCD IngressRoute is created
       kubernetes.core.k8s_info:
         api_version: traefik.io/v1alpha1
         kind: IngressRoute
@@ -190,19 +198,26 @@
       delay: 2
       until: ingress_check.resources | length > 0
 
-    - name: 19. Check if ArgoCD credentials are available
-      ansible.builtin.shell: |
-        kubectl get secret argocd-initial-admin-secret -n {{ argocd_namespace }} --kubeconfig {{ merged_kubeconf_file }}
-      register: admin_secret_check
-      changed_when: false
-
-    - name: 20. Get standardized ArgoCD credentials
+    - name: 18. Get standardized ArgoCD credentials
       ansible.builtin.shell: |
         kubectl get secret urbalurba-secrets -n {{ argocd_namespace }} -o jsonpath='{.data.ARGOCD_ADMIN_USERNAME}' | base64 -d
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
       register: argocd_username
       changed_when: false
+
+    - name: 19. Run end-to-end ArgoCD tests
+      ansible.builtin.command: >
+        ansible-playbook /mnt/urbalurbadisk/ansible/playbooks/220-test-argocd.yml
+        -e kube_context={{ target_host | default('rancher-desktop') }}
+      register: argocd_test_result
+      failed_when: false
+      changed_when: false
+
+    - name: 20. Display test results
+      ansible.builtin.debug:
+        msg: "{{ argocd_test_result.stdout_lines | default(['No test output']) }}"
+      when: argocd_test_result.stdout_lines is defined
 
     - name: 21. Display final deployment status
       ansible.builtin.debug:

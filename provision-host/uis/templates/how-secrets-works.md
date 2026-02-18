@@ -103,19 +103,19 @@ graph LR
 
     subgraph "Deployment playbook (220-setup-argocd.yml)"
         READ["Task 8: Read plaintext<br/>from urbalurba-secrets"]
-        HASH["Task 8: printf + htpasswd<br/>→ bcrypt hash"]
-        CREATE["Task 9: Create argocd-secret<br/>admin.password: $2a$10$..."]
+        HASH["Task 8: printf + python3 bcrypt<br/>→ bcrypt hash"]
+        WRITE["Task 9: Write hash to<br/>temp Helm values file"]
     end
 
     subgraph "ArgoCD"
-        HELM["Task 10: Helm install<br/>createSecret: false"]
+        HELM["Task 10: Helm install<br/>-f temp-values.yaml<br/>createSecret: true"]
         AUTH["ArgoCD authenticates<br/>bcrypt_verify(input, hash)"]
     end
 
     US --> READ
     READ --> HASH
-    HASH --> CREATE
-    CREATE --> HELM
+    HASH --> WRITE
+    WRITE --> HELM
     HELM --> AUTH
 ```
 
@@ -169,9 +169,9 @@ An earlier design (Sept 2025, `create-kubernetes-secrets.sh` in the old `topsecr
 
 When the UIS system replaced `topsecret/`, `generate_kubernetes_secrets()` was written to process a single `00-master-secrets.yml.template` directly — simpler, no merge step, one file to maintain. The numbered files were copied along but never used.
 
-They were removed because:
+They were removed (Feb 2026) because:
 - `generate_kubernetes_secrets()` only reads `00-master-secrets.yml.template` — the numbered files were dead code
-- Some contained hardcoded values that conflicted with the master template (e.g., a bcrypt hash for `SecretPassword1` while the system uses `LocalDev123`)
+- Some contained hardcoded values that conflicted with the master template (e.g., a hardcoded bcrypt hash in `08-development-secrets.yml.template` for `argocd-secret` that conflicted with Helm's secret management)
 - Having unused files in `secrets-config/` confused both users and contributors about which files matter
 - Users who already have the old numbered files in `.uis.secrets/secrets-config/` are not affected — those files are simply ignored
 
@@ -254,20 +254,19 @@ Because service-specific variables reference `DEFAULT_ADMIN_PASSWORD`, changing 
 
 ## Special Case: Services That Need Hashed Passwords
 
-Some services (like ArgoCD) require a bcrypt hash instead of a plaintext password. `envsubst` is simple string substitution — it cannot run `htpasswd` to compute a hash.
+Some services (like ArgoCD) require a bcrypt hash instead of a plaintext password. `envsubst` is simple string substitution — it cannot compute a hash.
 
 For these services, the deployment playbook handles the hashing at deploy time:
 
 1. Reads the plaintext password from `urbalurba-secrets` (already in the cluster)
-2. Computes the bcrypt hash using `htpasswd`
-3. Creates the service-specific secret (e.g., `argocd-secret`) with the hash
-4. The Helm chart is configured with `createSecret: false` so it uses the pre-created secret
+2. Computes the bcrypt hash using Python bcrypt (`python3 -c "import bcrypt..."`)
+3. Writes the hash to a temporary Helm values file (`/tmp/argocd-password-values.yaml`)
+4. Passes the values file to Helm via `-f`, with `createSecret: true` so Helm creates `argocd-secret` with the correct hash
+5. Cleans up the temporary file after Helm install
 
 This keeps the user's workflow unchanged — they still only edit `DEFAULT_ADMIN_PASSWORD` in one place. The hashing is an implementation detail handled by the playbook.
 
-### Known Issue: `${ARGOCD_BCRYPT_PASSWORD}`
-
-The master template contains `admin.password: "${ARGOCD_BCRYPT_PASSWORD}"` for `argocd-secret`, but `ARGOCD_BCRYPT_PASSWORD` is never defined in `00-common-values.env.template`. `envsubst` replaces it with an empty string. The deployment playbook then overwrites this empty secret with the correct bcrypt hash before Helm installs ArgoCD. This works but is fragile — the `argocd-secret` definition in the master template could be removed since the playbook is the actual owner.
+The master template does NOT define `argocd-secret` — Helm owns it entirely. Only `urbalurba-secrets` (with the plaintext password) is created by the secrets system in the argocd namespace.
 
 ## Relationship to Existing Documentation
 

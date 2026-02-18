@@ -31,9 +31,9 @@ configs:
     # Insecure mode - use for HTTP/non-TLS setup
     server.insecure: "true"  # Enable insecure mode (for HTTP access)
     
-  # Secret settings - disable automatic creation since we're using pre-created secret
+  # Secret settings - Helm creates the secret with our bcrypt hash passed via --set
   secret:
-    createSecret: false  # Don't create the argocd-secret automatically as it's pre-created
+    createSecret: true
   
   # RBAC configuration - simplified for development
   rbac:
