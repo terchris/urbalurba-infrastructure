@@ -93,13 +93,13 @@ All 24 services have service scripts (`provision-host/uis/services/*/service-*.s
 |---------|:---:|:---:|:---:|:---:|-------|
 | **unity-catalog** | ✅ | ✅ `320-setup-unity-catalog.yml` | ✅ `320-remove-unity-catalog.yml` | ❌ | |
 | **spark** | ✅ | ✅ `330-setup-spark.yml` | ✅ `330-remove-spark.yml` | ❌ | |
-| **jupyterhub** | ✅ | ⚠️ `350-setup-jupyterhub.yml` | ✅ `350-remove-jupyterhub.yml` | ❌ | Deploy playbook hardcodes `topsecret/kubernetes/kubernetes-secrets.yml` (line 65) — must update to new path |
+| **jupyterhub** | ✅ | ✅ `350-setup-jupyterhub.yml` | ✅ `350-remove-jupyterhub.yml` | ❌ | Old path fixed in PR #35 |
 
 ### Network (800+)
 
 | Service | Service Script | Deploy | Remove | Verified | Notes |
 |---------|:---:|:---:|:---:|:---:|-------|
-| **tailscale-tunnel** | ✅ | ⚠️ `801-setup-network-tailscale-tunnel.yml` | ❌ Missing | ❌ | Missing remove playbook. Deploy playbook error messages reference `topsecret/` (lines 193-194) |
+| **tailscale-tunnel** | ✅ | ✅ `801-setup-network-tailscale-tunnel.yml` | ❌ Missing | ❌ | Missing remove playbook. Old path refs in error messages fixed in PR #35 |
 | **cloudflare-tunnel** | ✅ | ✅ `820-setup-network-cloudflare-tunnel.yml` | ❌ Missing | ❌ | No remove playbook |
 
 ---
@@ -116,21 +116,21 @@ All 24 services have service scripts (`provision-host/uis/services/*/service-*.s
 | Queues | 1 | 1 | None |
 | Management | 2 | 1 | gravitee needs new setup; argocd fully migrated |
 | AI | 2 | 2 | None |
-| Data Science | 3 | 2 | jupyterhub deploy playbook has old path dependency |
-| Network | 2 | 0 | Both missing remove playbooks; tailscale has old path refs |
-| **Total** | **24** | **20** | **4 need work** |
+| Data Science | 3 | 3 | None |
+| Network | 2 | 1 | Both missing remove playbooks; cloudflare missing remove playbook |
+| **Total** | **24** | **22** | **2 need work** (gravitee broken, network remove playbooks missing) |
 
 ### Playbooks with Old Path References (2026-02-18 scan)
 
 Scanned all playbooks in `ansible/playbooks/` for references to `topsecret/`, `secrets/`, and `cloud-init/`:
 
-| Playbook | Line | Reference | Impact |
-|----------|------|-----------|--------|
-| `01-configure_provision-host.yml` | 30 | `ansible/secrets/id_rsa_ansible.secret-key` | Hardcoded old SSH key path (infra playbook, not a service) |
-| `350-setup-jupyterhub.yml` | 65 | `topsecret/kubernetes/kubernetes-secrets.yml` | **Breaks if topsecret/ removed** |
-| `802-deploy-network-tailscale-tunnel.yml` | 193-194 | `topsecret/kubernetes/kubernetes-secrets.yml` | Error message text only (not runtime) |
+| Playbook | Line | Reference | Impact | Fixed |
+|----------|------|-----------|--------|:-----:|
+| `01-configure_provision-host.yml` | 30 | `ansible/secrets/id_rsa_ansible.secret-key` | Hardcoded old SSH key path | ✅ PR #35 |
+| `350-setup-jupyterhub.yml` | 65 | `topsecret/kubernetes/kubernetes-secrets.yml` | **Breaks if topsecret/ removed** | ✅ PR #35 |
+| `802-deploy-network-tailscale-tunnel.yml` | 193-194 | `topsecret/kubernetes/kubernetes-secrets.yml` | Error message text only | ✅ PR #35 |
 
-All other 24 service deploy/remove playbooks are clean — no old path references.
+All old path references in playbooks are now fixed. Also fixed: `ansible/ansible.cfg` and `provision-host/provision-host-vm-create.sh` (PR #35).
 
 ---
 
@@ -148,9 +148,11 @@ These must be fixed before PLAN-004-secrets-cleanup can remove backwards compati
 
 ### Tasks
 
-- [ ] 2.1 Fix `350-setup-jupyterhub.yml` line 65: replace `topsecret/kubernetes/kubernetes-secrets.yml` with new `.uis.secrets/` path
-- [ ] 2.2 Fix `01-configure_provision-host.yml` line 30: replace `ansible/secrets/id_rsa_ansible.secret-key` with new path
-- [ ] 2.3 Fix `802-deploy-network-tailscale-tunnel.yml` lines 193-194: update error message text to reference `.uis.secrets/`
+- [x] 2.1 Fix `350-setup-jupyterhub.yml` line 65: replace `topsecret/kubernetes/kubernetes-secrets.yml` with new `.uis.secrets/` path ✓ (PR #35)
+- [x] 2.2 Fix `01-configure_provision-host.yml` line 30: replace `ansible/secrets/id_rsa_ansible.secret-key` with new path ✓ (PR #35)
+- [x] 2.3 Fix `802-deploy-network-tailscale-tunnel.yml` lines 193-194: update error message text to reference `.uis.secrets/` ✓ (PR #35)
+- [x] 2.4 Fix `ansible/ansible.cfg`: update `private_key_file` to new `.uis.secrets/` path ✓ (PR #35)
+- [x] 2.5 Fix `provision-host/provision-host-vm-create.sh`: update SSH key copy destination, remove legacy fallback ✓ (PR #35)
 
 ---
 
@@ -201,9 +203,9 @@ Gravitee was not working before the migration. This is effectively a fresh setup
 | `provision-host/uis/services/management/service-argocd.sh` | ✅ Done — Add `SCRIPT_REMOVE_PLAYBOOK` |
 | `provision-host/uis/services/network/service-tailscale-tunnel.sh` | Add `SCRIPT_REMOVE_PLAYBOOK` |
 | `provision-host/uis/services/network/service-cloudflare-tunnel.sh` | Add `SCRIPT_REMOVE_PLAYBOOK` |
-| `ansible/playbooks/350-setup-jupyterhub.yml` | Replace hardcoded `topsecret/` path with new `.uis.secrets/` path |
-| `ansible/playbooks/01-configure_provision-host.yml` | Replace hardcoded `secrets/` SSH key path |
-| `ansible/playbooks/802-deploy-network-tailscale-tunnel.yml` | Update error message text to reference `.uis.secrets/` |
+| `ansible/playbooks/350-setup-jupyterhub.yml` | ✅ Done — Replace hardcoded `topsecret/` path (PR #35) |
+| `ansible/playbooks/01-configure_provision-host.yml` | ✅ Done — Replace hardcoded `secrets/` SSH key path (PR #35) |
+| `ansible/playbooks/802-deploy-network-tailscale-tunnel.yml` | ✅ Done — Update error message text (PR #35) |
 
 ## Files to Create
 
