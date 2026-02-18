@@ -8,15 +8,17 @@
 
 **Goal**: Track migration status of all 24 UIS services and complete remaining work for services that are not fully migrated.
 
-**Last Updated**: 2026-02-01
+**Last Updated**: 2026-02-18
 
 **Priority**: Medium — core services work, remaining items are edge cases
+
+**Blocks**: [PLAN-004-secrets-cleanup](PLAN-004-secrets-cleanup.md) — old path references in playbooks must be fixed before backwards compatibility code can be removed
 
 ---
 
 ## Service Migration Status
 
-All 24 services have service scripts (`provision-host/uis/services/*/service-*.sh`) and deploy playbooks. The table below tracks full migration status including remove playbooks and verified deployment.
+All 24 services have service scripts (`provision-host/uis/services/*/service-*.sh`) and deploy playbooks. The table below tracks full migration status including remove playbooks, verified deployment, and legacy path dependencies.
 
 ### Legend
 
@@ -24,6 +26,7 @@ All 24 services have service scripts (`provision-host/uis/services/*/service-*.s
 - **Deploy playbook**: Ansible playbook for `./uis deploy <service>`
 - **Remove playbook**: Ansible playbook for `./uis undeploy <service>`
 - **Verified**: Service has been deployed and tested in the new UIS system
+- **Old paths**: ⚠️ = playbook still references `topsecret/`, `secrets/`, or `cloud-init/`
 
 ### Core (000-029)
 
@@ -90,13 +93,13 @@ All 24 services have service scripts (`provision-host/uis/services/*/service-*.s
 |---------|:---:|:---:|:---:|:---:|-------|
 | **unity-catalog** | ✅ | ✅ `320-setup-unity-catalog.yml` | ✅ `320-remove-unity-catalog.yml` | ❌ | |
 | **spark** | ✅ | ✅ `330-setup-spark.yml` | ✅ `330-remove-spark.yml` | ❌ | |
-| **jupyterhub** | ✅ | ✅ `350-setup-jupyterhub.yml` | ✅ `350-remove-jupyterhub.yml` | ❌ | |
+| **jupyterhub** | ✅ | ⚠️ `350-setup-jupyterhub.yml` | ✅ `350-remove-jupyterhub.yml` | ❌ | Deploy playbook hardcodes `topsecret/kubernetes/kubernetes-secrets.yml` (line 65) — must update to new path |
 
 ### Network (800+)
 
 | Service | Service Script | Deploy | Remove | Verified | Notes |
 |---------|:---:|:---:|:---:|:---:|-------|
-| **tailscale-tunnel** | ✅ | ✅ `801-setup-network-tailscale-tunnel.yml` | ❌ Missing | ❌ | Only partial: `806-remove-tailscale-internal-ingress.yml` exists but doesn't remove the tunnel itself |
+| **tailscale-tunnel** | ✅ | ⚠️ `801-setup-network-tailscale-tunnel.yml` | ❌ Missing | ❌ | Missing remove playbook. Deploy playbook error messages reference `topsecret/` (lines 193-194) |
 | **cloudflare-tunnel** | ✅ | ✅ `820-setup-network-cloudflare-tunnel.yml` | ❌ Missing | ❌ | No remove playbook |
 
 ---
@@ -113,9 +116,21 @@ All 24 services have service scripts (`provision-host/uis/services/*/service-*.s
 | Queues | 1 | 1 | None |
 | Management | 2 | 1 | gravitee needs new setup; argocd fully migrated |
 | AI | 2 | 2 | None |
-| Data Science | 3 | 3 | None |
-| Network | 2 | 0 | Both missing remove playbooks |
-| **Total** | **24** | **21** | **3 need work** |
+| Data Science | 3 | 2 | jupyterhub deploy playbook has old path dependency |
+| Network | 2 | 0 | Both missing remove playbooks; tailscale has old path refs |
+| **Total** | **24** | **20** | **4 need work** |
+
+### Playbooks with Old Path References (2026-02-18 scan)
+
+Scanned all playbooks in `ansible/playbooks/` for references to `topsecret/`, `secrets/`, and `cloud-init/`:
+
+| Playbook | Line | Reference | Impact |
+|----------|------|-----------|--------|
+| `01-configure_provision-host.yml` | 30 | `ansible/secrets/id_rsa_ansible.secret-key` | Hardcoded old SSH key path (infra playbook, not a service) |
+| `350-setup-jupyterhub.yml` | 65 | `topsecret/kubernetes/kubernetes-secrets.yml` | **Breaks if topsecret/ removed** |
+| `802-deploy-network-tailscale-tunnel.yml` | 193-194 | `topsecret/kubernetes/kubernetes-secrets.yml` | Error message text only (not runtime) |
+
+All other 24 service deploy/remove playbooks are clean — no old path references.
 
 ---
 
@@ -127,41 +142,53 @@ All 24 services have service scripts (`provision-host/uis/services/*/service-*.s
 
 ---
 
-## Phase 2: Missing Remove Playbooks
+## Phase 2: Fix Old Path References in Playbooks
+
+These must be fixed before PLAN-004-secrets-cleanup can remove backwards compatibility.
 
 ### Tasks
 
-- [ ] 2.1 Create `801-remove-network-tailscale-tunnel.yml` — tear down Tailscale tunnel deployment and namespace
-- [ ] 2.2 Create `820-remove-network-cloudflare-tunnel.yml` — tear down Cloudflare tunnel deployment and namespace
-- [ ] 2.3 Update service scripts with `SCRIPT_REMOVE_PLAYBOOK` references
+- [ ] 2.1 Fix `350-setup-jupyterhub.yml` line 65: replace `topsecret/kubernetes/kubernetes-secrets.yml` with new `.uis.secrets/` path
+- [ ] 2.2 Fix `01-configure_provision-host.yml` line 30: replace `ansible/secrets/id_rsa_ansible.secret-key` with new path
+- [ ] 2.3 Fix `802-deploy-network-tailscale-tunnel.yml` lines 193-194: update error message text to reference `.uis.secrets/`
 
 ---
 
-## Phase 3: Gravitee (New Setup)
+## Phase 3: Missing Remove Playbooks
+
+### Tasks
+
+- [ ] 3.1 Create `801-remove-network-tailscale-tunnel.yml` — tear down Tailscale tunnel deployment and namespace
+- [ ] 3.2 Create `820-remove-network-cloudflare-tunnel.yml` — tear down Cloudflare tunnel deployment and namespace
+- [ ] 3.3 Update service scripts with `SCRIPT_REMOVE_PLAYBOOK` references
+
+---
+
+## Phase 4: Gravitee (New Setup)
 
 Gravitee was not working before the migration. This is effectively a fresh setup, not a migration.
 
 ### Tasks
 
-- [ ] 3.1 Investigate current state of `090-setup-gravitee.yml` — does it work at all?
-- [ ] 3.2 If broken, rewrite the deploy playbook or disable the service
-- [ ] 3.3 Create `090-remove-gravitee.yml`
-- [ ] 3.4 Test deploy and remove cycle
+- [ ] 4.1 Investigate current state of `090-setup-gravitee.yml` — does it work at all?
+- [ ] 4.2 If broken, rewrite the deploy playbook or disable the service
+- [ ] 4.3 Create `090-remove-gravitee.yml`
+- [ ] 4.4 Test deploy and remove cycle
 
 ---
 
-## Phase 4: Deployment Verification
+## Phase 5: Deployment Verification
 
 16 services have not been verified in the new UIS system. They have service scripts and playbooks, but haven't been deployed and tested.
 
 ### Tasks
 
-- [ ] 4.1 Verify monitoring stack: prometheus, grafana, loki, tempo, otel-collector
-- [ ] 4.2 Verify databases: mysql, mongodb, qdrant
-- [ ] 4.3 Verify AI stack: openwebui, litellm
-- [ ] 4.4 Verify data science stack: jupyterhub, spark, unity-catalog
-- [ ] 4.5 Verify other: nginx, elasticsearch, rabbitmq
-- [ ] 4.6 Verify network: tailscale-tunnel, cloudflare-tunnel (requires external accounts)
+- [ ] 5.1 Verify monitoring stack: prometheus, grafana, loki, tempo, otel-collector
+- [ ] 5.2 Verify databases: mysql, mongodb, qdrant
+- [ ] 5.3 Verify AI stack: openwebui, litellm
+- [ ] 5.4 Verify data science stack: jupyterhub, spark, unity-catalog
+- [ ] 5.5 Verify other: nginx, elasticsearch, rabbitmq
+- [ ] 5.6 Verify network: tailscale-tunnel, cloudflare-tunnel (requires external accounts)
 
 **Note**: Network services require external accounts (Tailscale auth key, Cloudflare token) and cannot be tested in a pure local setup.
 
@@ -171,9 +198,12 @@ Gravitee was not working before the migration. This is effectively a fresh setup
 
 | File | Change |
 |------|--------|
-| `provision-host/uis/services/management/service-argocd.sh` | Add `SCRIPT_REMOVE_PLAYBOOK` |
+| `provision-host/uis/services/management/service-argocd.sh` | ✅ Done — Add `SCRIPT_REMOVE_PLAYBOOK` |
 | `provision-host/uis/services/network/service-tailscale-tunnel.sh` | Add `SCRIPT_REMOVE_PLAYBOOK` |
 | `provision-host/uis/services/network/service-cloudflare-tunnel.sh` | Add `SCRIPT_REMOVE_PLAYBOOK` |
+| `ansible/playbooks/350-setup-jupyterhub.yml` | Replace hardcoded `topsecret/` path with new `.uis.secrets/` path |
+| `ansible/playbooks/01-configure_provision-host.yml` | Replace hardcoded `secrets/` SSH key path |
+| `ansible/playbooks/802-deploy-network-tailscale-tunnel.yml` | Update error message text to reference `.uis.secrets/` |
 
 ## Files to Create
 
