@@ -1,8 +1,9 @@
 # INVESTIGATE: Old Deployment System & UIS Migration
 
-**Status:** Investigation Complete
+**Status:** Completed
 **Created:** 2026-01-31
-**Related to:** [STATUS-service-migration](STATUS-service-migration.md)
+**Completed:** 2026-02-18
+**Related to:** [STATUS-service-migration](../backlog/STATUS-service-migration.md)
 
 ---
 

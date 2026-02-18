@@ -1,8 +1,10 @@
 # INVESTIGATE: ArgoCD Migration & Cleanup
 
-**Status:** Investigation Complete
+**Status:** Completed
 **Created:** 2026-01-31
-**Related to:** [STATUS-service-migration](STATUS-service-migration.md)
+**Completed:** 2026-02-18
+**Related to:** [STATUS-service-migration](../backlog/STATUS-service-migration.md)
+**Implementation:** [PLAN-argocd-migration](PLAN-argocd-migration.md)
 
 ---
 
@@ -192,6 +194,6 @@ Should `scripts/argocd/*.sh` be removed once `dev-argocd` exists, or kept as a f
 
 ## Conclusion
 
-ArgoCD is 95% migrated. The core deployment and application management are well implemented. The remaining work is metadata fixes and verification — no playbook rewrites needed.
+ArgoCD is fully migrated. All issues identified in this investigation were resolved in [PLAN-argocd-migration](PLAN-argocd-migration.md), including the SCRIPT_REMOVE_PLAYBOOK fix, deployment verification with E2E tests, bcrypt password handling, and secrets cleanup.
 
 The app management commands (`scripts/argocd/`) are developer-facing and should be exposed through the devcontainer-toolbox project as a `dev-argocd` manage command, keeping the Ansible playbooks in this infrastructure repo as the backend.

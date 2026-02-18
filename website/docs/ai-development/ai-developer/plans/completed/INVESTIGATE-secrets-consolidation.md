@@ -1,13 +1,14 @@
 # INVESTIGATE: Secrets Management Consolidation
 
-**Status:** ✅ Investigation Complete - Ready for Implementation Plan
+**Status:** Completed
 **Created:** 2025-01-23
-**Related to:** PLAN-004 (UIS Orchestration System)
-**Branch:** `feature/secrets-migration`
+**Completed:** 2026-02-18
+**Related to:** [PLAN-004-uis-orchestration-system](PLAN-004-uis-orchestration-system.md)
 
-> **NEXT SESSION:** Create implementation PLAN based on this investigation.
-> The investigation is complete with all design decisions made. Next step is to
-> create a PLAN file (in `plans/active/`) that breaks this into implementable tasks.
+> The investigation is complete with all design decisions made. The proposed
+> `.uis.extend/` and `.uis.secrets/` folder structure has been implemented as part
+> of the UIS orchestration system. See [PLAN-004-secrets-cleanup](../backlog/PLAN-004-secrets-cleanup.md)
+> for remaining backwards-compatibility removal work.
 
 ## Problem Statement
 
