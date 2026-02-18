@@ -38,6 +38,9 @@
     jupyterhub_chart: "jupyterhub/jupyterhub"
     jupyterhub_repo_url: "https://hub.jupyter.org/helm-chart/"
 
+    # Secrets file (auto-applied at start to create namespace and credentials)
+    secrets_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubernetes/kubernetes-secrets.yml"
+
     # Config files
     jupyterhub_config_file: "{{ manifests_folder }}/310-jupyterhub-config.yaml"
     jupyterhub_ingress_file: "{{ manifests_folder }}/311-jupyterhub-ingress.yaml"
@@ -61,8 +64,8 @@
         kubeconfig: "{{ merged_kubeconf_file }}"
 
     - name: 3. Apply urbalurba-secrets to cluster (includes jupyterhub namespace)
-      ansible.builtin.shell: |
-        kubectl apply -f /mnt/urbalurbadisk/topsecret/kubernetes/kubernetes-secrets.yml
+      ansible.builtin.command: >
+        kubectl apply -f {{ secrets_file }}
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
       register: secrets_apply_result

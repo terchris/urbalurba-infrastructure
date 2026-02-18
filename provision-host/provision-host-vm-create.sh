@@ -87,22 +87,21 @@ check_command_success "Mounting host directory"
 multipass info $VM_NAME
 check_command_success "Get VM info"
 
-# Copy ansible secret key (check both new and legacy paths)
+# Copy ansible secret key to VM
 SSH_KEY_FILE=""
 if [ -f "../.uis.secrets/ssh/id_rsa_ansible" ]; then
     SSH_KEY_FILE="../.uis.secrets/ssh/id_rsa_ansible"
-elif [ -f "../secrets/id_rsa_ansible" ]; then
-    SSH_KEY_FILE="../secrets/id_rsa_ansible"
 fi
 
 if [ -n "$SSH_KEY_FILE" ]; then
-    echo "Now copying ansible secret key to /mnt/urbalurbadisk/ansible/secrets/id_rsa_ansible.secret-key"
-    multipass exec $VM_NAME -- sudo mkdir -p /mnt/urbalurbadisk/ansible/secrets
-    multipass transfer "$SSH_KEY_FILE" $VM_NAME:/mnt/urbalurbadisk/ansible/secrets/id_rsa_ansible.secret-key
+    echo "Now copying ansible secret key to /mnt/urbalurbadisk/.uis.secrets/ssh/id_rsa_ansible"
+    multipass exec $VM_NAME -- sudo mkdir -p /mnt/urbalurbadisk/.uis.secrets/ssh
+    multipass transfer "$SSH_KEY_FILE" $VM_NAME:/mnt/urbalurbadisk/.uis.secrets/ssh/id_rsa_ansible
     check_command_success "Transferring ansible secret key"
 else
     echo "Warning: ansible secret key does not exist. Skipping transfer."
-    echo "Looked for: ../.uis.secrets/ssh/id_rsa_ansible or ../secrets/id_rsa_ansible"
+    echo "Looked for: ../.uis.secrets/ssh/id_rsa_ansible"
+    echo "Run './uis' first to generate SSH keys."
     STATUS+=("Transferring ansible secret key: Skipped")
     ERROR=1
 fi
