@@ -8,13 +8,82 @@
 
 **Goal**: Complete the secrets consolidation by removing backwards compatibility code, cleaning up deprecated files, and updating documentation.
 
-**Last Updated**: 2025-01-23
+**Last Updated**: 2026-02-18
 
-**Branch**: `feature/secrets-migration`
+**Branch**: `feature/secrets-cleanup`
 
 **Prerequisites**: PLAN-001, PLAN-002, and PLAN-003 must be complete and validated
 
 **Related**: [INVESTIGATE-secrets-consolidation](INVESTIGATE-secrets-consolidation.md), [INVESTIGATE-passwords](INVESTIGATE-passwords.md) (password architecture mismatch)
+
+**Dependency**: Consider completing [STATUS-service-migration](STATUS-service-migration.md) first — services still being migrated may rely on old paths. Removing backwards compatibility before all services are verified could break them.
+
+---
+
+## Investigation Findings (2026-02-18)
+
+### Security Issues
+
+| File | Issue | Severity |
+|------|-------|----------|
+| `secrets/id_rsa_ansible` | Real SSH private key committed to repo | HIGH |
+| `secrets/id_rsa_ansible.pub` | Corresponding public key | HIGH |
+| `hosts/azure-aks/azure-aks-config.sh` | Real Azure Tenant/Subscription IDs | MEDIUM |
+| `hosts/azure-microk8s/azure-vm-config-redcross-sandbox.sh` | Same Azure IDs | MEDIUM |
+
+Note: The host config files are in `.gitignore` but were committed before the rules were added.
+
+### Folder Status
+
+#### `topsecret/` — Has active dependencies, cannot remove yet
+- `secrets-templates/` is COPY'd into Docker image (Dockerfile line 64)
+- `kubernetes-secrets.yml` is hardcoded in `350-setup-jupyterhub.yml` (line 65)
+- `uis` wrapper mounts it read-only if present (line 130-133)
+- `paths.sh` falls back to it via 7 functions
+- **Blocker**: Must update Dockerfile and JupyterHub playbook before removal
+
+#### `secrets/` — Purely legacy, safe to remove after removing fallbacks
+- SSH keys and `create-secrets.sh` — fully replaced by `generate_ssh_keys()` in `first-run.sh`
+- Some old scripts check it as fallback (`paths.sh`, `install-rancher.sh`, `provision-host-vm-create.sh`)
+- New UIS system never uses this directly
+
+#### `cloud-init/` — Duplicated, partially legacy
+- Templates duplicated in `provision-host/uis/templates/ubuntu-cloud-init/`
+- Old `hosts/*/` scripts still reference root-level `cloud-init/` directly
+- `create-cloud-init.sh` reads from `topsecret/` and `secrets/`
+- **Blocker**: Old host scripts must be updated before removal
+
+#### Host config files — Still actively used by old host scripts
+- AKS and Azure MicroK8s scripts source these configs directly
+- New UIS templates exist in `provision-host/uis/templates/uis.extend/hosts/`
+- **Blocker**: Old host scripts still depend on these configs
+
+### Backwards Compatibility Code Inventory
+
+| Location | Items | Type |
+|----------|-------|------|
+| `uis` wrapper (root) | `check_topsecret()`, mounts for `topsecret/` and `secrets/`, kubeconfig symlinks | Conditional mounts |
+| `provision-host/uis/lib/paths.sh` | 7 fallback functions, `warn_deprecated_path()`, detection functions | Runtime fallback |
+| `provision-host/uis/lib/secrets-management.sh` | `has_topsecret_config()`, template dir fallback, `apply_secrets()` legacy check | Runtime fallback |
+| `provision-host/uis/lib/first-run.sh` | Comment references | Documentation |
+| `ansible/playbooks/04-merge-kubeconf.yml` | Dual path support with deprecation warning | Runtime fallback |
+| `ansible/playbooks/350-setup-jupyterhub.yml` | Hardcoded `topsecret/kubernetes/kubernetes-secrets.yml` (line 65) | Active legacy |
+| `provision-host/uis/tests/unit/test-backwards-compat-paths.sh` | Full backwards compat test suite (~20 tests) | Test validation |
+| `provision-host/uis/tests/unit/test-paths.sh` | Legacy path tests (~10 tests) | Test validation |
+
+### Documentation References (20+ files)
+
+Files in `website/docs/` that reference `topsecret/`:
+- `provision-host/tools.md`, `networking/tailscale-setup.md`, `getting-started/architecture.md`
+- `index.md`, `packages/ai/` (4 files), `packages/datascience/` (2 files)
+- `packages/authentication/` (3 files), `rules/development-workflow.md`
+- `reference/manifests.md`, `reference/secrets-management.md`
+
+### Recommended Removal Order
+
+**Phase A** — Safe now: Remove `secrets/` folder, remove committed config files with secrets
+**Phase B** — After updating refs: Update Dockerfile, JupyterHub playbook; remove backwards-compat code; remove `topsecret/`
+**Phase C** — After updating host scripts: Update `hosts/*/` scripts to use UIS paths; remove `cloud-init/`
 
 ---
 
