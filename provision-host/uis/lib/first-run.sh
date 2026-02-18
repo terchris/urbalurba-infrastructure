@@ -1,8 +1,9 @@
 #!/bin/bash
 # first-run.sh - First-run helpers (runs INSIDE container)
 #
-# NOTE: Folder creation (.uis.extend/, .uis.secrets/) happens on HOST in wrapper script.
-# This library manages CONTENTS of those folders once mounted.
+# NOTE: Folder creation (.uis.extend/, .uis.secrets/) normally happens on HOST in wrapper script.
+# However, copy_defaults_if_missing() also creates them with mkdir -p as a fallback,
+# so the CLI works from a fresh git checkout without Docker (e.g., CI, direct host usage).
 
 # Guard against multiple sourcing
 [[ -n "${_UIS_FIRST_RUN_LOADED:-}" ]] && return 0
@@ -27,10 +28,18 @@ check_first_run() {
 }
 
 # Copy default config files if they don't exist
-# Called when container starts with empty mounted volumes
+# Called when container starts with empty mounted volumes, or on first CLI run.
+# In Docker: wrapper script creates .uis.extend/ and .uis.secrets/ before mounting.
+# Outside Docker (CI, fresh checkout): directories don't exist yet, so we create them.
 copy_defaults_if_missing() {
     local templates_extend="$TEMPLATES_DIR/uis.extend"
     local templates_secrets="$TEMPLATES_DIR/uis.secrets"
+
+    # Create target directories if missing. Normally the Docker wrapper does this,
+    # but outside Docker (CI, direct host usage) they won't exist yet.
+    # mkdir -p is idempotent — safe to call even if directories already exist.
+    mkdir -p "$EXTEND_DIR"
+    mkdir -p "$SECRETS_DIR"
 
     # Copy enabled-services.conf
     if [[ ! -f "$EXTEND_DIR/enabled-services.conf" ]]; then
@@ -97,10 +106,13 @@ copy_defaults_if_missing() {
         fi
     done
 
-    # Copy secrets templates, generate, and apply Kubernetes secrets
-    copy_secrets_templates
-    generate_kubernetes_secrets
-    apply_kubernetes_secrets
+    # Copy secrets templates, generate, and apply Kubernetes secrets.
+    # Non-fatal (|| true) because these depend on external tools (envsubst, kubectl)
+    # and a running cluster, which won't be available in CI or on a fresh checkout.
+    # Each function logs its own warnings when it can't complete.
+    copy_secrets_templates || true
+    generate_kubernetes_secrets || true
+    apply_kubernetes_secrets || true
 }
 
 # Validate that config structure is correct
