@@ -30,12 +30,7 @@
   gather_facts: true
   become: false
   vars:
-    # New path (preferred): .uis.secrets/generated/kubeconfig/
-    new_kubernetes_files_path: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/"
-    # Legacy path (backwards compatibility)
-    legacy_kubernetes_files_path: "/mnt/urbalurbadisk/kubeconfig/"
-    # Will be set dynamically based on which path exists
-    kubernetes_files_path: "{{ new_kubernetes_files_path if (new_path_exists | default(false)) else legacy_kubernetes_files_path }}"
+    kubernetes_files_path: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/"
     temp_dir: "{{ kubernetes_files_path }}tmp"
     merged_kubeconf_file: "{{ kubernetes_files_path }}kubeconf-all"
     kubeconfig_owner: "ansible"
@@ -53,30 +48,6 @@
         msg: >
           KUBECONFIG environment variable has been added system-wide.
           Please reload your shell or log out and log back in for the changes to take effect.
-
-  pre_tasks:
-    - name: Check if new kubeconfig path exists
-      ansible.builtin.stat:
-        path: "{{ new_kubernetes_files_path }}"
-      register: new_path_check
-
-    - name: Set path based on what exists
-      ansible.builtin.set_fact:
-        new_path_exists: "{{ new_path_check.stat.exists | default(false) }}"
-        kubernetes_files_path: "{{ new_kubernetes_files_path if new_path_check.stat.exists else legacy_kubernetes_files_path }}"
-
-    - name: Show deprecation warning if using legacy path
-      ansible.builtin.debug:
-        msg: |
-          WARNING: Using legacy kubeconfig path: {{ legacy_kubernetes_files_path }}
-          Consider migrating to: {{ new_kubernetes_files_path }}
-          Run './uis' to set up the new secrets structure.
-      when: not new_path_exists
-
-    - name: Update derived paths
-      ansible.builtin.set_fact:
-        temp_dir: "{{ kubernetes_files_path }}tmp"
-        merged_kubeconf_file: "{{ kubernetes_files_path }}kubeconf-all"
 
   tasks:
     - name: 1. Playbook running as user

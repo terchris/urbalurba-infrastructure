@@ -238,7 +238,7 @@ ssh_keys_exist() {
 }
 
 # Copy secrets templates to .uis.secrets/secrets-config/ on first run
-# This enables the same workflow as topsecret: edit secrets-config/, then generate
+# Workflow: edit secrets-config/, then generate kubernetes secrets
 # Returns: 0 if copied or already exists
 copy_secrets_templates() {
     local templates_src="$TEMPLATES_DIR/secrets-templates"

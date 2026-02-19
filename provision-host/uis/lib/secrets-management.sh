@@ -2,7 +2,7 @@
 # secrets-management.sh - Secrets management for UIS
 #
 # Provides commands for initializing, generating, and applying secrets.
-# Works with the existing topsecret/ secrets structure.
+# Works with the .uis.secrets/ structure.
 
 # Guard against multiple sourcing
 [[ -n "${_UIS_SECRETS_MANAGEMENT_LOADED:-}" ]] && return 0
@@ -37,22 +37,7 @@ get_secrets_templates_dir() {
 
 # Internal: wrapper to avoid name collision
 get_secrets_templates_dir_from_paths() {
-    # New path: templates/uis.secrets/
-    local new_path
-    new_path="$(get_templates_dir)/uis.secrets"
-    if [[ -d "$new_path" ]]; then
-        echo "$new_path"
-        return 0
-    fi
-
-    # Legacy fallback: topsecret/secrets-templates/
-    if [[ -d "/mnt/urbalurbadisk/topsecret/secrets-templates" ]]; then
-        echo "/mnt/urbalurbadisk/topsecret/secrets-templates"
-        return 0
-    fi
-
-    # Default to new path
-    echo "$new_path"
+    echo "$(get_templates_dir)/uis.secrets"
 }
 
 # Check if user has configured secrets
@@ -64,22 +49,6 @@ has_user_secrets() {
 
     [[ -d "$secrets_dir/secrets-config" && \
        -f "$secrets_dir/secrets-config/00-common-values.env.template" ]]
-}
-
-# Check if user has existing topsecret config
-# Usage: has_topsecret_config
-# Returns: 0 if topsecret/secrets-config exists, 1 otherwise
-has_topsecret_config() {
-    local base_path
-    base_path=$(get_base_path)
-
-    # Container path
-    [[ -d "/mnt/urbalurbadisk/topsecret/secrets-config" ]] && return 0
-
-    # Host path
-    [[ -d "$base_path/../topsecret/secrets-config" ]] && return 0
-
-    return 1
 }
 
 # ============================================================

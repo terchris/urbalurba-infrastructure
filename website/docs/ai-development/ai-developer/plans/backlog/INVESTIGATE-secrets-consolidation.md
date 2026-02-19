@@ -1,13 +1,15 @@
 # INVESTIGATE: Secrets Management Consolidation
 
-**Status:** Investigation Complete — Waiting for PLAN-004
+**Status:** Investigation Complete — PLAN-004 ready for implementation
 **Created:** 2025-01-23
+**Updated:** 2026-02-19 — Added cleanup readiness audit
 **Related to:** [PLAN-004-uis-orchestration-system](../completed/PLAN-004-uis-orchestration-system.md)
 
 > The investigation is complete with all design decisions made. The proposed
 > `.uis.extend/` and `.uis.secrets/` folder structure has been implemented as part
-> of the UIS orchestration system. See [PLAN-004-secrets-cleanup](PLAN-004-secrets-cleanup.md)
-> for remaining backwards-compatibility removal work.
+> of the UIS orchestration system. The cleanup audit (2026-02-19) confirmed all
+> prerequisites are met — backwards compatibility code can now be safely removed.
+> See [PLAN-004-secrets-cleanup](../active/PLAN-004-secrets-cleanup.md) for the implementation plan.
 
 ## Problem Statement
 
@@ -657,6 +659,153 @@ $ ./uis deploy my-raspberry-pi
 
 ---
 
+## Cleanup Readiness Audit (2026-02-19)
+
+Detailed code audit to determine what backwards compatibility code remains and whether it can be safely removed.
+
+### Prerequisites Verified
+
+All old path references in Ansible playbooks were fixed in PR #35 (merged, verified by tester):
+
+| Playbook | What was fixed |
+|----------|---------------|
+| `01-configure_provision-host.yml` | SSH key path `ansible/secrets/` → `.uis.secrets/ssh/` |
+| `350-setup-jupyterhub.yml` | Hardcoded `topsecret/kubernetes/kubernetes-secrets.yml` → new path |
+| `802-deploy-network-tailscale-tunnel.yml` | Error message text updated |
+| `ansible/ansible.cfg` | `private_key_file` updated |
+| `provision-host/provision-host-vm-create.sh` | SSH key copy destination updated |
+
+### Backwards Compatibility Code Inventory
+
+#### `provision-host/uis/lib/paths.sh` — 7 fallback functions
+
+The file has two sections: core path functions (clean, no legacy) and backwards-compatible functions (lines 166-416). The backwards-compat section contains:
+
+| Item | Lines | Description |
+|------|-------|-------------|
+| `OLD_SECRETS_BASE` constant | 176 | `/mnt/urbalurbadisk/topsecret` |
+| `OLD_SSH_BASE` constant | 177 | `/mnt/urbalurbadisk/secrets` |
+| `_DEPRECATION_WARNING_SHOWN` | 180 | Session-scoped warning flag |
+| `warn_deprecated_path()` | 188-200 | Shows deprecation warning once per session |
+| `get_secrets_base_path()` | 210-219 | Falls back to `OLD_SECRETS_BASE` |
+| `get_ssh_key_path()` | 224-247 | Falls back to `OLD_SSH_BASE` and `OLD_SECRETS_BASE/ssh` |
+| `get_kubernetes_secrets_path()` | 252-274 | Falls back to `OLD_SECRETS_BASE/kubernetes` |
+| `get_cloud_init_output_path()` | 279-301 | Falls back to `/mnt/urbalurbadisk/cloud-init` |
+| `get_kubeconfig_path()` | 306-328 | Falls back to `OLD_SECRETS_BASE` |
+| `get_tailscale_key_path()` | 333-352 | Falls back to `OLD_SECRETS_BASE/kubernetes/kubernetes-secrets.yml` |
+| `get_cloudflare_token_path()` | 357-375 | Falls back to `OLD_SECRETS_BASE/cloudflare` |
+| `is_using_legacy_paths()` | 406-408 | Detection function |
+
+**Action:** Simplify all 7 `get_*` functions to one-liners returning only new paths. Remove constants, warning function, and `is_using_legacy_paths()`. Keep `is_using_new_paths()`, `ensure_path_exists()`, `get_cloud_credentials_path()`.
+
+#### `provision-host/uis/lib/secrets-management.sh` — 3 legacy items
+
+| Item | Lines | Description |
+|------|-------|-------------|
+| Comment | 5 | References `topsecret/` structure |
+| `get_secrets_templates_dir()` fallback | 48-51 | Falls back to `topsecret/secrets-templates` |
+| `has_topsecret_config()` | 70-80 | Checks if `topsecret/secrets-config` exists |
+
+**Action:** Update comment, remove fallback, remove `has_topsecret_config()`.
+
+#### `uis` (root wrapper) — 4 legacy items
+
+| Item | Lines | Description |
+|------|-------|-------------|
+| `check_topsecret()` | 32-39 | Function to check if topsecret/ exists |
+| topsecret volume mount | 130-133 | Mounts `topsecret/` read-only if present |
+| secrets/ volume mount | 136-138 | Mounts `secrets/` read-only if present |
+| kubeconfig symlink | 159-174 | Creates legacy `/mnt/urbalurbadisk/kubeconfig` symlink |
+
+**Action:** Remove `check_topsecret()`, both legacy mounts, and the legacy kubeconfig symlink (keep the new `.uis.secrets/generated/kubeconfig` symlink).
+
+#### `Dockerfile.uis-provision-host` — 2 legacy items
+
+| Item | Lines | Description |
+|------|-------|-------------|
+| COPY secrets-templates | 64 | `COPY topsecret/secrets-templates/ ...` (templates already in `provision-host/uis/templates/`) |
+| mkdir topsecret | 85-87 | Creates mount points for topsecret dirs |
+
+**Action:** Remove both. Templates are already in `provision-host/uis/templates/secrets-templates/`.
+
+#### `ansible/playbooks/04-merge-kubeconf.yml` — dual path support
+
+| Item | Lines | Description |
+|------|-------|-------------|
+| `legacy_kubernetes_files_path` var | 36 | Fallback path `/mnt/urbalurbadisk/kubeconfig/` |
+| Dynamic path selection | 38 | Jinja2 conditional choosing new vs legacy |
+| `pre_tasks` block | 57-79 | stat check, set_fact, deprecation warning |
+
+**Action:** Remove legacy var, simplify to single new path, remove all pre_tasks.
+
+#### `provision-host/provision-host-vm-create.sh` — 1 legacy item
+
+| Item | Lines | Description |
+|------|-------|-------------|
+| topsecret rsync | 152-154 | `rsync ../topsecret/ $VM_NAME:/mnt/urbalurbadisk/topsecret/` |
+
+**Action:** Remove the topsecret rsync block (new path rsync on line 150 already handles it).
+
+#### `provision-host/uis/lib/first-run.sh` — 1 comment reference
+
+| Item | Lines | Description |
+|------|-------|-------------|
+| Comment | 241 | References `topsecret` in workflow description |
+
+**Action:** Update comment to describe the workflow without referencing topsecret.
+
+#### Test files — 1 file to delete, 2 to update
+
+| File | Action | Description |
+|------|--------|-------------|
+| `test-backwards-compat-paths.sh` | **Delete** | 358-line test suite for backwards compat (~20 tests) |
+| `test-paths.sh` | Update | Remove OLD_* constant tests and backwards-compat function tests (lines 151-273) |
+| `test-phase6-secrets.sh` | Update | Remove `has_topsecret_config` from function existence check loop (line 43) |
+
+### Git-Tracked Files to Remove
+
+#### `secrets/` folder — 1 tracked file
+
+```
+secrets/create-secrets.sh    # Only tracked file (SSH keys are gitignored)
+```
+
+#### `topsecret/` folder — 24 tracked files
+
+```
+topsecret/DEPRECATED.md
+topsecret/copy-secrets2host.sh
+topsecret/create-kubernetes-secrets.sh
+topsecret/kubeconf-copy2local.sh
+topsecret/update-kubernetes-secrets-rancher.sh
+topsecret/update-kubernetes-secrets-v2.sh
+topsecret/kubernetes/argocd-secret-correct.yml
+topsecret/kubernetes/argocd-secret-fix.yml
+topsecret/kubernetes/argocd-secret-fixed.yml
+topsecret/kubernetes/argocd-urbalurba-secrets.yml
+topsecret/secrets-templates/00-common-values.env.template
+topsecret/secrets-templates/00-master-secrets.yml.template
+topsecret/secrets-templates/configmaps/ai/models/litellm.yaml.template
+topsecret/secrets-templates/configmaps/monitoring/configs/test-config.yaml.template
+topsecret/secrets-templates/configmaps/monitoring/dashboards/*.json.template (8 files)
+```
+
+### `.gitignore` entries to clean up
+
+7 entries referencing `topsecret/` paths (lines 8-11, 20-21, 45) can be removed.
+
+### Deferred Items (NOT part of PLAN-004)
+
+These have active hard dependencies and need separate work:
+
+| Item | Why deferred |
+|------|-------------|
+| `cloud-init/` folder | Still referenced by `provision-host-vm-create.sh` and host scripts |
+| `hosts/` folder configs | Azure scripts actively used, scripts copied to VMs |
+| Documentation updates | 17+ user-facing docs reference `topsecret/` — large scope, separate PR |
+
+---
+
 ## Next Steps
 
 1. [x] Document current folder structure ✓
@@ -668,7 +817,8 @@ $ ./uis deploy my-raspberry-pi
 7. [x] Review proposed structure with user ✓
 8. [x] Define user journeys and CLI commands ✓
 9. [x] Resolve all gaps ✓
-10. [ ] **Create implementation PLAN based on this investigation**
+10. [x] Cleanup readiness audit ✓ (2026-02-19)
+11. [x] **Implementation PLAN updated and moved to active/** ✓ (2026-02-19)
 
 ---
 

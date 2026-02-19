@@ -40,7 +40,7 @@ fi
 # Test: secrets-management.sh functions exist
 # ============================================================
 
-for fn in get_user_secrets_dir get_secrets_templates_dir has_user_secrets has_topsecret_config init_secrets show_secrets_status generate_secrets apply_secrets validate_secrets edit_secrets; do
+for fn in get_user_secrets_dir get_secrets_templates_dir has_user_secrets init_secrets show_secrets_status generate_secrets apply_secrets validate_secrets edit_secrets; do
     start_test "secrets-management.sh defines $fn"
     assert_function_exists "$fn" && pass_test
 done

@@ -5,20 +5,12 @@ kubeconf-all
 kubernetes-secrets.yml
 kubernetes-secrets.yml.backup*
 kubernetes-secrets.yml.tmp
-/topsecret/azure
-/topsecret/kubeconfig
-/topsecret/cloudflare/cloudflare-tunnel.pem
-/topsecret/cloudflare/dev-tunnel.json
 
 .DS_Store
 cloudflare-notes.md
 debugging
 
 /terchris
-
-# Modular secrets management system
-/topsecret/secrets-config/
-/topsecret/secrets-generated/
 
 # Azure configuration files with sensitive data
 hosts/azure-microk8s/azure-vm-config-redcross-sandbox.sh
@@ -27,22 +19,17 @@ hosts/azure-aks/azure-aks-config.sh
 troubleshooting/*.txt
 troubleshooting/output/*
 
-
-# AI stuff 
+# AI stuff
 .playwright-mcp
 WARP.md
 CLAUDE.md
 
-
-# Top secret folder - contains credentials (NEVER commit)
+# Secrets folder - contains credentials (NEVER commit)
 .devcontainer.secrets/
 
 # UIS user configuration (created by ./uis on first run)
 .uis.extend/
 .uis.secrets/
-
-# Generated kubernetes secrets (anywhere in repo)
-/topsecret/kubernetes/kubernetes-secrets.yml
 
 # Temp folder for container JSON generation testing
 .temp/
