@@ -7,33 +7,20 @@
 
 Determine the exact procedure to factory-reset Rancher Desktop, reprovision from scratch, and verify all 24 services deploy and undeploy correctly.
 
-## Two Types of Reset
-
-### Reset Kubernetes (lighter)
-
-Rancher Desktop → Troubleshooting → Reset Kubernetes:
-- **Wipes**: K3s cluster, all pods, PersistentVolumes, kubeconfig
-- **Survives**: Only host filesystem files
-
-### Factory Reset (full wipe)
+## Factory Reset
 
 Rancher Desktop → Troubleshooting → Factory Reset:
-- **Wipes**: Everything above, plus Rancher Desktop settings
-- **Survives**: Only host filesystem files
+- **Wipes**: K3s cluster, all pods, PersistentVolumes, Docker containers, Docker images, Rancher Desktop settings
+- **Survives**: Only host filesystem files (`.uis.extend/`, `.uis.secrets/`, repo files)
 
-Both reset types wipe the `uis-provision-host` container and image (must be re-pulled or rebuilt).
+The `uis-provision-host` container and image must be re-pulled or rebuilt after factory reset.
 
-What **survives** on the host:
-- `.uis.extend/` (enabled-services.conf, cluster-config.sh)
-- `.uis.secrets/` (generated secrets, SSH keys, templates)
-- All repo files
+## Recovery Procedure
 
-## Recovery Procedure (Modern UIS Path)
-
-After a reset and re-enabling Kubernetes:
+After factory reset and re-enabling Kubernetes:
 
 ```bash
-./uis start            # pulls/creates container if missing (factory reset), or restarts existing one
+./uis start            # pulls/creates container (image must exist or be pulled)
 ./uis deploy           # calls ensure_secrets_applied() automatically, deploys enabled services
 ```
 
