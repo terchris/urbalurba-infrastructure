@@ -20,7 +20,7 @@
   hosts: localhost
   gather_facts: false
   vars:
-    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
     authentik_namespace: "authentik"
     default_namespace: "default"
 

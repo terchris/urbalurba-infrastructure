@@ -24,7 +24,7 @@
   gather_facts: false
   vars:
     manifests_folder: "/mnt/urbalurbadisk/manifests"
-    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
     ai_namespace: "ai"
     installation_timeout: 900  # 15 minutes timeout for installations
     pod_readiness_timeout: 600  # 10 minutes timeout for pod readiness

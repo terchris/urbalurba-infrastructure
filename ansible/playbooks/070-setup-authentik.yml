@@ -29,7 +29,7 @@
   gather_facts: false
   vars:
     manifests_folder: "/mnt/urbalurbadisk/manifests"
-    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
     authentik_namespace: "authentik"
     default_namespace: "default"
     installation_timeout: 900  # 15 minutes timeout for installations

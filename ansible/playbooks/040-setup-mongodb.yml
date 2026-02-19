@@ -7,7 +7,7 @@
   gather_facts: false
   vars:
     manifests_folder: "/mnt/urbalurbadisk/manifests"
-    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
     mongodb_config_path: "{{ manifests_folder }}/040-mongodb-config.yaml"
     mongodb_namespace: "default"  # Using default namespace for simplicity
 

@@ -12,7 +12,7 @@
   hosts: localhost
   gather_facts: false
   vars:
-    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
     test_db_name: "test_verify_db"
     test_table_name: "test_table"
 

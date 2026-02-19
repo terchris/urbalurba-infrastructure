@@ -22,7 +22,7 @@
   gather_facts: false
   vars:
     manifests_folder: "/mnt/urbalurbadisk/manifests"
-    kubeconfig_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    kubeconfig_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
     operator_config_template: "800-tailscale-operator-config.yaml.j2"
     internal_ingress_manifest: "805-tailscale-internal-ingress.yaml.j2"
     # Default hostname if not provided via -e or K8s secret

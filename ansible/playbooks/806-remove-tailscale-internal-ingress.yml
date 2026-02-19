@@ -16,7 +16,7 @@
   hosts: localhost
   gather_facts: false
   vars:
-    kubeconfig_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    kubeconfig_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
     operator_namespace: "tailscale"
     operator_release_name: "tailscale-operator"
     remove_operator: false

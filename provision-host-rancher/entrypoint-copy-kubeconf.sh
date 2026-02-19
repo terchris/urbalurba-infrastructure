@@ -19,7 +19,7 @@
 set -e
 
 # Target kubeconfig path on the volume
-TARGET_KUBECONFIG="/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+TARGET_KUBECONFIG="/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
 # Host-mounted kubeconfig path
 HOST_KUBECONFIG="/tmp/host-kube/config"
 
@@ -33,7 +33,7 @@ if [ ! -f "$TARGET_KUBECONFIG" ] && [ -f "$HOST_KUBECONFIG" ]; then
   
   # Create target directory structure on the volume
   echo "* Creating target directory structure"
-  mkdir -p /mnt/urbalurbadisk/kubeconfig
+  mkdir -p /mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig
   
   # Copy kubeconfig from host to the specified location on volume
   echo "* Copying initial kubeconfig to $TARGET_KUBECONFIG"
@@ -41,7 +41,7 @@ if [ ! -f "$TARGET_KUBECONFIG" ] && [ -f "$HOST_KUBECONFIG" ]; then
   
   # Ensure ansible user can access the file
   echo "* Setting appropriate permissions for ansible user"
-  chown -R ansible:ansible /mnt/urbalurbadisk/kubeconfig
+  chown -R ansible:ansible /mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig
   
   echo "* Successfully set up initial kubeconfig on volume"
 else

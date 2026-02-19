@@ -18,7 +18,7 @@
   gather_facts: false
   vars:
     manifests_folder: "/mnt/urbalurbadisk/manifests"
-    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
     ai_namespace: "ai"
     storage_config_file: "{{ manifests_folder }}/200-ai-persistent-storage.yaml"
     openwebui_ingress_file: "{{ manifests_folder }}/210-openwebui-ingress.yaml"

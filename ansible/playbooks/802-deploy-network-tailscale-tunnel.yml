@@ -20,7 +20,7 @@
   gather_facts: false
   vars:
     manifests_folder: "/mnt/urbalurbadisk/manifests"
-    kubeconfig_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    kubeconfig_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
     operator_config: "800-tailscale-operator-config.yaml"
     ingress_manifest: "803-tailscale-cluster-ingress.yaml.j2"
     TAILSCALE_CLUSTER_HOSTNAME: "{{ TAILSCALE_CLUSTER_HOSTNAME | default('k8s') }}"

@@ -18,7 +18,7 @@
     _target: "{{ target_host | default('rancher-desktop') }}"
     # Use _remove_pvc internally to avoid recursive template issues
     _remove_pvc: "{{ remove_pvc | default(false) }}"
-    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
     postgresql_namespace: "default"
     postgresql_helm_release: "postgresql"
     deletion_timeout: 120

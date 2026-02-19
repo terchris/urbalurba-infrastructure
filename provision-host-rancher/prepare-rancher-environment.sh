@@ -8,12 +8,12 @@ echo "Setting up Rancher Desktop environment..."
 
 #TODO: this is not needed as we can copied the kubeconfig from the host to the container in the entrypoint script
 # Create the kubeconfig directory
-#mkdir -p /mnt/urbalurbadisk/kubeconfig
+#mkdir -p /mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig
 
 # Copy the Rancher Desktop kubeconfig to the expected location
 echo "Copying Rancher Desktop kubeconfig so that it can be merged with the other kubeconfigs..."
 # The line below seems crazy. But what we do is to copy the kubeconfig that came from the host to the place where we normally woul put kubekonf files that are going to be merged
-cp /mnt/urbalurbadisk/kubeconfig/kubeconf-all /mnt/urbalurbadisk/kubeconfig/rancher-desktop-kubeconf
+cp /mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all /mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/rancher-desktop-kubeconf
 
 # Create Ansible inventory for Rancher Desktop
 echo "Setting up Ansible inventory for Rancher Desktop..."
@@ -37,7 +37,7 @@ echo "Environment setup complete."
 
 # Test the configuration
 echo "Testing Kubernetes configuration..."
-KUBECONFIG=/mnt/urbalurbadisk/kubeconfig/kubeconf-all kubectl get nodes
+KUBECONFIG=/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all kubectl get nodes
 if [ $? -eq 0 ]; then
     echo "Kubernetes configuration test successful!"
 else

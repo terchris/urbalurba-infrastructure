@@ -25,7 +25,7 @@
   gather_facts: false
   vars:
     manifests_folder: "/mnt/urbalurbadisk/manifests"
-    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
     website_source: "/mnt/urbalurbadisk/testdata/website"
     docs_source: "/mnt/urbalurbadisk/testdata/docs"
     nginx_content_title: "Welcome to Nginx"

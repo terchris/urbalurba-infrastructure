@@ -23,7 +23,7 @@
   gather_facts: false
   vars:
     manifests_folder: "/mnt/urbalurbadisk/manifests"
-    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
     nginx_content_filename: "urbalurba-test.html"
     nginx_ingressroute_manifest: "{{ manifests_folder }}/020-nginx-root-ingress.yaml"
     nginx_config_manifest: "{{ manifests_folder }}/020-nginx-config.yaml"

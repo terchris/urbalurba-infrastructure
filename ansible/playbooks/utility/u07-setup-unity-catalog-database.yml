@@ -21,7 +21,7 @@
   hosts: localhost
   gather_facts: false
   vars:
-    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
     unity_catalog_db_name: "unity_catalog"
     unity_catalog_user: "unity_catalog_user"
     unity_catalog_password: "unity_catalog_password"

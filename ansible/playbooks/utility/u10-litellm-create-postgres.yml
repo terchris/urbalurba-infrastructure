@@ -32,7 +32,7 @@
 - hosts: localhost
   gather_facts: false
   vars:
-    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
     # operation variable is passed as parameter, defaults to 'create' if not specified
 
   tasks:

@@ -23,7 +23,7 @@
   hosts: localhost
   gather_facts: false
   vars:
-    kubeconfig_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    kubeconfig_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
     SERVICE_NAME: "{{ SERVICE_NAME | default('') }}"
     ingress_namespace: "kube-system"
     TAILSCALE_DOMAIN: "{{ TAILSCALE_DOMAIN | default('') }}"

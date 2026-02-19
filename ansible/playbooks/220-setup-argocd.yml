@@ -13,7 +13,7 @@
   gather_facts: true
   vars:
     manifests_folder: "/mnt/urbalurbadisk/manifests"
-    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
     argocd_namespace: "argocd"
     installation_timeout: 600  # 10 minutes timeout for installations
     pod_readiness_timeout: 300  # 5 minutes timeout for pod readiness

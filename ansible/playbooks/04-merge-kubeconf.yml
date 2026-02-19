@@ -20,7 +20,7 @@
 # Note: This playbook is designed to run on provision-host
 #
 # Variables:
-# - kubernetes_files_path: Directory containing the kubeconfig files (default: "/mnt/urbalurbadisk/kubeconfig/")
+# - kubernetes_files_path: Directory containing the kubeconfig files (default: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/")
 # - merged_kubeconf_file: Path and name of the merged kubeconfig file (default: "{kubernetes_files_path}kubeconf-all")
 #
 

@@ -8,7 +8,7 @@
   gather_facts: no
   vars:
     manifests_folder: "/mnt/urbalurbadisk/manifests"
-    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
     source_tst_nginx: "/mnt/urbalurbadisk/tst/nginx"
     storage_manifest: "020-tstweb-storage-nginx.yaml"
     ingress_manifest: "021-tstweb-ingress-nginx.yaml"
