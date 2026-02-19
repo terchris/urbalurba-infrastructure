@@ -137,12 +137,15 @@ start_container() {
     # Wait for container to be ready
     sleep 2
 
-    # Create kubeconfig directory and symlink to host kubeconfig
+    # Create kubeconfig symlinks to host kubeconfig
     docker exec "$CONTAINER_NAME" bash -c '
         if [ -d /mnt/urbalurbadisk/.uis.secrets ]; then
             mkdir -p /mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig
             ln -sf /home/ansible/.kube/config /mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all
         fi
+        # Legacy path — 59 playbooks still reference this; remove after PLAN-005 migration
+        mkdir -p /mnt/urbalurbadisk/kubeconfig
+        ln -sf /home/ansible/.kube/config /mnt/urbalurbadisk/kubeconfig/kubeconf-all
     ' 2>/dev/null || true
 
     log_info "Container started"
