@@ -62,7 +62,7 @@
 
     - name: 3. Apply urbalurba-secrets to cluster (includes jupyterhub namespace)
       ansible.builtin.shell: |
-        kubectl apply -f /mnt/urbalurbadisk/topsecret/kubernetes/kubernetes-secrets.yml
+        kubectl apply -f /mnt/urbalurbadisk/.uis.secrets/generated/kubernetes/kubernetes-secrets.yml
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
       register: secrets_apply_result

@@ -190,8 +190,8 @@
           - "To fix auth issues:"
           - "1. Go to https://login.tailscale.com/admin/settings/keys"
           - "2. Generate new auth key with 'tag:k8s' permission"
-          - "3. Update topsecret/kubernetes/kubernetes-secrets.yml"
-          - "4. Run: kubectl apply -f topsecret/kubernetes/kubernetes-secrets.yml"
+          - "3. Update .uis.secrets/generated/kubernetes/kubernetes-secrets.yml"
+          - "4. Run: kubectl apply -f .uis.secrets/generated/kubernetes/kubernetes-secrets.yml"
       when: 
         - operator_pods.resources | length > 0
         - operator_pods_status.resources[0].status.phase != 'Running'
