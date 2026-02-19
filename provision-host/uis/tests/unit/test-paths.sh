@@ -148,33 +148,8 @@ start_test "TOOLS_DIR ends with tools"
 [[ "$TOOLS_DIR" == *"tools" ]] && pass_test
 
 # ============================================================
-# Legacy Path Constants Tests
+# Derived Secrets Path Function Definition Tests
 # ============================================================
-
-start_test "NEW_SECRETS_BASE is defined"
-[[ -n "$NEW_SECRETS_BASE" ]] && pass_test
-
-start_test "OLD_SECRETS_BASE is defined"
-[[ -n "$OLD_SECRETS_BASE" ]] && pass_test
-
-start_test "OLD_SSH_BASE is defined"
-[[ -n "$OLD_SSH_BASE" ]] && pass_test
-
-start_test "NEW_SECRETS_BASE contains .uis.secrets"
-[[ "$NEW_SECRETS_BASE" == *".uis.secrets"* ]] && pass_test
-
-start_test "OLD_SECRETS_BASE contains topsecret"
-[[ "$OLD_SECRETS_BASE" == *"topsecret"* ]] && pass_test
-
-# ============================================================
-# Backwards-Compatible Function Definition Tests
-# ============================================================
-
-start_test "warn_deprecated_path is defined"
-type warn_deprecated_path &>/dev/null && pass_test
-
-start_test "get_secrets_base_path is defined"
-type get_secrets_base_path &>/dev/null && pass_test
 
 start_test "get_ssh_key_path is defined"
 type get_ssh_key_path &>/dev/null && pass_test
@@ -200,35 +175,28 @@ type get_cloud_credentials_path &>/dev/null && pass_test
 start_test "is_using_new_paths is defined"
 type is_using_new_paths &>/dev/null && pass_test
 
-start_test "is_using_legacy_paths is defined"
-type is_using_legacy_paths &>/dev/null && pass_test
-
 start_test "ensure_path_exists is defined"
 type ensure_path_exists &>/dev/null && pass_test
 
 # ============================================================
-# Backwards-Compatible Function Output Tests
+# Derived Secrets Path Output Tests
 # ============================================================
-
-start_test "get_secrets_base_path returns a path"
-result=$(get_secrets_base_path 2>/dev/null)
-[[ -n "$result" ]] && pass_test
 
 start_test "get_ssh_key_path returns path containing ssh"
 result=$(get_ssh_key_path 2>/dev/null)
-[[ "$result" == *"ssh"* ]] && pass_test
+[[ "$result" == *".uis.secrets/ssh"* ]] && pass_test
 
 start_test "get_kubernetes_secrets_path returns path containing kubernetes"
 result=$(get_kubernetes_secrets_path 2>/dev/null)
-[[ "$result" == *"kubernetes"* ]] && pass_test
+[[ "$result" == *".uis.secrets/generated/kubernetes"* ]] && pass_test
 
 start_test "get_cloud_init_output_path returns path containing cloud-init"
 result=$(get_cloud_init_output_path 2>/dev/null)
-[[ "$result" == *"cloud-init"* ]] && pass_test
+[[ "$result" == *".uis.secrets/generated/ubuntu-cloud-init"* ]] && pass_test
 
 start_test "get_kubeconfig_path returns path containing kubeconfig"
 result=$(get_kubeconfig_path 2>/dev/null)
-[[ "$result" == *"kubeconfig"* ]] && pass_test
+[[ "$result" == *".uis.secrets/generated/kubeconfig"* ]] && pass_test
 
 start_test "get_tailscale_key_path returns path containing tailscale"
 result=$(get_tailscale_key_path 2>/dev/null)
@@ -245,31 +213,6 @@ result=$(get_cloud_credentials_path "azure" 2>/dev/null)
 start_test "get_cloud_credentials_path returns path for gcp"
 result=$(get_cloud_credentials_path "gcp" 2>/dev/null)
 [[ "$result" == *"gcp"* ]] && pass_test
-
-# ============================================================
-# New Path Preference Tests
-# ============================================================
-
-start_test "get_secrets_base_path prefers new path when available"
-# On test system, new path should be preferred
-result=$(get_secrets_base_path 2>/dev/null)
-[[ "$result" == *".uis.secrets"* ]] && pass_test
-
-start_test "get_ssh_key_path prefers new path structure"
-result=$(get_ssh_key_path 2>/dev/null)
-[[ "$result" == *".uis.secrets/ssh"* ]] && pass_test
-
-start_test "get_kubernetes_secrets_path uses new generated path"
-result=$(get_kubernetes_secrets_path 2>/dev/null)
-[[ "$result" == *".uis.secrets/generated/kubernetes"* ]] && pass_test
-
-start_test "get_cloud_init_output_path uses new generated path"
-result=$(get_cloud_init_output_path 2>/dev/null)
-[[ "$result" == *".uis.secrets/generated/ubuntu-cloud-init"* ]] && pass_test
-
-start_test "get_kubeconfig_path uses new generated path"
-result=$(get_kubeconfig_path 2>/dev/null)
-[[ "$result" == *".uis.secrets/generated/kubeconfig"* ]] && pass_test
 
 # Print summary
 print_summary
