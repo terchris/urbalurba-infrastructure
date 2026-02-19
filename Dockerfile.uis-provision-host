@@ -61,7 +61,6 @@ COPY --chown=ansible:ansible networking/ /mnt/urbalurbadisk/networking/
 COPY --chown=ansible:ansible provision-host/ /mnt/urbalurbadisk/provision-host/
 COPY --chown=ansible:ansible scripts/ /mnt/urbalurbadisk/scripts/
 COPY --chown=ansible:ansible testdata/ /mnt/urbalurbadisk/testdata/
-COPY --chown=ansible:ansible topsecret/secrets-templates/ /mnt/urbalurbadisk/topsecret/secrets-templates/
 
 # Switch to ansible user for provisioning
 USER ansible
@@ -80,13 +79,8 @@ RUN cd /mnt/urbalurbadisk/provision-host && \
     chmod +x *.sh && \
     DOCKER_BUILD=true ./provision-host-provision.sh none
 
-# Create mount points for user config/secrets
-USER root
-RUN mkdir -p /mnt/urbalurbadisk/topsecret/config \
-             /mnt/urbalurbadisk/topsecret/secrets-config && \
-    chown -R ansible:ansible /mnt/urbalurbadisk/topsecret
-
 # Cleanup to reduce image size (~180MB savings)
+USER root
 # Remove: snapd (not needed in container), apt cache, pip cache, temp files
 RUN apt-get purge -y --auto-remove snapd 2>/dev/null || true && \
     apt-get clean && \
