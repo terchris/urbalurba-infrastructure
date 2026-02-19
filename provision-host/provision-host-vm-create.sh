@@ -146,12 +146,9 @@ rsync -av --delete ../provision-host/ $VM_NAME:/mnt/urbalurbadisk/provision-host
 rsync -av --delete ../ansible/ $VM_NAME:/mnt/urbalurbadisk/ansible/
 rsync -av --delete ../kubernetes/ $VM_NAME:/mnt/urbalurbadisk/kubernetes/
 rsync -av --delete ../manifests/ $VM_NAME:/mnt/urbalurbadisk/manifests/
-# Copy secrets - prefer new path, fall back to legacy
+# Copy secrets
 if [ -d "../.uis.secrets" ]; then
     rsync -av --delete ../.uis.secrets/ $VM_NAME:/mnt/urbalurbadisk/.uis.secrets/
-fi
-if [ -d "../topsecret" ]; then
-    rsync -av --delete ../topsecret/ $VM_NAME:/mnt/urbalurbadisk/topsecret/
 fi
 check_command_success "Copy files to VM"
 

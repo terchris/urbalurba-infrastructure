@@ -165,246 +165,60 @@ TOOLS_DIR="${TOOLS_DIR:-$(get_tools_dir)}"
 export TEMPLATES_DIR EXTEND_DIR SECRETS_DIR SERVICES_DIR TOOLS_DIR
 
 # ============================================================
-# Legacy Path Constants (for backwards compatibility)
+# Derived Secrets Path Functions
 # ============================================================
-
-# New paths (preferred)
-NEW_SECRETS_BASE="/mnt/urbalurbadisk/.uis.secrets"
-NEW_EXTEND_BASE="/mnt/urbalurbadisk/.uis.extend"
-
-# Old paths (deprecated, for backwards compatibility)
-OLD_SECRETS_BASE="/mnt/urbalurbadisk/topsecret"
-OLD_SSH_BASE="/mnt/urbalurbadisk/secrets"
-
-# Track if deprecation warning has been shown (show once per session)
-_DEPRECATION_WARNING_SHOWN=""
-
-# ============================================================
-# Deprecation Warning Function
-# ============================================================
-
-# Warn user about deprecated path usage (shows once per session)
-# Usage: warn_deprecated_path <old_path> <new_path>
-warn_deprecated_path() {
-    local old_path="$1"
-    local new_path="$2"
-
-    # Only show warning once per session
-    [[ -n "$_DEPRECATION_WARNING_SHOWN" ]] && return 0
-    _DEPRECATION_WARNING_SHOWN=1
-
-    echo "⚠️  WARNING: Using deprecated path: $old_path" >&2
-    echo "   Please migrate to: $new_path" >&2
-    echo "   Run './uis' to set up the new structure" >&2
-    echo "" >&2
-}
-
-# ============================================================
-# Backwards-Compatible Path Resolution Functions
-# ============================================================
-# These functions prefer new paths but fall back to old paths
-# with a deprecation warning.
-
-# Get secrets base path (prefers new, falls back to old)
-# Output: Path to secrets directory
-get_secrets_base_path() {
-    if [[ -d "$NEW_SECRETS_BASE" ]]; then
-        echo "$NEW_SECRETS_BASE"
-    elif [[ -d "$OLD_SECRETS_BASE" ]]; then
-        warn_deprecated_path "$OLD_SECRETS_BASE" "$NEW_SECRETS_BASE"
-        echo "$OLD_SECRETS_BASE"
-    else
-        echo "$NEW_SECRETS_BASE"  # Default to new
-    fi
-}
 
 # Get SSH key directory path
-# New: .uis.secrets/ssh/
-# Old: secrets/ or topsecret/ssh/
+# Output: Path to .uis.secrets/ssh/
 get_ssh_key_path() {
-    # New location
-    if [[ -d "$NEW_SECRETS_BASE/ssh" ]]; then
-        echo "$NEW_SECRETS_BASE/ssh"
-        return 0
-    fi
-
-    # Old location: secrets/ folder
-    if [[ -d "$OLD_SSH_BASE" ]]; then
-        warn_deprecated_path "$OLD_SSH_BASE" "$NEW_SECRETS_BASE/ssh"
-        echo "$OLD_SSH_BASE"
-        return 0
-    fi
-
-    # Old location: topsecret/ssh/
-    if [[ -d "$OLD_SECRETS_BASE/ssh" ]]; then
-        warn_deprecated_path "$OLD_SECRETS_BASE/ssh" "$NEW_SECRETS_BASE/ssh"
-        echo "$OLD_SECRETS_BASE/ssh"
-        return 0
-    fi
-
-    # Default to new
-    echo "$NEW_SECRETS_BASE/ssh"
+    echo "$(get_secrets_dir)/ssh"
 }
 
 # Get Kubernetes secrets output path
-# New: .uis.secrets/generated/kubernetes/
-# Old: topsecret/kubernetes/
+# Output: Path to .uis.secrets/generated/kubernetes/
 get_kubernetes_secrets_path() {
-    # New location
-    if [[ -d "$NEW_SECRETS_BASE/generated/kubernetes" ]]; then
-        echo "$NEW_SECRETS_BASE/generated/kubernetes"
-        return 0
-    fi
-
-    # New location (but generated/ doesn't exist yet)
-    if [[ -d "$NEW_SECRETS_BASE" ]]; then
-        echo "$NEW_SECRETS_BASE/generated/kubernetes"
-        return 0
-    fi
-
-    # Old location
-    if [[ -d "$OLD_SECRETS_BASE/kubernetes" ]]; then
-        warn_deprecated_path "$OLD_SECRETS_BASE/kubernetes" "$NEW_SECRETS_BASE/generated/kubernetes"
-        echo "$OLD_SECRETS_BASE/kubernetes"
-        return 0
-    fi
-
-    # Default to new
-    echo "$NEW_SECRETS_BASE/generated/kubernetes"
+    echo "$(get_secrets_dir)/generated/kubernetes"
 }
 
 # Get cloud-init output path
-# New: .uis.secrets/generated/ubuntu-cloud-init/
-# Old: cloud-init/
+# Output: Path to .uis.secrets/generated/ubuntu-cloud-init/
 get_cloud_init_output_path() {
-    # New location
-    if [[ -d "$NEW_SECRETS_BASE/generated/ubuntu-cloud-init" ]]; then
-        echo "$NEW_SECRETS_BASE/generated/ubuntu-cloud-init"
-        return 0
-    fi
-
-    # New location (but generated/ doesn't exist yet)
-    if [[ -d "$NEW_SECRETS_BASE" ]]; then
-        echo "$NEW_SECRETS_BASE/generated/ubuntu-cloud-init"
-        return 0
-    fi
-
-    # Old location
-    if [[ -d "/mnt/urbalurbadisk/cloud-init" ]]; then
-        warn_deprecated_path "/mnt/urbalurbadisk/cloud-init" "$NEW_SECRETS_BASE/generated/ubuntu-cloud-init"
-        echo "/mnt/urbalurbadisk/cloud-init"
-        return 0
-    fi
-
-    # Default to new
-    echo "$NEW_SECRETS_BASE/generated/ubuntu-cloud-init"
+    echo "$(get_secrets_dir)/generated/ubuntu-cloud-init"
 }
 
 # Get kubeconfig output path
-# New: .uis.secrets/generated/kubeconfig/
-# Old: various locations (topsecret/, home directory)
+# Output: Path to .uis.secrets/generated/kubeconfig/
 get_kubeconfig_path() {
-    # New location
-    if [[ -d "$NEW_SECRETS_BASE/generated/kubeconfig" ]]; then
-        echo "$NEW_SECRETS_BASE/generated/kubeconfig"
-        return 0
-    fi
-
-    # New location (but generated/ doesn't exist yet)
-    if [[ -d "$NEW_SECRETS_BASE" ]]; then
-        echo "$NEW_SECRETS_BASE/generated/kubeconfig"
-        return 0
-    fi
-
-    # Old location: topsecret
-    if [[ -d "$OLD_SECRETS_BASE" ]]; then
-        warn_deprecated_path "$OLD_SECRETS_BASE" "$NEW_SECRETS_BASE/generated/kubeconfig"
-        echo "$OLD_SECRETS_BASE"
-        return 0
-    fi
-
-    # Default to new
-    echo "$NEW_SECRETS_BASE/generated/kubeconfig"
+    echo "$(get_secrets_dir)/generated/kubeconfig"
 }
 
 # Get Tailscale auth key file path
-# New: .uis.secrets/service-keys/tailscale.env
-# Old: topsecret/kubernetes/kubernetes-secrets.yml (embedded)
+# Output: Path to .uis.secrets/service-keys/tailscale.env
 get_tailscale_key_path() {
-    local new_path="$NEW_SECRETS_BASE/service-keys/tailscale.env"
-    local old_path="$OLD_SECRETS_BASE/kubernetes/kubernetes-secrets.yml"
-
-    # New location
-    if [[ -f "$new_path" ]]; then
-        echo "$new_path"
-        return 0
-    fi
-
-    # Old location (note: key embedded in yaml, not a direct env file)
-    if [[ -f "$old_path" ]]; then
-        warn_deprecated_path "$old_path" "$new_path"
-        echo "$old_path"
-        return 0
-    fi
-
-    # Default to new
-    echo "$new_path"
+    echo "$(get_secrets_dir)/service-keys/tailscale.env"
 }
 
 # Get Cloudflare credentials file path
-# New: .uis.secrets/service-keys/cloudflare.env
-# Old: topsecret/cloudflare/ or embedded in kubernetes-secrets.yml
+# Output: Path to .uis.secrets/service-keys/cloudflare.env
 get_cloudflare_token_path() {
-    local new_path="$NEW_SECRETS_BASE/service-keys/cloudflare.env"
-
-    # New location
-    if [[ -f "$new_path" ]]; then
-        echo "$new_path"
-        return 0
-    fi
-
-    # Old location: topsecret/cloudflare/
-    if [[ -d "$OLD_SECRETS_BASE/cloudflare" ]]; then
-        warn_deprecated_path "$OLD_SECRETS_BASE/cloudflare" "$new_path"
-        echo "$OLD_SECRETS_BASE/cloudflare"
-        return 0
-    fi
-
-    # Default to new
-    echo "$new_path"
+    echo "$(get_secrets_dir)/service-keys/cloudflare.env"
 }
 
 # Get cloud account credentials path
-# New: .uis.secrets/cloud-accounts/<provider>.env
-# Old: various locations
+# Output: Path to .uis.secrets/cloud-accounts/<provider>-default.env
 get_cloud_credentials_path() {
     local provider="${1:-azure}"
-    local new_path="$NEW_SECRETS_BASE/cloud-accounts/${provider}-default.env"
-
-    # New location
-    if [[ -f "$new_path" ]]; then
-        echo "$new_path"
-        return 0
-    fi
-
-    # Default to new
-    echo "$new_path"
+    echo "$(get_secrets_dir)/cloud-accounts/${provider}-default.env"
 }
 
 # ============================================================
 # Helper Functions for Scripts
 # ============================================================
 
-# Check if using new paths structure
-# Returns: 0 if new structure exists, 1 if using legacy
+# Check if secrets directory exists
+# Returns: 0 if .uis.secrets/ structure exists, 1 if not
 is_using_new_paths() {
-    [[ -d "$NEW_SECRETS_BASE" ]]
-}
-
-# Check if using legacy paths structure
-# Returns: 0 if legacy structure exists, 1 if not
-is_using_legacy_paths() {
-    [[ -d "$OLD_SECRETS_BASE" ]] && [[ ! -d "$NEW_SECRETS_BASE" ]]
+    [[ -d "$(get_secrets_dir)" ]]
 }
 
 # Ensure a directory exists, creating it if needed

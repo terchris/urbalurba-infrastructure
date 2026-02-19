@@ -29,15 +29,6 @@ log_info() { echo -e "${GREEN}[UIS]${NC} $1"; }
 log_warn() { echo -e "${YELLOW}[UIS]${NC} $1"; }
 log_error() { echo -e "${RED}[UIS]${NC} $1"; }
 
-# Check if topsecret folder exists (optional - for backwards compatibility)
-# Returns: 0 if exists, 1 if not
-check_topsecret() {
-    if [ -d "$SCRIPT_DIR/topsecret" ]; then
-        return 0
-    fi
-    return 1
-}
-
 # Check if image exists, pull if needed
 check_image() {
     if docker image inspect "$IMAGE" &>/dev/null; then
@@ -127,16 +118,6 @@ start_container() {
         -v "$SCRIPT_DIR/.uis.secrets:/mnt/urbalurbadisk/.uis.secrets"
     )
 
-    # Mount topsecret if it exists (backwards compatibility)
-    if check_topsecret; then
-        VOLUME_ARGS+=(-v "$SCRIPT_DIR/topsecret:/mnt/urbalurbadisk/topsecret:ro")
-    fi
-
-    # Mount secrets directory if it exists (backwards compatibility for SSH keys)
-    if [ -d "$SCRIPT_DIR/secrets" ]; then
-        VOLUME_ARGS+=(-v "$SCRIPT_DIR/secrets:/mnt/urbalurbadisk/secrets:ro")
-    fi
-
     # Add kubeconfig mount if it exists
     if [ -d "$KUBECONFIG_DIR" ]; then
         VOLUME_ARGS+=(-v "$KUBECONFIG_DIR:/home/ansible/.kube:ro")
@@ -156,21 +137,12 @@ start_container() {
     # Wait for container to be ready
     sleep 2
 
-    # Create kubeconfig directories and symlinks for backwards compatibility
-    # This ensures scripts expecting either path will work
+    # Create kubeconfig directory and symlink to host kubeconfig
     docker exec "$CONTAINER_NAME" bash -c '
-        # Create legacy kubeconfig path
-        mkdir -p /mnt/urbalurbadisk/kubeconfig
-
-        # Create new kubeconfig path if .uis.secrets exists
         if [ -d /mnt/urbalurbadisk/.uis.secrets ]; then
             mkdir -p /mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig
-            # Symlink from new path to host kubeconfig
             ln -sf /home/ansible/.kube/config /mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all
         fi
-
-        # Symlink legacy path to host kubeconfig (for backwards compat)
-        ln -sf /home/ansible/.kube/config /mnt/urbalurbadisk/kubeconfig/kubeconf-all
     ' 2>/dev/null || true
 
     log_info "Container started"
