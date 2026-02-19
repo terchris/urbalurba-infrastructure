@@ -1,6 +1,6 @@
 # INVESTIGATE: Password Architecture
 
-**Related Plan**: [PLAN-004-secrets-cleanup](../active/PLAN-004-secrets-cleanup.md) - Secrets migration cleanup and finalization
+**Related Plan**: [PLAN-004-secrets-cleanup](../completed/PLAN-004-secrets-cleanup.md) - Secrets migration cleanup and finalization
 
 ## Problem
 

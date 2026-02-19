@@ -9,7 +9,7 @@
 > `.uis.extend/` and `.uis.secrets/` folder structure has been implemented as part
 > of the UIS orchestration system. The cleanup audit (2026-02-19) confirmed all
 > prerequisites are met — backwards compatibility code can now be safely removed.
-> See [PLAN-004-secrets-cleanup](../active/PLAN-004-secrets-cleanup.md) for the implementation plan.
+> See [PLAN-004-secrets-cleanup](../completed/PLAN-004-secrets-cleanup.md) for the implementation plan.
 
 ## Problem Statement
 

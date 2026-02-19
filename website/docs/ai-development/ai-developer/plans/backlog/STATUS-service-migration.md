@@ -12,7 +12,7 @@
 
 **Priority**: Medium — core services work, remaining items are edge cases
 
-**Blocks**: [PLAN-004-secrets-cleanup](../active/PLAN-004-secrets-cleanup.md) — old path references in playbooks must be fixed before backwards compatibility code can be removed
+**Blocks**: [PLAN-004-secrets-cleanup](../completed/PLAN-004-secrets-cleanup.md) — old path references in playbooks must be fixed before backwards compatibility code can be removed
 
 ---
 
