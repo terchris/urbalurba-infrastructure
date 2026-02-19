@@ -19,7 +19,7 @@
   collections:
     - kubernetes.core
   vars:
-    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
   tasks:
     - name: Check if cloudflared-credentials secret exists
       kubernetes.core.k8s_info:
@@ -54,7 +54,7 @@
     domain: "{{ domain }}"
     full_tunnel_name: "cloudflare-tunnel"
     manifests_folder: "/mnt/urbalurbadisk/manifests"
-    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
     cloudflare_kubernetes_template_file: "{{ manifests_folder }}/820-cloudflare-tunnel-base.yaml.j2"
 
   tasks:

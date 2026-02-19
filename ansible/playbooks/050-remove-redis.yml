@@ -13,7 +13,7 @@
   hosts: localhost
   gather_facts: false
   vars:
-    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
     redis_namespace: "default"
     redis_release_name: "redis"
     deletion_timeout: 120

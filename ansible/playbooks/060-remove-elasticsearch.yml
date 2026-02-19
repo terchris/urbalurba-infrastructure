@@ -11,7 +11,7 @@
   hosts: localhost
   gather_facts: false
   vars:
-    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
     elasticsearch_namespace: "default"
     # Labels for both Elastic official and Bitnami charts
     elasticsearch_pod_label_elastic: "app=elasticsearch-master"

@@ -14,7 +14,7 @@
   hosts: localhost
   gather_facts: false
   vars:
-    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
     manifests_folder: "/mnt/urbalurbadisk/manifests"
     jupyterhub_namespace: "jupyterhub"
     jupyterhub_helm_release: "jupyterhub"

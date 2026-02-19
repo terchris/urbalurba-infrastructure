@@ -9,7 +9,7 @@
   gather_facts: false
   vars:
     manifests_folder: "/mnt/urbalurbadisk/manifests"
-    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
     elasticsearch_password_secret: "urbalurba-secrets"
     elasticsearch_password_key: "ELASTICSEARCH_PASSWORD"
     gravitee_config_file: "{{ manifests_folder }}/090-gravitee-config.yaml"

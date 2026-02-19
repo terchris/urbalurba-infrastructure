@@ -15,7 +15,7 @@
     cloudflare_certificate_file: "{{ cloudflarefolder }}cloudflare-certificate.pem"
     cloudflare_credentials_file: "{{ cloudflarefolder }}cloudflare-tunnel.json"
     cloudflare_config_file: "{{ cloudflarefolder }}cloudflare-tunnel-config.yml"
-    merged_kubeconf_file: "/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
 
   tasks:
     - name: 1. Check if required variables are provided

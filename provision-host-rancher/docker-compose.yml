@@ -14,7 +14,7 @@ services:
       - TZ=Europe/Oslo
       - USER=ansible
       # Updated KUBECONFIG to use the consolidated config file
-      - KUBECONFIG=/mnt/urbalurbadisk/kubeconfig/kubeconf-all
+      - KUBECONFIG=/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all
     # Use host network to access Kubernetes and for Tailscale
     network_mode: "host"
     # Enable privileged mode for Tailscale and other operations
