@@ -13,14 +13,15 @@ Rancher Desktop → Troubleshooting → Factory Reset:
 - **Wipes**: K3s cluster, all pods, PersistentVolumes, Docker containers, Docker images, Rancher Desktop settings
 - **Survives**: Only host filesystem files (`.uis.extend/`, `.uis.secrets/`, repo files)
 
-The `uis-provision-host` container and image must be re-pulled or rebuilt after factory reset.
+The `uis-provision-host` container and image are wiped by factory reset and must be rebuilt locally before use.
 
 ## Recovery Procedure
 
 After factory reset and re-enabling Kubernetes:
 
 ```bash
-./uis start            # pulls/creates container (image must exist or be pulled)
+./uis build            # rebuild the container image locally
+./uis start            # creates and starts the container from the local image
 ./uis deploy           # calls ensure_secrets_applied() automatically, deploys enabled services
 ```
 
@@ -47,9 +48,10 @@ From STATUS-service-migration.md — only 5 of 24 services are verified:
 
 1. Factory reset Rancher Desktop
 2. Re-enable Kubernetes, wait for ready
-3. `./uis restart`
-4. `./uis secrets apply`
-5. Verify cluster is healthy: `kubectl get nodes`, `kubectl get pods -A`
+3. `./uis build` — rebuild the container image locally
+4. `./uis start` — creates container from local image
+5. `./uis secrets apply`
+6. Verify cluster is healthy: `kubectl get nodes`, `kubectl get pods -A`
 
 ### Phase 2: Deploy and Verify Each Service
 
