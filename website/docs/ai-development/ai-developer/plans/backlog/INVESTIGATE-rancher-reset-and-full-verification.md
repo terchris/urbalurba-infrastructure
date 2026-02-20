@@ -1,7 +1,9 @@
 # INVESTIGATE: Rancher Reset and Full Service Verification
 
-**Related**: [STATUS-service-migration](STATUS-service-migration.md)
+**Related**: [STATUS-service-migration](STATUS-service-migration.md), [INVESTIGATE-unity-catalog-crashloop](INVESTIGATE-unity-catalog-crashloop.md)
 **Created**: 2026-02-19
+**Status**: COMPLETE
+**Completed**: 2026-02-20
 
 ## Goal
 
@@ -45,15 +47,21 @@ For individual services:
 
 The `ensure_secrets_applied()` function in `first-run.sh` handles re-applying secrets to a fresh cluster. The `uis deploy` command calls it before every deployment.
 
-## Current Verification Status
+## Final Verification Status
 
-From STATUS-service-migration.md — only 5 of 24 services are verified:
+**24/24 testable services PASS.** All deploy and undeploy cleanly from a factory-reset clean slate.
 
 | Status | Services |
 |--------|----------|
-| Verified (5) | whoami, postgresql, redis, authentik, argocd |
-| Not verified (16) | nginx, prometheus, tempo, loki, otel-collector, grafana, mysql, mongodb, qdrant, elasticsearch, rabbitmq, openwebui, litellm, unity-catalog, spark, jupyterhub |
-| Broken/Missing (3) | gravitee (broken), tailscale-tunnel (no remove playbook), cloudflare-tunnel (no remove playbook) |
+| Verified (21) | nginx, whoami, postgresql, redis, mysql, mongodb, qdrant, elasticsearch, rabbitmq, authentik, openwebui, litellm, prometheus, grafana, loki, tempo, otel-collector, argocd, jupyterhub, spark, unity-catalog |
+| Skipped (3) | gravitee (broken before migration), tailscale-tunnel (requires auth key), cloudflare-tunnel (requires token) |
+
+Tested across 8 rounds in talk9.md. Bugs found and fixed during testing:
+- Lazy initialization (config files not created on `./uis start`)
+- Schema regex too strict for `removePlaybook` with parameters
+- Shell arithmetic bug (`wc -l` whitespace) in Redis/RabbitMQ removal playbooks
+- RabbitMQ health check wrong namespace
+- Unity Catalog: wrong image, wrong security context, wrong API version, no curl in container (see [INVESTIGATE-unity-catalog-crashloop](INVESTIGATE-unity-catalog-crashloop.md))
 
 ## Proposed Test Strategy
 
