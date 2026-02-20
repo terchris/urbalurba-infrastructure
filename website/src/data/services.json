@@ -411,7 +411,7 @@
     ,"docs": "/docs/packages/queues/rabbitmq"
     ,"playbook": "080-setup-rabbitmq.yml"
     ,"priority": 60
-    ,"checkCommand": "kubectl get pods -n queues -l app.kubernetes.io/name=rabbitmq --no-headers 2>/dev/null | grep -q Running"
+    ,"checkCommand": "kubectl get pods -n default -l app.kubernetes.io/name=rabbitmq --no-headers 2>/dev/null | grep -q Running"
     ,"removePlaybook": "080-remove-rabbitmq.yml"
   }
 ,
