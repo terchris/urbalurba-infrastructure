@@ -2,7 +2,7 @@
 
 **Related**: [INVESTIGATE-rancher-reset-and-full-verification](INVESTIGATE-rancher-reset-and-full-verification.md)
 **Created**: 2026-02-20
-**Status**: RESOLVED
+**Status**: COMPLETE
 **Resolved**: 2026-02-20
 
 ## Problem
@@ -37,9 +37,19 @@ Discovered during full service verification (talk9.md, Round 6, Step 9). All oth
 - Actual API endpoint is `/api/2.1/unity-catalog/catalogs`
 - **Fix**: Updated all API paths from `/api/1.0/` to `/api/2.1/` (3 probes in manifest + 7 occurrences in playbook)
 
+### 4. No curl in container (playbook API tests broken)
+**File**: `ansible/playbooks/320-setup-unity-catalog.yml`
+- The `unitycatalog/unitycatalog:latest` image uses BusyBox which has `wget` but not `curl`
+- All `kubectl exec ... -- curl` commands failed with "executable file not found"
+- Fixed 30-second pause was insufficient for Unity Catalog startup (needs 2-3 minutes)
+- **Fix**: Replaced `curl` with `wget -S` for HTTP status checks and `wget --post-data` for catalog creation. Replaced fixed pause with retry loop (18 retries, 10s apart).
+
 ## Verification
 
-After all 3 fixes, Unity Catalog deploys successfully:
+After all 4 fixes, Unity Catalog deploys successfully:
 - Pod status: 1/1 Running, 0 restarts
 - Health check passes on `/api/2.1/unity-catalog/catalogs`
 - PostgreSQL connection works correctly
+- API connectivity test: `Working (HTTP 200)`
+- Catalog creation test: `Success`
+- Verified by tester in talk9.md Rounds 7 and 8
