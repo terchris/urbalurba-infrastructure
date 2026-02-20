@@ -2,6 +2,8 @@
 
 **Related**: [INVESTIGATE-rancher-reset-and-full-verification](INVESTIGATE-rancher-reset-and-full-verification.md)
 **Created**: 2026-02-20
+**Status**: RESOLVED
+**Resolved**: 2026-02-20
 
 ## Problem
 
@@ -16,18 +18,28 @@ Unity Catalog server pod enters `CrashLoopBackOff` / `RunContainerError` after d
 
 Discovered during full service verification (talk9.md, Round 6, Step 9). All other 20 testable services deploy and undeploy successfully from a clean slate after factory reset.
 
-## Investigation Steps
+## Root Causes Found (3 issues)
 
-1. Check pod logs: `kubectl logs -n unity-catalog <pod-name>`
-2. Check pod events: `kubectl describe pod -n unity-catalog <pod-name>`
-3. Check if the Unity Catalog container image can be pulled
-4. Check if the PostgreSQL connection details are correct
-5. Review the deployment playbook: `ansible/playbooks/320-setup-unity-catalog.yml`
-6. Review the service definition: `provision-host/uis/services/datascience/service-unity-catalog.sh`
+### 1. Wrong container image
+**File**: `manifests/320-unity-catalog-deployment.yaml`
+- `godatadriven/unity-catalog:latest` image is broken — missing jars directory, SBT build cache under `/root/`, broken classpath
+- **Fix**: Changed to official `unitycatalog/unitycatalog:latest`
 
-## Possible Causes
+### 2. Wrong security context (permission denied)
+**File**: `manifests/320-unity-catalog-deployment.yaml`
+- `bin/start-uc-server` is owned by UID 100 (unitycatalog user) with permissions `-r-xr-x---`
+- Container was configured to run as root (UID 0), which has no execute permission on the file
+- **Fix**: Changed `runAsUser: 0` to `runAsUser: 100`, `runAsGroup: 0` to `runAsGroup: 101`, set `runAsNonRoot: true`
 
-- Container image issue (wrong tag, architecture mismatch)
-- PostgreSQL connection configuration mismatch
-- Missing environment variables or secrets
-- Resource constraints (memory/CPU limits too low)
+### 3. Wrong API version in health probes
+**Files**: `manifests/320-unity-catalog-deployment.yaml`, `ansible/playbooks/320-setup-unity-catalog.yml`
+- Health probes and API calls used `/api/1.0/unity-catalog/catalogs` which returns 404
+- Actual API endpoint is `/api/2.1/unity-catalog/catalogs`
+- **Fix**: Updated all API paths from `/api/1.0/` to `/api/2.1/` (3 probes in manifest + 7 occurrences in playbook)
+
+## Verification
+
+After all 3 fixes, Unity Catalog deploys successfully:
+- Pod status: 1/1 Running, 0 restarts
+- Health check passes on `/api/2.1/unity-catalog/catalogs`
+- PostgreSQL connection works correctly

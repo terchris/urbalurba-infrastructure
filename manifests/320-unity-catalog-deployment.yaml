@@ -134,9 +134,10 @@ spec:
     spec:
       serviceAccountName: unity-catalog-server
       securityContext:
-        runAsNonRoot: false
-        runAsUser: 0
-        fsGroup: 0
+        runAsNonRoot: true
+        runAsUser: 100
+        runAsGroup: 101
+        fsGroup: 101
       initContainers:
         # Wait for PostgreSQL to be ready
         - name: wait-for-postgres
@@ -158,7 +159,7 @@ spec:
                   key: UNITY_CATALOG_DATABASE_PASSWORD
       containers:
         - name: unity-catalog-server
-          image: godatadriven/unity-catalog:latest
+          image: unitycatalog/unitycatalog:latest
           imagePullPolicy: Always
           ports:
             - name: http
@@ -222,7 +223,7 @@ spec:
           # Health checks
           livenessProbe:
             httpGet:
-              path: /api/1.0/unity-catalog/catalogs
+              path: /api/2.1/unity-catalog/catalogs
               port: 8080
             initialDelaySeconds: 120
             periodSeconds: 30
@@ -231,7 +232,7 @@ spec:
           
           readinessProbe:
             httpGet:
-              path: /api/1.0/unity-catalog/catalogs
+              path: /api/2.1/unity-catalog/catalogs
               port: 8080
             initialDelaySeconds: 60
             periodSeconds: 10
@@ -241,7 +242,7 @@ spec:
           # Startup probe (gives more time for initial startup)
           startupProbe:
             httpGet:
-              path: /api/1.0/unity-catalog/catalogs
+              path: /api/2.1/unity-catalog/catalogs
               port: 8080
             initialDelaySeconds: 30
             periodSeconds: 10
@@ -250,8 +251,8 @@ spec:
           
           # Security context
           securityContext:
-            runAsUser: 0
-            runAsGroup: 0
+            runAsUser: 100
+            runAsGroup: 101
             allowPrivilegeEscalation: false
             capabilities:
               drop:

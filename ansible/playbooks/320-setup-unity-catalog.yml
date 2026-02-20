@@ -231,7 +231,7 @@
     - name: 25. Test Unity Catalog API connectivity
       ansible.builtin.shell: |
         kubectl exec -n {{ unity_catalog_namespace }} $(kubectl get pods -n {{ unity_catalog_namespace }} -l app=unity-catalog,component=server -o jsonpath='{.items[0].metadata.name}') -- 
-        curl -s -o /dev/null -w "%{http_code}" http://localhost:{{ unity_catalog_server_port }}/api/1.0/unity-catalog/catalogs || echo "FAILED"
+        curl -s -o /dev/null -w "%{http_code}" http://localhost:{{ unity_catalog_server_port }}/api/2.1/unity-catalog/catalogs || echo "FAILED"
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
       register: api_test_result
@@ -246,7 +246,7 @@
     - name: 27. Test catalog creation (if API is ready)
       ansible.builtin.shell: |
         kubectl exec -n {{ unity_catalog_namespace }} $(kubectl get pods -n {{ unity_catalog_namespace }} -l app=unity-catalog,component=server -o jsonpath='{.items[0].metadata.name}') -- 
-        curl -s -X POST http://localhost:{{ unity_catalog_server_port }}/api/1.0/unity-catalog/catalogs \
+        curl -s -X POST http://localhost:{{ unity_catalog_server_port }}/api/2.1/unity-catalog/catalogs \
         -H "Content-Type: application/json" \
         -d '{"name":"test_catalog","comment":"Test catalog for verification"}' || echo "FAILED"
       environment:
@@ -264,7 +264,7 @@
     - name: 29. Clean up test catalog
       ansible.builtin.shell: >-
         kubectl exec -n {{ unity_catalog_namespace }} $(kubectl get pods -n {{ unity_catalog_namespace }} -l app=unity-catalog,component=server -o jsonpath='{.items[0].metadata.name}') -- 
-        curl -s -X DELETE http://localhost:{{ unity_catalog_server_port }}/api/1.0/unity-catalog/catalogs/test_catalog || true
+        curl -s -X DELETE http://localhost:{{ unity_catalog_server_port }}/api/2.1/unity-catalog/catalogs/test_catalog || true
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
       changed_when: false
@@ -389,22 +389,22 @@
 
           📝 Example REST API Usage:
              # List all catalogs
-             curl http://unity-api.localhost/api/1.0/unity-catalog/catalogs
+             curl http://unity-api.localhost/api/2.1/unity-catalog/catalogs
              
              # Create a new catalog
-             curl -X POST http://unity-api.localhost/api/1.0/unity-catalog/catalogs \
+             curl -X POST http://unity-api.localhost/api/2.1/unity-catalog/catalogs \
                -H "Content-Type: application/json" \
                -d '{"name":"production","comment":"Production data catalog"}'
              
              # List schemas in a catalog
-             curl http://unity-api.localhost/api/1.0/unity-catalog/catalogs/production/schemas
+             curl http://unity-api.localhost/api/2.1/unity-catalog/catalogs/production/schemas
 
           🔧 Monitoring and Troubleshooting:
           • Check Unity Catalog pods: kubectl get pods -n {{ unity_catalog_namespace }}
           • Check services: kubectl get services -n {{ unity_catalog_namespace }}
           • View server logs: kubectl logs -n {{ unity_catalog_namespace }} -l component=server
           • Check ingress: kubectl get ingress -n {{ unity_catalog_namespace }}
-          • Test API directly: kubectl exec -n {{ unity_catalog_namespace }} [pod-name] -- curl localhost:{{ unity_catalog_server_port }}/api/1.0/unity-catalog/catalogs
+          • Test API directly: kubectl exec -n {{ unity_catalog_namespace }} [pod-name] -- curl localhost:{{ unity_catalog_server_port }}/api/2.1/unity-catalog/catalogs
           • Check database: kubectl exec -n default {{ postgres_pod_name }} -- psql -U postgres -d unity_catalog -c "\\dt"
 
           {{ '⚠️ ACTION REQUIRED: Apply urbalurba-secrets to unity-catalog namespace and ensure PostgreSQL is running!' if not secret_configured or not postgres_available else '' }}
