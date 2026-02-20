@@ -146,12 +146,13 @@
       ansible.builtin.shell: |
         # Check for any remaining Redis resources
         echo "Checking for remaining Redis resources..."
-        REMAINING_PODS=$(kubectl get pods -n {{ redis_namespace }} -l app.kubernetes.io/name=redis --no-headers --context {{ kube_context }} 2>/dev/null | wc -l)
-        REMAINING_SVC=$(kubectl get svc -n {{ redis_namespace }} -l app.kubernetes.io/name=redis --no-headers --context {{ kube_context }} 2>/dev/null | wc -l)
-        REMAINING_PVC=$(kubectl get pvc -n {{ redis_namespace }} -l app.kubernetes.io/name=redis --no-headers --context {{ kube_context }} 2>/dev/null | wc -l)
+        REMAINING_PODS=$(kubectl get pods -n {{ redis_namespace }} -l app.kubernetes.io/name=redis --no-headers --context {{ kube_context }} 2>/dev/null | wc -l | tr -d ' ')
+        REMAINING_SVC=$(kubectl get svc -n {{ redis_namespace }} -l app.kubernetes.io/name=redis --no-headers --context {{ kube_context }} 2>/dev/null | wc -l | tr -d ' ')
+        REMAINING_PVC=$(kubectl get pvc -n {{ redis_namespace }} -l app.kubernetes.io/name=redis --no-headers --context {{ kube_context }} 2>/dev/null | wc -l | tr -d ' ')
 
         # Check Helm release
-        REMAINING_HELM=$(helm list -n {{ redis_namespace }} -q | grep -c "^{{ redis_release_name }}$" 2>/dev/null || echo "0")
+        REMAINING_HELM=$(helm list -n {{ redis_namespace }} -q 2>/dev/null | grep -c "^{{ redis_release_name }}$" || true)
+        REMAINING_HELM=${REMAINING_HELM:-0}
 
         echo "Remaining resources:"
         echo "- Pods: $REMAINING_PODS"

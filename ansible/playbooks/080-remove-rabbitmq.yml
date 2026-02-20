@@ -163,13 +163,14 @@
       ansible.builtin.shell: |
         # Check for any remaining RabbitMQ resources
         echo "Checking for remaining RabbitMQ resources..."
-        REMAINING_PODS=$(kubectl get pods -n {{ rabbitmq_namespace }} -l app.kubernetes.io/name=rabbitmq --no-headers --context {{ kube_context }} 2>/dev/null | wc -l)
-        REMAINING_SVC=$(kubectl get svc -n {{ rabbitmq_namespace }} -l app.kubernetes.io/name=rabbitmq --no-headers --context {{ kube_context }} 2>/dev/null | wc -l)
-        REMAINING_PVC=$(kubectl get pvc -n {{ rabbitmq_namespace }} -l app.kubernetes.io/name=rabbitmq --no-headers --context {{ kube_context }} 2>/dev/null | wc -l)
-        REMAINING_SECRET=$(kubectl get secret -n {{ rabbitmq_namespace }} {{ rabbitmq_release_name }} --context {{ kube_context }} 2>/dev/null | wc -l)
+        REMAINING_PODS=$(kubectl get pods -n {{ rabbitmq_namespace }} -l app.kubernetes.io/name=rabbitmq --no-headers --context {{ kube_context }} 2>/dev/null | wc -l | tr -d ' ')
+        REMAINING_SVC=$(kubectl get svc -n {{ rabbitmq_namespace }} -l app.kubernetes.io/name=rabbitmq --no-headers --context {{ kube_context }} 2>/dev/null | wc -l | tr -d ' ')
+        REMAINING_PVC=$(kubectl get pvc -n {{ rabbitmq_namespace }} -l app.kubernetes.io/name=rabbitmq --no-headers --context {{ kube_context }} 2>/dev/null | wc -l | tr -d ' ')
+        REMAINING_SECRET=$(kubectl get secret -n {{ rabbitmq_namespace }} {{ rabbitmq_release_name }} --context {{ kube_context }} 2>/dev/null | wc -l | tr -d ' ')
 
         # Check Helm release
-        REMAINING_HELM=$(helm list -n {{ rabbitmq_namespace }} -q | grep -c "^{{ rabbitmq_release_name }}$" 2>/dev/null || echo "0")
+        REMAINING_HELM=$(helm list -n {{ rabbitmq_namespace }} -q 2>/dev/null | grep -c "^{{ rabbitmq_release_name }}$" || true)
+        REMAINING_HELM=${REMAINING_HELM:-0}
 
         echo "Remaining resources:"
         echo "- Pods: $REMAINING_PODS"

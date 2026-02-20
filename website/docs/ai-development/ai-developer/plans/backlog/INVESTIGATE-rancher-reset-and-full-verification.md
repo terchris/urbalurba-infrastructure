@@ -15,22 +15,35 @@ Rancher Desktop → Troubleshooting → Factory Reset:
 
 The `uis-provision-host` container and image are wiped by factory reset and must be rebuilt locally before use.
 
+The tester must delete any previous `.uis.extend/` and `.uis.secrets/` folders so that we have a clean test.
+
 ## Recovery Procedure
 
 After factory reset and re-enabling Kubernetes:
 
+### Contributor (builds image and prepares tester)
+
 ```bash
 ./uis build            # rebuild the container image locally
-./uis start            # creates and starts the container from the local image
-./uis deploy           # calls ensure_secrets_applied() automatically, deploys enabled services
+cp uis <tester-dir>/   # copy the uis wrapper to the tester directory
 ```
 
-The `ensure_secrets_applied()` function in `first-run.sh` handles re-applying secrets to a fresh cluster. The `uis deploy` command calls it before every deployment.
+The contributor verifies the image builds successfully before handing off to the tester.
+
+### Tester (clean slate verification)
+
+```bash
+rm -rf .uis.extend .uis.secrets   # ensure no leftover config
+./uis start            # uis wrapper creates .uis.extend/ and .uis.secrets/, starts container
+./uis deploy           # calls ensure_secrets_applied() automatically, deploys enabled services
+```
 
 For individual services:
 ```bash
 ./uis deploy <service>
 ```
+
+The `ensure_secrets_applied()` function in `first-run.sh` handles re-applying secrets to a fresh cluster. The `uis deploy` command calls it before every deployment.
 
 ## Current Verification Status
 
@@ -59,8 +72,8 @@ Test each service: deploy → verify pods running → verify connectivity → un
 
 **Suggested order** (dependencies first):
 
-1. **whoami** — simplest, baseline test
-2. **nginx** — core web server
+1. **nginx** — used by automatic install to verify the system is started
+2. **whoami** — simplest service, baseline test
 3. **postgresql** — required by authentik, openwebui, litellm, unity-catalog
 4. **redis** — required by authentik
 5. **mysql** — standalone database
@@ -93,14 +106,14 @@ After individual verification, test deploying full stacks:
 - AI stack: openwebui + litellm
 - Data science stack: jupyterhub + spark + unity-catalog
 
-## Open Questions
+## Resolved Questions
 
-1. **Should we test via the tester workflow?** The tester at `testing/uis1/` has been effective. A factory reset test would need the tester to actually reset their Rancher Desktop.
+1. **Tester workflow**: The tester runs on the same Rancher Desktop, so factory reset wipes the tester's containers too. The contributor builds the image locally and copies the `uis` file to the tester directory.
 
-2. **How long does a full cycle take?** Deploying all 21 testable services sequentially could take a long time. Can we parallelize or batch?
+2. **How long does a full cycle take?** TBD — will measure during testing.
 
-3. **What about data persistence?** After reset, PVs are gone. Services like PostgreSQL start fresh. Is that the expected behavior for a developer platform?
+3. **Data persistence**: For this test we wipe everything. Services like PostgreSQL start fresh. That's expected.
 
-4. **The `enabled-services.conf` default only has nginx.** After reset, `./uis deploy` only deploys nginx. For full verification, we need to either enable all services or deploy them individually.
+4. **`enabled-services.conf` already has nginx** as the only enabled service by default. The old system used nginx to verify that the system is started. No changes needed.
 
-5. **The legacy `install-rancher.sh` vs modern `./uis` path** — which should we standardize on? The `install-rancher.sh` script checks for existing containers and may conflict.
+5. **`./uis` is the standard path.** Decided in PLAN-004/PLAN-005. The legacy `install-rancher.sh` is no longer used.

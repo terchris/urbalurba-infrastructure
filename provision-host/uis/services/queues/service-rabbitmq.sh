@@ -12,7 +12,7 @@ SCRIPT_CATEGORY="QUEUES"
 # === UIS-Specific (Optional) ===
 SCRIPT_PLAYBOOK="080-setup-rabbitmq.yml"
 SCRIPT_MANIFEST=""
-SCRIPT_CHECK_COMMAND="kubectl get pods -n queues -l app.kubernetes.io/name=rabbitmq --no-headers 2>/dev/null | grep -q Running"
+SCRIPT_CHECK_COMMAND="kubectl get pods -n default -l app.kubernetes.io/name=rabbitmq --no-headers 2>/dev/null | grep -q Running"
 SCRIPT_REMOVE_PLAYBOOK="080-remove-rabbitmq.yml"
 SCRIPT_REQUIRES=""
 SCRIPT_PRIORITY="60"

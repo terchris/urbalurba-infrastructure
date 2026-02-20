@@ -147,8 +147,9 @@ start_container() {
 
     log_info "Container started"
 
-    # Show welcome message on first run
+    # Initialize config files on first run
     if [ "$first_run" = "true" ]; then
+        docker exec "$CONTAINER_NAME" /mnt/urbalurbadisk/provision-host/uis/manage/uis-cli.sh init 2>/dev/null || true
         show_welcome
     fi
 }
