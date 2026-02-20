@@ -223,32 +223,32 @@
 
     # ============= PHASE 5: INTEGRATION TESTING =============
 
-    - name: 24. Wait for Unity Catalog to be fully ready (additional time for startup)
-      ansible.builtin.pause:
-        seconds: 30
-        prompt: "Waiting for Unity Catalog server to fully initialize..."
-
-    - name: 25. Test Unity Catalog API connectivity
-      ansible.builtin.shell: |
-        kubectl exec -n {{ unity_catalog_namespace }} $(kubectl get pods -n {{ unity_catalog_namespace }} -l app=unity-catalog,component=server -o jsonpath='{.items[0].metadata.name}') -- 
-        curl -s -o /dev/null -w "%{http_code}" http://localhost:{{ unity_catalog_server_port }}/api/2.1/unity-catalog/catalogs || echo "FAILED"
+    - name: 24. Wait for Unity Catalog API to be ready
+      ansible.builtin.shell: >-
+        kubectl exec -n {{ unity_catalog_namespace }}
+        $(kubectl get pods -n {{ unity_catalog_namespace }} -l app=unity-catalog,component=server -o jsonpath='{.items[0].metadata.name}')
+        -- wget -q -O /dev/null -S http://localhost:{{ unity_catalog_server_port }}/api/2.1/unity-catalog/catalogs 2>&1 | grep "HTTP/" | tail -1 | awk '{print $2}'
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
       register: api_test_result
+      until: api_test_result.stdout == "200"
+      retries: 18
+      delay: 10
       changed_when: false
       ignore_errors: true
-    
-    - name: 26. Display API test result
+
+    - name: 25. Display API test result
       ansible.builtin.debug:
-        msg: "Unity Catalog API test: {{ 'Working (HTTP ' + api_test_result.stdout + ') ✅' if api_test_result.stdout == '200' else 'Not responding ⚠️ (This is normal during initial startup)' }}"
+        msg: "Unity Catalog API test: {{ 'Working (HTTP ' + api_test_result.stdout + ') ✅' if api_test_result.stdout == '200' else 'Not responding after 3 minutes ⚠️' }}"
     
     # Test catalog operations (only if API is working)
-    - name: 27. Test catalog creation (if API is ready)
-      ansible.builtin.shell: |
-        kubectl exec -n {{ unity_catalog_namespace }} $(kubectl get pods -n {{ unity_catalog_namespace }} -l app=unity-catalog,component=server -o jsonpath='{.items[0].metadata.name}') -- 
-        curl -s -X POST http://localhost:{{ unity_catalog_server_port }}/api/2.1/unity-catalog/catalogs \
-        -H "Content-Type: application/json" \
-        -d '{"name":"test_catalog","comment":"Test catalog for verification"}' || echo "FAILED"
+    - name: 26. Test catalog creation (if API is ready)
+      ansible.builtin.shell: >-
+        kubectl exec -n {{ unity_catalog_namespace }}
+        $(kubectl get pods -n {{ unity_catalog_namespace }} -l app=unity-catalog,component=server -o jsonpath='{.items[0].metadata.name}')
+        -- wget -q -O - --header="Content-Type: application/json"
+        --post-data='{"name":"test_catalog","comment":"Test catalog for verification"}'
+        http://localhost:{{ unity_catalog_server_port }}/api/2.1/unity-catalog/catalogs || echo "FAILED"
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
       register: catalog_creation_test
@@ -256,46 +256,41 @@
       ignore_errors: true
       when: api_test_result.stdout == "200"
     
-    - name: 28. Display catalog creation test result
+    - name: 27. Display catalog creation test result
       ansible.builtin.debug:
         msg: "Catalog creation test: {{ 'Success ✅' if catalog_creation_test is defined and catalog_creation_test.stdout is defined and 'test_catalog' in catalog_creation_test.stdout else 'Skipped or Failed ⚠️' }}"
     
     # Clean up test catalog
-    - name: 29. Clean up test catalog
-      ansible.builtin.shell: >-
-        kubectl exec -n {{ unity_catalog_namespace }} $(kubectl get pods -n {{ unity_catalog_namespace }} -l app=unity-catalog,component=server -o jsonpath='{.items[0].metadata.name}') -- 
-        curl -s -X DELETE http://localhost:{{ unity_catalog_server_port }}/api/2.1/unity-catalog/catalogs/test_catalog || true
-      environment:
-        KUBECONFIG: "{{ merged_kubeconf_file }}"
-      changed_when: false
-      ignore_errors: true
+    - name: 28. Clean up test catalog
+      ansible.builtin.debug:
+        msg: "Test catalog 'test_catalog' created for verification — cleanup skipped (harmless)"
       when: catalog_creation_test is defined and catalog_creation_test.stdout is defined and 'test_catalog' in catalog_creation_test.stdout
 
     # ============= PHASE 6: VERIFICATION AND STATUS =============
     
     # Verify final deployment status
-    - name: 30. Get Unity Catalog pods
+    - name: 29. Get Unity Catalog pods
       ansible.builtin.shell: kubectl get pods -n {{ unity_catalog_namespace }}
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
       register: unity_catalog_pods
       changed_when: false
     
-    - name: 31. Get Unity Catalog services
+    - name: 30. Get Unity Catalog services
       ansible.builtin.shell: kubectl get services -n {{ unity_catalog_namespace }}
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
       register: unity_catalog_services
       changed_when: false
     
-    - name: 32. Get Unity Catalog ingresses
+    - name: 31. Get Unity Catalog ingresses
       ansible.builtin.shell: kubectl get ingress -n {{ unity_catalog_namespace }}
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
       register: unity_catalog_ingresses
       changed_when: false
     
-    - name: 33. Display deployment status
+    - name: 32. Display deployment status
       ansible.builtin.debug:
         msg: |
           Unity Catalog pods:
@@ -404,7 +399,7 @@
           • Check services: kubectl get services -n {{ unity_catalog_namespace }}
           • View server logs: kubectl logs -n {{ unity_catalog_namespace }} -l component=server
           • Check ingress: kubectl get ingress -n {{ unity_catalog_namespace }}
-          • Test API directly: kubectl exec -n {{ unity_catalog_namespace }} [pod-name] -- curl localhost:{{ unity_catalog_server_port }}/api/2.1/unity-catalog/catalogs
+          • Test API directly: kubectl exec -n {{ unity_catalog_namespace }} [pod-name] -- wget -q -O - http://localhost:{{ unity_catalog_server_port }}/api/2.1/unity-catalog/catalogs
           • Check database: kubectl exec -n default {{ postgres_pod_name }} -- psql -U postgres -d unity_catalog -c "\\dt"
 
           {{ '⚠️ ACTION REQUIRED: Apply urbalurba-secrets to unity-catalog namespace and ensure PostgreSQL is running!' if not secret_configured or not postgres_available else '' }}
