@@ -430,9 +430,10 @@
     "website": "https://tailscale.com"
     ,"summary": "Tailscale creates a secure, private network between your servers, computers, and cloud instances using WireGuard encryption. It provides zero-config networking with built-in NAT traversal."
     ,"docs": "/docs/packages/network/tailscale"
-    ,"playbook": "801-setup-network-tailscale-tunnel.yml"
+    ,"playbook": "802-deploy-network-tailscale-tunnel.yml"
     ,"priority": 100
     ,"checkCommand": "kubectl get pods -n network -l app.kubernetes.io/name=tailscale --no-headers 2>/dev/null | grep -q Running"
+    ,"removePlaybook": "801-remove-network-tailscale-tunnel.yml"
   }
 ,
   {
