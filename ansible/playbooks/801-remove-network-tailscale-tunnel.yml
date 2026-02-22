@@ -13,7 +13,7 @@
 #
 # Usage:
 #   ansible-playbook playbooks/801-remove-network-tailscale-tunnel.yml
-#   ansible-playbook playbooks/801-remove-network-tailscale-tunnel.yml -e remove_tailnet_devices=true
+#   ansible-playbook playbooks/801-remove-network-tailscale-tunnel.yml -e remove_tailnet_devices=false
 
 - name: Remove Tailscale tunnel from Kubernetes
   hosts: localhost
@@ -23,7 +23,7 @@
     operator_namespace: "tailscale"
     operator_release_name: "tailscale-operator"
     deletion_timeout: 120
-    remove_tailnet_devices: false
+    remove_tailnet_devices: true
 
   tasks:
     - name: 1. Get current Kubernetes context if target_host not provided
@@ -47,7 +47,7 @@
           Target: {{ target_host }}
           Namespace: {{ operator_namespace }}
           Helm Release: {{ operator_release_name }}
-          Tailnet device removal: {{ 'Enabled' if remove_tailnet_devices | bool else 'Disabled (use -e remove_tailnet_devices=true to enable)' }}
+          Tailnet device removal: {{ 'Enabled (default)' if remove_tailnet_devices | bool else 'Disabled (use -e remove_tailnet_devices=true to enable)' }}
 
     # Step 1: Remove Tailscale cluster ingress
     - name: 4. Check for Tailscale cluster ingress
@@ -168,62 +168,99 @@
       changed_when: false
       ignore_errors: true
 
-    # Step 6: Remove devices from Tailnet via API (optional)
+    # Step 6: Remove devices from Tailnet via API (uses OAuth client credentials grant)
     - name: 17. Get Tailscale API credentials for device cleanup
-      ansible.builtin.shell: |
-        CLIENTID=$(kubectl get secret urbalurba-secrets -n default --context {{ target_host }} -o jsonpath='{.data.TAILSCALE_CLIENTID}' 2>/dev/null | base64 -d 2>/dev/null)
-        CLIENTSECRET=$(kubectl get secret urbalurba-secrets -n default --context {{ target_host }} -o jsonpath='{.data.TAILSCALE_CLIENTSECRET}' 2>/dev/null | base64 -d 2>/dev/null)
-        TAILNET=$(kubectl get secret urbalurba-secrets -n default --context {{ target_host }} -o jsonpath='{.data.TAILSCALE_TAILNET}' 2>/dev/null | base64 -d 2>/dev/null)
-        HOSTNAME=$(kubectl get secret urbalurba-secrets -n default --context {{ target_host }} -o jsonpath='{.data.TAILSCALE_CLUSTER_HOSTNAME}' 2>/dev/null | base64 -d 2>/dev/null)
-        echo "CLIENTID=$CLIENTID"
-        echo "CLIENTSECRET=$CLIENTSECRET"
-        echo "TAILNET=$TAILNET"
-        echo "HOSTNAME=${HOSTNAME:-k8s}"
-      environment:
-        KUBECONFIG: "{{ merged_kubeconf_file }}"
-      register: api_creds
-      changed_when: false
+      kubernetes.core.k8s_info:
+        kind: Secret
+        name: urbalurba-secrets
+        namespace: default
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: ts_secrets
       ignore_errors: true
       when: remove_tailnet_devices | bool
 
     - name: 18. Parse API credentials
       ansible.builtin.set_fact:
-        ts_clientid: "{{ api_creds.stdout_lines | select('match', '^CLIENTID=') | first | regex_replace('^CLIENTID=', '') }}"
-        ts_clientsecret: "{{ api_creds.stdout_lines | select('match', '^CLIENTSECRET=') | first | regex_replace('^CLIENTSECRET=', '') }}"
-        ts_tailnet: "{{ api_creds.stdout_lines | select('match', '^TAILNET=') | first | regex_replace('^TAILNET=', '') }}"
-        ts_hostname: "{{ api_creds.stdout_lines | select('match', '^HOSTNAME=') | first | regex_replace('^HOSTNAME=', '') }}"
-      when: remove_tailnet_devices | bool and api_creds.rc == 0
+        ts_clientid: "{{ ts_secrets.resources[0].data.TAILSCALE_CLIENTID | b64decode }}"
+        ts_clientsecret: "{{ ts_secrets.resources[0].data.TAILSCALE_CLIENTSECRET | b64decode }}"
+        ts_tailnet: "{{ ts_secrets.resources[0].data.TAILSCALE_TAILNET | b64decode }}"
+        ts_hostname: "{{ ts_secrets.resources[0].data.TAILSCALE_CLUSTER_HOSTNAME | default('') | b64decode | default('k8s', true) }}"
+      when:
+        - remove_tailnet_devices | bool
+        - ts_secrets.resources | default([]) | length > 0
+      ignore_errors: true
 
-    - name: 19. Remove cluster devices from Tailnet via API
-      ansible.builtin.shell: |
-        DEVICES_JSON=$(curl -s -u "{{ ts_clientid }}:{{ ts_clientsecret }}" \
-          "https://api.tailscale.com/api/v2/tailnet/{{ ts_tailnet }}/devices" 2>/dev/null)
-
-        if echo "$DEVICES_JSON" | python3 -c "import sys,json; json.load(sys.stdin)['devices']" >/dev/null 2>&1; then
-          DEVICE_COUNT=0
-          echo "$DEVICES_JSON" | python3 -c "
-        import sys, json
-        data = json.load(sys.stdin)
-        for d in data.get('devices', []):
-            name = d.get('name', '')
-            if 'tailscale-operator' in name or '{{ ts_hostname }}' in name or 'provision-host' in name:
-                print(f\"{d['name']}:{d['id']}\")
-          " | while IFS=':' read -r name id; do
-            curl -s -X DELETE -u "{{ ts_clientid }}:{{ ts_clientsecret }}" \
-              "https://api.tailscale.com/api/v2/device/$id" >/dev/null 2>&1 || true
-            echo "Removed device: $name"
-            DEVICE_COUNT=$((DEVICE_COUNT + 1))
-          done
-          echo "Device cleanup complete"
-        else
-          echo "Could not retrieve device list from Tailscale API"
-        fi
+    - name: 18a. Obtain OAuth access token
+      ansible.builtin.uri:
+        url: "https://api.tailscale.com/api/v2/oauth/token"
+        method: POST
+        body_format: form-urlencoded
+        body:
+          client_id: "{{ ts_clientid }}"
+          client_secret: "{{ ts_clientsecret }}"
+          grant_type: "client_credentials"
+        status_code: [200]
+        timeout: 15
+      register: oauth_token_response
       when:
         - remove_tailnet_devices | bool
         - ts_clientid is defined and ts_clientid != ""
         - ts_clientsecret is defined and ts_clientsecret != ""
-      no_log: true
       ignore_errors: true
+      no_log: true
+
+    - name: 18b. Extract access token
+      ansible.builtin.set_fact:
+        ts_access_token: "{{ oauth_token_response.json.access_token }}"
+      when:
+        - remove_tailnet_devices | bool
+        - oauth_token_response.status is defined and oauth_token_response.status == 200
+      no_log: true
+
+    - name: 19. List devices in tailnet
+      ansible.builtin.uri:
+        url: "https://api.tailscale.com/api/v2/tailnet/{{ ts_tailnet }}/devices"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ ts_access_token }}"
+        status_code: [200]
+        timeout: 15
+      register: devices_response
+      when:
+        - remove_tailnet_devices | bool
+        - ts_access_token is defined
+      ignore_errors: true
+
+    - name: 19a. Find cluster-related devices
+      ansible.builtin.set_fact:
+        cluster_devices: >-
+          {{ devices_response.json.devices | default([]) |
+             selectattr('name', 'search', 'tailscale-operator|' + ts_hostname + '|provision-host') |
+             list }}
+      when:
+        - remove_tailnet_devices | bool
+        - devices_response.status is defined and devices_response.status == 200
+
+    - name: 19b. Delete cluster devices from tailnet
+      ansible.builtin.uri:
+        url: "https://api.tailscale.com/api/v2/device/{{ item.id }}"
+        method: DELETE
+        headers:
+          Authorization: "Bearer {{ ts_access_token }}"
+        status_code: [200, 204]
+        timeout: 15
+      loop: "{{ cluster_devices | default([]) }}"
+      loop_control:
+        label: "{{ item.name }}"
+      ignore_errors: true
+      no_log: true
+
+    - name: 19c. Report device cleanup results
+      ansible.builtin.debug:
+        msg: "Removed {{ cluster_devices | default([]) | length }} cluster device(s) from tailnet"
+      when:
+        - remove_tailnet_devices | bool
+        - cluster_devices is defined
 
     # Step 7: Verification
     - name: 20. Verify Tailscale removal
@@ -273,7 +310,7 @@
           - "Per-service ingresses: {{ tailscale_ingress_count.stdout | default('0') }} found and removed"
           - "Helm release: {{ 'Uninstalled' if operator_release_exists | bool else 'Not found (already removed)' }}"
           - "Namespace: {{ 'Deleted' if namespace_check.rc == 0 else 'Not found (already removed)' }}"
-          - "Tailnet devices: {{ 'Cleaned up via API' if remove_tailnet_devices | bool else 'Skipped (use -e remove_tailnet_devices=true)' }}"
+          - "Tailnet devices: {{ 'Cleaned up via API (default)' if remove_tailnet_devices | bool else 'Skipped (use -e remove_tailnet_devices=true)' }}"
           - ""
           - "Verification:"
           - "{{ verification.stdout_lines | default(['No verification data']) | join('\n') }}"

@@ -220,6 +220,41 @@ cd /mnt/urbalurbadisk/ansible && ansible-playbook $INGRESS_PLAYBOOK_PATH \
     -e SKIP_OPERATOR_CHECK="true"
 check_command_success "Create Tailscale ingress"
 
+# Check actual hostname from ingress status
+ACTUAL_HOSTNAME=""
+INGRESS_NAME="${INGRESS_HOSTNAME}-tailscale"
+echo ""
+echo "Checking actual hostname from ingress status..."
+for i in {1..6}; do
+    ACTUAL_HOSTNAME=$(kubectl --kubeconfig="$KUBECONFIG_PATH" get ingress "$INGRESS_NAME" -n default \
+        -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null)
+    if [ -n "$ACTUAL_HOSTNAME" ]; then
+        break
+    fi
+    echo "Waiting for ingress hostname... ($i/6)"
+    sleep 5
+done
+
+EXPECTED_URL="https://$INGRESS_HOSTNAME.$TAILSCALE_DOMAIN"
+if [ -n "$ACTUAL_HOSTNAME" ]; then
+    ACTUAL_URL="https://$ACTUAL_HOSTNAME"
+    if [ "$ACTUAL_HOSTNAME" != "$INGRESS_HOSTNAME.$TAILSCALE_DOMAIN" ]; then
+        STATUS+=("Hostname Check: WARNING - Mismatch detected")
+        echo ""
+        echo "⚠️  HOSTNAME MISMATCH DETECTED"
+        echo "  Expected: $EXPECTED_URL"
+        echo "  Actual:   $ACTUAL_URL"
+        echo ""
+        echo "  This usually means a stale Tailscale device exists with the same name."
+        echo "  To fix: run deletehost to remove the old device, then re-add."
+    else
+        STATUS+=("Hostname Check: OK")
+    fi
+else
+    ACTUAL_URL="$EXPECTED_URL"
+    STATUS+=("Hostname Check: Skipped - Could not read ingress status")
+fi
+
 echo ""
 echo "------ Summary of installation statuses for: $0 ------"
 for status in "${STATUS[@]}"; do
@@ -234,14 +269,14 @@ else
     echo ""
     echo "✅ TAILSCALE DEPLOYMENT COMPLETED SUCCESSFULLY"
     echo "Service '$SERVICE_NAME' is now accessible at:"
-    echo "  https://$INGRESS_HOSTNAME.$TAILSCALE_DOMAIN"
+    echo "  $ACTUAL_URL"
     echo ""
     echo "✅ Traefik will handle routing to the appropriate service"
     echo ""
     echo "DNS Troubleshooting:"
-    echo "  Check DNS resolution: nslookup $INGRESS_HOSTNAME.$TAILSCALE_DOMAIN"
-    echo "  Check DNS details: dig $INGRESS_HOSTNAME.$TAILSCALE_DOMAIN"
-    echo "  Test connectivity: curl https://$INGRESS_HOSTNAME.$TAILSCALE_DOMAIN"
+    echo "  Check DNS resolution: nslookup ${ACTUAL_HOSTNAME:-$INGRESS_HOSTNAME.$TAILSCALE_DOMAIN}"
+    echo "  Check DNS details: dig ${ACTUAL_HOSTNAME:-$INGRESS_HOSTNAME.$TAILSCALE_DOMAIN}"
+    echo "  Test connectivity: curl $ACTUAL_URL"
     echo ""
     echo "Note: DNS propagation can take 1-5 minutes globally"
 fi

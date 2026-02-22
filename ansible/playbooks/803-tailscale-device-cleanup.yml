@@ -1,0 +1,143 @@
+---
+# file: ansible/playbooks/803-tailscale-device-cleanup.yml
+# Description: Remove Tailscale devices matching a hostname from the tailnet via API
+#
+# This playbook:
+# 1. Retrieves OAuth credentials from Kubernetes secrets
+# 2. Obtains an API access token via OAuth client credentials grant
+# 3. Lists all devices in the tailnet
+# 4. Filters devices matching the given hostname (including -N suffix variants)
+# 5. Deletes matching devices via the Tailscale API
+#
+# Usage:
+#   ansible-playbook playbooks/803-tailscale-device-cleanup.yml -e cleanup_hostname=whoami
+#
+# Required parameters:
+#   cleanup_hostname: The hostname to match and clean up (e.g., "whoami")
+#
+# The playbook is non-destructive on failure — API errors are ignored so
+# calling scripts are not blocked by cleanup issues.
+
+- name: Clean up Tailscale devices for hostname
+  hosts: localhost
+  gather_facts: false
+  vars:
+    kubeconfig_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
+
+  tasks:
+    - name: "01 Validate required parameters"
+      ansible.builtin.fail:
+        msg: "cleanup_hostname is required. Usage: -e cleanup_hostname=whoami"
+      when: cleanup_hostname is not defined or cleanup_hostname == ""
+
+    - name: "02 Retrieve Tailscale secrets from urbalurba-secrets"
+      kubernetes.core.k8s_info:
+        kind: Secret
+        name: urbalurba-secrets
+        namespace: default
+        kubeconfig: "{{ kubeconfig_file }}"
+      register: urbalurba_secrets
+      ignore_errors: true
+
+    - name: "03 Extract API credentials"
+      ansible.builtin.set_fact:
+        ts_clientid: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_CLIENTID | b64decode }}"
+        ts_clientsecret: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_CLIENTSECRET | b64decode }}"
+        ts_tailnet: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_TAILNET | b64decode }}"
+      when: urbalurba_secrets.resources | default([]) | length > 0
+      ignore_errors: true
+
+    - name: "04 Skip cleanup if credentials unavailable"
+      ansible.builtin.debug:
+        msg: "Skipping device cleanup — API credentials not available"
+      when: ts_clientid is not defined or ts_clientid == "" or ts_clientsecret is not defined or ts_tailnet is not defined
+
+    - name: "05 Obtain OAuth access token"
+      ansible.builtin.uri:
+        url: "https://api.tailscale.com/api/v2/oauth/token"
+        method: POST
+        body_format: form-urlencoded
+        body:
+          client_id: "{{ ts_clientid }}"
+          client_secret: "{{ ts_clientsecret }}"
+          grant_type: "client_credentials"
+        status_code: [200]
+        timeout: 15
+      register: oauth_token_response
+      when:
+        - ts_clientid is defined and ts_clientid != ""
+        - ts_clientsecret is defined and ts_clientsecret != ""
+        - ts_tailnet is defined and ts_tailnet != ""
+      ignore_errors: true
+      no_log: true
+
+    - name: "05a Extract access token"
+      ansible.builtin.set_fact:
+        ts_access_token: "{{ oauth_token_response.json.access_token }}"
+      when: oauth_token_response.status is defined and oauth_token_response.status == 200
+      no_log: true
+
+    - name: "05b Report OAuth failure"
+      ansible.builtin.debug:
+        msg: "Failed to obtain OAuth access token (status: {{ oauth_token_response.status | default('unknown') }})"
+      when: ts_access_token is not defined
+
+    - name: "06 List devices in tailnet"
+      ansible.builtin.uri:
+        url: "https://api.tailscale.com/api/v2/tailnet/{{ ts_tailnet }}/devices"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ ts_access_token }}"
+        status_code: [200]
+        timeout: 15
+      register: devices_response
+      when: ts_access_token is defined
+      ignore_errors: true
+
+    - name: "07 Find devices matching hostname"
+      ansible.builtin.set_fact:
+        matching_devices: >-
+          {{ devices_response.json.devices | default([]) |
+             selectattr('name', 'search', '^' + cleanup_hostname + '(-[0-9]+)?[.]') |
+             list }}
+      when: devices_response.status is defined and devices_response.status == 200
+
+    - name: "08 Report matching devices"
+      ansible.builtin.debug:
+        msg: "Found {{ matching_devices | length }} device(s) matching '{{ cleanup_hostname }}': {{ matching_devices | map(attribute='name') | join(', ') }}"
+      when: matching_devices is defined and matching_devices | length > 0
+
+    - name: "08a Report no matching devices"
+      ansible.builtin.debug:
+        msg: "No devices matching '{{ cleanup_hostname }}' found in tailnet"
+      when: matching_devices is defined and matching_devices | length == 0
+
+    - name: "09 Delete matching devices from tailnet"
+      ansible.builtin.uri:
+        url: "https://api.tailscale.com/api/v2/device/{{ item.id }}"
+        method: DELETE
+        headers:
+          Authorization: "Bearer {{ ts_access_token }}"
+        status_code: [200, 204]
+        timeout: 15
+      loop: "{{ matching_devices | default([]) }}"
+      loop_control:
+        label: "{{ item.name }}"
+      register: delete_results
+      ignore_errors: true
+      no_log: true
+
+    - name: "10 Report deletion results"
+      ansible.builtin.debug:
+        msg: "Deleted {{ delete_results.results | default([]) | selectattr('status', 'defined') | selectattr('status', 'in', [200, 204]) | list | length }} of {{ matching_devices | length }} device(s)"
+      when: matching_devices is defined and matching_devices | length > 0
+
+    - name: "11 Display cleanup summary"
+      ansible.builtin.debug:
+        msg:
+          - "==================================================="
+          - "Tailscale Device Cleanup: {{ cleanup_hostname }}"
+          - "==================================================="
+          - "Devices found: {{ matching_devices | default([]) | length }}"
+          - "{{ matching_devices | default([]) | map(attribute='name') | list | join(', ') }}"
+          - "==================================================="

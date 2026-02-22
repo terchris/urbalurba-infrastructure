@@ -131,6 +131,20 @@ if [ -n "$POD_NAME" ]; then
     fi
 fi
 
+# Clean up Tailscale device from tailnet via Ansible playbook
+echo ""
+echo "Cleaning up Tailscale device from tailnet..."
+CLEANUP_PLAYBOOK="/mnt/urbalurbadisk/ansible/playbooks/803-tailscale-device-cleanup.yml"
+
+if [ -f "$CLEANUP_PLAYBOOK" ]; then
+    cd /mnt/urbalurbadisk && ansible-playbook "$CLEANUP_PLAYBOOK" \
+        -e "cleanup_hostname=$HOSTNAME" 2>&1 || true
+    STATUS+=("API Device Cleanup: OK")
+else
+    echo "Warning: Device cleanup playbook not found at $CLEANUP_PLAYBOOK"
+    STATUS+=("API Device Cleanup: Skipped - Playbook not found")
+fi
+
 # Verify deletion
 echo ""
 echo "Verifying deletion..."

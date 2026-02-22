@@ -90,6 +90,9 @@ Tools:
   tools list              List all available tools with status
   tools install <tool>    Install an optional tool
 
+Verification:
+  verify <service>        Run pre-deployment checks (e.g. verify tailscale)
+
 Documentation:
   docs generate           Generate JSON files for website
 
@@ -990,6 +993,40 @@ cmd_cluster() {
 }
 
 # ============================================================
+# Verify Commands
+# ============================================================
+
+cmd_verify() {
+    local target="${1:-}"
+
+    if [[ -z "$target" ]]; then
+        log_error "Usage: uis verify <service>"
+        echo ""
+        echo "Available verifications:"
+        echo "  tailscale    Check Tailscale secrets, API, devices, and operator"
+        exit "$EXIT_GENERAL_ERROR"
+    fi
+
+    case "$target" in
+        tailscale|tailscale-tunnel)
+            cmd_verify_tailscale
+            ;;
+        *)
+            log_error "Unknown verify target: $target"
+            echo ""
+            echo "Available verifications:"
+            echo "  tailscale    Check Tailscale secrets, API, devices, and operator"
+            exit "$EXIT_GENERAL_ERROR"
+            ;;
+    esac
+}
+
+cmd_verify_tailscale() {
+    print_section "Verifying Tailscale Configuration"
+    ansible-playbook "$ANSIBLE_DIR/803-verify-tailscale.yml"
+}
+
+# ============================================================
 # Docs Commands
 # ============================================================
 
@@ -1219,6 +1256,9 @@ main() {
             ;;
         tools)
             cmd_tools "$@"
+            ;;
+        verify)
+            cmd_verify "$@"
             ;;
         *)
             log_error "Unknown command: $command"

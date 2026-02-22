@@ -1,0 +1,199 @@
+---
+# file: ansible/playbooks/803-verify-tailscale.yml
+# Description: Verify Tailscale configuration and readiness
+#
+# This playbook checks:
+# 1. Tailscale secrets are present and not placeholder values
+# 2. API connectivity (authenticate via OAuth client credentials grant)
+# 3. Stale device report (list devices, flag any with -N suffixes)
+# 4. Operator status (is the Tailscale operator running?)
+#
+# Usage:
+#   ansible-playbook playbooks/803-verify-tailscale.yml
+
+- name: Verify Tailscale configuration
+  hosts: localhost
+  gather_facts: false
+  vars:
+    kubeconfig_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
+    operator_namespace: "tailscale"
+    check_results: []
+
+  tasks:
+    # ============================================================
+    # Check 1: Secrets present and valid
+    # ============================================================
+    - name: "01 Check for urbalurba-secrets"
+      kubernetes.core.k8s_info:
+        kind: Secret
+        name: urbalurba-secrets
+        namespace: default
+        kubeconfig: "{{ kubeconfig_file }}"
+      register: urbalurba_secrets
+      ignore_errors: true
+
+    - name: "02 Extract Tailscale credentials"
+      ansible.builtin.set_fact:
+        ts_clientid: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_CLIENTID | b64decode }}"
+        ts_clientsecret: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_CLIENTSECRET | b64decode }}"
+        ts_tailnet: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_TAILNET | b64decode }}"
+        ts_domain: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_DOMAIN | b64decode }}"
+        ts_secret: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_SECRET | b64decode }}"
+        ts_cluster_hostname: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_CLUSTER_HOSTNAME | default('') | b64decode | default('not set', true) }}"
+      when: urbalurba_secrets.resources | length > 0
+      ignore_errors: true
+
+    - name: "03 Set secrets not found"
+      ansible.builtin.set_fact:
+        ts_clientid: ""
+        ts_clientsecret: ""
+        ts_tailnet: ""
+        ts_domain: ""
+        ts_secret: ""
+        ts_cluster_hostname: "not set"
+      when: urbalurba_secrets.resources | length == 0
+
+    - name: "04 Validate secrets are not placeholders"
+      ansible.builtin.set_fact:
+        secrets_valid: >-
+          {{
+            ts_clientid != "" and
+            ts_clientsecret != "" and
+            ts_tailnet != "" and
+            ts_domain != "" and
+            ts_secret != "" and
+            "XXXXXXX" not in ts_clientid and
+            "XXXXXXX" not in ts_clientsecret and
+            "tskey-auth-ktyTufs" not in ts_secret
+          }}
+
+    - name: "05 Report secrets check"
+      ansible.builtin.set_fact:
+        check_results: "{{ check_results + [secrets_result] }}"
+      vars:
+        secrets_result: >-
+          {% if urbalurba_secrets.resources | length == 0 %}FAIL: Secrets - urbalurba-secrets not found in cluster
+          {% elif not secrets_valid %}FAIL: Secrets - contain placeholder/template values
+          {% else %}PASS: Secrets - all Tailscale credentials present and valid{% endif %}
+
+    # ============================================================
+    # Check 2: API connectivity (OAuth client credentials grant)
+    # ============================================================
+    - name: "06 Obtain OAuth access token"
+      ansible.builtin.uri:
+        url: "https://api.tailscale.com/api/v2/oauth/token"
+        method: POST
+        body_format: form-urlencoded
+        body:
+          client_id: "{{ ts_clientid }}"
+          client_secret: "{{ ts_clientsecret }}"
+          grant_type: "client_credentials"
+        status_code: [200]
+        timeout: 15
+      register: oauth_token_response
+      ignore_errors: true
+      no_log: true
+      when: secrets_valid | default(false)
+
+    - name: "06a Extract access token"
+      ansible.builtin.set_fact:
+        ts_access_token: "{{ oauth_token_response.json.access_token }}"
+      when: oauth_token_response.status is defined and oauth_token_response.status == 200
+      no_log: true
+
+    - name: "07 Test Tailscale API with access token"
+      ansible.builtin.uri:
+        url: "https://api.tailscale.com/api/v2/tailnet/{{ ts_tailnet }}/devices"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ ts_access_token }}"
+        status_code: [200]
+        timeout: 15
+      register: api_test
+      ignore_errors: true
+      when: ts_access_token is defined
+
+    - name: "08 Report API connectivity"
+      ansible.builtin.set_fact:
+        check_results: "{{ check_results + [api_result] }}"
+      vars:
+        api_result: >-
+          {% if not secrets_valid | default(false) %}SKIP: API Connectivity - secrets invalid, cannot test
+          {% elif oauth_token_response.status is not defined or oauth_token_response.status != 200 %}FAIL: API Connectivity - OAuth token request failed (check client ID and secret)
+          {% elif api_test.status is defined and api_test.status == 200 %}PASS: API Connectivity - authenticated successfully ({{ (api_test.json.devices | default([])) | length }} devices in tailnet)
+          {% elif api_test.status is defined and api_test.status == 403 %}FAIL: API Connectivity - forbidden (OAuth client may lack required scopes)
+          {% else %}FAIL: API Connectivity - could not reach Tailscale API (status: {{ api_test.status | default('timeout') }}){% endif %}
+
+    # ============================================================
+    # Check 3: Stale device report
+    # ============================================================
+    - name: "09 Analyze devices for stale entries"
+      ansible.builtin.set_fact:
+        all_devices: "{{ api_test.json.devices | default([]) }}"
+        stale_devices: "{{ api_test.json.devices | default([]) | selectattr('name', 'search', '-[0-9]+\\.') | list }}"
+      when: api_test.status is defined and api_test.status == 200
+
+    - name: "10 Report stale devices"
+      ansible.builtin.set_fact:
+        check_results: "{{ check_results + [stale_result] }}"
+      vars:
+        stale_result: >-
+          {% if api_test.status is not defined or api_test.status != 200 %}SKIP: Stale Devices - API not available
+          {% elif stale_devices | length == 0 %}PASS: Stale Devices - no devices with -N suffixes found
+          {% else %}WARN: Stale Devices - {{ stale_devices | length }} device(s) with -N suffix: {{ stale_devices | map(attribute='name') | join(', ') }}{% endif %}
+
+    # ============================================================
+    # Check 4: Operator status
+    # ============================================================
+    - name: "11 Check Tailscale operator pods"
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: "{{ operator_namespace }}"
+        label_selectors:
+          - "app=operator"
+        kubeconfig: "{{ kubeconfig_file }}"
+      register: operator_pods
+      ignore_errors: true
+
+    - name: "11a Check operator pods with alternative label"
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: "{{ operator_namespace }}"
+        label_selectors:
+          - "app.kubernetes.io/name=tailscale-operator"
+        kubeconfig: "{{ kubeconfig_file }}"
+      register: operator_pods_alt
+      ignore_errors: true
+      when: operator_pods.resources | default([]) | length == 0
+
+    - name: "12 Report operator status"
+      ansible.builtin.set_fact:
+        check_results: "{{ check_results + [operator_result] }}"
+      vars:
+        found_pods: "{{ operator_pods.resources | default([]) if operator_pods.resources | default([]) | length > 0 else operator_pods_alt.resources | default([]) }}"
+        running_pods: "{{ found_pods | selectattr('status.phase', 'equalto', 'Running') | list }}"
+        operator_result: >-
+          {% if found_pods | length == 0 %}INFO: Operator - not deployed (deploy with: uis deploy tailscale-tunnel)
+          {% elif running_pods | length == found_pods | length %}PASS: Operator - running ({{ running_pods | length }} pod(s))
+          {% else %}WARN: Operator - {{ found_pods | length }} pod(s) found but only {{ running_pods | length }} running{% endif %}
+
+    # ============================================================
+    # Summary
+    # ============================================================
+    - name: "13 Display verification results"
+      ansible.builtin.debug:
+        msg:
+          - "==================================================="
+          - "Tailscale Verification Results"
+          - "==================================================="
+          - ""
+          - "Configuration:"
+          - "  Tailnet: {{ ts_tailnet | default('not set') }}"
+          - "  Domain: {{ ts_domain | default('not set') }}"
+          - "  Cluster Hostname: {{ ts_cluster_hostname }}"
+          - "  OAuth Client ID: {{ ts_clientid[:8] + '...' if ts_clientid | length > 8 else ts_clientid | default('not set') }}"
+          - ""
+          - "Checks:"
+          - "{% for result in check_results %}  {{ result | trim }}\n{% endfor %}"
+          - ""
+          - "==================================================="
