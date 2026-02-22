@@ -274,6 +274,44 @@
 ,
   {
     "@type": "SoftwareApplication",
+    "id": "pgadmin",
+    "name": "pgAdmin",
+    "description": "Web-based PostgreSQL database administration",
+    "category": "MANAGEMENT",
+    "tags": ["postgresql", "database", "admin", "management", "web-ui"],
+    "abstract": "Web administration interface for PostgreSQL",
+    "logo": "pgadmin-logo.webp",
+    "website": "https://www.pgadmin.org"
+    ,"summary": "pgAdmin is a feature-rich open source administration and development platform for PostgreSQL. It provides a graphical interface for managing databases, running queries, and monitoring server activity."
+    ,"docs": "/docs/packages/management/pgadmin"
+    ,"playbook": "641-adm-pgadmin.yml"
+    ,"priority": 90
+    ,"checkCommand": "kubectl get pods -n default -l app.kubernetes.io/name=pgadmin4 --no-headers 2>/dev/null | grep -q Running"
+    ,"removePlaybook": "641-remove-pgadmin.yml"
+    ,"requires": ["postgresql"]
+  }
+,
+  {
+    "@type": "SoftwareApplication",
+    "id": "redisinsight",
+    "name": "RedisInsight",
+    "description": "Web-based Redis database management GUI",
+    "category": "MANAGEMENT",
+    "tags": ["redis", "database", "admin", "management", "web-ui", "cache"],
+    "abstract": "Visual management interface for Redis",
+    "logo": "redisinsight-logo.webp",
+    "website": "https://redis.io/insight/"
+    ,"summary": "RedisInsight is a visual tool for managing Redis databases. It provides a graphical interface for browsing keys, running commands, monitoring performance, and managing Redis data structures."
+    ,"docs": "/docs/packages/management/redisinsight"
+    ,"playbook": "651-adm-redisinsight.yml"
+    ,"priority": 90
+    ,"checkCommand": "kubectl get pods -n default -l app.kubernetes.io/name=redisinsight --no-headers 2>/dev/null | grep -q Running"
+    ,"removePlaybook": "651-remove-redisinsight.yml"
+    ,"requires": ["redis"]
+  }
+,
+  {
+    "@type": "SoftwareApplication",
     "id": "grafana",
     "name": "Grafana",
     "description": "Visualization and dashboards for observability",
