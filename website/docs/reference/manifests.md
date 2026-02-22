@@ -79,8 +79,8 @@ kubectl apply -f manifests/071-authentik-ingress.yaml
 
 ### **Secret Management**
 - All sensitive values reference `urbalurba-secrets` secret
-- Secrets are managed centrally in the `topsecret/kubernetes/` directory
-- Use the `update-kubernetes-secrets-v2.sh` script for deployment
+- Secrets are managed centrally in the `.uis.secrets/generated/kubernetes/` directory
+- Use `./uis` CLI for secrets management
 
 ## Deployment Workflow
 

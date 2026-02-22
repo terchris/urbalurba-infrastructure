@@ -112,26 +112,14 @@ vim manifests/030-prometheus-config.yaml
 code ansible/playbooks/030-setup-prometheus.yml
 ```
 
-**2. Sync Files to provision-host Container**
+**2. Execute Commands via UIS**
 ```bash
-# CRITICAL: Run after ANY file change
-./copy2provisionhost.sh
-```
+# Enter the provision host shell
+./uis shell
 
-This copies changed files from Mac to `/mnt/urbalurbadisk/` in the provision-host container.
-
-**3. Execute Scripts in provision-host Container**
-```bash
-# Enter container
-docker exec -it provision-host bash
-
-# You'll be at: ansible@lima-rancher-desktop:/mnt/urbalurbadisk
-
-# Navigate to scripts directory
-cd provision-host/kubernetes/11-monitoring/not-in-use
-
-# Run setup scripts
-./01-setup-prometheus.sh rancher-desktop
+# Or run commands directly
+./uis deploy prometheus
+./uis exec kubectl get pods -n monitoring
 ```
 
 **4. Verify with kubectl (Mac or Container)**
@@ -143,18 +131,11 @@ kubectl get pods -n monitoring
 kubectl get pods -n monitoring
 ```
 
-**5. Update Documentation and Sync Again**
+**4. Update Documentation**
 ```bash
 # On Mac
 vim docs/rules-development-workflow.md
-
-# Sync changes
-./copy2provisionhost.sh
 ```
-
-**Common Mistake:**
-❌ Editing files and forgetting to run `./copy2provisionhost.sh`
-✅ Always sync after every file change
 
 ---
 
@@ -170,9 +151,10 @@ vim docs/rules-development-workflow.md
 │   └── kubernetes/
 │       └── 11-monitoring/   # Monitoring setup scripts
 │           └── not-in-use/  # Testing area for new scripts
-├── topsecret/               # Secrets management (NOT in git)
-│   ├── create-kubernetes-secrets.sh
-│   └── kubernetes/
+├── .uis.secrets/            # Secrets management (NOT in git)
+│   ├── scripts/
+│   │   └── create-kubernetes-secrets.sh
+│   └── generated/kubernetes/
 │       └── kubernetes-secrets.yml
 ├── docs/                     # Documentation and rules
 └── terchris/                # Personal working area (experiments, backups)
@@ -184,7 +166,7 @@ vim docs/rules-development-workflow.md
 ├── manifests/
 ├── ansible/playbooks/
 ├── provision-host/kubernetes/
-├── topsecret/
+├── .uis.secrets/
 └── docs/
 ```
 
@@ -262,8 +244,7 @@ ansible-playbook ansible/playbooks/030-setup-prometheus.yml -e "target_host=ranc
 # Edit files on Mac
 vim manifests/036-grafana-sovdev-verification.yaml
 
-# If manual workflow: sync to container
-./copy2provisionhost.sh
+# Files in the image are pre-built; secrets are volume-mounted
 ```
 
 ---
@@ -294,7 +275,7 @@ vim manifests/036-grafana-sovdev-verification.yaml
    - Middleware configuration (auth, CSP headers)
 
 5. **[doc/rules-secrets-management.md](rules-secrets-management.md)** *(to be created)*
-   - topsecret system usage
+   - .uis.secrets system usage
    - Never commit secrets to git
    - urbalurba-secrets ConfigMap pattern
 
@@ -337,11 +318,10 @@ vim ansible/playbooks/036-setup-grafana-sovdev.yml
 
 **Deploy to cluster:**
 ```bash
-# If manual workflow: sync first
-./copy2provisionhost.sh
-
-# Run via shell script wrapper
-docker exec provision-host bash -c "cd /mnt/urbalurbadisk/provision-host/kubernetes/11-monitoring/not-in-use && ./06-setup-grafana-sovdev.sh rancher-desktop"
+# Deploy via UIS
+./uis shell
+cd /mnt/urbalurbadisk/provision-host/kubernetes/11-monitoring/not-in-use
+./06-setup-grafana-sovdev.sh rancher-desktop
 ```
 
 **Verify deployment:**
@@ -354,10 +334,6 @@ kubectl logs -n monitoring -l app=grafana
 ---
 
 ## Troubleshooting
-
-### Files not syncing to container
-**Problem:** Changes on Mac not visible in provision-host container
-**Solution:** Run `./copy2provisionhost.sh` after every file change
 
 ### Playbook fails with file not found
 **Problem:** Ansible can't find manifest file
@@ -377,12 +353,11 @@ kubectl logs -n monitoring -l app=grafana
 
 **Key Points:**
 1. ✅ All paths are relative to repository root
-2. ✅ Claude Code works directly on Mac (no manual sync)
-3. ✅ Manual workflow requires `./copy2provisionhost.sh` after file changes
-4. ✅ Ansible playbooks run in provision-host container via shell scripts
-5. ✅ kubectl works on Mac or container
-6. ✅ Follow numbering conventions (manifests, playbooks, scripts)
-7. ✅ Always review relevant docs/rules-*.md files before changes
+2. ✅ Use `./uis` CLI for container management and service deployment
+3. ✅ Ansible playbooks run in provision-host container
+4. ✅ kubectl works on Mac or container
+5. ✅ Follow numbering conventions (manifests, playbooks, scripts)
+6. ✅ Always review relevant docs/rules-*.md files before changes
 
 **When in doubt:**
 - Check this document

@@ -236,7 +236,7 @@ All monitoring services use Kubernetes PersistentVolumeClaims:
 **Option 1: Automated Deployment (Recommended)**
 ```bash
 # All monitoring services deploy automatically during cluster build
-./install-rancher.sh
+./uis start && ./uis provision
 ```
 
 **Option 2: Manual Deployment (for testing/development)**

@@ -4,11 +4,12 @@
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Active
+## Status: Complete
 
 **Goal**: Remove backwards compatibility code, delete deprecated files (`topsecret/`, `secrets/`), and update tests. The new `.uis.secrets/` and `.uis.extend/` structure is fully operational — this plan removes the old scaffolding.
 
-**Last Updated**: 2026-02-19
+**Last Updated**: 2026-02-22
+**Completed**: 2026-02-22 — All acceptance criteria verified. Work was done incrementally across PLAN-005 (kubeconfig migration), PR #35 (old path fixes), and earlier sessions.
 
 **Branch**: `feature/secrets-cleanup`
 

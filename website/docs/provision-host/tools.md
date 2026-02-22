@@ -42,27 +42,10 @@ The container supports ALL major cloud providers with their official CLIs. You c
 
 #### Cloud Provider Selection
 
-When running `./install-rancher.sh` or the container creation script, you can specify which cloud provider tools to install:
+The pre-built UIS container image includes all cloud provider tools. Start the container with:
 
 ```bash
-# Install Azure CLI only (default)
-./install-rancher.sh
-./install-rancher.sh az
-
-# Install AWS CLI only
-./install-rancher.sh aws
-
-# Install Google Cloud SDK only
-./install-rancher.sh gcp
-
-# Install Oracle Cloud CLI only
-./install-rancher.sh oci
-
-# Install Terraform only
-./install-rancher.sh tf
-
-# Install ALL cloud provider tools
-./install-rancher.sh all
+./uis start
 ```
 
 #### Tools Installed Per Selection
@@ -179,9 +162,9 @@ Pre-configured repositories:
 ├── manifests/               # Kubernetes manifests
 ├── provision-host/          # Provisioning scripts
 │   └── kubernetes/         # Kubernetes setup scripts
-├── secrets/                # Secure storage (gitignored)
+├── .uis.secrets/           # Secrets management (gitignored)
 ├── kubeconfig/             # Kubernetes configurations
-└── topsecret/              # Sensitive configurations
+└── cloud-init/             # Cloud-init configurations
 ```
 
 ## Usage

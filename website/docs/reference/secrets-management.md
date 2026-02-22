@@ -23,26 +23,27 @@ secrets-templates/     →     secrets-config/     →     kubernetes-secrets.ym
 ## Quick Start
 
 ```bash
-cd topsecret/
+cd .uis.secrets/
 
 # 1. Edit your values (the SOURCE)
-nano secrets-config/00-common-values.env.template
+nano config/00-common-values.env.template
 
 # 2. Generate the output
-./create-kubernetes-secrets.sh
+./scripts/create-kubernetes-secrets.sh
 
 # 3. Apply to cluster
-kubectl apply -f kubernetes/kubernetes-secrets.yml
+kubectl apply -f generated/kubernetes/kubernetes-secrets.yml
 ```
 
 ## File Structure
 
 ```
-topsecret/
-├── secrets-templates/              # Git tracked - base templates with ${VARIABLES}
-├── secrets-config/                 # Gitignored - EDIT THIS (your values)
-├── secrets-generated/              # Gitignored - DO NOT EDIT (temp files)
-└── kubernetes/kubernetes-secrets.yml  # Gitignored - DO NOT EDIT (final output)
+.uis.secrets/
+├── templates/                      # Base templates with ${VARIABLES}
+├── config/                         # EDIT THIS (your values)
+├── generated/                      # DO NOT EDIT (temp files)
+│   └── kubernetes/kubernetes-secrets.yml  # Final output for kubectl
+└── scripts/                        # Generation scripts
 ```
 
 | Directory | Edit? | Git | Purpose |

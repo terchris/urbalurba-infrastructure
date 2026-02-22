@@ -85,10 +85,10 @@ The **provision-host** is a containerized management environment that contains A
 ├── kubeconfig/                   # Kubernetes configuration files
 │   ├── kubeconf-all              # Merged kubeconfig for all clusters
 │   └── rancher-desktop-kubeconf  # Rancher Desktop specific config
-├── topsecret/                    # Secrets management
-│   ├── kubernetes/               # Kubernetes secrets
-│   ├── secrets-templates/        # Secret templates
-│   └── create-kubernetes-secrets.sh  # Secret generation script
+├── .uis.secrets/                 # Secrets management
+│   ├── generated/kubernetes/     # Generated Kubernetes secrets
+│   ├── config/                   # User configuration (your values)
+│   └── scripts/                  # Secret generation scripts
 ├── scripts/                      # Additional utility scripts
 ├── networking/                   # Network configurations
 ├── hosts/                        # Host-specific configurations

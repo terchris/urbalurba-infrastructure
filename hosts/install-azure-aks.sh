@@ -7,9 +7,8 @@
 # This script runs INSIDE the provision-host container and coordinates the complete setup
 #
 # Prerequisites:
-# - provision-host container is running (created by install-rancher.sh)
+# - provision-host container is running (created by ./uis start)
 # - Azure CLI is logged in with appropriate permissions
-# - topsecret repository is available at ../topsecret
 #
 # Usage:
 # docker exec -it provision-host bash

@@ -8,7 +8,7 @@
 
 **Goal**: Track migration status of all 26 UIS services and complete remaining work for services that are not fully migrated.
 
-**Last Updated**: 2026-02-22
+**Last Updated**: 2026-02-22 (talk11)
 
 **Priority**: Medium — core services work, remaining items are edge cases
 
@@ -133,6 +133,29 @@ Scanned all playbooks in `ansible/playbooks/` for references to `topsecret/`, `s
 | `802-deploy-network-tailscale-tunnel.yml` | 193-194 | `topsecret/kubernetes/kubernetes-secrets.yml` | Error message text only | ✅ PR #35 |
 
 All old path references in playbooks are now fixed. Also fixed: `ansible/ansible.cfg` and `provision-host/provision-host-vm-create.sh` (PR #35).
+
+### Topsecret Cleanup Beyond Playbooks (talk11)
+
+In addition to the playbook fixes above (PR #35), a full topsecret cleanup was completed across the codebase:
+
+| Category | Files Changed | What Changed |
+|----------|:---:|--------|
+| Legacy scripts | 7 | Removed `topsecret/` and `secrets/` fallback paths from networking scripts and provision-host container creation |
+| Config files | 3 | `.github/workflows/build-uis-container.yml`, `.dockerignore`, `manifests/220-litellm-config.yaml` |
+| Documentation | 17 | All docs updated from `topsecret/kubernetes/kubernetes-secrets.yml` to `.uis.secrets/generated/kubernetes/kubernetes-secrets.yml` |
+| Deleted obsolete scripts | 2 | `install-rancher.sh` and `copy2provisionhost.sh` — fully replaced by `./uis` CLI |
+| Docs updated for script removal | 15+ | All references to deleted scripts replaced with `./uis start`, `./uis provision`, `./uis shell` |
+
+**Remaining topsecret references**: Only in 7 remote deployment target scripts (`provision-host/provision-host-vm-create.sh`, `hosts/azure-aks/` scripts). These are deferred until remote deployment targets are tested with real infrastructure.
+
+### New Reference Documentation (talk11)
+
+- Created `website/docs/reference/factory-reset.md` — user-facing runbook for factory reset, recovery, service deployment order, and verification checklist. Extracted from INVESTIGATE-rancher-reset findings.
+
+### Completed Investigations Closed (talk11)
+
+- `INVESTIGATE-rancher-reset-and-full-verification.md` → moved to `completed/`
+- `INVESTIGATE-unity-catalog-crashloop.md` → moved to `completed/`
 
 ---
 

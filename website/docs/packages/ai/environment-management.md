@@ -12,7 +12,7 @@ This cluster provides OpenWebUI integrated with LiteLLM proxy for unified model 
 - **`openwebui.localhost`** - Main OpenWebUI environment with Authentik authentication
 - **Model Provider**: LiteLLM proxy serving multiple model sources
 - **Authentication**: OAuth2 with Authentik for user management
-- **Configuration**: External ConfigMap management in `topsecret/kubernetes/kubernetes-secrets.yml`
+- **Configuration**: External ConfigMap management in `.uis.secrets/generated/kubernetes/kubernetes-secrets.yml`
 
 The environment provides a single, production-ready OpenWebUI instance with enterprise authentication and centralized model management.
 
@@ -21,7 +21,7 @@ The environment provides a single, production-ready OpenWebUI instance with ente
 | **Component** | **Configuration** | **Purpose** |
 |---------------|-------------------|-------------|
 | **OpenWebUI** | StatefulSet with persistent storage | Web interface for AI interactions |
-| **LiteLLM Proxy** | ConfigMap in topsecret/kubernetes/kubernetes-secrets.yml | Unified model provider and API gateway |
+| **LiteLLM Proxy** | ConfigMap in .uis.secrets/generated/kubernetes/kubernetes-secrets.yml | Unified model provider and API gateway |
 | **Authentication** | OAuth2 with Authentik | Enterprise user management and SSO |
 | **Models** | Multiple sources via LiteLLM | Local Ollama + Cloud providers |
 | **Database** | Shared PostgreSQL | User data, conversations, model configs |
@@ -72,11 +72,10 @@ open http://openwebui.localhost
 ### **Manage LiteLLM Models**
 ```bash
 # Edit model configuration
-vim topsecret/kubernetes/kubernetes-secrets.yml
+vim .uis.secrets/generated/kubernetes/kubernetes-secrets.yml
 
 # Apply changes
-./copy2provisionhost.sh
-docker exec -it provision-host bash -c "cd /mnt/urbalurbadisk && kubectl apply -f topsecret/kubernetes/kubernetes-secrets.yml"
+kubectl apply -f .uis.secrets/generated/kubernetes/kubernetes-secrets.yml
 
 # Restart LiteLLM to reload models
 kubectl rollout restart deployment/litellm -n ai
@@ -85,7 +84,7 @@ kubectl rollout restart deployment/litellm -n ai
 ## 🔧 **Configuration Management**
 
 ### **1. LiteLLM Model Configuration**
-Edit `topsecret/kubernetes/kubernetes-secrets.yml` to manage models:
+Edit `.uis.secrets/generated/kubernetes/kubernetes-secrets.yml` to manage models:
 ```yaml
 apiVersion: v1
 kind: ConfigMap
@@ -134,11 +133,10 @@ open http://openwebui.localhost
 ### **Workflow 2: Model Configuration Changes**
 ```bash
 # Edit LiteLLM models
-vim topsecret/kubernetes/kubernetes-secrets.yml
+vim .uis.secrets/generated/kubernetes/kubernetes-secrets.yml
 
 # Apply configuration
-./copy2provisionhost.sh
-docker exec -it provision-host bash -c "cd /mnt/urbalurbadisk && kubectl apply -f topsecret/kubernetes/kubernetes-secrets.yml"
+kubectl apply -f .uis.secrets/generated/kubernetes/kubernetes-secrets.yml
 
 # Restart LiteLLM to reload models
 kubectl rollout restart deployment/litellm -n ai
@@ -279,7 +277,7 @@ This AI infrastructure management approach provides:
 
 ### **🔄 Recommended Workflow**
 1. **Start** with complete AI infrastructure deployment via `./scripts/packages/ai.sh`
-2. **Configure models** by editing `topsecret/kubernetes/kubernetes-secrets.yml`
+2. **Configure models** by editing `.uis.secrets/generated/kubernetes/kubernetes-secrets.yml`
 3. **Manage user access** through OpenWebUI admin panel and Authentik groups
 4. **Test changes** by restarting LiteLLM deployment after configuration updates
 5. **Clean reinstall** when needed using removal scripts + redeploy

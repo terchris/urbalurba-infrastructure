@@ -23,7 +23,7 @@ The Authentication package is a comprehensive self-hosted identity and access ma
 
 Before installing the Authentication package, you must configure your services in the `kubernetes-secrets.yml` file:
 
-1. **Configure Protected Services**: Edit `topsecret/kubernetes/kubernetes-secrets.yml` and add your services to the `protected_services` section
+1. **Configure Protected Services**: Edit `.uis.secrets/generated/kubernetes/kubernetes-secrets.yml` and add your services to the `protected_services` section
 2. **Set Domain Configuration**: Ensure your `domains` section includes the domains you want to use (localhost, tailscale, cloudflare)
 
 For detailed configuration instructions, see: **[Auth10 Developer Guide - Configuration](package-auth-authentik-auth10-developer-guide.md#configuration)**

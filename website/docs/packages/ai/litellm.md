@@ -45,7 +45,7 @@ ansible-playbook ansible/playbooks/utility/u10-litellm-create-postgres.yml -e op
 
 ## Configuration Management
 
-LiteLLM configuration is managed via external ConfigMap in `topsecret/kubernetes/kubernetes-secrets.yml`. The Helm chart is configured to use this existing ConfigMap rather than creating its own.
+LiteLLM configuration is managed via external ConfigMap in `.uis.secrets/generated/kubernetes/kubernetes-secrets.yml`. The Helm chart is configured to use this existing ConfigMap rather than creating its own.
 
 **Helm Configuration (`manifests/220-litellm-config.yaml`):**
 ```yaml
@@ -60,7 +60,7 @@ proxyConfigMap:
   name: litellm-config
 ```
 
-**ConfigMap Definition (`topsecret/kubernetes/kubernetes-secrets.yml`):**
+**ConfigMap Definition (`.uis.secrets/generated/kubernetes/kubernetes-secrets.yml`):**
 ```yaml
 apiVersion: v1
 kind: ConfigMap
@@ -157,15 +157,11 @@ data:
 ## Deployment Process
 
 ### 1. Update Configuration
-Edit the ConfigMap in `topsecret/kubernetes/kubernetes-secrets.yml`
+Edit the ConfigMap in `.uis.secrets/generated/kubernetes/kubernetes-secrets.yml`
 
 ### 2. Apply Changes
 ```bash
-# Copy files to provision-host
-./copy2provisionhost.sh
-
-# Apply from provision-host container
-docker exec -it provision-host bash -c "cd /mnt/urbalurbadisk && kubectl apply -f topsecret/kubernetes/kubernetes-secrets.yml"
+kubectl apply -f .uis.secrets/generated/kubernetes/kubernetes-secrets.yml
 ```
 
 ### 3. Restart LiteLLM

@@ -160,7 +160,7 @@ Five scripts manage the complete Tailscale setup:
 
 ### Step 6: Update Kubernetes Secrets
 
-Edit `topsecret/kubernetes/kubernetes-secrets.yml` with your values:
+Edit `.uis.secrets/generated/kubernetes/kubernetes-secrets.yml` with your values:
 ```bash
 # Update these Tailscale variables with values from Steps 1-5:
 TAILSCALE_SECRET: tskey-auth-YOUR-AUTH-KEY           # From Step 3: Auth Key
@@ -181,7 +181,7 @@ TAILSCALE_CLIENTSECRET: tskey-client-YOUR-OAUTH-CLIENT-SECRET  # From Step 4: OA
 ### Step 7: Apply Secrets to Kubernetes
 ```bash
 # Apply updated secrets to cluster
-kubectl apply -f topsecret/kubernetes/kubernetes-secrets.yml
+kubectl apply -f .uis.secrets/generated/kubernetes/kubernetes-secrets.yml
 
 # Verify secrets are applied
 kubectl get secret urbalurba-secrets -o yaml | grep TAILSCALE
@@ -189,9 +189,8 @@ kubectl get secret urbalurba-secrets -o yaml | grep TAILSCALE
 
 ### Step 8: Setup Tailscale on Provision-Host
 ```bash
-# From your Mac host, copy scripts and access provision-host
-./copy2provisionhost.sh
-docker exec -it provision-host bash
+# Access the provision-host container
+./uis shell
 cd /mnt/urbalurbadisk
 
 # Setup Tailscale daemon and authenticate
@@ -315,7 +314,7 @@ This error means your OAuth client doesn't have permission for `tag:k8s-operator
 4. In **Auth keys** scope, ensure `tag:k8s-operator` is added
 5. Generate a new client secret (required after scope changes)
 6. Update `TAILSCALE_CLIENTSECRET` in your secrets file
-7. Apply with `kubectl apply -f topsecret/kubernetes/kubernetes-secrets.yml`
+7. Apply with `kubectl apply -f .uis.secrets/generated/kubernetes/kubernetes-secrets.yml`
 8. Run the script again
 
 **Key Point:** The operator uses `tag:k8s-operator` for all devices, including itself and cluster ingress devices with Funnel capability.
@@ -338,13 +337,13 @@ If you get authentication errors, create new keys at [Tailscale Admin Console](h
 
 **Update secrets file:**
 ```bash
-# Edit topsecret/kubernetes/kubernetes-secrets.yml
+# Edit .uis.secrets/generated/kubernetes/kubernetes-secrets.yml
 TAILSCALE_SECRET: tskey-auth-YOUR-NEW-AUTH-KEY
 TAILSCALE_CLIENTID: YOUR-NEW-CLIENT-ID
 TAILSCALE_CLIENTSECRET: tskey-client-YOUR-NEW-CLIENT-SECRET
 
 # Apply to cluster
-kubectl apply -f topsecret/kubernetes/kubernetes-secrets.yml
+kubectl apply -f .uis.secrets/generated/kubernetes/kubernetes-secrets.yml
 ```
 
 ### Script Execution Issues

@@ -233,7 +233,7 @@ ansible-playbook ansible/playbooks/070-setup-authentik.yml -e kube_context="ranc
 
 ### Step 1: Update Configuration
 
-Add your service to `topsecret/kubernetes/kubernetes-secrets.yml`:
+Add your service to `.uis.secrets/generated/kubernetes/kubernetes-secrets.yml`:
 
 ```yaml
 protected_services:
@@ -490,7 +490,7 @@ data:
 
 **After (Auth10)**:
 ```yaml
-# topsecret/kubernetes/kubernetes-secrets.yml
+# .uis.secrets/generated/kubernetes/kubernetes-secrets.yml
 protected_services:
   - name: myapp
     type: proxy
@@ -510,8 +510,8 @@ protected_services:
 ansible-playbook ansible/playbooks/070-setup-authentik.yml --syntax-check
 
 # Verify Auth10 configuration sections exist
-grep -A 10 "domains:" topsecret/kubernetes/kubernetes-secrets.yml
-grep -A 10 "protected_services:" topsecret/kubernetes/kubernetes-secrets.yml
+grep -A 10 "domains:" .uis.secrets/generated/kubernetes/kubernetes-secrets.yml
+grep -A 10 "protected_services:" .uis.secrets/generated/kubernetes/kubernetes-secrets.yml
 ```
 
 #### 2. Templates Not Rendering
@@ -520,7 +520,7 @@ grep -A 10 "protected_services:" topsecret/kubernetes/kubernetes-secrets.yml
 ls -la ansible/templates/auth10/
 
 # Verify Ansible can access templates
-ansible localhost -m template -a "src=ansible/templates/auth10/073-authentik-service-protection-blueprint.yaml.j2 dest=/tmp/test.yaml" --extra-vars "@topsecret/kubernetes/kubernetes-secrets.yml"
+ansible localhost -m template -a "src=ansible/templates/auth10/073-authentik-service-protection-blueprint.yaml.j2 dest=/tmp/test.yaml" --extra-vars "@.uis.secrets/generated/kubernetes/kubernetes-secrets.yml"
 ```
 
 #### 3. Providers Not Created
@@ -663,7 +663,7 @@ protected_services:
 
 ### Add New Service (Most Common)
 
-1. Edit `topsecret/kubernetes/kubernetes-secrets.yml`:
+1. Edit `.uis.secrets/generated/kubernetes/kubernetes-secrets.yml`:
 ```yaml
 protected_services:
   - name: newservice
@@ -683,7 +683,7 @@ ansible-playbook ansible/playbooks/070-setup-authentik.yml -e kube_context="ranc
 
 ### Add New Domain
 
-1. Edit `topsecret/kubernetes/kubernetes-secrets.yml`:
+1. Edit `.uis.secrets/generated/kubernetes/kubernetes-secrets.yml`:
 ```yaml
 domains:
   newdomain:
@@ -699,7 +699,7 @@ domains:
 
 ### Configuration File Locations
 
-- **Auth10 Config**: `topsecret/kubernetes/kubernetes-secrets.yml`
+- **Auth10 Config**: `.uis.secrets/generated/kubernetes/kubernetes-secrets.yml`
 - **Auth10 Templates**: `ansible/templates/auth10/`
 - **Generated Manifests**: `manifests/073-*.yaml`, `manifests/075-*.yaml`, `manifests/078-*.yaml`
 - **Deployment Playbook**: `ansible/playbooks/070-setup-authentik.yml`

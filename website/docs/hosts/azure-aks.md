@@ -106,7 +106,7 @@ NODE_SIZE="Standard_B2ms"
 
 ### Deployment Workflow ✅
 
-1. ✅ **Prerequisites**: Provision-host container running (`install-rancher.sh`)
+1. ✅ **Prerequisites**: Provision-host container running (`./uis start`)
 2. ✅ **Enter container**: `docker exec -it provision-host bash`
 3. ✅ **Configure Azure**: Edit `azure-aks-config.sh` with your Azure details
 4. ✅ **Deploy cluster**: `./hosts/install-azure-aks.sh` (fully automated)

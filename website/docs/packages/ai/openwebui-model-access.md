@@ -13,7 +13,7 @@ OpenWebUI is configured to use LiteLLM as the primary model provider, which give
 - **Custom model configurations** with different parameters
 
 ### Current Model Configuration:
-Available models from LiteLLM ConfigMap (`topsecret/kubernetes/kubernetes-secrets.yml`):
+Available models from LiteLLM ConfigMap (`.uis.secrets/generated/kubernetes/kubernetes-secrets.yml`):
 - `mac-gpt-oss-balanced` - Local Ollama model with balanced temperature
 - `mac-gpt-oss-creative` - Local Ollama model with high temperature
 - `mac-gpt-oss-precise` - Local Ollama model with low temperature
@@ -55,7 +55,7 @@ Configure model access by Authentik groups:
 ### Adding New Models
 To add new models to the system:
 
-1. **Edit ConfigMap** in `topsecret/kubernetes/kubernetes-secrets.yml`:
+1. **Edit ConfigMap** in `.uis.secrets/generated/kubernetes/kubernetes-secrets.yml`:
    ```yaml
    model_list:
      - model_name: new-model-name
@@ -66,8 +66,7 @@ To add new models to the system:
 
 2. **Apply changes**:
    ```bash
-   ./copy2provisionhost.sh
-   docker exec -it provision-host bash -c "cd /mnt/urbalurbadisk && kubectl apply -f topsecret/kubernetes/kubernetes-secrets.yml"
+   kubectl apply -f .uis.secrets/generated/kubernetes/kubernetes-secrets.yml
    ```
 
 3. **Restart LiteLLM**:

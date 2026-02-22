@@ -41,7 +41,7 @@ There are two ways of doing this. Starting manually or defining what service sho
 
 We will do the simplest way first. Starting sevices manually.
 
-All management is done in the provision-host container. So first you must log in to it by starting the script ´login-provision-host.sh`.
+All management is done in the provision-host container. Log in with `./uis shell`.
 
 This takes you into the provision-host and ou should see a prompt like this:
 ```plaintext

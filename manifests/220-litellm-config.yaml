@@ -106,4 +106,4 @@ proxyConfigMap:
   name: ai-models-litellm  # Name of the existing ConfigMap to use
 
 # Remove inline config since we're using external ConfigMap
-# The model configuration is now managed in topsecret/kubernetes/kubernetes-secrets.yml
+# The model configuration is now managed in .uis.secrets/generated/kubernetes/kubernetes-secrets.yml

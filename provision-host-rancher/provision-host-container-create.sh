@@ -77,10 +77,10 @@ check_prerequisites() {
         fi
     done
 
-    # Check for secrets directory (new or legacy)
+    # Check for secrets directory
     echo "Checking secrets directories..."
-    if [ ! -d "$workspace_root/.uis.secrets/ssh" ] && [ ! -d "$workspace_root/secrets" ]; then
-        add_error "Prerequisites" "Required directory $workspace_root/.uis.secrets/ssh or $workspace_root/secrets not found"
+    if [ ! -d "$workspace_root/.uis.secrets/ssh" ]; then
+        add_error "Prerequisites" "Required directory $workspace_root/.uis.secrets/ssh not found"
         return 1
     fi
     echo "All required directories found"
@@ -167,10 +167,8 @@ main() {
     create_and_copy "../networking" "/mnt/urbalurbadisk/networking" "networking directory"
     create_and_copy "../provision-host" "/mnt/urbalurbadisk/provision-host" "provision-host directory"
     create_and_copy "../provision-host-rancher" "/mnt/urbalurbadisk/provision-host-rancher" "provision-host-rancher directory"
-    # Copy secrets directories (support both new and legacy paths)
+    # Copy secrets directory
     create_and_copy "../.uis.secrets" "/mnt/urbalurbadisk/.uis.secrets" ".uis.secrets directory"
-    create_and_copy "../secrets" "/mnt/urbalurbadisk/secrets" "secrets directory"
-    create_and_copy "../topsecret" "/mnt/urbalurbadisk/topsecret" "topsecret directory"
     create_and_copy "../testdata" "/mnt/urbalurbadisk/testdata" "testdata directory"
     create_and_copy "../scripts" "/mnt/urbalurbadisk/scripts" "scripts directory"
     create_and_copy "../docs" "/mnt/urbalurbadisk/docs" "docs directory"

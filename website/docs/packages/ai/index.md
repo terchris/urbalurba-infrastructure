@@ -300,7 +300,7 @@ The AI stack is set up using an Ansible playbook (`200-setup-open-webui.yml`) th
    - Provides detailed cost tracking and usage analytics
    - Manages API keys and access control
    - Implements rate limiting and fallback strategies
-   - **Configuration**: Uses external ConfigMap in `topsecret/kubernetes/kubernetes-secrets.yml`
+   - **Configuration**: Uses external ConfigMap in `.uis.secrets/generated/kubernetes/kubernetes-secrets.yml`
    - **Database**: Uses shared PostgreSQL (database: `litellm`, user: `litellm`)
    - Helm chart: `oci://ghcr.io/berriai/litellm-helm`
    - [LiteLLM Official Website](https://litellm.ai/)

@@ -50,19 +50,17 @@ The **`provision-kubernetes.sh`** is the central automation controller that orch
 
 ### Automated Execution
 
-**IMPORTANT**: This script is called **automatically** by `install-rancher.sh` during cluster build:
+**IMPORTANT**: This script is called **automatically** by `./uis provision` during cluster build:
 
 ```bash
-# Automatically executed by install-rancher.sh:
-docker exec provision-host bash -c "cd /mnt/urbalurbadisk/provision-host/kubernetes && ./provision-kubernetes.sh rancher-desktop default"
+# Automatically executed by ./uis provision:
+./uis provision
 ```
 
-**Path Context**: Commands shown above use container paths (`/mnt/urbalurbadisk/`) because they run inside the provision-host container.
-
 The complete cluster setup flow:
-1. User runs `./install-rancher.sh` in the repo on his host machine (Windows, Mac, Linux)
-2. install-rancher.sh creates the provision-host container and sets it up with all tools to manage the cluster
-3. install-rancher.sh **automatically calls** provision-kubernetes.sh inside the provision-host container
+1. User runs `./uis start` in the repo on their host machine (Windows, Mac, Linux)
+2. UIS pulls the pre-built container image and mounts volumes
+3. User runs `./uis provision` which calls provision-kubernetes.sh inside the container
 4. provision-kubernetes.sh deploys all services in alphabetic order
 
 ### Manual Usage (for testing/debugging)
@@ -109,7 +107,7 @@ Scripts must follow standard naming patterns. For **implementation details** (sc
 
 ### Active vs Inactive Management
 
-**Purpose**: Control what gets deployed during **automated cluster build** by `install-rancher.sh`
+**Purpose**: Control what gets deployed during **automated cluster build** by `./uis provision`
 
 - **Active scripts**: Placed directly in the category folder - will be deployed automatically
 - **Inactive scripts**: Placed in `not-in-use/` subfolder - skipped during automated build

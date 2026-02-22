@@ -6,7 +6,7 @@
 
 ## Overview
 
-The provision-host container provides a complete automated deployment system for Kubernetes applications. Simply run `./install-rancher.sh` and all active services deploy automatically in the correct order.
+The provision-host container provides a complete automated deployment system for Kubernetes applications. Simply run `./uis start && ./uis provision` and all active services deploy automatically in the correct order.
 
 
 See also [overview-system-architecture.md](./overview-system-architecture.md) 
@@ -75,7 +75,7 @@ Services are organized by category to ensure proper deployment order. Each categ
 
 ## How Automated Deployment Works
 
-When you run `./install-rancher.sh`, it automatically calls the deployment system which:
+When you run `./uis start && ./uis provision`, it automatically calls the deployment system which:
 
 1. **Deploys Core Systems First**: Networking, storage, DNS infrastructure
 2. **Then Databases**: PostgreSQL, Redis, and other data services
@@ -102,7 +102,7 @@ The easiest way to get a complete cluster:
 
 ```bash
 # From your host machine in the repository root:
-./install-rancher.sh
+./uis start && ./uis provision
 ```
 
 This automatically:
@@ -132,7 +132,7 @@ The system is designed to build a **complete, reproducible cluster** every time.
 **The repository is your cluster blueprint**:
 - Services in category folders → Deploy automatically during cluster build
 - Services in `not-in-use/` folders → Available but not deployed
-- Every `./install-rancher.sh` creates the exact same cluster based on your current configuration
+- Every `./uis start && ./uis provision` creates the exact same cluster based on your current configuration
 
 ### ⚙️ Configure Your Cluster
 
@@ -143,7 +143,7 @@ cd provision-host/kubernetes/02-databases
 mv not-in-use/04-setup-mongodb.sh ./
 
 # Now MongoDB deploys automatically on every cluster rebuild
-./install-rancher.sh
+./uis start && ./uis provision
 ```
 
 **To exclude a service from automatic deployment**:
@@ -153,7 +153,7 @@ cd provision-host/kubernetes/02-databases
 mv 04-setup-mongodb.sh not-in-use/
 
 # Now MongoDB won't deploy automatically
-./install-rancher.sh
+./uis start && ./uis provision
 ```
 
 ### 🚀 Manual Service Deployment
@@ -198,7 +198,7 @@ The platform includes a comprehensive set of services organized by category:
 | **🔐 Authentication** | Authentik | Keycloak |
 
 **Legend**:
-- **Active Services**: Deploy automatically with `./install-rancher.sh`
+- **Active Services**: Deploy automatically with `./uis start && ./uis provision`
 - **Available Services**: In `not-in-use/` folders, can be activated by moving to parent directory
 
 ## Access Your Services

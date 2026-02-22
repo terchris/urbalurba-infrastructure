@@ -20,7 +20,7 @@ The provision host is a self-contained Docker container that serves as your **co
 - **Isolation**: No conflicts with locally installed tools or different versions
 
 ### **Fully Automated Setup**
-- **One-Command Deployment**: Run `./install-rancher.sh` to set up everything
+- **One-Command Deployment**: Run `./uis start && ./uis provision` to set up everything
 - **Two-Stage Process**: First creates and provisions the container, then deploys all cluster services
 - **Zero Manual Steps**: Complete infrastructure from container to running services automatically
 
@@ -42,7 +42,7 @@ Complete reference for all tools and software available in the provision host co
 User guide for deploying and managing applications on Kubernetes clusters using the automated provisioning system:
 
 - **Declarative Configuration**: Repository file organization determines what gets deployed automatically
-- **One-Command Deployment**: `./install-rancher.sh` builds complete, reproducible clusters
+- **One-Command Deployment**: `./uis start && ./uis provision` builds complete, reproducible clusters
 - **Service Management**: Activate/deactivate services by moving scripts in/out of `not-in-use/` folders
 - **Available Services**: AI services, databases, authentication, monitoring, and more
 - **Manual Operations**: Deploy/test individual services without changing automatic configuration
@@ -68,7 +68,7 @@ Specific setup and compatibility for Rancher Desktop environments:
 ## 🚀 **Quick Start Paths**
 
 ### **New Developer Getting Started:**
-1. Run `./install-rancher.sh` - One command sets up everything automatically
+1. Run `./uis start && ./uis provision` - One command sets up everything automatically
 2. **[Tools Guide](provision-host-tools.md)** - Understand what's available
 3. **[Kubernetes Guide](provision-host-kubernetes.md)** - Deploy your first services
 
@@ -92,7 +92,7 @@ Specific setup and compatibility for Rancher Desktop environments:
 Host Machine (Windows/Linux/macOS)
 └── Docker + Rancher Desktop
     │
-    │ ./install-rancher.sh (One Command Setup)
+    │ ./uis start + ./uis provision
     │
     ├─► 1. Creates & Provisions Container
     │   ┌─────────────────────────────────────────────────────────────┐

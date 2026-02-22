@@ -317,7 +317,7 @@ This document describes the process and files involved in setting up MySQL in th
   - Defines a `Service` for MySQL to expose port 3306 within the cluster.
   - Optionally includes a `ConfigMap` for custom MySQL configuration (e.g., `my.cnf`).
 
-### 5. topsecret/kubernetes/kubernetes-secrets.yml
+### 5. .uis.secrets/generated/kubernetes/kubernetes-secrets.yml
 - **Purpose:** Stores sensitive credentials for MySQL and other services.
 - **Details:**
   - Add the following keys for MySQL:

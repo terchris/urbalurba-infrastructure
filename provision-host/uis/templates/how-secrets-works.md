@@ -275,7 +275,7 @@ Two older docs describe the same conceptual system but reference the previous di
 | Doc | Location | Notes |
 |-----|----------|-------|
 | `docs/rules/secrets-management.md` | Detailed rules and patterns | References `./create-kubernetes-secrets.sh` (old script, now `./uis secrets generate`) and `secrets-templates/` (now in container at `provision-host/uis/templates/secrets-templates/`) |
-| `docs/reference/secrets-management.md` | Quick-start guide | References `topsecret/` (old directory, now `.uis.secrets/`) |
+| `docs/reference/secrets-management.md` | Quick-start guide | Updated to reference `.uis.secrets/` |
 
 The conceptual model is the same: template + gitignore pattern, variable substitution, centralized passwords. The paths and commands changed when the system moved from `topsecret/` to `.uis.secrets/` and from standalone scripts to the `./uis` CLI.
 

@@ -20,7 +20,7 @@ on:
       - 'networking/**'
       - 'provision-host/**'
       - 'scripts/**'
-      - 'topsecret/secrets-templates/**'
+      - 'provision-host/uis/templates/**'
       - 'Dockerfile.uis-provision-host'
       - '.github/workflows/build-uis-container.yml'
   workflow_dispatch:  # Allow manual trigger

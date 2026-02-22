@@ -88,8 +88,8 @@ Before deploying JupyterHub, ensure the required secrets are configured in `urba
 **Secrets Generation** (following rules-secrets-management.md):
 ```bash
 # 1. Update user config with base template
-cd /mnt/urbalurbadisk/topsecret
-cp secrets-templates/00-master-secrets.yml.template secrets-config/00-master-secrets.yml.template
+cd /mnt/urbalurbadisk/.uis.secrets
+cp templates/00-master-secrets.yml.template config/00-master-secrets.yml.template
 
 # 2. Generate and apply secrets
 ./create-kubernetes-secrets.sh

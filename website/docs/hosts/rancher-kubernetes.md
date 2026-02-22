@@ -7,12 +7,12 @@
 
 ## 📋 Overview
 
-Rancher Desktop is the **default Kubernetes environment** for Urbalurba infrastructure. When you run `./install-rancher.sh`, it automatically starts both the provision-host container and a Rancher Desktop Kubernetes cluster, providing a complete local development environment.
+Rancher Desktop is the **default Kubernetes environment** for Urbalurba infrastructure. When you run `./uis start && ./uis provision`, it automatically starts both the provision-host container and a Rancher Desktop Kubernetes cluster, providing a complete local development environment.
 
 Unlike other host types, Rancher Desktop comes with Kubernetes (k3s) pre-installed, so the setup process focuses on configuration and integration with the Urbalurba infrastructure.
 
 ### **Default Setup**
-- **Automatic provisioning** - Started automatically with `./install-rancher.sh`
+- **Automatic provisioning** - Started automatically with `./uis start && ./uis provision`
 - **Provision-host integration** - Container and cluster work together seamlessly
 - **Default context** - All scripts use `rancher-desktop` context by default
 - **Zero configuration** - Works out of the box for development
@@ -33,7 +33,7 @@ The Rancher Desktop cluster is automatically set up when you start Urbalurba:
 # 1. Provision-host container
 # 2. Rancher Desktop Kubernetes cluster
 # 3. All Urbalurba services
-./install-rancher.sh
+./uis start && ./uis provision
 ```
 
 **That's it!** The provision-host container and Rancher cluster start together, and all services deploy automatically.
@@ -43,7 +43,7 @@ The Rancher Desktop cluster is automatically set up when you start Urbalurba:
 1. **Rancher Desktop Installation**
    - Download and install Rancher Desktop from [rancherdesktop.io](https://rancherdesktop.io)
    - Start Rancher Desktop and enable Kubernetes
-   - The `./install-rancher.sh` script will automatically configure everything else
+   - The `./uis start && ./uis provision` script will automatically configure everything else
 
 2. **Linux Users: Enable Privileged Ports**
 
@@ -71,7 +71,7 @@ The Rancher Desktop cluster is automatically set up when you start Urbalurba:
 
 ## 🔧 Installation Process
 
-The installation script (`install-rancher-kubernetes.sh`) **runs automatically inside the provision-host container** when you execute `./install-rancher.sh`. This script performs these steps:
+The installation script (`install-rancher-kubernetes.sh`) **runs automatically inside the provision-host container** when you execute `./uis start && ./uis provision`. This script performs these steps:
 
 1. **Verify Kubernetes Cluster** - Ensures Rancher Desktop Kubernetes is running
 2. **Apply Secrets** - Configures necessary Kubernetes secrets
@@ -146,7 +146,7 @@ If you need to completely reset the Urbalurba infrastructure, you can perform a 
 2. **Go to Troubleshooting → Factory Reset**
 3. **Confirm the reset** - This will delete all data and configurations
 4. **Restart Rancher Desktop** and enable Kubernetes
-5. **Redeploy** by running `./install-rancher.sh`
+5. **Redeploy** by running `./uis start && ./uis provision`
 
 **Warning**: Factory reset will permanently delete all deployed services, persistent volumes, and configurations. Make sure to backup any important data before proceeding.
 

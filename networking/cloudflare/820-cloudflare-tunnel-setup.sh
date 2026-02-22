@@ -91,12 +91,12 @@ fi
 
 TUNNEL_NAME="cloudflare-tunnel"
 
-# Source centralized path library for backwards-compatible path resolution
+# Source centralized path library
 if [[ -f "/mnt/urbalurbadisk/provision-host/uis/lib/paths.sh" ]]; then
     source "/mnt/urbalurbadisk/provision-host/uis/lib/paths.sh"
     K8S_SECRETS_PATH=$(get_kubernetes_secrets_path)
 else
-    K8S_SECRETS_PATH="/mnt/urbalurbadisk/topsecret/kubernetes"
+    K8S_SECRETS_PATH="/mnt/urbalurbadisk/.uis.secrets/generated/kubernetes"
 fi
 
 # Variables
@@ -202,7 +202,7 @@ EOF
         echo "⚠️  Failed to apply secrets to Kubernetes (cluster may not be accessible)"
     fi
     
-    echo "💡 Run 'topsecret/copy-secrets2host.sh' on your host to save these credentials permanently"
+    echo "💡 Credentials have been stored in kubernetes-secrets.yml"
     STATUS+=("Store Credentials: OK")
 }
 

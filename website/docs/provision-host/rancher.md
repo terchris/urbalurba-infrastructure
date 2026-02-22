@@ -26,7 +26,7 @@ This allows scripts written for MicroK8s to run unchanged on Rancher Desktop.
 
 ## Installation Process
 
-The `./install-rancher.sh` script automatically handles Rancher Desktop setup. Key log messages to watch for:
+The `./uis start && ./uis provision` script automatically handles Rancher Desktop setup. Key log messages to watch for:
 
 ### Successful Compatibility Setup
 ```

@@ -6,10 +6,10 @@ This guide explains how to use the Auth10 dynamic service protection system to p
 ## Quick Start
 
 ### 1. Protect a Service
-Edit `topsecret/kubernetes/kubernetes-secrets.yml` and add your service to the `protected_services` list:
+Edit `.uis.secrets/generated/kubernetes/kubernetes-secrets.yml` and add your service to the `protected_services` list:
 
 ```yaml
-# In topsecret/kubernetes/kubernetes-secrets.yml
+# In .uis.secrets/generated/kubernetes/kubernetes-secrets.yml
 protected_services:
   - name: myapp
     type: proxy
@@ -106,7 +106,7 @@ domains: ["tailscale", "cloudflare"]
 1. **Edit Configuration**
    ```bash
    # Add service to kubernetes-secrets.yml
-   vim topsecret/kubernetes/kubernetes-secrets.yml
+   vim .uis.secrets/generated/kubernetes/kubernetes-secrets.yml
    ```
 
 2. **Deploy Configuration**
@@ -126,7 +126,7 @@ domains: ["tailscale", "cloudflare"]
 
 1. **Edit Configuration**
    ```bash
-   vim topsecret/kubernetes/kubernetes-secrets.yml
+   vim .uis.secrets/generated/kubernetes/kubernetes-secrets.yml
    ```
 
 2. **Deploy Changes**

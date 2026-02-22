@@ -21,10 +21,7 @@ docs
 *~
 
 # Secrets (user provides their own via mount)
-topsecret/secrets-config
-topsecret/secrets-generated
-topsecret/kubernetes
-topsecret/config
+.uis.secrets
 
 # Build artifacts
 node_modules

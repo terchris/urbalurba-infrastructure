@@ -89,17 +89,10 @@ check_command_success() {
     fi
 }
 
-# Check environment - accept either new .uis.secrets or legacy topsecret
-SECRETS_DIR_OK=false
-if [ -d "/mnt/urbalurbadisk/.uis.secrets" ]; then
-    SECRETS_DIR_OK=true
-elif [ -d "/mnt/urbalurbadisk/topsecret" ]; then
-    SECRETS_DIR_OK=true
-fi
-
-if [ ! -d "/mnt/urbalurbadisk/ansible" ] || [ "$SECRETS_DIR_OK" = false ]; then
+# Check environment
+if [ ! -d "/mnt/urbalurbadisk/ansible" ] || [ ! -d "/mnt/urbalurbadisk/.uis.secrets" ]; then
     echo "This script must be run from within the provision-host container"
-    echo "Required directories not found: /mnt/urbalurbadisk/ansible or /mnt/urbalurbadisk/.uis.secrets (or /mnt/urbalurbadisk/topsecret)"
+    echo "Required directories not found: /mnt/urbalurbadisk/ansible or /mnt/urbalurbadisk/.uis.secrets"
     STATUS+=("Environment check: Fail")
     ERROR=1
 else

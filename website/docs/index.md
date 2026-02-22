@@ -83,22 +83,17 @@ Once your Kubernetes cluster is running, everything else is identical regardless
 git clone https://github.com/terchris/urbalurba-infrastructure.git
 cd urbalurba-infrastructure
 
-# Run the installer
-./install-rancher.sh
+# Start the UIS container
+./uis start
 
-# Access the provision host
-./login-provision-host.sh
+# Deploy all services to kubernetes
+./uis provision
 
-# Configure secrets
-cd topsecret
-./create-kubernetes-secrets.sh
-# Edit your values in secrets-config/
-./create-kubernetes-secrets.sh
-kubectl apply -f kubernetes/kubernetes-secrets.yml
+# Access the provision host shell
+./uis shell
 
-# Deploy services using Ansible
-cd /mnt/urbalurbadisk/ansible
-ansible-playbook playbooks/034-setup-grafana.yml
+# Or deploy individual services
+./uis deploy grafana
 ```
 
 ### Access Your Services
@@ -132,8 +127,8 @@ urbalurba-infrastructure/
 ├── docs/                 # Documentation (this site)
 ├── manifests/            # Kubernetes manifests (numbered by category)
 ├── provision-host/       # Provision host container scripts
-├── topsecret/            # Secrets management (gitignored)
-├── install-rancher.sh    # Main installer script
+├── .uis.secrets/         # Secrets management (gitignored)
+├── uis                   # UIS CLI wrapper (main entry point)
 └── mkdocs.yml            # Documentation site configuration
 ```
 

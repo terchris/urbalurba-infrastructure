@@ -20,12 +20,12 @@ if [ -z "$BASH_VERSION" ]; then
     exit 1
 fi
 
-# Source centralized path library for backwards-compatible path resolution
+# Source centralized path library
 if [[ -f "/mnt/urbalurbadisk/provision-host/uis/lib/paths.sh" ]]; then
     source "/mnt/urbalurbadisk/provision-host/uis/lib/paths.sh"
     K8S_SECRETS_PATH=$(get_kubernetes_secrets_path)
 else
-    K8S_SECRETS_PATH="/mnt/urbalurbadisk/topsecret/kubernetes"
+    K8S_SECRETS_PATH="/mnt/urbalurbadisk/.uis.secrets/generated/kubernetes"
 fi
 
 # Extract domain from existing Secret

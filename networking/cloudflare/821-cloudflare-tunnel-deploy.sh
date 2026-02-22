@@ -27,12 +27,12 @@ if [ -z "$BASH_VERSION" ]; then
     exit 1
 fi
 
-# Source centralized path library for backwards-compatible path resolution
+# Source centralized path library
 if [[ -f "/mnt/urbalurbadisk/provision-host/uis/lib/paths.sh" ]]; then
     source "/mnt/urbalurbadisk/provision-host/uis/lib/paths.sh"
     K8S_SECRETS_PATH=$(get_kubernetes_secrets_path)
 else
-    K8S_SECRETS_PATH="/mnt/urbalurbadisk/topsecret/kubernetes"
+    K8S_SECRETS_PATH="/mnt/urbalurbadisk/.uis.secrets/generated/kubernetes"
 fi
 
 # Extract domain from existing Secret
@@ -72,17 +72,10 @@ check_command_success() {
     fi
 }
 
-# Check environment - accept either new .uis.secrets or legacy topsecret
-SECRETS_DIR_OK=false
-if [ -d "/mnt/urbalurbadisk/.uis.secrets" ]; then
-    SECRETS_DIR_OK=true
-elif [ -d "/mnt/urbalurbadisk/topsecret" ]; then
-    SECRETS_DIR_OK=true
-fi
-
-if [ ! -d "/mnt/urbalurbadisk/ansible" ] || [ "$SECRETS_DIR_OK" = false ]; then
+# Check environment
+if [ ! -d "/mnt/urbalurbadisk/ansible" ] || [ ! -d "/mnt/urbalurbadisk/.uis.secrets" ]; then
     echo "This script must be run from within the provision-host container"
-    echo "Required directories not found: /mnt/urbalurbadisk/ansible or /mnt/urbalurbadisk/.uis.secrets (or /mnt/urbalurbadisk/topsecret)"
+    echo "Required directories not found: /mnt/urbalurbadisk/ansible or /mnt/urbalurbadisk/.uis.secrets"
     echo "Current directory: $PWD"
     STATUS+=("Environment check: Fail")
     ERROR=1
