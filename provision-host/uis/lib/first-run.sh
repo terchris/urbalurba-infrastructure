@@ -257,19 +257,26 @@ copy_secrets_templates() {
 
     log_info "Copying secrets templates to $secrets_config/"
 
+    # Ensure target directory exists
+    mkdir -p "$secrets_config"
+
     # Copy all template files
     cp -r "$templates_src"/* "$secrets_config/" 2>/dev/null || true
 
-    # Update the common values with development defaults for localhost
+    # Update the common values with development defaults from default-secrets.env
     local common_values="$secrets_config/00-common-values.env.template"
-    if [[ -f "$common_values" ]]; then
-        # Set development-friendly defaults (sed in-place)
+    local defaults_file="$TEMPLATES_DIR/default-secrets.env"
+    if [[ -f "$common_values" ]] && [[ -f "$defaults_file" ]]; then
+        # Read defaults from the single source of truth
+        # shellcheck source=/dev/null
+        source "$defaults_file"
+        # Apply defaults to template (uses variables from default-secrets.env)
         sed -i.bak \
-            -e 's/DEFAULT_ADMIN_EMAIL=.*/DEFAULT_ADMIN_EMAIL=admin@localhost/' \
-            -e 's/DEFAULT_ADMIN_PASSWORD=.*/DEFAULT_ADMIN_PASSWORD=LocalDev123/' \
-            -e 's/DEFAULT_DATABASE_PASSWORD=.*/DEFAULT_DATABASE_PASSWORD=LocalDevDB456/' \
-            -e 's/ADMIN_EMAIL=.*/ADMIN_EMAIL=admin@localhost/' \
-            -e 's/ADMIN_PASSWORD=.*/ADMIN_PASSWORD=LocalDev123/' \
+            -e "s/DEFAULT_ADMIN_EMAIL=.*/DEFAULT_ADMIN_EMAIL=${DEFAULT_ADMIN_EMAIL}/" \
+            -e "s/DEFAULT_ADMIN_PASSWORD=.*/DEFAULT_ADMIN_PASSWORD=${DEFAULT_ADMIN_PASSWORD}/" \
+            -e "s/DEFAULT_DATABASE_PASSWORD=.*/DEFAULT_DATABASE_PASSWORD=${DEFAULT_DATABASE_PASSWORD}/" \
+            -e "s/ADMIN_EMAIL=.*/ADMIN_EMAIL=${DEFAULT_ADMIN_EMAIL}/" \
+            -e "s/ADMIN_PASSWORD=.*/ADMIN_PASSWORD=${DEFAULT_ADMIN_PASSWORD}/" \
             "$common_values"
         rm -f "$common_values.bak"
         log_success "Set development defaults in 00-common-values.env.template"

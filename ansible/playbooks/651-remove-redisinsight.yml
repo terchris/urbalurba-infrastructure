@@ -180,7 +180,8 @@
         REMAINING_PVC=$(kubectl get pvc -n {{ redisinsight_namespace }} -l app.kubernetes.io/name=redisinsight --no-headers --context {{ target_host }} 2>/dev/null | wc -l)
 
         # Check Helm release
-        REMAINING_HELM=$(helm list -n {{ redisinsight_namespace }} -q | grep -c "^{{ redisinsight_release_name }}$" 2>/dev/null || echo "0")
+        REMAINING_HELM=$(helm list -n {{ redisinsight_namespace }} -q | grep -c "^{{ redisinsight_release_name }}$" 2>/dev/null || true)
+        REMAINING_HELM=${REMAINING_HELM:-0}
 
         # Check IngressRoute
         REMAINING_INGRESS=$(kubectl get ingressroute -n {{ redisinsight_namespace }} redisinsight --no-headers --context {{ target_host }} 2>/dev/null | wc -l)

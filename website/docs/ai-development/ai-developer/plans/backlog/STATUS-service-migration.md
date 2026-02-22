@@ -6,9 +6,9 @@
 
 ## Status: Backlog
 
-**Goal**: Track migration status of all 24 UIS services and complete remaining work for services that are not fully migrated.
+**Goal**: Track migration status of all 26 UIS services and complete remaining work for services that are not fully migrated.
 
-**Last Updated**: 2026-02-18
+**Last Updated**: 2026-02-22
 
 **Priority**: Medium — core services work, remaining items are edge cases
 
@@ -18,7 +18,7 @@
 
 ## Service Migration Status
 
-All 24 services have service scripts (`provision-host/uis/services/*/service-*.sh`) and deploy playbooks. The table below tracks full migration status including remove playbooks, verified deployment, and legacy path dependencies.
+All 26 services have service scripts (`provision-host/uis/services/*/service-*.sh`) and deploy playbooks. The table below tracks full migration status including remove playbooks, verified deployment, and legacy path dependencies.
 
 ### Legend
 
@@ -33,33 +33,33 @@ All 24 services have service scripts (`provision-host/uis/services/*/service-*.s
 | Service | Service Script | Deploy | Remove | Verified | Notes |
 |---------|:---:|:---:|:---:|:---:|-------|
 | **whoami** | ✅ | ✅ `025-setup-whoami-testpod.yml` | ✅ via `-e operation=delete` | ✅ | Same playbook handles both deploy and remove via operation parameter |
-| **nginx** | ✅ | ✅ `020-setup-nginx.yml` | ✅ `020-remove-nginx.yml` | ❌ | Not tested in new system |
+| **nginx** | ✅ | ✅ `020-setup-nginx.yml` | ✅ `020-remove-nginx.yml` | ✅ | Verified in talk9.md |
 
 ### Monitoring (030-039)
 
 | Service | Service Script | Deploy | Remove | Verified | Notes |
 |---------|:---:|:---:|:---:|:---:|-------|
-| **prometheus** | ✅ | ✅ `030-setup-prometheus.yml` | ✅ `030-remove-prometheus.yml` | ❌ | |
-| **tempo** | ✅ | ✅ `031-setup-tempo.yml` | ✅ `031-remove-tempo.yml` | ❌ | |
-| **loki** | ✅ | ✅ `032-setup-loki.yml` | ✅ `032-remove-loki.yml` | ❌ | |
-| **otel-collector** | ✅ | ✅ `033-setup-otel-collector.yml` | ✅ `033-remove-otel-collector.yml` | ❌ | |
-| **grafana** | ✅ | ✅ `034-setup-grafana.yml` | ✅ `034-remove-grafana.yml` | ❌ | |
+| **prometheus** | ✅ | ✅ `030-setup-prometheus.yml` | ✅ `030-remove-prometheus.yml` | ✅ | Verified in talk9.md |
+| **tempo** | ✅ | ✅ `031-setup-tempo.yml` | ✅ `031-remove-tempo.yml` | ✅ | Verified in talk9.md |
+| **loki** | ✅ | ✅ `032-setup-loki.yml` | ✅ `032-remove-loki.yml` | ✅ | Verified in talk9.md |
+| **otel-collector** | ✅ | ✅ `033-setup-otel-collector.yml` | ✅ `033-remove-otel-collector.yml` | ✅ | Verified in talk9.md |
+| **grafana** | ✅ | ✅ `034-setup-grafana.yml` | ✅ `034-remove-grafana.yml` | ✅ | Verified in talk9.md |
 
 ### Databases (040-059)
 
 | Service | Service Script | Deploy | Remove | Verified | Notes |
 |---------|:---:|:---:|:---:|:---:|-------|
 | **postgresql** | ✅ | ✅ `040-database-postgresql.yml` | ✅ `040-remove-database-postgresql.yml` | ✅ | Required by authentik |
-| **mysql** | ✅ | ✅ `040-database-mysql.yml` | ✅ `040-remove-database-mysql.yml` | ❌ | |
-| **mongodb** | ✅ | ✅ `040-setup-mongodb.yml` | ✅ `040-remove-database-mongodb.yml` | ❌ | |
-| **qdrant** | ✅ | ✅ `044-setup-qdrant.yml` | ✅ `044-remove-qdrant.yml` | ❌ | |
+| **mysql** | ✅ | ✅ `040-database-mysql.yml` | ✅ `040-remove-database-mysql.yml` | ✅ | Verified in talk9.md |
+| **mongodb** | ✅ | ✅ `040-setup-mongodb.yml` | ✅ `040-remove-database-mongodb.yml` | ✅ | Verified in talk9.md |
+| **qdrant** | ✅ | ✅ `044-setup-qdrant.yml` | ✅ `044-remove-qdrant.yml` | ✅ | Verified in talk9.md |
 | **redis** | ✅ | ✅ `050-setup-redis.yml` | ✅ `050-remove-redis.yml` | ✅ | Required by authentik |
 
 ### Search (060-069)
 
 | Service | Service Script | Deploy | Remove | Verified | Notes |
 |---------|:---:|:---:|:---:|:---:|-------|
-| **elasticsearch** | ✅ | ✅ `060-setup-elasticsearch.yml` | ✅ `060-remove-elasticsearch.yml` | ❌ | Switched to official image in this branch |
+| **elasticsearch** | ✅ | ✅ `060-setup-elasticsearch.yml` | ✅ `060-remove-elasticsearch.yml` | ✅ | Verified in talk9.md |
 
 ### Authentication (070-079)
 
@@ -71,29 +71,31 @@ All 24 services have service scripts (`provision-host/uis/services/*/service-*.s
 
 | Service | Service Script | Deploy | Remove | Verified | Notes |
 |---------|:---:|:---:|:---:|:---:|-------|
-| **rabbitmq** | ✅ | ✅ `080-setup-rabbitmq.yml` | ✅ `080-remove-rabbitmq.yml` | ❌ | |
+| **rabbitmq** | ✅ | ✅ `080-setup-rabbitmq.yml` | ✅ `080-remove-rabbitmq.yml` | ✅ | Verified in talk9.md |
 
 ### Management (090, 220+)
 
 | Service | Service Script | Deploy | Remove | Verified | Notes |
 |---------|:---:|:---:|:---:|:---:|-------|
 | **gravitee** | ✅ | ✅ `090-setup-gravitee.yml` | ❌ Missing | ❌ | **Was not working before migration.** Needs new setup — deploy playbook may need rewrite |
-| **argocd** | ✅ | ✅ `220-setup-argocd.yml` | ✅ `220-remove-argocd.yml` | ✅ | Metadata fixed and deploy/undeploy verified (PLAN-argocd-migration) |
+| **argocd** | ✅ | ✅ `220-setup-argocd.yml` | ✅ `220-remove-argocd.yml` | ✅ | Verified in talk9.md |
+| **pgadmin** | ✅ | ✅ `641-adm-pgadmin.yml` | ✅ `641-remove-pgadmin.yml` | ✅ | Verified in talk10.md. Auto-login TODO (pgpass works but pgAdmin ignores it) |
+| **redisinsight** | ✅ | ✅ `651-adm-redisinsight.yml` | ✅ `651-remove-redisinsight.yml` | ✅ | Verified in talk10.md |
 
 ### AI (200-219)
 
 | Service | Service Script | Deploy | Remove | Verified | Notes |
 |---------|:---:|:---:|:---:|:---:|-------|
-| **openwebui** | ✅ | ✅ `200-setup-open-webui.yml` | ✅ `200-remove-open-webui.yml` | ❌ | |
-| **litellm** | ✅ | ✅ `210-setup-litellm.yml` | ✅ `210-remove-litellm.yml` | ❌ | |
+| **openwebui** | ✅ | ✅ `200-setup-open-webui.yml` | ✅ `200-remove-open-webui.yml` | ✅ | Verified in talk9.md |
+| **litellm** | ✅ | ✅ `210-setup-litellm.yml` | ✅ `210-remove-litellm.yml` | ✅ | Verified in talk9.md |
 
 ### Data Science (320-350)
 
 | Service | Service Script | Deploy | Remove | Verified | Notes |
 |---------|:---:|:---:|:---:|:---:|-------|
-| **unity-catalog** | ✅ | ✅ `320-setup-unity-catalog.yml` | ✅ `320-remove-unity-catalog.yml` | ❌ | |
-| **spark** | ✅ | ✅ `330-setup-spark.yml` | ✅ `330-remove-spark.yml` | ❌ | |
-| **jupyterhub** | ✅ | ✅ `350-setup-jupyterhub.yml` | ✅ `350-remove-jupyterhub.yml` | ❌ | Old path fixed in PR #35 |
+| **unity-catalog** | ✅ | ✅ `320-setup-unity-catalog.yml` | ✅ `320-remove-unity-catalog.yml` | ✅ | Verified in talk9.md. Fixed: wrong image, security context, API version, no curl |
+| **spark** | ✅ | ✅ `330-setup-spark.yml` | ✅ `330-remove-spark.yml` | ✅ | Verified in talk9.md |
+| **jupyterhub** | ✅ | ✅ `350-setup-jupyterhub.yml` | ✅ `350-remove-jupyterhub.yml` | ✅ | Verified in talk9.md |
 
 ### Network (800+)
 
@@ -106,19 +108,19 @@ All 24 services have service scripts (`provision-host/uis/services/*/service-*.s
 
 ## Summary
 
-| Category | Total | Fully Migrated | Issues |
-|----------|:-----:|:--------------:|--------|
+| Category | Total | Verified | Issues |
+|----------|:-----:|:--------:|--------|
 | Core | 2 | 2 | None |
-| Monitoring | 5 | 5 | None — need deployment verification |
-| Databases | 5 | 5 | None — postgresql and redis verified |
+| Monitoring | 5 | 5 | None |
+| Databases | 5 | 5 | None |
 | Search | 1 | 1 | None |
-| Authentication | 1 | 1 | Fully verified with E2E tests |
+| Authentication | 1 | 1 | None |
 | Queues | 1 | 1 | None |
-| Management | 2 | 1 | gravitee needs new setup; argocd fully migrated |
+| Management | 4 | 3 | gravitee broken before migration |
 | AI | 2 | 2 | None |
 | Data Science | 3 | 3 | None |
-| Network | 2 | 1 | Both missing remove playbooks; cloudflare missing remove playbook |
-| **Total** | **24** | **22** | **2 need work** (gravitee broken, network remove playbooks missing) |
+| Network | 2 | 0 | Both missing remove playbooks; require external accounts |
+| **Total** | **26** | **23** | **3 not verified** (gravitee broken, tailscale/cloudflare need auth keys) |
 
 ### Playbooks with Old Path References (2026-02-18 scan)
 
@@ -179,20 +181,21 @@ Gravitee was not working before the migration. This is effectively a fresh setup
 
 ---
 
-## Phase 5: Deployment Verification
+## Phase 5: Deployment Verification — COMPLETE
 
-16 services have not been verified in the new UIS system. They have service scripts and playbooks, but haven't been deployed and tested.
+23/26 services verified. All deploy and undeploy cleanly from a factory-reset clean slate (talk9.md, talk10.md).
 
 ### Tasks
 
-- [ ] 5.1 Verify monitoring stack: prometheus, grafana, loki, tempo, otel-collector
-- [ ] 5.2 Verify databases: mysql, mongodb, qdrant
-- [ ] 5.3 Verify AI stack: openwebui, litellm
-- [ ] 5.4 Verify data science stack: jupyterhub, spark, unity-catalog
-- [ ] 5.5 Verify other: nginx, elasticsearch, rabbitmq
-- [ ] 5.6 Verify network: tailscale-tunnel, cloudflare-tunnel (requires external accounts)
+- [x] 5.1 Verify monitoring stack: prometheus, grafana, loki, tempo, otel-collector ✓ (talk9.md)
+- [x] 5.2 Verify databases: mysql, mongodb, qdrant ✓ (talk9.md)
+- [x] 5.3 Verify AI stack: openwebui, litellm ✓ (talk9.md)
+- [x] 5.4 Verify data science stack: jupyterhub, spark, unity-catalog ✓ (talk9.md)
+- [x] 5.5 Verify other: nginx, elasticsearch, rabbitmq ✓ (talk9.md)
+- [x] 5.6 Verify management: pgadmin, redisinsight ✓ (talk10.md)
+- [ ] 5.7 Verify network: tailscale-tunnel, cloudflare-tunnel (requires external accounts)
 
-**Note**: Network services require external accounts (Tailscale auth key, Cloudflare token) and cannot be tested in a pure local setup.
+**Skipped**: gravitee (broken before migration), tailscale-tunnel (requires auth key), cloudflare-tunnel (requires token).
 
 ---
 

@@ -17,20 +17,21 @@ env:
   email: terje@businessmodel.io
   enhanced_cookie_protection: "False"
 
-# envVarsExtra:
-#   - name: SCRIPT_NAME
-#     value: "/urbadm/pgadmin"
+envVarsExtra:
+  - name: PGPASS_FILE
+    value: "/var/lib/pgadmin/pgpassfile"
 
 persistentVolume:
   enabled: true
   size: 10Gi
 
 # Pre-configure PostgreSQL server connection for ease of use
+# PassFile enables auto-login (pgpass secret created by deploy playbook)
 serverDefinitions:
   enabled: true
   resourceType: ConfigMap
   servers:
-    postgresql-server:
+    "1":
       Name: "PostgreSQL Database"
       Group: "Servers"
       Username: "postgres"
@@ -38,7 +39,35 @@ serverDefinitions:
       Port: 5432
       SSLMode: "prefer"
       MaintenanceDB: "postgres"
+      PassFile: "/var/lib/pgadmin/pgpassfile"
       Comment: "Pre-configured PostgreSQL server connection"
+
+# pgpass auto-login: init container copies secret with correct ownership (uid 5050)
+# Kubernetes secret mounts are always owned by root, but libpq requires the pgpass
+# file to be owned by the process user (pgadmin, uid 5050) with permissions 0600.
+extraInitContainers: |
+  - name: fix-pgpass-permissions
+    image: busybox:latest
+    command: ['sh', '-c', 'cp /tmp/pgpass-secret/pgpassfile /tmp/pgpass/pgpassfile && chown 5050:5050 /tmp/pgpass/pgpassfile && chmod 0600 /tmp/pgpass/pgpassfile']
+    volumeMounts:
+      - name: pgpass-secret
+        mountPath: /tmp/pgpass-secret
+        readOnly: true
+      - name: pgpass-volume
+        mountPath: /tmp/pgpass
+
+extraVolumes:
+  - name: pgpass-secret
+    secret:
+      secretName: pgadmin-pgpass
+  - name: pgpass-volume
+    emptyDir: {}
+
+extraVolumeMounts:
+  - name: pgpass-volume
+    mountPath: /var/lib/pgadmin/pgpassfile
+    subPath: pgpassfile
+    readOnly: true
 
 ingress:
   enabled: false  # Using Traefik IngressRoute instead
@@ -50,11 +79,11 @@ service:
 
 resources:
   requests:
-    memory: "128Mi"
+    memory: "256Mi"
     cpu: "100m"
   limits:
-    memory: "256Mi"
-    cpu: "200m"
+    memory: "512Mi"
+    cpu: "500m"
 
 # Custom probes for root path deployment
 livenessProbe:

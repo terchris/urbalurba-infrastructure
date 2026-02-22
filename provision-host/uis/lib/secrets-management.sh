@@ -84,28 +84,7 @@ init_secrets() {
            "$secrets_dir/secrets-config/00-common-values.env.template"
         log_success "Created 00-common-values.env.template with working defaults"
     else
-        # Create minimal default template
-        cat > "$secrets_dir/secrets-config/00-common-values.env.template" << 'EOF'
-# UIS Secrets Configuration
-# Edit these values to customize your deployment
-#
-# Defaults work for localhost development, customize for production
-
-# Admin credentials
-DEFAULT_ADMIN_EMAIL="admin@localhost"
-DEFAULT_ADMIN_PASSWORD="LocalDev123"
-
-# Database credentials
-DEFAULT_DATABASE_PASSWORD="LocalDevDB456"
-
-# External services (configure when needed)
-# TAILSCALE_SECRET=""
-# CLOUDFLARE_DNS_TOKEN=""
-# OPENAI_API_KEY=""
-# ANTHROPIC_API_KEY=""
-# GITHUB_ACCESS_TOKEN=""
-EOF
-        log_success "Created 00-common-values.env.template with defaults"
+        log_warn "default-secrets.env not found in $template_dir — secrets template not created"
     fi
 
     # Copy README

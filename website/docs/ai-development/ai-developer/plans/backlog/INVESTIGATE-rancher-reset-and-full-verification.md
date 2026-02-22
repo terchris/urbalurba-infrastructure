@@ -49,19 +49,24 @@ The `ensure_secrets_applied()` function in `first-run.sh` handles re-applying se
 
 ## Final Verification Status
 
-**24/24 testable services PASS.** All deploy and undeploy cleanly from a factory-reset clean slate.
+**26/26 services defined, 23/26 verified.** All testable services deploy and undeploy cleanly from a factory-reset clean slate.
 
 | Status | Services |
 |--------|----------|
-| Verified (21) | nginx, whoami, postgresql, redis, mysql, mongodb, qdrant, elasticsearch, rabbitmq, authentik, openwebui, litellm, prometheus, grafana, loki, tempo, otel-collector, argocd, jupyterhub, spark, unity-catalog |
+| Verified (23) | nginx, whoami, postgresql, redis, mysql, mongodb, qdrant, elasticsearch, rabbitmq, authentik, openwebui, litellm, prometheus, grafana, loki, tempo, otel-collector, argocd, jupyterhub, spark, unity-catalog, pgadmin, redisinsight |
 | Skipped (3) | gravitee (broken before migration), tailscale-tunnel (requires auth key), cloudflare-tunnel (requires token) |
 
-Tested across 8 rounds in talk9.md. Bugs found and fixed during testing:
+Tested across 8 rounds in talk9.md + 8 rounds in talk10.md. Bugs found and fixed during testing:
 - Lazy initialization (config files not created on `./uis start`)
 - Schema regex too strict for `removePlaybook` with parameters
 - Shell arithmetic bug (`wc -l` whitespace) in Redis/RabbitMQ removal playbooks
 - RabbitMQ health check wrong namespace
 - Unity Catalog: wrong image, wrong security context, wrong API version, no curl in container (see [INVESTIGATE-unity-catalog-crashloop](INVESTIGATE-unity-catalog-crashloop.md))
+- pgAdmin: `admin@localhost` rejected by email validator, changed to `admin@example.com`
+- pgAdmin: OOM on login with 256Mi memory limit, increased to 512Mi
+- pgAdmin/RedisInsight removal playbooks: same `grep -c` "Illegal number" bug
+- Secrets generation: missing `mkdir -p` for `secrets-config/` directory
+- Default secrets duplication: `first-run.sh` hardcoded values instead of reading from `default-secrets.env`
 
 ## Proposed Test Strategy
 

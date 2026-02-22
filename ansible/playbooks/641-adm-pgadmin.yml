@@ -66,19 +66,37 @@
           - "pgAdmin username: {{ pgadmin_username_fact }}"
           - "pgAdmin password: {{ pgadmin_password_fact | regex_replace('.', '*') }}"
 
-    # - name: 7. Apply pgAdmin ConfigMap # Removed - using chart defaults for root path
-    #   kubernetes.core.k8s:
-    #     kubeconfig: "{{ merged_kubeconf_file }}"
-    #     state: present
-    #     src: "{{ manifests_folder }}/{{ pgadmin_configmap_file }}"
-    #     namespace: "{{ pgadmin_namespace }}"
+    - name: 7. Get PostgreSQL password for pgpass file
+      ansible.builtin.shell: |
+        set -o pipefail
+        kubectl get secret --namespace {{ pgadmin_namespace }} {{ pgadmin_secret }} \
+        -o jsonpath="{.data.PGPASSWORD}" \
+        --kubeconfig {{ merged_kubeconf_file }} | base64 -d
+      args:
+        executable: /bin/bash
+      register: pg_password
+      changed_when: false
 
-    - name: 7. Check existing Helm repositories
+    - name: 8. Create pgpass secret for auto-login
+      kubernetes.core.k8s:
+        kubeconfig: "{{ merged_kubeconf_file }}"
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: pgadmin-pgpass
+            namespace: "{{ pgadmin_namespace }}"
+          type: Opaque
+          stringData:
+            pgpassfile: "postgresql.default.svc.cluster.local:5432:*:postgres:{{ pg_password.stdout }}"
+
+    - name: 9. Check existing Helm repositories
       ansible.builtin.command: helm repo list
       register: helm_repo_list
       changed_when: false
 
-    - name: 8. Add required Helm repositories if missing
+    - name: 10. Add required Helm repositories if missing
       kubernetes.core.helm_repository:
         name: "{{ item.name }}"
         repo_url: "{{ item.url }}"
@@ -86,11 +104,11 @@
         - { name: 'runix', url: 'https://helm.runix.net' }
       when: item.name not in helm_repo_list.stdout
 
-    - name: 9. Update Helm repositories
+    - name: 11. Update Helm repositories
       ansible.builtin.command: helm repo update
       changed_when: false
 
-    - name: 10. Deploy pgAdmin using Helm with centralized credentials
+    - name: 12. Deploy pgAdmin using Helm with centralized credentials
       ansible.builtin.command: >
         helm upgrade --install pgadmin runix/pgadmin4
         -f {{ manifests_folder }}/{{ pgadmin_values_file }}
@@ -102,7 +120,7 @@
         KUBECONFIG: "{{ merged_kubeconf_file }}"
       changed_when: true
 
-    - name: 11. Wait for pgAdmin pods to be ready (with progress indicators)
+    - name: 13. Wait for pgAdmin pods to be ready (with progress indicators)
       kubernetes.core.k8s_info:
         kind: Pod
         namespace: "{{ pgadmin_namespace }}"
@@ -115,7 +133,7 @@
         pgadmin_pods.resources | length > 0 and
         pgadmin_pods.resources[0].status.phase == "Running"
 
-    - name: 12. Wait for pgAdmin pods to be fully ready (1/1)
+    - name: 14. Wait for pgAdmin pods to be fully ready (1/1)
       kubernetes.core.k8s_info:
         kind: Pod
         namespace: "{{ pgadmin_namespace }}"
@@ -128,7 +146,7 @@
         pgadmin_pods_ready.resources | length > 0 and
         pgadmin_pods_ready.resources[0].status.containerStatuses[0].ready == true
 
-    - name: 13. Verify pgAdmin service is running
+    - name: 15. Verify pgAdmin service is running
       ansible.builtin.command:
         cmd: >
           kubectl get svc {{ pgadmin_service_name }}
@@ -137,11 +155,11 @@
       register: pgadmin_svc
       changed_when: false
 
-    - name: 14. Display pgAdmin service details
+    - name: 16. Display pgAdmin service details
       ansible.builtin.debug:
         var: pgadmin_svc.stdout_lines
 
-    - name: 15. Get pgAdmin pod name
+    - name: 17. Get pgAdmin pod name
       ansible.builtin.command:
         cmd: >
           kubectl get pods -n {{ pgadmin_namespace }}
@@ -151,7 +169,7 @@
       register: pgadmin_pod_name
       changed_when: false
 
-    - name: 16. Test pgAdmin HTTP response from within cluster
+    - name: 18. Test pgAdmin HTTP response from within cluster
       ansible.builtin.shell: |
         kubectl run curl-test --image=curlimages/curl --rm -i --restart=Never -n {{ pgadmin_namespace }} -- \
         curl -s -w "HTTP_CODE:%{http_code}" http://{{ pgadmin_service_name }}:80/
@@ -160,14 +178,14 @@
       delay: 15
       until: pgadmin_http_response.rc == 0 and (pgadmin_http_response.stdout.find('HTTP_CODE:200') != -1 or pgadmin_http_response.stdout.find('HTTP_CODE:302') != -1)
 
-    - name: 17. Apply pgAdmin ingress configuration
+    - name: 19. Apply pgAdmin ingress configuration
       kubernetes.core.k8s:
         kubeconfig: "{{ merged_kubeconf_file }}"
         state: present
         src: "{{ manifests_folder }}/{{ pgadmin_ingress_config_file }}"
         namespace: "{{ pgadmin_namespace }}"
 
-    - name: 18. Verify pgAdmin ingress is created
+    - name: 20. Verify pgAdmin ingress is created
       kubernetes.core.k8s_info:
         api_version: traefik.io/v1alpha1
         kind: IngressRoute
@@ -178,7 +196,7 @@
       delay: 2
       until: ingress_check.resources | length > 0
 
-    - name: 19. Display final deployment status
+    - name: 21. Display final deployment status
       ansible.builtin.debug:
         msg:
           - "==============================================="

@@ -100,7 +100,17 @@
       when: pgadmin_ingress_check.resources | length > 0
       ignore_errors: true
 
-    - name: 11. Uninstall pgAdmin Helm release
+    - name: 11. Delete pgpass secret
+      kubernetes.core.k8s:
+        kubeconfig: "{{ merged_kubeconf_file }}"
+        state: absent
+        api_version: v1
+        kind: Secret
+        name: pgadmin-pgpass
+        namespace: "{{ pgadmin_namespace }}"
+      ignore_errors: true
+
+    - name: 12. Uninstall pgAdmin Helm release
       ansible.builtin.shell: helm uninstall {{ pgadmin_release_name }} -n {{ pgadmin_namespace }}
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
@@ -109,7 +119,7 @@
       ignore_errors: true
       when: pgadmin_release_exists
 
-    - name: 12. Force delete pgAdmin pods if still exists
+    - name: 13. Force delete pgAdmin pods if still exists
       ansible.builtin.shell: kubectl delete pods -n {{ pgadmin_namespace }} -l {{ pgadmin_pod_label }} --context {{ target_host }} --grace-period=0 --force
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
@@ -118,7 +128,7 @@
       ignore_errors: true
       when: pgadmin_pods_check.rc == 0 and pgadmin_pods_check.stdout != ""
 
-    - name: 13. Force delete pgAdmin services if still exists
+    - name: 14. Force delete pgAdmin services if still exists
       ansible.builtin.shell: kubectl delete svc -n {{ pgadmin_namespace }} -l app.kubernetes.io/name=pgadmin4 --context {{ target_host }} --grace-period=0
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
@@ -127,7 +137,7 @@
       ignore_errors: true
       when: pgadmin_service_check.rc == 0
 
-    - name: 14. Delete pgAdmin PVCs
+    - name: 15. Delete pgAdmin PVCs
       ansible.builtin.shell: kubectl delete pvc -n {{ pgadmin_namespace }} -l app.kubernetes.io/name=pgadmin4 --context {{ target_host }} --timeout={{ deletion_timeout }}s
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
@@ -136,7 +146,7 @@
       ignore_errors: true
       when: pgadmin_pvc_check.rc == 0
 
-    - name: 15. Wait for pgAdmin pods to terminate
+    - name: 16. Wait for pgAdmin pods to terminate
       ansible.builtin.shell: kubectl get pods -n {{ pgadmin_namespace }} -l {{ pgadmin_pod_label }} --no-headers --context {{ target_host }} 2>/dev/null | wc -l
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
@@ -146,7 +156,7 @@
       delay: 10
       changed_when: false
 
-    - name: 16. Wait for PVCs to be fully deleted
+    - name: 17. Wait for PVCs to be fully deleted
       ansible.builtin.shell: kubectl get pvc -n {{ pgadmin_namespace }} -l app.kubernetes.io/name=pgadmin4 --no-headers --context {{ target_host }} 2>/dev/null | wc -l
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
@@ -157,7 +167,7 @@
       changed_when: false
       ignore_errors: true
 
-    - name: 17. Wait for IngressRoute to be fully deleted
+    - name: 18. Wait for IngressRoute to be fully deleted
       kubernetes.core.k8s_info:
         api_version: traefik.io/v1alpha1
         kind: IngressRoute
@@ -171,7 +181,7 @@
       changed_when: false
       ignore_errors: true
 
-    - name: 18. Verify pgAdmin removal completion
+    - name: 19. Verify pgAdmin removal completion
       ansible.builtin.shell: |
         # Check for any remaining pgAdmin resources
         echo "Checking for remaining pgAdmin resources..."
@@ -180,7 +190,8 @@
         REMAINING_PVC=$(kubectl get pvc -n {{ pgadmin_namespace }} -l app.kubernetes.io/name=pgadmin4 --no-headers --context {{ target_host }} 2>/dev/null | wc -l)
 
         # Check Helm release
-        REMAINING_HELM=$(helm list -n {{ pgadmin_namespace }} -q | grep -c "^{{ pgadmin_release_name }}$" 2>/dev/null || echo "0")
+        REMAINING_HELM=$(helm list -n {{ pgadmin_namespace }} -q | grep -c "^{{ pgadmin_release_name }}$" 2>/dev/null || true)
+        REMAINING_HELM=${REMAINING_HELM:-0}
 
         # Check IngressRoute
         REMAINING_INGRESS=$(kubectl get ingressroute -n {{ pgadmin_namespace }} pgadmin --no-headers --context {{ target_host }} 2>/dev/null | wc -l)
@@ -206,7 +217,7 @@
       changed_when: false
       ignore_errors: true
 
-    - name: 19. Display pgAdmin removal result
+    - name: 20. Display pgAdmin removal result
       ansible.builtin.debug:
         msg: |
           pgAdmin removal summary:
@@ -220,7 +231,7 @@
 
           Verification: {{ pgadmin_cleanup_verification.stdout_lines | join('\n          ') }}
 
-    - name: 20. Final success message
+    - name: 21. Final success message
       ansible.builtin.debug:
         msg: |
           🎉 pgAdmin removal completed successfully!

@@ -16,7 +16,7 @@ On first run, UIS automatically sets development-friendly defaults:
 
 | Variable | Default Value | Used By |
 |----------|---------------|---------|
-| `DEFAULT_ADMIN_EMAIL` | `admin@localhost` | All admin accounts |
+| `DEFAULT_ADMIN_EMAIL` | `admin@example.com` | All admin accounts |
 | `DEFAULT_ADMIN_PASSWORD` | `LocalDev123` | All admin accounts |
 | `DEFAULT_DATABASE_PASSWORD` | `LocalDevDB456` | PostgreSQL, MySQL, MongoDB |
 
