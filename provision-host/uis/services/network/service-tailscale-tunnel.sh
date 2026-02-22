@@ -10,10 +10,10 @@ SCRIPT_DESCRIPTION="Secure mesh VPN tunnel"
 SCRIPT_CATEGORY="NETWORK"
 
 # === UIS-Specific (Optional) ===
-SCRIPT_PLAYBOOK="801-setup-network-tailscale-tunnel.yml"
+SCRIPT_PLAYBOOK="802-deploy-network-tailscale-tunnel.yml"
 SCRIPT_MANIFEST=""
 SCRIPT_CHECK_COMMAND="kubectl get pods -n network -l app.kubernetes.io/name=tailscale --no-headers 2>/dev/null | grep -q Running"
-SCRIPT_REMOVE_PLAYBOOK=""
+SCRIPT_REMOVE_PLAYBOOK="801-remove-network-tailscale-tunnel.yml"
 SCRIPT_REQUIRES=""
 SCRIPT_PRIORITY="100"
 

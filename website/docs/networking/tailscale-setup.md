@@ -7,9 +7,9 @@
 
 ## ⚠️ Critical Limitation: No Wildcard DNS Support
 
-**Tailscale does not support wildcard DNS routing.** This means patterns like `*.k8s.dog-pence.ts.net` will NOT work.
+**Tailscale Funnel does not support wildcard DNS routing.** This means patterns like `*.k8s.dog-pence.ts.net` will NOT work for public internet access.
 
-**Reference**: [Tailscale GitHub Issue #1196](https://github.com/tailscale/tailscale/issues/1196)
+**Reference**: [Tailscale GitHub Issue #15434](https://github.com/tailscale/tailscale/issues/15434) (Funnel wildcard support — still open as of Feb 2026)
 
 Throughout this document we use the tailscale domain `dog-pence.ts.net` as an example. You get your own domain in the form `<something>.ts.net` when signing up to Tailscale.
 
@@ -61,17 +61,16 @@ Before starting, ensure you have:
 - [ ] Access to provision-host container
 - [ ] Valid Tailscale account and credentials
 
-## 📋 Script Overview
+## 📋 Commands Overview
 
-Five scripts manage the complete Tailscale setup:
+| Command | Purpose | When to Use |
+|---------|---------|-------------|
+| `./uis deploy tailscale-tunnel` | Deploy Tailscale operator to cluster | After secrets are configured |
+| `./uis undeploy tailscale-tunnel` | Remove Tailscale operator and ingresses | Clean up / start over |
+| `./networking/tailscale/802-tailscale-tunnel-deploy.sh <service>` | Add individual service ingress | After operator deployed |
+| `./networking/tailscale/803-tailscale-tunnel-deletehost.sh <hostname>` | Remove individual service ingress | When removing a service |
 
-| Script | Purpose | When to Use | Parameters |
-|--------|---------|-------------|------------|
-| `801-tailscale-tunnel-setup.sh` | Sets up Tailscale on provision-host | First time setup | None |
-| `802-tailscale-tunnel-deploy.sh` | Deploys operator to cluster | After host setup | `[cluster-hostname]` |
-| `802-tailscale-tunnel-deploy.sh` | Add individual service ingress | After operator deployed | `<service> [hostname]` |
-| `803-tailscale-tunnel-deletehost.sh` | Remove individual service ingress | When removing a service | `<hostname>` |
-| `804-tailscale-tunnel-delete.sh` | Removes everything | Clean up / start over | None |
+The one-time verification playbook (`801-setup-network-tailscale-tunnel.yml`) can be run manually via `./uis shell` to test your Tailscale credentials before deploying.
 
 ## 🚀 Quick Start Guide
 
@@ -158,17 +157,26 @@ Five scripts manage the complete Tailscale setup:
 2. Enable **MagicDNS** 
 3. Note your **MagicDNS domain** (e.g., `dog-pence.ts.net`) → **This becomes `TAILSCALE_DOMAIN`**
 
-### Step 6: Update Kubernetes Secrets
+### Step 6: Configure Tailscale Secrets
 
-Edit `.uis.secrets/generated/kubernetes/kubernetes-secrets.yml` with your values:
+Edit the secrets source file with your Tailscale values from Steps 1-5:
 ```bash
-# Update these Tailscale variables with values from Steps 1-5:
-TAILSCALE_SECRET: tskey-auth-YOUR-AUTH-KEY           # From Step 3: Auth Key
-TAILSCALE_TAILNET: your-tailnet-name                # From Step 1: Your tailnet name
-TAILSCALE_DOMAIN: your-magic-dns-domain             # From Step 5: MagicDNS domain  
-TAILSCALE_CLUSTER_HOSTNAME: k8s                     # Becomes: k8s.[your-domain].ts.net (cluster ingress only)
-TAILSCALE_CLIENTID: YOUR-OAUTH-CLIENT-ID            # From Step 4: OAuth Client ID
-TAILSCALE_CLIENTSECRET: tskey-client-YOUR-OAUTH-CLIENT-SECRET  # From Step 4: OAuth Client Secret
+nano .uis.secrets/config/00-common-values.env
+```
+
+Update these variables:
+```bash
+TAILSCALE_SECRET=tskey-auth-YOUR-AUTH-KEY           # From Step 3: Auth Key
+TAILSCALE_TAILNET=your-tailnet-name                 # From Step 1: Your tailnet name
+TAILSCALE_DOMAIN=your-magic-dns-domain              # From Step 5: MagicDNS domain
+TAILSCALE_CLUSTER_HOSTNAME=k8s                      # Becomes: k8s.[your-domain].ts.net (cluster ingress only)
+TAILSCALE_CLIENTID=YOUR-OAUTH-CLIENT-ID             # From Step 4: OAuth Client ID
+TAILSCALE_CLIENTSECRET=tskey-client-YOUR-SECRET      # From Step 4: OAuth Client Secret
+```
+
+Then regenerate the Kubernetes secrets:
+```bash
+./uis secrets generate
 ```
 
 **Important: TAILSCALE_CLUSTER_HOSTNAME:**
@@ -178,32 +186,24 @@ TAILSCALE_CLIENTSECRET: tskey-client-YOUR-OAUTH-CLIENT-SECRET  # From Step 4: OA
   - Individual services get their own URLs: `whoami.dog-pence.ts.net`, `grafana.dog-pence.ts.net`
   - **Note**: Tailscale does NOT support wildcard DNS, so `*.k8s.dog-pence.ts.net` patterns won't work
 
-### Step 7: Apply Secrets to Kubernetes
-```bash
-# Apply updated secrets to cluster
-kubectl apply -f .uis.secrets/generated/kubernetes/kubernetes-secrets.yml
+### Step 7: Verify Tailscale Connection (one-time)
 
-# Verify secrets are applied
-kubectl get secret urbalurba-secrets -o yaml | grep TAILSCALE
-```
-
-### Step 8: Setup Tailscale on Provision-Host
+This optional step verifies your Tailscale credentials work before deploying to the cluster:
 ```bash
-# Access the provision-host container
 ./uis shell
 cd /mnt/urbalurbadisk
 
-# Setup Tailscale daemon and authenticate
-./networking/tailscale/801-tailscale-tunnel-setup.sh
+# Run the verification playbook (connects, tests funnel, then cleans up)
+ansible-playbook ansible/playbooks/801-setup-network-tailscale-tunnel.yml
 ```
 
-### Step 9: Deploy Tailscale Operator to Cluster
+### Step 8: Deploy Tailscale Operator to Cluster
 ```bash
-# Deploy operator (required for managing individual service ingresses)
-./networking/tailscale/802-tailscale-tunnel-deploy.sh
+# Deploy the Tailscale operator (secrets are applied automatically)
+./uis deploy tailscale-tunnel
 ```
 
-### Step 10: Add Individual Services (The Working Solution)
+### Step 9: Add Individual Services (The Working Solution)
 
 Since Tailscale doesn't support wildcard DNS, use the `802-tailscale-tunnel-deploy.sh` script to expose each service individually:
 
@@ -246,7 +246,7 @@ Since Tailscale doesn't support wildcard DNS, use the `802-tailscale-tunnel-depl
 - No authentication by default - add Authentik protection if needed
 - DNS propagation takes 1-5 minutes globally after adding a service
 
-### Step 11: Test Public Internet Access
+### Step 10: Test Public Internet Access
 ```bash
 # Test your exposed services (replace with your actual domain):
 curl https://whoami.dog-pence.ts.net
@@ -262,7 +262,7 @@ curl https://authentik.dog-pence.ts.net
 kubectl get pods -n tailscale -l app.kubernetes.io/name=tailscale-ingress
 ```
 
-### Step 12: DNS Troubleshooting
+### Step 11: DNS Troubleshooting
 
 If services are not immediately accessible, use these commands to check DNS resolution:
 
@@ -291,16 +291,21 @@ curl -v https://whoami.dog-pence.ts.net
 
 To completely remove Tailscale and start over:
 ```bash
-# Delete everything
-./networking/tailscale/804-tailscale-tunnel-delete.sh
+# Remove Tailscale operator, ingresses, and namespace from cluster
+./uis undeploy tailscale-tunnel
 ```
 
 **What gets deleted:**
-- All Tailscale ingresses and services
-- Tailscale operator from cluster  
-- Tailscale devices from your tailnet
-- Tailscale daemon on provision-host
-- Local configuration files
+- All Tailscale ingresses (cluster and per-service)
+- Tailscale operator Helm release
+- Tailscale namespace and pods
+
+To also remove devices from your Tailnet via API, run the playbook directly:
+```bash
+./uis shell
+cd /mnt/urbalurbadisk
+ansible-playbook ansible/playbooks/801-remove-network-tailscale-tunnel.yml -e remove_tailnet_devices=true
+```
 
 ## 🔧 Troubleshooting
 
@@ -313,9 +318,9 @@ This error means your OAuth client doesn't have permission for `tag:k8s-operator
 3. In **Devices → Core** scope, ensure `tag:k8s-operator` is added
 4. In **Auth keys** scope, ensure `tag:k8s-operator` is added
 5. Generate a new client secret (required after scope changes)
-6. Update `TAILSCALE_CLIENTSECRET` in your secrets file
-7. Apply with `kubectl apply -f .uis.secrets/generated/kubernetes/kubernetes-secrets.yml`
-8. Run the script again
+6. Update `TAILSCALE_CLIENTSECRET` in `.uis.secrets/config/00-common-values.env`
+7. Regenerate secrets: `./uis secrets generate`
+8. Redeploy: `./uis deploy tailscale-tunnel`
 
 **Key Point:** The operator uses `tag:k8s-operator` for all devices, including itself and cluster ingress devices with Funnel capability.
 
@@ -337,13 +342,14 @@ If you get authentication errors, create new keys at [Tailscale Admin Console](h
 
 **Update secrets file:**
 ```bash
-# Edit .uis.secrets/generated/kubernetes/kubernetes-secrets.yml
-TAILSCALE_SECRET: tskey-auth-YOUR-NEW-AUTH-KEY
-TAILSCALE_CLIENTID: YOUR-NEW-CLIENT-ID
-TAILSCALE_CLIENTSECRET: tskey-client-YOUR-NEW-CLIENT-SECRET
+# Edit .uis.secrets/config/00-common-values.env
+TAILSCALE_SECRET=tskey-auth-YOUR-NEW-AUTH-KEY
+TAILSCALE_CLIENTID=YOUR-NEW-CLIENT-ID
+TAILSCALE_CLIENTSECRET=tskey-client-YOUR-NEW-CLIENT-SECRET
 
-# Apply to cluster
-kubectl apply -f .uis.secrets/generated/kubernetes/kubernetes-secrets.yml
+# Regenerate and redeploy
+./uis secrets generate
+./uis deploy tailscale-tunnel
 ```
 
 ### Script Execution Issues
@@ -351,10 +357,7 @@ kubectl apply -f .uis.secrets/generated/kubernetes/kubernetes-secrets.yml
 **Check Tailscale status in provision-host:**
 ```bash
 # Access provision-host container
-docker exec -it provision-host bash
-
-# Check Tailscale daemon
-tailscale status
+./uis shell
 
 # Check cluster operator
 kubectl get pods -n tailscale
@@ -386,11 +389,10 @@ curl -fsSL https://tailscale.com/install.sh | sh
 4. No Traefik involvement - direct service connection
 ```
 
-### Script Dependencies
-- **801** → **802** → **803** (sequential execution required)
-- **803** can be run multiple times to add different services
-- **804** removes individual service ingresses
-- **805** complete cleanup of everything
+### Setup Flow
+- **Configure secrets** → `./uis deploy tailscale-tunnel` → **Add services** (sequential)
+- The per-service script can be run multiple times to add different services
+- `./uis undeploy tailscale-tunnel` removes operator and all ingresses
 
 ### Integration with Other Systems
 - Works alongside Cloudflare tunnels (different domains)

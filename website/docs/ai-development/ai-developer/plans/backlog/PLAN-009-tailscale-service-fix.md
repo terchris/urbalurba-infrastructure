@@ -4,7 +4,7 @@
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Backlog
+## Status: In Progress (code done, needs live testing)
 
 **Goal**: Make `./uis deploy tailscale-tunnel` and `./uis undeploy tailscale-tunnel` work correctly end-to-end.
 
@@ -101,18 +101,18 @@ The docs also tell users to manually run `kubectl apply -f ...` (Step 7) which i
 
 The deploy playbook should be `802-deploy-network-tailscale-tunnel.yml`. The `801` playbook is a one-time manual tool for initial Tailscale account verification and secret discovery — not part of the automated deploy.
 
-- [ ] 1.1 Update `service-tailscale-tunnel.sh`: set `SCRIPT_PLAYBOOK="802-deploy-network-tailscale-tunnel.yml"`
-- [ ] 1.2 Run 801 manually via `./uis shell` to verify Tailscale connection and populate secrets
-- [ ] 1.3 Test `./uis deploy tailscale-tunnel` with secrets in place
-- [ ] 1.4 Verify the operator deploys and the cluster ingress is accessible
+- [x] 1.1 Update `service-tailscale-tunnel.sh`: set `SCRIPT_PLAYBOOK="802-deploy-network-tailscale-tunnel.yml"` ✓
+- [ ] 1.2 Run 801 manually via `./uis shell` to verify Tailscale connection and populate secrets (needs live account)
+- [ ] 1.3 Test `./uis deploy tailscale-tunnel` with secrets in place (needs live account)
+- [ ] 1.4 Verify the operator deploys and the cluster ingress is accessible (needs live account)
 
 ### Phase 2: Create remove playbook
 
-- [ ] 2.1 Create `ansible/playbooks/801-remove-network-tailscale-tunnel.yml` based on logic in `804-tailscale-tunnel-delete.sh`
-- [ ] 2.2 Include: remove cluster ingress, uninstall Helm release, delete namespace, optionally remove tailnet devices via API
-- [ ] 2.3 Update `service-tailscale-tunnel.sh` with `SCRIPT_REMOVE_PLAYBOOK`
-- [ ] 2.4 Test `./uis undeploy tailscale-tunnel`
-- [ ] 2.5 Verify clean removal (no leftover pods, namespace gone)
+- [x] 2.1 Create `ansible/playbooks/801-remove-network-tailscale-tunnel.yml` based on logic in `804-tailscale-tunnel-delete.sh` ✓
+- [x] 2.2 Include: remove cluster ingress, uninstall Helm release, delete namespace, optionally remove tailnet devices via API ✓
+- [x] 2.3 Update `service-tailscale-tunnel.sh` with `SCRIPT_REMOVE_PLAYBOOK` ✓
+- [ ] 2.4 Test `./uis undeploy tailscale-tunnel` (needs live account)
+- [ ] 2.5 Verify clean removal (no leftover pods, namespace gone) (needs live account)
 
 ### Phase 3: Test full cycle
 
@@ -121,12 +121,12 @@ The deploy playbook should be `802-deploy-network-tailscale-tunnel.yml`. The `80
 
 ### Phase 4: Update user docs
 
-- [ ] 4.1 Update `tailscale-setup.md` to use `./uis deploy` / `./uis undeploy` where appropriate
-- [ ] 4.2 Keep manual Tailscale account setup steps (Steps 1-5) as-is — those are external (Tailscale website)
-- [ ] 4.3 Update Step 6: change from editing `generated/kubernetes/kubernetes-secrets.yml` directly to editing `.uis.secrets/config/00-common-values.env` + running `./uis secrets generate`
-- [ ] 4.4 Remove Step 7 (`kubectl apply`): secrets are now applied automatically on deploy
-- [ ] 4.5 Update Steps 8-10: replace legacy shell scripts with `./uis` commands
-- [ ] 4.6 Review `tailscale-internal-ingress.md` for accuracy
+- [x] 4.1 Update `tailscale-setup.md` to use `./uis deploy` / `./uis undeploy` where appropriate ✓
+- [x] 4.2 Keep manual Tailscale account setup steps (Steps 1-5) as-is — those are external (Tailscale website) ✓
+- [x] 4.3 Update Step 6: change from editing `generated/kubernetes/kubernetes-secrets.yml` directly to editing `.uis.secrets/config/00-common-values.env` + running `./uis secrets generate` ✓
+- [x] 4.4 Remove Step 7 (`kubectl apply`): replaced with verification step using 801 playbook ✓
+- [x] 4.5 Update Steps 8-10: replaced with `./uis deploy`, per-service scripts unchanged ✓
+- [x] 4.6 Review `tailscale-internal-ingress.md`: updated `docker exec` commands to `./uis shell` ✓
 
 ---
 

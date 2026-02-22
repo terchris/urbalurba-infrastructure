@@ -1,0 +1,282 @@
+---
+# file: ansible/playbooks/801-remove-network-tailscale-tunnel.yml
+# Description: Remove Tailscale tunnel from Kubernetes cluster
+# This playbook:
+# - Removes Tailscale cluster ingress
+# - Uninstalls Tailscale operator Helm release
+# - Removes all Tailscale pods and resources
+# - Deletes Tailscale namespace
+# - Optionally removes devices from Tailnet via API
+# - Preserves urbalurba-secrets
+#
+# Based on logic from networking/tailscale/804-tailscale-tunnel-delete.sh
+#
+# Usage:
+#   ansible-playbook playbooks/801-remove-network-tailscale-tunnel.yml
+#   ansible-playbook playbooks/801-remove-network-tailscale-tunnel.yml -e remove_tailnet_devices=true
+
+- name: Remove Tailscale tunnel from Kubernetes
+  hosts: localhost
+  gather_facts: false
+  vars:
+    merged_kubeconf_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
+    operator_namespace: "tailscale"
+    operator_release_name: "tailscale-operator"
+    deletion_timeout: 120
+    remove_tailnet_devices: false
+
+  tasks:
+    - name: 1. Get current Kubernetes context if target_host not provided
+      ansible.builtin.shell: |
+        kubectl config current-context
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: current_context
+      changed_when: false
+      when: target_host is not defined
+
+    - name: 2. Set target_host from current context if not provided
+      ansible.builtin.set_fact:
+        target_host: "{{ current_context.stdout }}"
+      when: target_host is not defined
+
+    - name: 3. Print removal description
+      ansible.builtin.debug:
+        msg: |
+          Starting Tailscale tunnel removal
+          Target: {{ target_host }}
+          Namespace: {{ operator_namespace }}
+          Helm Release: {{ operator_release_name }}
+          Tailnet device removal: {{ 'Enabled' if remove_tailnet_devices | bool else 'Disabled (use -e remove_tailnet_devices=true to enable)' }}
+
+    # Step 1: Remove Tailscale cluster ingress
+    - name: 4. Check for Tailscale cluster ingress
+      ansible.builtin.shell: kubectl get ingress traefik-ingress -n kube-system --context {{ target_host }} --no-headers 2>/dev/null
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: cluster_ingress_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: 5. Remove Tailscale cluster ingress
+      ansible.builtin.shell: kubectl delete ingress traefik-ingress -n kube-system --context {{ target_host }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      when: cluster_ingress_check.rc == 0 and cluster_ingress_check.stdout != ""
+      ignore_errors: true
+
+    # Step 2: Remove all Tailscale ingresses (per-service ingresses)
+    - name: 6. Check for Tailscale per-service ingresses
+      ansible.builtin.shell: kubectl get ingress -A --context {{ target_host }} -o json 2>/dev/null | python3 -c "import sys,json; data=json.load(sys.stdin); items=[i for i in data.get('items',[]) if i.get('spec',{}).get('ingressClassName')=='tailscale']; print(len(items))"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: tailscale_ingress_count
+      changed_when: false
+      ignore_errors: true
+
+    - name: 7. Remove all Tailscale-class ingresses
+      ansible.builtin.shell: |
+        kubectl get ingress -A --context {{ target_host }} -o json 2>/dev/null | \
+        python3 -c "
+        import sys, json
+        data = json.load(sys.stdin)
+        for item in data.get('items', []):
+            if item.get('spec', {}).get('ingressClassName') == 'tailscale':
+                ns = item['metadata']['namespace']
+                name = item['metadata']['name']
+                print(f'{ns}/{name}')
+        " | while IFS='/' read -r ns name; do
+          kubectl delete ingress "$name" -n "$ns" --context {{ target_host }} 2>/dev/null || true
+        done
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      when: tailscale_ingress_count.stdout | default('0') | int > 0
+      ignore_errors: true
+
+    # Step 3: Uninstall Tailscale operator via Helm
+    - name: 8. Check for Tailscale namespace
+      ansible.builtin.shell: kubectl get namespace {{ operator_namespace }} --context {{ target_host }} --no-headers 2>/dev/null
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: namespace_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: 9. Check for Tailscale Helm release
+      ansible.builtin.shell: helm list -n {{ operator_namespace }} --output json
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: helm_releases
+      changed_when: false
+      ignore_errors: true
+      when: namespace_check.rc == 0
+
+    - name: 10. Parse Helm releases and check for Tailscale operator
+      ansible.builtin.set_fact:
+        operator_release_exists: "{{ (helm_releases.stdout | from_json) | selectattr('name', 'equalto', operator_release_name) | list | length > 0 }}"
+      when: namespace_check.rc == 0 and helm_releases.rc == 0
+
+    - name: 11. Set operator release exists to false if not found
+      ansible.builtin.set_fact:
+        operator_release_exists: false
+      when: namespace_check.rc != 0 or helm_releases.rc is not defined or helm_releases.rc != 0
+
+    - name: 12. Uninstall Tailscale operator Helm release
+      ansible.builtin.shell: helm uninstall {{ operator_release_name }} -n {{ operator_namespace }} --timeout {{ deletion_timeout }}s
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      when: operator_release_exists | bool
+      register: helm_uninstall_result
+      ignore_errors: true
+
+    # Step 4: Force cleanup remaining resources
+    - name: 13. Force delete remaining pods in Tailscale namespace
+      ansible.builtin.shell: kubectl delete pods --all -n {{ operator_namespace }} --context {{ target_host }} --grace-period=0 --force 2>/dev/null
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      when: namespace_check.rc == 0
+      ignore_errors: true
+
+    - name: 14. Wait for pods to terminate
+      ansible.builtin.shell: kubectl get pods -n {{ operator_namespace }} --no-headers --context {{ target_host }} 2>/dev/null | wc -l | tr -d ' '
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: pods_remaining
+      until: pods_remaining.stdout | int == 0
+      retries: 20
+      delay: 5
+      changed_when: false
+      when: namespace_check.rc == 0
+      ignore_errors: true
+
+    # Step 5: Delete namespace
+    - name: 15. Delete Tailscale namespace
+      ansible.builtin.shell: kubectl delete namespace {{ operator_namespace }} --context {{ target_host }} --timeout={{ deletion_timeout }}s 2>/dev/null
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      when: namespace_check.rc == 0
+      ignore_errors: true
+
+    - name: 16. Wait for namespace to be fully deleted
+      ansible.builtin.shell: kubectl get namespace {{ operator_namespace }} --context {{ target_host }} --no-headers 2>/dev/null | wc -l | tr -d ' '
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: ns_remaining
+      until: ns_remaining.stdout | int == 0
+      retries: 20
+      delay: 5
+      changed_when: false
+      ignore_errors: true
+
+    # Step 6: Remove devices from Tailnet via API (optional)
+    - name: 17. Get Tailscale API credentials for device cleanup
+      ansible.builtin.shell: |
+        CLIENTID=$(kubectl get secret urbalurba-secrets -n default --context {{ target_host }} -o jsonpath='{.data.TAILSCALE_CLIENTID}' 2>/dev/null | base64 -d 2>/dev/null)
+        CLIENTSECRET=$(kubectl get secret urbalurba-secrets -n default --context {{ target_host }} -o jsonpath='{.data.TAILSCALE_CLIENTSECRET}' 2>/dev/null | base64 -d 2>/dev/null)
+        TAILNET=$(kubectl get secret urbalurba-secrets -n default --context {{ target_host }} -o jsonpath='{.data.TAILSCALE_TAILNET}' 2>/dev/null | base64 -d 2>/dev/null)
+        HOSTNAME=$(kubectl get secret urbalurba-secrets -n default --context {{ target_host }} -o jsonpath='{.data.TAILSCALE_CLUSTER_HOSTNAME}' 2>/dev/null | base64 -d 2>/dev/null)
+        echo "CLIENTID=$CLIENTID"
+        echo "CLIENTSECRET=$CLIENTSECRET"
+        echo "TAILNET=$TAILNET"
+        echo "HOSTNAME=${HOSTNAME:-k8s}"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: api_creds
+      changed_when: false
+      ignore_errors: true
+      when: remove_tailnet_devices | bool
+
+    - name: 18. Parse API credentials
+      ansible.builtin.set_fact:
+        ts_clientid: "{{ api_creds.stdout_lines | select('match', '^CLIENTID=') | first | regex_replace('^CLIENTID=', '') }}"
+        ts_clientsecret: "{{ api_creds.stdout_lines | select('match', '^CLIENTSECRET=') | first | regex_replace('^CLIENTSECRET=', '') }}"
+        ts_tailnet: "{{ api_creds.stdout_lines | select('match', '^TAILNET=') | first | regex_replace('^TAILNET=', '') }}"
+        ts_hostname: "{{ api_creds.stdout_lines | select('match', '^HOSTNAME=') | first | regex_replace('^HOSTNAME=', '') }}"
+      when: remove_tailnet_devices | bool and api_creds.rc == 0
+
+    - name: 19. Remove cluster devices from Tailnet via API
+      ansible.builtin.shell: |
+        DEVICES_JSON=$(curl -s -u "{{ ts_clientid }}:{{ ts_clientsecret }}" \
+          "https://api.tailscale.com/api/v2/tailnet/{{ ts_tailnet }}/devices" 2>/dev/null)
+
+        if echo "$DEVICES_JSON" | python3 -c "import sys,json; json.load(sys.stdin)['devices']" >/dev/null 2>&1; then
+          DEVICE_COUNT=0
+          echo "$DEVICES_JSON" | python3 -c "
+        import sys, json
+        data = json.load(sys.stdin)
+        for d in data.get('devices', []):
+            name = d.get('name', '')
+            if 'tailscale-operator' in name or '{{ ts_hostname }}' in name or 'provision-host' in name:
+                print(f\"{d['name']}:{d['id']}\")
+          " | while IFS=':' read -r name id; do
+            curl -s -X DELETE -u "{{ ts_clientid }}:{{ ts_clientsecret }}" \
+              "https://api.tailscale.com/api/v2/device/$id" >/dev/null 2>&1 || true
+            echo "Removed device: $name"
+            DEVICE_COUNT=$((DEVICE_COUNT + 1))
+          done
+          echo "Device cleanup complete"
+        else
+          echo "Could not retrieve device list from Tailscale API"
+        fi
+      when:
+        - remove_tailnet_devices | bool
+        - ts_clientid is defined and ts_clientid != ""
+        - ts_clientsecret is defined and ts_clientsecret != ""
+      no_log: true
+      ignore_errors: true
+
+    # Step 7: Verification
+    - name: 20. Verify Tailscale removal
+      ansible.builtin.shell: |
+        ISSUES=0
+
+        # Check namespace
+        if kubectl get namespace {{ operator_namespace }} --context {{ target_host }} --no-headers 2>/dev/null | grep -q .; then
+          echo "WARNING: Tailscale namespace still exists (may take time to terminate)"
+          ISSUES=$((ISSUES + 1))
+        else
+          echo "OK: Tailscale namespace removed"
+        fi
+
+        # Check for Tailscale ingresses
+        TS_INGRESS=$(kubectl get ingress -A --context {{ target_host }} -o json 2>/dev/null | python3 -c "import sys,json; data=json.load(sys.stdin); print(len([i for i in data.get('items',[]) if i.get('spec',{}).get('ingressClassName')=='tailscale']))" 2>/dev/null || echo "0")
+        if [ "$TS_INGRESS" -gt 0 ]; then
+          echo "WARNING: $TS_INGRESS Tailscale ingresses still exist"
+          ISSUES=$((ISSUES + 1))
+        else
+          echo "OK: No Tailscale ingresses remaining"
+        fi
+
+        # Check cluster ingress
+        if kubectl get ingress traefik-ingress -n kube-system --context {{ target_host }} --no-headers 2>/dev/null | grep -q .; then
+          echo "WARNING: Tailscale cluster ingress still exists"
+          ISSUES=$((ISSUES + 1))
+        else
+          echo "OK: Cluster ingress removed"
+        fi
+
+        echo "ISSUES=$ISSUES"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: verification
+      changed_when: false
+      ignore_errors: true
+
+    - name: 21. Display removal summary
+      ansible.builtin.debug:
+        msg:
+          - "==================================================="
+          - "Tailscale Tunnel Removal Status"
+          - "==================================================="
+          - ""
+          - "Cluster ingress: {{ 'Removed' if cluster_ingress_check.rc == 0 and cluster_ingress_check.stdout != '' else 'Not found (already removed)' }}"
+          - "Per-service ingresses: {{ tailscale_ingress_count.stdout | default('0') }} found and removed"
+          - "Helm release: {{ 'Uninstalled' if operator_release_exists | bool else 'Not found (already removed)' }}"
+          - "Namespace: {{ 'Deleted' if namespace_check.rc == 0 else 'Not found (already removed)' }}"
+          - "Tailnet devices: {{ 'Cleaned up via API' if remove_tailnet_devices | bool else 'Skipped (use -e remove_tailnet_devices=true)' }}"
+          - ""
+          - "Verification:"
+          - "{{ verification.stdout_lines | default(['No verification data']) | join('\n') }}"
+          - ""
+          - "To redeploy: ./uis deploy tailscale-tunnel"
+          - "==================================================="

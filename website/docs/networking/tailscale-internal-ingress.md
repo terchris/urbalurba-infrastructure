@@ -77,14 +77,11 @@ TAILSCALE_INTERNAL_HOSTNAME=k8s-terje   # k8s-imac for iMac, k8s-tecmacdev for t
 From the provision-host container:
 
 ```bash
-# Deploy Tailscale internal ingress
-docker exec provision-host ansible-playbook \
-  /mnt/urbalurbadisk/ansible/playbooks/805-deploy-tailscale-internal-ingress.yml
-```
+./uis shell
+cd /mnt/urbalurbadisk
 
-Or using the setup script:
-```bash
-docker exec provision-host /mnt/urbalurbadisk/provision-host/kubernetes/network/03-setup-tailscale-internal.sh
+# Deploy Tailscale internal ingress
+ansible-playbook ansible/playbooks/805-deploy-tailscale-internal-ingress.yml
 ```
 
 ### Step 3: Verify Deployment
@@ -216,19 +213,15 @@ curl -H "Host: grafana.localhost" http://k8s-terje.taile269d.ts.net
 To remove the internal ingress:
 
 ```bash
+./uis shell
+cd /mnt/urbalurbadisk
+
 # Remove ingress only (keep operator)
-docker exec provision-host ansible-playbook \
-  /mnt/urbalurbadisk/ansible/playbooks/806-remove-tailscale-internal-ingress.yml
+ansible-playbook ansible/playbooks/806-remove-tailscale-internal-ingress.yml
 
 # Remove everything (ingress + operator)
-docker exec provision-host ansible-playbook \
-  /mnt/urbalurbadisk/ansible/playbooks/806-remove-tailscale-internal-ingress.yml \
+ansible-playbook ansible/playbooks/806-remove-tailscale-internal-ingress.yml \
   -e remove_operator=true
-```
-
-Or using the script:
-```bash
-docker exec provision-host /mnt/urbalurbadisk/provision-host/kubernetes/network/03-remove-tailscale-internal.sh
 ```
 
 ## Comparison: Internal vs Funnel
@@ -280,8 +273,9 @@ If the operator device shows as generic `tailscale-operator` instead of `k8s-ter
 
 1. Remove the deployment:
    ```bash
-   docker exec provision-host ansible-playbook \
-     /mnt/urbalurbadisk/ansible/playbooks/806-remove-tailscale-internal-ingress.yml \
+   ./uis shell
+   cd /mnt/urbalurbadisk
+   ansible-playbook ansible/playbooks/806-remove-tailscale-internal-ingress.yml \
      -e remove_operator=true
    ```
 
