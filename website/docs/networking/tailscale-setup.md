@@ -127,17 +127,17 @@ The one-time verification playbook (`801-setup-network-tailscale-tunnel.yml`) ca
 
 ### Step 4: Create OAuth Client (for cluster operations)
 
-1. Go to [OAuth clients page](https://login.tailscale.com/admin/settings/oauth) 
-2. Click "Generate OAuth client"
-3. **Description:** `urbalurba-k8s-oauth`
-4. **Select required scopes**
-   - **DNS:** Select **Write** (enable MagicDNS features if needed)
+1. Go to [Trust credentials page](https://login.tailscale.com/admin/settings/trust-credentials)
+2. Click "Generate OAuth client" (this opens a 2-step wizard)
+3. **Step 1 - Settings:** Select "OAuth client", add description `urbalurba-k8s-oauth`
+4. **Step 2 - Select required scopes:**
+   - **General → DNS:** Select **Write** (enable MagicDNS features if needed)
    - **Devices → Core:** Select **Write** (create/delete cluster devices)
      - **Tags (required for write scope):** Click "Add tags" and add `tag:k8s-operator`
      - This allows the OAuth client to create devices with the k8s-operator tag
-   - **Auth keys:** Select **Write** ← **REQUIRED** (allows operator to create internal auth keys)
-     - **Tags (required for write scope):** Click "Add tags" and add `tag:k8s-operator`   
-   - **Feature Settings:** Select **Write** (enable HTTPS/Funnel features)
+   - **Keys → Auth Keys:** Select **Write** ← **REQUIRED** (allows operator to create internal auth keys)
+     - **Tags (required for write scope):** Click "Add tags" and add `tag:k8s-operator`
+   - **Settings → Feature Settings:** Select **Write** (enable HTTPS/Funnel features)
    - Leave all other scopes **unselected** (principle of least privilege)
 5. Click "Generate client"
 6. Copy the **Client ID** → **This becomes `TAILSCALE_CLIENTID`**
@@ -146,10 +146,10 @@ The one-time verification playbook (`801-setup-network-tailscale-tunnel.yml`) ca
    ⚠️ **Important:** Save these values immediately - you can't view the secret again!
 
 **Why these scopes?**
-- **Auth keys (Write)**: **CRITICAL** - Allows Tailscale operator to create internal auth keys (without this you get 403 errors)
-- **Devices Core (Write)**: Allows Tailscale operator to create/delete cluster ingress devices
-- **DNS (Write)**: Enables MagicDNS configuration for wildcard routing
-- **Feature Settings (Write)**: Allows enabling HTTPS/Funnel for internet access
+- **Keys → Auth Keys (Write)**: **CRITICAL** - Allows Tailscale operator to create internal auth keys (without this you get 403 errors)
+- **Devices → Core (Write)**: Allows Tailscale operator to create/delete cluster ingress devices
+- **General → DNS (Write)**: Enables MagicDNS configuration
+- **Settings → Feature Settings (Write)**: Allows enabling HTTPS/Funnel for internet access
 
 ### Step 5: Configure MagicDNS Domain
 
@@ -313,10 +313,10 @@ ansible-playbook ansible/playbooks/801-remove-network-tailscale-tunnel.yml -e re
 
 This error means your OAuth client doesn't have permission for `tag:k8s-operator`. To fix:
 
-1. Go to [OAuth clients page](https://login.tailscale.com/admin/settings/oauth)
+1. Go to [Trust credentials page](https://login.tailscale.com/admin/settings/trust-credentials)
 2. Edit your `urbalurba-k8s-oauth` client
 3. In **Devices → Core** scope, ensure `tag:k8s-operator` is added
-4. In **Auth keys** scope, ensure `tag:k8s-operator` is added
+4. In **Keys → Auth Keys** scope, ensure `tag:k8s-operator` is added
 5. Generate a new client secret (required after scope changes)
 6. Update `TAILSCALE_CLIENTSECRET` in `.uis.secrets/config/00-common-values.env`
 7. Regenerate secrets: `./uis secrets generate`
@@ -329,9 +329,9 @@ This error means your OAuth client doesn't have permission for `tag:k8s-operator
 If you get authentication errors, create new keys at [Tailscale Admin Console](https://login.tailscale.com/admin/settings/keys):
 
 **Create OAuth Client:**
-1. Click "Generate auth key" → "OAuth client"
-2. Name: `urbalurba-k8s`  
-3. Scopes: `device:create`, `device:delete`, `device:read`
+1. Go to [Trust credentials page](https://login.tailscale.com/admin/settings/trust-credentials)
+2. Click "Generate OAuth client", name: `urbalurba-k8s`
+3. Scopes: Devices → Core (Write), Keys → Auth Keys (Write) — both with `tag:k8s-operator`
 4. Copy Client ID and Client Secret
 
 **Create Auth Key:**

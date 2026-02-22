@@ -22,7 +22,7 @@ fi
 set -e
 
 # Variables
-KUBECONFIG_PATH="/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+KUBECONFIG_PATH="/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
 
 # Parse arguments
 HOSTNAME="$1"
@@ -36,21 +36,30 @@ if [ -z "$HOSTNAME" ]; then
     echo "  $0 authentik"
     echo ""
     echo "Available Tailscale ingresses:"
-    kubectl --kubeconfig="$KUBECONFIG_PATH" get ingress -n kube-system | grep tailscale | awk '{print "  " $1}' | sed 's/-tailscale$//'
+    kubectl --kubeconfig="$KUBECONFIG_PATH" get ingress -A 2>/dev/null | grep tailscale | awk '{print "  " $2 " (ns: " $1 ")"}' | sed 's/-tailscale / /'
     exit 1
 fi
 
 # Derive ingress name
 INGRESS_NAME="${HOSTNAME}-tailscale"
 
-# Check if ingress exists
-if ! kubectl --kubeconfig="$KUBECONFIG_PATH" get ingress "$INGRESS_NAME" -n kube-system >/dev/null 2>&1; then
-    echo "Error: Ingress '$INGRESS_NAME' not found in namespace 'kube-system'"
+# Check if ingress exists (check default namespace first, then all namespaces)
+INGRESS_NAMESPACE=""
+if kubectl --kubeconfig="$KUBECONFIG_PATH" get ingress "$INGRESS_NAME" -n default >/dev/null 2>&1; then
+    INGRESS_NAMESPACE="default"
+elif kubectl --kubeconfig="$KUBECONFIG_PATH" get ingress "$INGRESS_NAME" -n kube-system >/dev/null 2>&1; then
+    INGRESS_NAMESPACE="kube-system"
+fi
+
+if [ -z "$INGRESS_NAMESPACE" ]; then
+    echo "Error: Ingress '$INGRESS_NAME' not found"
     echo ""
     echo "Available Tailscale ingresses:"
-    kubectl --kubeconfig="$KUBECONFIG_PATH" get ingress -n kube-system | grep tailscale | awk '{print "  " $1}'
+    kubectl --kubeconfig="$KUBECONFIG_PATH" get ingress -A 2>/dev/null | grep tailscale | awk '{print "  " $2 " (ns: " $1 ")"}'
     exit 1
 fi
+
+echo "Found ingress '$INGRESS_NAME' in namespace '$INGRESS_NAMESPACE'"
 
 STATUS=()
 ERROR=0
@@ -82,7 +91,7 @@ echo ""
 
 # Get the ingress details before deletion
 echo "Getting ingress details..."
-INGRESS_HOST=$(kubectl --kubeconfig="$KUBECONFIG_PATH" get ingress "$INGRESS_NAME" -n kube-system -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null)
+INGRESS_HOST=$(kubectl --kubeconfig="$KUBECONFIG_PATH" get ingress "$INGRESS_NAME" -n "$INGRESS_NAMESPACE" -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null)
 if [ -n "$INGRESS_HOST" ]; then
     echo "Current hostname: $INGRESS_HOST"
 fi
@@ -97,8 +106,8 @@ else
 fi
 
 # Delete the ingress
-echo "Deleting ingress '$INGRESS_NAME' from namespace 'kube-system'..."
-kubectl --kubeconfig="$KUBECONFIG_PATH" delete ingress "$INGRESS_NAME" -n kube-system
+echo "Deleting ingress '$INGRESS_NAME' from namespace '$INGRESS_NAMESPACE'..."
+kubectl --kubeconfig="$KUBECONFIG_PATH" delete ingress "$INGRESS_NAME" -n "$INGRESS_NAMESPACE"
 check_command_success "Delete ingress"
 
 # Wait for pod cleanup (Tailscale operator should handle this automatically)
@@ -125,7 +134,7 @@ fi
 # Verify deletion
 echo ""
 echo "Verifying deletion..."
-if kubectl --kubeconfig="$KUBECONFIG_PATH" get ingress "$INGRESS_NAME" -n kube-system >/dev/null 2>&1; then
+if kubectl --kubeconfig="$KUBECONFIG_PATH" get ingress "$INGRESS_NAME" -n "$INGRESS_NAMESPACE" >/dev/null 2>&1; then
     echo "Warning: Ingress still exists"
     STATUS+=("Verification: Fail")
     ERROR=1
@@ -161,6 +170,6 @@ echo "-----------------------------------------------------------"
 # Show remaining ingresses
 echo ""
 echo "Remaining Tailscale ingresses:"
-kubectl --kubeconfig="$KUBECONFIG_PATH" get ingress -n kube-system | grep tailscale || echo "  None"
+kubectl --kubeconfig="$KUBECONFIG_PATH" get ingress -A 2>/dev/null | grep tailscale || echo "  None"
 
 exit $ERROR

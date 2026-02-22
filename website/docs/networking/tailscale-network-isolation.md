@@ -107,9 +107,9 @@ Manage Kubernetes cluster
 ### Step 1: Tailscale Configuration
 
 #### OAuth Client Setup
-1. Go to [Tailscale Admin Console](https://login.tailscale.com/admin/settings/oauth)
+1. Go to [Trust credentials page](https://login.tailscale.com/admin/settings/trust-credentials)
 2. Create OAuth client with:
-   - **Scopes**: `Devices Core` and `Auth Keys` (write access)
+   - **Scopes**: `Devices → Core` and `Keys → Auth Keys` (write access)
    - **Tags**: `tag:k8s-operator`
 
 #### ACL Policy Configuration

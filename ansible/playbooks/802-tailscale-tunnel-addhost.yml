@@ -7,39 +7,41 @@
 #
 # Usage:
 #   ansible-playbook playbooks/802-tailscale-tunnel-addhost.yml \
-#     -e SERVICE_NAME=whoami \
-#     -e TAILSCALE_DOMAIN=dog-pence.ts.net
+#     -e service_name=whoami \
+#     -e tailscale_domain=dog-pence.ts.net
 #
 # Optional parameters (have sensible defaults):
-#     -e NAMESPACE=default \
-#     -e SERVICE_PORT=80
+#     -e ingress_hostname=my-hostname
 #
-# Required parameters:
-#   SERVICE_NAME: Name of the Kubernetes service to expose
-#   NAMESPACE: Kubernetes namespace (defaults to 'default')  
-#   SERVICE_PORT: Port of the service (defaults to 80)
+# Required parameters (passed via -e):
+#   service_name: Name of the Kubernetes service to expose
+#   tailscale_domain: Tailscale MagicDNS domain (e.g. dog-pence.ts.net)
 
 - name: Create Tailscale ingress for service
   hosts: localhost
   gather_facts: false
   vars:
     kubeconfig_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
-    SERVICE_NAME: "{{ SERVICE_NAME | default('') }}"
-    ingress_namespace: "kube-system"
-    TAILSCALE_DOMAIN: "{{ TAILSCALE_DOMAIN | default('') }}"
-    HOSTNAME: "{{ HOSTNAME | default(SERVICE_NAME) }}"
-    ingress_name: "{{ HOSTNAME | default(SERVICE_NAME) }}-tailscale"
-    
+    ingress_namespace: "default"
+
   tasks:
+    - name: "00 Set computed variable defaults"
+      ansible.builtin.set_fact:
+        ingress_hostname: "{{ ingress_hostname | default(service_name) }}"
+
+    - name: "00a Set ingress name from hostname"
+      ansible.builtin.set_fact:
+        ingress_name: "{{ ingress_hostname }}-tailscale"
+
     - name: "01 Validate required parameters"
       ansible.builtin.fail:
-        msg: "SERVICE_NAME is required. Usage: -e SERVICE_NAME=whoami"
-      when: SERVICE_NAME == ""
+        msg: "service_name is required. Usage: -e service_name=whoami"
+      when: service_name is not defined or service_name == ""
 
     - name: "01a Validate Tailscale domain parameter"
       ansible.builtin.fail:
-        msg: "TAILSCALE_DOMAIN is required. Pass via -e TAILSCALE_DOMAIN=your-domain.ts.net"
-      when: TAILSCALE_DOMAIN == ""
+        msg: "tailscale_domain is required. Pass via -e tailscale_domain=your-domain.ts.net"
+      when: tailscale_domain is not defined or tailscale_domain == ""
 
     - name: "02 Verify kubeconfig file exists"
       ansible.builtin.stat:
@@ -51,11 +53,12 @@
         msg: "Kubeconfig file not found at {{ kubeconfig_file }}"
       when: not kubeconfig_stat.stat.exists
 
-    - name: "04 Skip service validation - Traefik handles routing"
+    - name: "04 Display ingress plan"
       ansible.builtin.debug:
         msg: |
-          ✅ Skipping service validation - Traefik will handle routing to {{ SERVICE_NAME }}
-          Creating Tailscale ingress for: {{ HOSTNAME }}.{{ TAILSCALE_DOMAIN }}
+          Creating Tailscale ingress for service '{{ service_name }}' in namespace '{{ ingress_namespace }}'
+          Target URL: https://{{ ingress_hostname }}.{{ tailscale_domain }}
+          Backend: {{ service_name }}:80
 
     - name: "06 Skip operator check if SKIP_OPERATOR_CHECK is set"
       ansible.builtin.set_fact:
@@ -118,7 +121,7 @@
     - name: "09 Display existing ingress warning"
       ansible.builtin.debug:
         msg: |
-          ⚠️  Ingress '{{ ingress_name }}' already exists in namespace '{{ NAMESPACE }}'.
+          Ingress '{{ ingress_name }}' already exists in namespace '{{ ingress_namespace }}'.
           This will update the existing ingress configuration.
       when: existing_ingress.resources | length > 0
 
@@ -133,21 +136,21 @@
             annotations:
               tailscale.com/funnel: "true"
               tailscale.com/tags: "tag:k8s-operator"
-              tailscale.com/hostname: "{{ HOSTNAME }}"
+              tailscale.com/hostname: "{{ ingress_hostname }}"
               tailscale.com/expose-metrics: "true"
             labels:
               created-by: "tailscale-tunnel-addhost"
-              service-name: "{{ SERVICE_NAME }}"
+              service-name: "{{ service_name }}"
           spec:
             ingressClassName: tailscale
             defaultBackend:
               service:
-                name: "traefik"
+                name: "{{ service_name }}"
                 port:
                   number: 80
             tls:
               - hosts:
-                  - "{{ HOSTNAME }}"
+                  - "{{ ingress_hostname }}"
         kubeconfig: "{{ kubeconfig_file }}"
         state: present
 
@@ -158,7 +161,7 @@
         namespace: "{{ ingress_namespace }}"
         kubeconfig: "{{ kubeconfig_file }}"
       register: ingress_status
-      until: 
+      until:
         - ingress_status.resources | length > 0
         - ingress_status.resources[0].status.loadBalancer.ingress is defined
         - ingress_status.resources[0].status.loadBalancer.ingress | length > 0
@@ -174,24 +177,28 @@
         kubeconfig: "{{ kubeconfig_file }}"
       register: final_ingress
 
-    - name: "13 Extract ingress hostname"
+    - name: "13 Extract actual FQDN from ingress status"
       ansible.builtin.set_fact:
-        ingress_hostname: "{{ final_ingress.resources[0].status.loadBalancer.ingress[0].hostname | default('') }}"
-      when: 
+        actual_fqdn: "{{ final_ingress.resources[0].status.loadBalancer.ingress[0].hostname | default(ingress_hostname + '.' + tailscale_domain) }}"
+      when:
         - final_ingress.resources | length > 0
         - final_ingress.resources[0].status.loadBalancer.ingress is defined
         - final_ingress.resources[0].status.loadBalancer.ingress | length > 0
 
+    - name: "13a Set fallback FQDN if status not available"
+      ansible.builtin.set_fact:
+        actual_fqdn: "{{ ingress_hostname }}.{{ tailscale_domain }}"
+      when: actual_fqdn is not defined
+
     - name: "14 Display success message"
       ansible.builtin.debug:
         msg:
-          - "✅ Tailscale ingress created successfully!"
-          - "Service: {{ SERVICE_NAME }}"
+          - "Tailscale ingress created successfully!"
+          - "Service: {{ service_name }}"
           - "Ingress: {{ ingress_name }}"
-          - "Hostname: {{ ingress_hostname | default('Pending...') }}"
-          - "URL: https://{{ HOSTNAME }}.{{ TAILSCALE_DOMAIN }}"
+          - "URL: https://{{ actual_fqdn }}"
           - ""
-          - "⏱️  Note: DNS propagation may take 1-2 minutes"
+          - "Note: DNS propagation may take 1-2 minutes"
 
     - name: "15 Wait for DNS propagation"
       ansible.builtin.pause:
@@ -200,9 +207,9 @@
 
     - name: "16 Test service connectivity"
       ansible.builtin.uri:
-        url: "https://{{ HOSTNAME }}.{{ TAILSCALE_DOMAIN }}"
+        url: "https://{{ actual_fqdn }}"
         method: GET
-        status_code: [200, 301, 302, 404]  # Accept various response codes
+        status_code: [200, 301, 302, 404]
         validate_certs: false
         timeout: 30
       register: connectivity_test
@@ -214,18 +221,18 @@
     - name: "17 Display connectivity test results"
       ansible.builtin.debug:
         msg:
-          - "🌐 Connectivity test results:"
-          - "URL: https://{{ HOSTNAME }}.{{ TAILSCALE_DOMAIN }}"
+          - "Connectivity test results:"
+          - "URL: https://{{ actual_fqdn }}"
           - "Status: {{ connectivity_test.status | default('Failed to connect') }}"
-          - "{% if connectivity_test.status is defined %}✅ Service is accessible via Tailscale Funnel!{% else %}❌ Service not yet accessible (may need more time for DNS){% endif %}"
+          - "{% if connectivity_test.status is defined %}Service is accessible via Tailscale Funnel!{% else %}Service not yet accessible (may need more time for DNS){% endif %}"
 
     - name: "18 Final summary"
       ansible.builtin.debug:
         msg:
-          - "🎉 Tailscale ingress deployment complete!"
+          - "Tailscale ingress deployment complete!"
           - ""
           - "Your service is now accessible at:"
-          - "  https://{{ SERVICE_NAME }}.{{ TAILSCALE_DOMAIN }}"
+          - "  https://{{ actual_fqdn }}"
           - ""
           - "This URL is accessible from anywhere on the public internet."
           - "No Tailscale client needed for visitors."

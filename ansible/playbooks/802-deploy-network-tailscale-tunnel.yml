@@ -21,9 +21,9 @@
   vars:
     manifests_folder: "/mnt/urbalurbadisk/manifests"
     kubeconfig_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
-    operator_config: "800-tailscale-operator-config.yaml"
+    operator_config_template: "800-tailscale-operator-config.yaml.j2"
     ingress_manifest: "803-tailscale-cluster-ingress.yaml.j2"
-    TAILSCALE_CLUSTER_HOSTNAME: "{{ TAILSCALE_CLUSTER_HOSTNAME | default('k8s') }}"
+    default_cluster_hostname: "k8s"
     operator_namespace: "tailscale"
     operator_release_name: "tailscale-operator"
     
@@ -51,6 +51,8 @@
         tailscale_clientid: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_CLIENTID | b64decode }}"
         tailscale_clientsecret: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_CLIENTSECRET | b64decode }}"
         tailscale_domain: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_DOMAIN | b64decode }}"
+        tailscale_cluster_hostname: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_CLUSTER_HOSTNAME | default('') | b64decode | default(default_cluster_hostname, true) }}"
+        tailscale_internal_hostname: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_INTERNAL_HOSTNAME | default('') | b64decode | default(default_cluster_hostname, true) }}"
       when: urbalurba_secrets.resources | length > 0
 
     - name: "05 Ensure Tailscale credentials were retrieved"
@@ -63,6 +65,19 @@
         name: tailscale
         repo_url: https://pkgs.tailscale.com/helmcharts
         kubeconfig: "{{ kubeconfig_file }}"
+
+    - name: "06a Create temp file for rendered operator config"
+      ansible.builtin.tempfile:
+        state: file
+        suffix: .yaml
+      register: temp_operator_config_file
+
+    - name: "06b Apply variable substitution to operator config template"
+      ansible.builtin.template:
+        src: "{{ manifests_folder }}/{{ operator_config_template }}"
+        dest: "{{ temp_operator_config_file.path }}"
+      vars:
+        TAILSCALE_INTERNAL_HOSTNAME: "{{ tailscale_internal_hostname }}"
 
     - name: "07 Create values file with Tailscale credentials for Helm"
       ansible.builtin.tempfile:
@@ -86,7 +101,7 @@
         release_namespace: "{{ operator_namespace }}"
         create_namespace: true
         values_files:
-          - "{{ manifests_folder }}/{{ operator_config }}"
+          - "{{ temp_operator_config_file.path }}"
           - "{{ temp_values_file.path }}"
         wait: true
         kubeconfig: "{{ kubeconfig_file }}"
@@ -207,7 +222,7 @@
         src: "{{ manifests_folder }}/{{ ingress_manifest }}"
         dest: "{{ temp_ingress_file.path }}"
       vars:
-        TAILSCALE_CLUSTER_HOSTNAME: "{{ TAILSCALE_CLUSTER_HOSTNAME }}"
+        TAILSCALE_CLUSTER_HOSTNAME: "{{ tailscale_cluster_hostname }}"
 
     - name: "14 Apply Tailscale Ingress configuration"
       kubernetes.core.k8s:
@@ -222,13 +237,14 @@
       loop:
         - "{{ temp_ingress_file.path }}"
         - "{{ temp_values_file.path }}"
+        - "{{ temp_operator_config_file.path }}"
 
     - name: "16 Display deployment status"
       ansible.builtin.debug:
         msg: 
           - "✅ Tailscale operator deployed successfully!"
-          - "Cluster hostname: {{ TAILSCALE_CLUSTER_HOSTNAME }}"
-          - "Services will be accessible at: https://service.{{ TAILSCALE_CLUSTER_HOSTNAME }}.{{ tailscale_domain }}"
+          - "Cluster hostname: {{ tailscale_cluster_hostname }}"
+          - "Services will be accessible at: https://service.{{ tailscale_cluster_hostname }}.{{ tailscale_domain }}"
 
     - name: "17 Wait for Tailscale ingress to be fully operational"
       ansible.builtin.pause:
@@ -237,7 +253,7 @@
 
     - name: "18 Test Tailscale tunnel connectivity"
       ansible.builtin.uri:
-        url: "https://{{ TAILSCALE_CLUSTER_HOSTNAME }}.{{ tailscale_domain }}"
+        url: "https://{{ tailscale_cluster_hostname }}.{{ tailscale_domain }}"
         method: GET
         status_code: 200
         validate_certs: false
@@ -252,7 +268,7 @@
       ansible.builtin.debug:
         msg:
           - "🌐 Tailscale Funnel connectivity test:"
-          - "URL tested: https://{{ TAILSCALE_CLUSTER_HOSTNAME }}.{{ tailscale_domain }}"
+          - "URL tested: https://{{ tailscale_cluster_hostname }}.{{ tailscale_domain }}"
           - "Response status: {{ tunnel_test.status | default('timeout') }}"
           - "✅ Tunnel is working correctly - nginx catch-all responded with 'Hello World'"
       when: tunnel_test.status is defined and tunnel_test.status == 200
@@ -261,7 +277,7 @@
       ansible.builtin.fail:
         msg:
           - "❌ Tailscale Funnel connectivity test FAILED!"
-          - "URL tested: https://{{ TAILSCALE_CLUSTER_HOSTNAME }}.{{ tailscale_domain }}"
+          - "URL tested: https://{{ tailscale_cluster_hostname }}.{{ tailscale_domain }}"
           - "Status: Connection failed or timed out"
           - ""
           - "The operator deployed successfully, but the tunnel is not accessible from the internet."
@@ -273,7 +289,7 @@
           - "Check the operator pod logs:"
           - "kubectl logs -n tailscale -l app=operator"
           - ""
-          - "Manual test: curl https://{{ TAILSCALE_CLUSTER_HOSTNAME }}.{{ tailscale_domain }}"
+          - "Manual test: curl https://{{ tailscale_cluster_hostname }}.{{ tailscale_domain }}"
       when: tunnel_test.status is not defined or tunnel_test.status != 200
 
     - name: "20 Final deployment summary - SUCCESS"
@@ -282,7 +298,7 @@
           - "🎉 Tailscale tunnel deployment complete and VERIFIED!"
           - "✅ Connectivity test passed - tunnel is working"
           - "Your cluster is now accessible via Tailscale Funnel:"
-          - "  https://{{ TAILSCALE_CLUSTER_HOSTNAME }}.{{ tailscale_domain }} (cluster ingress)"
-          - "  https://whoami.{{ TAILSCALE_CLUSTER_HOSTNAME }}.{{ tailscale_domain }} (whoami service)"
-          - "  https://SERVICE.{{ TAILSCALE_CLUSTER_HOSTNAME }}.{{ tailscale_domain }} (any service)"
+          - "  https://{{ tailscale_cluster_hostname }}.{{ tailscale_domain }} (cluster ingress)"
+          - "  https://whoami.{{ tailscale_cluster_hostname }}.{{ tailscale_domain }} (whoami service)"
+          - "  https://SERVICE.{{ tailscale_cluster_hostname }}.{{ tailscale_domain }} (any service)"
       when: tunnel_test.status is defined and tunnel_test.status == 200

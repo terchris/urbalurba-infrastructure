@@ -60,7 +60,7 @@ The `-tailscale-operator` suffix matches the default naming from [Tailscale Kube
 Ensure your `00-common-values.env` (or Kubernetes secrets) includes:
 
 ```bash
-# Tailscale OAuth credentials (from https://login.tailscale.com/admin/settings/oauth)
+# Tailscale OAuth credentials (from https://login.tailscale.com/admin/settings/trust-credentials)
 TAILSCALE_CLIENTID=k7Gdhr7mdf11CNTRL
 TAILSCALE_CLIENTSECRET=tskey-client-k7Gdhr7mdf11CNTRL-xxxxx
 

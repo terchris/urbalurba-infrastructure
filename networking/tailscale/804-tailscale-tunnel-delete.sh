@@ -16,7 +16,7 @@
 # - Optional: Tailscale API credentials for automatic device cleanup
 #
 # Usage: ./804-tailscale-tunnel-delete.sh [kubeconfig-path]
-# Example: ./804-tailscale-tunnel-delete.sh /mnt/urbalurbadisk/kubeconfig/kubeconf-all
+# Example: ./804-tailscale-tunnel-delete.sh /mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all
 #
 # What gets deleted:
 # - Tailscale cluster ingress (traefik-ingress in kube-system namespace)
@@ -33,7 +33,7 @@
 set -e
 
 # Variables
-KUBECONFIG_PATH=${1:-"/mnt/urbalurbadisk/kubeconfig/kubeconf-all"}
+KUBECONFIG_PATH=${1:-"/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"}
 STATUS=()
 ERROR=0
 

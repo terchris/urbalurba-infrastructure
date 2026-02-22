@@ -37,13 +37,13 @@ if [[ -f "/mnt/urbalurbadisk/provision-host/uis/lib/paths.sh" ]]; then
 fi
 
 # Variables
-KUBECONFIG_PATH="/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+KUBECONFIG_PATH="/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
 OPERATOR_PLAYBOOK_PATH="/mnt/urbalurbadisk/ansible/playbooks/802-deploy-network-tailscale-tunnel.yml"
 INGRESS_PLAYBOOK_PATH="/mnt/urbalurbadisk/ansible/playbooks/802-tailscale-tunnel-addhost.yml"
 
 # Parse arguments
 SERVICE_NAME="$1"
-HOSTNAME="${2:-$SERVICE_NAME}"
+INGRESS_HOSTNAME="${2:-$SERVICE_NAME}"
 
 # Validate Tailscale secrets exist
 if ! kubectl --kubeconfig="$KUBECONFIG_PATH" get secret urbalurba-secrets -n default >/dev/null 2>&1; then
@@ -200,23 +200,23 @@ echo "✅ Skipping service validation - Traefik will handle routing to $SERVICE_
 
 # Add parameter values to STATUS
 STATUS+=("SERVICE_NAME: $SERVICE_NAME")
-STATUS+=("HOSTNAME: $HOSTNAME")
+STATUS+=("HOSTNAME: $INGRESS_HOSTNAME")
 STATUS+=("DOMAIN: $TAILSCALE_DOMAIN")
 
 echo ""
 echo "Creating Tailscale ingress for: $SERVICE_NAME"
-echo "Hostname: $HOSTNAME"
+echo "Hostname: $INGRESS_HOSTNAME"
 echo "Domain: $TAILSCALE_DOMAIN"
-echo "Will be accessible at: https://$HOSTNAME.$TAILSCALE_DOMAIN"
+echo "Will be accessible at: https://$INGRESS_HOSTNAME.$TAILSCALE_DOMAIN"
 echo "Traefik will handle routing to the appropriate service"
 echo ""
 
 # Execute the ingress creation playbook
 echo "Creating Tailscale ingress..."
 cd /mnt/urbalurbadisk/ansible && ansible-playbook $INGRESS_PLAYBOOK_PATH \
-    -e SERVICE_NAME="$SERVICE_NAME" \
-    -e HOSTNAME="$HOSTNAME" \
-    -e TAILSCALE_DOMAIN="$TAILSCALE_DOMAIN" \
+    -e service_name="$SERVICE_NAME" \
+    -e ingress_hostname="$INGRESS_HOSTNAME" \
+    -e tailscale_domain="$TAILSCALE_DOMAIN" \
     -e SKIP_OPERATOR_CHECK="true"
 check_command_success "Create Tailscale ingress"
 
@@ -234,14 +234,14 @@ else
     echo ""
     echo "✅ TAILSCALE DEPLOYMENT COMPLETED SUCCESSFULLY"
     echo "Service '$SERVICE_NAME' is now accessible at:"
-    echo "  https://$HOSTNAME.$TAILSCALE_DOMAIN"
+    echo "  https://$INGRESS_HOSTNAME.$TAILSCALE_DOMAIN"
     echo ""
     echo "✅ Traefik will handle routing to the appropriate service"
     echo ""
     echo "DNS Troubleshooting:"
-    echo "  Check DNS resolution: nslookup $HOSTNAME.$TAILSCALE_DOMAIN"
-    echo "  Check DNS details: dig $HOSTNAME.$TAILSCALE_DOMAIN"
-    echo "  Test connectivity: curl https://$HOSTNAME.$TAILSCALE_DOMAIN"
+    echo "  Check DNS resolution: nslookup $INGRESS_HOSTNAME.$TAILSCALE_DOMAIN"
+    echo "  Check DNS details: dig $INGRESS_HOSTNAME.$TAILSCALE_DOMAIN"
+    echo "  Test connectivity: curl https://$INGRESS_HOSTNAME.$TAILSCALE_DOMAIN"
     echo ""
     echo "Note: DNS propagation can take 1-5 minutes globally"
 fi
