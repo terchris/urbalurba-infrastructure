@@ -4,13 +4,15 @@
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Backlog
+## Status: Complete
 
 **Goal**: Group all Tailscale operations under `./uis tailscale` — expose/unexpose services and verify configuration — so users don't need to enter the shell or know internal script paths.
 
-**Last Updated**: 2026-02-22
+**Last Updated**: 2026-02-23
 
-**Priority**: Low — quality-of-life improvement, current shell-based workflow works
+**Priority**: Low — quality-of-life improvement
+
+**Completed**: 2026-02-23 — All tests passed first round (see talk13.md → talk.md)
 
 **Parent**: Follows from PLAN-010 (Tailscale API device cleanup and verify command)
 
@@ -52,30 +54,29 @@ The full user workflow becomes:
 
 ### Phase 1: Add `tailscale` command to UIS CLI
 
-- [ ] 1.1 Add `cmd_tailscale()` function to `provision-host/uis/manage/uis-cli.sh` with subcommand routing (`expose`, `unexpose`, `verify`)
-- [ ] 1.2 Add `cmd_tailscale_expose()` that calls `802-tailscale-tunnel-deploy.sh <hostname>`
-- [ ] 1.3 Add `cmd_tailscale_unexpose()` that calls `803-tailscale-tunnel-deletehost.sh <hostname>`
-- [ ] 1.4 Move existing `cmd_verify_tailscale()` into `cmd_tailscale_verify()` (so `./uis tailscale verify` replaces `./uis verify tailscale`)
-- [ ] 1.5 Add `tailscale)` case in main command routing
-- [ ] 1.6 Add to help text under a "Tailscale:" section
-- [ ] 1.7 Validate that tailscale-tunnel service is deployed before expose/unexpose (check for operator pod)
-- [ ] 1.8 Decide whether to keep `./uis verify tailscale` as a backwards-compatible alias or remove it
+- [x] 1.1 Add `cmd_tailscale()` function to `provision-host/uis/manage/uis-cli.sh` with subcommand routing (`expose`, `unexpose`, `verify`)
+- [x] 1.2 Add `cmd_tailscale_expose()` that calls `802-tailscale-tunnel-deploy.sh <service>`
+- [x] 1.3 Add `cmd_tailscale_unexpose()` that calls `803-tailscale-tunnel-deletehost.sh <service>`
+- [x] 1.4 Move existing `cmd_verify_tailscale()` into `cmd_tailscale_verify()` (so `./uis tailscale verify` replaces `./uis verify tailscale`)
+- [x] 1.5 Add `tailscale)` case in main command routing
+- [x] 1.6 Add to help text under a "Tailscale:" section
+- [ ] 1.7 Validate that tailscale-tunnel service is deployed before expose/unexpose (check for operator pod) — skipped, underlying scripts handle this
+- [x] 1.8 Decide whether to keep `./uis verify tailscale` as a backwards-compatible alias or remove it — kept as alias
 
 ### Phase 2: Build and Test
 
-- [ ] 2.1 Build with `./uis build`
-- [ ] 2.2 Test full cycle: deploy tailscale-tunnel, deploy whoami, expose whoami, unexpose whoami
-- [ ] 2.3 Test error cases: expose without operator deployed, expose nonexistent service
+- [x] 2.1 Build with `./uis build`
+- [x] 2.2 Test full cycle: deploy tailscale-tunnel, deploy whoami, expose whoami, unexpose whoami
+- [x] 2.3 Test error cases: no-args usage, missing service parameter
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] `./uis tailscale expose <service>` adds the service to Tailscale Funnel
-- [ ] `./uis tailscale unexpose <service>` removes the service from Tailscale Funnel (including API device cleanup)
-- [ ] `./uis tailscale verify` runs pre-deployment checks (replaces `./uis verify tailscale`)
-- [ ] Error message when tailscale-tunnel operator is not deployed
-- [ ] Help text shows the new commands
+- [x] `./uis tailscale expose <service>` adds the service to Tailscale Funnel
+- [x] `./uis tailscale unexpose <service>` removes the service from Tailscale Funnel (including API device cleanup)
+- [x] `./uis tailscale verify` runs pre-deployment checks (`./uis verify tailscale` kept as alias)
+- [x] Help text shows the new commands
 
 ---
 

@@ -20,7 +20,7 @@ Throughout this document we use the tailscale domain `dog-pence.ts.net` as an ex
 - ✅ **DOES work**: `https://authentik.dog-pence.ts.net` (each service gets its own URL)
 
 ### The Solution: Individual Service Ingresses
-We use the `802-tailscale-tunnel-deploy.sh` script to create individual Tailscale ingresses for each service. Each service gets its own public URL directly on your tailscale domain.
+We use the `./uis tailscale expose <service>` command to create individual Tailscale ingresses for each service. Each service gets its own public URL directly on your tailscale domain.
 
 ## 🚀 Quick Summary
 
@@ -67,10 +67,9 @@ Before starting, ensure you have:
 |---------|---------|-------------|
 | `./uis deploy tailscale-tunnel` | Deploy Tailscale operator to cluster | After secrets are configured |
 | `./uis undeploy tailscale-tunnel` | Remove Tailscale operator and ingresses | Clean up / start over |
-| `./networking/tailscale/802-tailscale-tunnel-deploy.sh <service>` | Add individual service ingress | After operator deployed |
-| `./networking/tailscale/803-tailscale-tunnel-deletehost.sh <hostname>` | Remove individual service ingress | When removing a service |
-
-The one-time verification playbook (`801-setup-network-tailscale-tunnel.yml`) can be run manually via `./uis shell` to test your Tailscale credentials before deploying.
+| `./uis tailscale expose <service>` | Expose a service via Tailscale Funnel | After operator deployed |
+| `./uis tailscale unexpose <service>` | Remove a service from Tailscale Funnel | When removing a service |
+| `./uis tailscale verify` | Check Tailscale secrets, API, devices, and operator | Diagnostics / pre-deploy checks |
 
 ## 🚀 Quick Start Guide
 
@@ -186,16 +185,18 @@ Then regenerate the Kubernetes secrets:
   - Individual services get their own URLs: `whoami.dog-pence.ts.net`, `grafana.dog-pence.ts.net`
   - **Note**: Tailscale does NOT support wildcard DNS, so `*.k8s.dog-pence.ts.net` patterns won't work
 
-### Step 7: Verify Tailscale Connection (one-time)
+### Step 7: Verify Tailscale Configuration
 
-This optional step verifies your Tailscale credentials work before deploying to the cluster:
+Verify your Tailscale secrets and API connectivity before deploying:
 ```bash
-./uis shell
-cd /mnt/urbalurbadisk
-
-# Run the verification playbook (connects, tests funnel, then cleans up)
-ansible-playbook ansible/playbooks/801-setup-network-tailscale-tunnel.yml
+./uis tailscale verify
 ```
+
+This checks:
+- Secrets are present and not placeholder values
+- API connectivity (OAuth authentication test)
+- Stale device report (flags devices with `-N` suffixes)
+- Operator status (running/not deployed)
 
 ### Step 8: Deploy Tailscale Operator to Cluster
 ```bash
@@ -203,42 +204,39 @@ ansible-playbook ansible/playbooks/801-setup-network-tailscale-tunnel.yml
 ./uis deploy tailscale-tunnel
 ```
 
-### Step 9: Add Individual Services (The Working Solution)
+### Step 9: Expose Services via Tailscale Funnel
 
-Since Tailscale doesn't support wildcard DNS, use the `802-tailscale-tunnel-deploy.sh` script to expose each service individually:
+Since Tailscale doesn't support wildcard DNS, expose each service individually:
 
 ```bash
-# Basic usage: ./802-tailscale-tunnel-deploy.sh <service-name> [hostname]
-
-# Add whoami service (uses default hostname=whoami)
-./networking/tailscale/802-tailscale-tunnel-deploy.sh whoami
+# Expose whoami (uses service name as hostname)
+./uis tailscale expose whoami
 # Result: https://whoami.dog-pence.ts.net
 
-# Add OpenWebUI with custom hostname
-./networking/tailscale/802-tailscale-tunnel-deploy.sh open-webui openwebui
-# Result: https://openwebui.dog-pence.ts.net
+# Expose other services
+./uis tailscale expose open-webui
+# Result: https://open-webui.dog-pence.ts.net
 
-# Add Authentik with clean hostname
-./networking/tailscale/802-tailscale-tunnel-deploy.sh authentik-server authentik
-# Result: https://authentik.dog-pence.ts.net
+./uis tailscale expose authentik-server
+# Result: https://authentik-server.dog-pence.ts.net
 
-# Add Grafana
-./networking/tailscale/802-tailscale-tunnel-deploy.sh grafana grafana
+./uis tailscale expose grafana
 # Result: https://grafana.dog-pence.ts.net
 ```
 
-**What the script does:**
-1. Deploys Tailscale operator (if not already running)
-2. Creates a Tailscale ingress pod for that specific service
-3. Configures public internet access via Funnel
-4. Traefik handles routing to the appropriate service
-5. Sets up DNS entry at `[hostname].[your-domain].ts.net`
+**What happens:**
+1. Creates a Tailscale ingress pod for that specific service
+2. Configures public internet access via Funnel
+3. Sets up DNS entry at `[service].[your-domain].ts.net`
+4. Verifies connectivity and reports the public URL
+5. Detects hostname mismatches (warns if a stale device caused a `-N` suffix)
 
-**To remove a service:**
+**To remove a service from Funnel:**
 ```bash
-# Remove by hostname
-./networking/tailscale/803-tailscale-tunnel-deletehost.sh whoami
+./uis tailscale unexpose whoami
 ```
+
+This removes the Tailscale ingress and cleans up the device from your Tailnet via API.
 
 **Important notes:**
 - Each service requires its own Tailscale pod (slight resource overhead)
@@ -291,7 +289,7 @@ curl -v https://whoami.dog-pence.ts.net
 
 To completely remove Tailscale and start over:
 ```bash
-# Remove Tailscale operator, ingresses, and namespace from cluster
+# Remove Tailscale operator, ingresses, and all cluster devices from Tailnet
 ./uis undeploy tailscale-tunnel
 ```
 
@@ -299,13 +297,7 @@ To completely remove Tailscale and start over:
 - All Tailscale ingresses (cluster and per-service)
 - Tailscale operator Helm release
 - Tailscale namespace and pods
-
-To also remove devices from your Tailnet via API, run the playbook directly:
-```bash
-./uis shell
-cd /mnt/urbalurbadisk
-ansible-playbook ansible/playbooks/801-remove-network-tailscale-tunnel.yml -e remove_tailnet_devices=true
-```
+- All cluster devices from your Tailnet (via API, enabled by default)
 
 ## 🔧 Troubleshooting
 
@@ -390,8 +382,9 @@ curl -fsSL https://tailscale.com/install.sh | sh
 ```
 
 ### Setup Flow
-- **Configure secrets** → `./uis deploy tailscale-tunnel` → **Add services** (sequential)
-- The per-service script can be run multiple times to add different services
+- **Configure secrets** → `./uis deploy tailscale-tunnel` → `./uis tailscale expose <service>` (sequential)
+- Run `./uis tailscale expose` for each service you want to make public
+- `./uis tailscale unexpose <service>` removes a single service from Funnel
 - `./uis undeploy tailscale-tunnel` removes operator and all ingresses
 
 ### Integration with Other Systems
@@ -404,19 +397,13 @@ curl -fsSL https://tailscale.com/install.sh | sh
 After setup, verify your services are accessible:
 
 ```bash
-# Test individual service URLs (after running 803 for each)
+# Run Tailscale diagnostics
+./uis tailscale verify
+
+# Test individual service URLs
 curl https://whoami.dog-pence.ts.net
 curl https://openwebui.dog-pence.ts.net
 curl https://authentik.dog-pence.ts.net
-
-# Check all Tailscale ingress pods
-kubectl get pods -n tailscale
-
-# View Tailscale device status
-tailscale status
-
-# List all service ingresses
-kubectl get pods -n tailscale -l app.kubernetes.io/name=tailscale-ingress
 ```
 
 ## 🎉 Benefits Achieved
@@ -429,6 +416,6 @@ kubectl get pods -n tailscale -l app.kubernetes.io/name=tailscale-ingress
 
 ## 📝 Summary
 
-While Tailscale doesn't support wildcard DNS (limiting us from using patterns like `*.k8s.dog-pence.ts.net`), the `802-tailscale-tunnel-deploy.sh` script provides a practical workaround. Each service gets its own public URL like `https://whoami.dog-pence.ts.net`, giving you full control over which services are exposed to the internet.
+While Tailscale doesn't support wildcard DNS (limiting us from using patterns like `*.k8s.dog-pence.ts.net`), the `./uis tailscale expose` command provides a practical workaround. Each service gets its own public URL like `https://whoami.dog-pence.ts.net`, giving you full control over which services are exposed to the internet.
 
 ⚠️ **Authentication Note**: Services exposed via Tailscale are publicly accessible by default. If you need authentication, consider adding Authentik protection. See `docs/rules-ingress-traefik.md` for authentication setup details.
