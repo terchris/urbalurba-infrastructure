@@ -8,9 +8,9 @@
 
 **Goal**: Investigate the full state of tailscale-tunnel and cloudflare-tunnel services — verify deploy works, create remove playbooks, and test the full deploy/undeploy cycle.
 
-**Last Updated**: 2026-02-22
+**Last Updated**: 2026-02-23
 
-**Priority**: Low — these services require external accounts (Tailscale auth key, Cloudflare token) and cannot be tested locally.
+**Priority**: Low — Tailscale is done (PLAN-009/010/011). Only Cloudflare remains, requires external account.
 
 **Parent**: [STATUS-service-migration.md](STATUS-service-migration.md) — Phase 3 and Phase 5
 
@@ -18,18 +18,14 @@
 
 ## Context
 
-All 26 UIS services have deploy playbooks. 24 of 26 have been verified working. The two unverified services are:
+All 26 UIS services have deploy playbooks. 24 of 26 have been verified working. Tailscale is now fully complete. Only Cloudflare remains:
 
-| Service | Deploy Playbook | Remove Playbook | External Requirement |
-|---------|----------------|-----------------|---------------------|
-| **tailscale-tunnel** | `801-setup-network-tailscale-tunnel.yml` | Missing | Tailscale auth key |
-| **cloudflare-tunnel** | `820-setup-network-cloudflare-tunnel.yml` | Missing | Cloudflare API token |
+| Service | Deploy Playbook | Remove Playbook | External Requirement | Status |
+|---------|----------------|-----------------|---------------------|--------|
+| **tailscale-tunnel** | ✅ `802-deploy-network-tailscale-tunnel.yml` | ✅ `801-remove-network-tailscale-tunnel.yml` | Tailscale auth key | **COMPLETE** (PLAN-009/010/011) |
+| **cloudflare-tunnel** | `820-setup-network-cloudflare-tunnel.yml` | Missing | Cloudflare API token | Not started |
 
-**Important**: The deploy playbooks have NOT been verified since the UIS migration. They may or may not work. This investigation must verify both deploy AND remove.
-
-These cannot be tested without live external accounts because:
-- Tailscale requires an auth key to register the node with Tailscale's coordination server
-- Cloudflare requires an API token and a configured tunnel in the Cloudflare dashboard
+Cloudflare cannot be tested without a live external account (API token and configured tunnel in Cloudflare dashboard).
 
 ## Prerequisites
 
@@ -41,16 +37,14 @@ Before starting this work:
 
 ## Investigation Questions
 
-### Tailscale — Deploy
-- [ ] Does `./uis deploy tailscale-tunnel` work?
-- [ ] If not, what needs fixing in `801-setup-network-tailscale-tunnel.yml`?
-- [ ] Does the deployed service successfully connect to the Tailscale network?
+### Tailscale — COMPLETE
 
-### Tailscale — Remove
-- [ ] What Kubernetes resources does the deploy create? (namespace, deployments, secrets, configmaps, services)
-- [ ] Are there any external Tailscale resources (registered nodes) that need cleanup?
-- [ ] Does the existing `806-remove-tailscale-internal-ingress.yml` handle part of the teardown?
-- [ ] What is the correct teardown order?
+All Tailscale work completed in PLAN-009/010/011:
+- [x] `./uis deploy tailscale-tunnel` works (deploys operator via Helm)
+- [x] `./uis undeploy tailscale-tunnel` works (removes operator, cleans up Tailnet devices via API)
+- [x] `./uis tailscale expose <service>` exposes services via Funnel
+- [x] `./uis tailscale unexpose <service>` removes services with device cleanup
+- [x] `./uis tailscale verify` checks secrets, API, stale devices, operator
 
 ### Cloudflare — Deploy
 - [ ] Does `./uis deploy cloudflare-tunnel` work?
@@ -64,13 +58,14 @@ Before starting this work:
 
 ## Expected Deliverables
 
-1. Verify or fix `./uis deploy tailscale-tunnel`
+1. ~~Verify or fix `./uis deploy tailscale-tunnel`~~ ✅ Done (PLAN-009)
 2. Verify or fix `./uis deploy cloudflare-tunnel`
-3. Create `ansible/playbooks/801-remove-network-tailscale-tunnel.yml` — tested with a live deployment
+3. ~~Create `ansible/playbooks/801-remove-network-tailscale-tunnel.yml`~~ ✅ Done (PLAN-009)
 4. Create `ansible/playbooks/820-remove-network-cloudflare-tunnel.yml` — tested with a live deployment
-5. Update `service-tailscale-tunnel.sh`: set `SCRIPT_REMOVE_PLAYBOOK="801-remove-network-tailscale-tunnel.yml"`
+5. ~~Update `service-tailscale-tunnel.sh`: set `SCRIPT_REMOVE_PLAYBOOK`~~ ✅ Done (PLAN-009)
 6. Update `service-cloudflare-tunnel.sh`: set `SCRIPT_REMOVE_PLAYBOOK="820-remove-network-cloudflare-tunnel.yml"`
-7. Verify full `./uis deploy` and `./uis undeploy` cycle works for both services
+7. ~~Verify full `./uis deploy` and `./uis undeploy` cycle for tailscale-tunnel~~ ✅ Done (PLAN-010)
+8. Verify full `./uis deploy` and `./uis undeploy` cycle for cloudflare-tunnel
 
 ## Related Files
 

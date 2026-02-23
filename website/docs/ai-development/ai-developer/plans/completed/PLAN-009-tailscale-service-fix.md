@@ -4,11 +4,13 @@
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: In Progress (code done, needs live testing)
+## Status: Complete
 
 **Goal**: Make `./uis deploy tailscale-tunnel` and `./uis undeploy tailscale-tunnel` work correctly end-to-end.
 
-**Last Updated**: 2026-02-22
+**Last Updated**: 2026-02-23
+
+**Completed**: 2026-02-22 — Fully verified during PLAN-010 testing (4 rounds, see talk13.md)
 
 **Priority**: Medium — required before tailscale can be verified (STATUS-service-migration Phase 5)
 

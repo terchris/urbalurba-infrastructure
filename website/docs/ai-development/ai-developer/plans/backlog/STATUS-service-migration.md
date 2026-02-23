@@ -8,7 +8,7 @@
 
 **Goal**: Track migration status of all 26 UIS services and complete remaining work for services that are not fully migrated.
 
-**Last Updated**: 2026-02-22 (talk11)
+**Last Updated**: 2026-02-23 (PLAN-009/010/011 complete — tailscale-tunnel fully verified)
 
 **Priority**: Medium — core services work, remaining items are edge cases
 
@@ -101,7 +101,7 @@ All 26 services have service scripts (`provision-host/uis/services/*/service-*.s
 
 | Service | Service Script | Deploy | Remove | Verified | Notes |
 |---------|:---:|:---:|:---:|:---:|-------|
-| **tailscale-tunnel** | ✅ | ✅ `801-setup-network-tailscale-tunnel.yml` | ❌ Missing | ❌ | Missing remove playbook. Old path refs in error messages fixed in PR #35 |
+| **tailscale-tunnel** | ✅ | ✅ `802-deploy-network-tailscale-tunnel.yml` | ✅ `801-remove-network-tailscale-tunnel.yml` | ✅ | Fully verified in PLAN-009/010/011. CLI: `uis tailscale expose/unexpose/verify` |
 | **cloudflare-tunnel** | ✅ | ✅ `820-setup-network-cloudflare-tunnel.yml` | ❌ Missing | ❌ | No remove playbook |
 
 ---
@@ -119,8 +119,8 @@ All 26 services have service scripts (`provision-host/uis/services/*/service-*.s
 | Management | 4 | 3 | gravitee broken before migration |
 | AI | 2 | 2 | None |
 | Data Science | 3 | 3 | None |
-| Network | 2 | 0 | Both missing remove playbooks; require external accounts |
-| **Total** | **26** | **23** | **3 not verified** (gravitee broken, tailscale/cloudflare need auth keys) |
+| Network | 2 | 1 | cloudflare-tunnel missing remove playbook; requires external account |
+| **Total** | **26** | **24** | **2 not verified** (gravitee broken, cloudflare-tunnel needs token) |
 
 ### Playbooks with Old Path References (2026-02-18 scan)
 
@@ -185,9 +185,10 @@ These must be fixed before PLAN-004-secrets-cleanup can remove backwards compati
 
 ### Tasks
 
-- [ ] 3.1 Create `801-remove-network-tailscale-tunnel.yml` — tear down Tailscale tunnel deployment and namespace
+- [x] 3.1 Create `801-remove-network-tailscale-tunnel.yml` — tear down Tailscale tunnel deployment and namespace ✓ (PLAN-009)
 - [ ] 3.2 Create `820-remove-network-cloudflare-tunnel.yml` — tear down Cloudflare tunnel deployment and namespace
-- [ ] 3.3 Update service scripts with `SCRIPT_REMOVE_PLAYBOOK` references
+- [x] 3.3 Update `service-tailscale-tunnel.sh` with `SCRIPT_REMOVE_PLAYBOOK` ✓ (PLAN-009)
+- [ ] 3.4 Update `service-cloudflare-tunnel.sh` with `SCRIPT_REMOVE_PLAYBOOK`
 
 ---
 
@@ -216,9 +217,10 @@ Gravitee was not working before the migration. This is effectively a fresh setup
 - [x] 5.4 Verify data science stack: jupyterhub, spark, unity-catalog ✓ (talk9.md)
 - [x] 5.5 Verify other: nginx, elasticsearch, rabbitmq ✓ (talk9.md)
 - [x] 5.6 Verify management: pgadmin, redisinsight ✓ (talk10.md)
-- [ ] 5.7 Verify network: tailscale-tunnel, cloudflare-tunnel (requires external accounts)
+- [x] 5.7 Verify tailscale-tunnel ✓ (PLAN-009/010/011 — 12+ rounds of testing)
+- [ ] 5.8 Verify cloudflare-tunnel (requires Cloudflare token)
 
-**Skipped**: gravitee (broken before migration), tailscale-tunnel (requires auth key), cloudflare-tunnel (requires token).
+**Skipped**: gravitee (broken before migration), cloudflare-tunnel (requires token).
 
 ---
 
@@ -227,7 +229,7 @@ Gravitee was not working before the migration. This is effectively a fresh setup
 | File | Change |
 |------|--------|
 | `provision-host/uis/services/management/service-argocd.sh` | ✅ Done — Add `SCRIPT_REMOVE_PLAYBOOK` |
-| `provision-host/uis/services/network/service-tailscale-tunnel.sh` | Add `SCRIPT_REMOVE_PLAYBOOK` |
+| `provision-host/uis/services/network/service-tailscale-tunnel.sh` | ✅ Done — `SCRIPT_REMOVE_PLAYBOOK` added (PLAN-009) |
 | `provision-host/uis/services/network/service-cloudflare-tunnel.sh` | Add `SCRIPT_REMOVE_PLAYBOOK` |
 | `ansible/playbooks/350-setup-jupyterhub.yml` | ✅ Done — Replace hardcoded `topsecret/` path (PR #35) |
 | `ansible/playbooks/01-configure_provision-host.yml` | ✅ Done — Replace hardcoded `secrets/` SSH key path (PR #35) |
@@ -237,6 +239,6 @@ Gravitee was not working before the migration. This is effectively a fresh setup
 
 | File | Purpose |
 |------|---------|
-| `ansible/playbooks/801-remove-network-tailscale-tunnel.yml` | Tailscale tunnel removal |
+| ~~`ansible/playbooks/801-remove-network-tailscale-tunnel.yml`~~ | ✅ Done (PLAN-009) |
 | `ansible/playbooks/820-remove-network-cloudflare-tunnel.yml` | Cloudflare tunnel removal |
 | `ansible/playbooks/090-remove-gravitee.yml` | Gravitee removal (if service is fixed) |
