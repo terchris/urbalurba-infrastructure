@@ -90,8 +90,10 @@ Tools:
   tools list              List all available tools with status
   tools install <tool>    Install an optional tool
 
-Verification:
-  verify <service>        Run pre-deployment checks (e.g. verify tailscale)
+Tailscale:
+  tailscale expose <service>    Expose a service via Tailscale Funnel
+  tailscale unexpose <service>  Remove a service from Tailscale Funnel
+  tailscale verify              Check Tailscale secrets, API, devices, and operator
 
 Documentation:
   docs generate           Generate JSON files for website
@@ -115,6 +117,8 @@ Examples:
   uis secrets status      # Show what's configured
   uis tools list          # Show available tools
   uis tools install azure-cli  # Install Azure CLI
+  uis tailscale expose whoami  # Expose whoami via Tailscale Funnel
+  uis tailscale verify         # Check Tailscale configuration
 
 EOF
 }
@@ -993,7 +997,7 @@ cmd_cluster() {
 }
 
 # ============================================================
-# Verify Commands
+# Verify Commands (backwards compatibility - redirects to service commands)
 # ============================================================
 
 cmd_verify() {
@@ -1009,7 +1013,7 @@ cmd_verify() {
 
     case "$target" in
         tailscale|tailscale-tunnel)
-            cmd_verify_tailscale
+            cmd_tailscale_verify
             ;;
         *)
             log_error "Unknown verify target: $target"
@@ -1021,7 +1025,69 @@ cmd_verify() {
     esac
 }
 
-cmd_verify_tailscale() {
+# ============================================================
+# Tailscale Commands
+# ============================================================
+
+cmd_tailscale() {
+    local subcmd="${1:-}"
+    shift || true
+
+    if [[ -z "$subcmd" ]]; then
+        log_error "Usage: uis tailscale <command> [options]"
+        echo ""
+        echo "Commands:"
+        echo "  expose <service>      Expose a service via Tailscale Funnel"
+        echo "  unexpose <service>    Remove a service from Tailscale Funnel"
+        echo "  verify                Check Tailscale secrets, API, devices, and operator"
+        exit "$EXIT_GENERAL_ERROR"
+    fi
+
+    case "$subcmd" in
+        expose)
+            cmd_tailscale_expose "$@"
+            ;;
+        unexpose)
+            cmd_tailscale_unexpose "$@"
+            ;;
+        verify)
+            cmd_tailscale_verify
+            ;;
+        *)
+            log_error "Unknown tailscale command: $subcmd"
+            echo ""
+            echo "Commands:"
+            echo "  expose <service>      Expose a service via Tailscale Funnel"
+            echo "  unexpose <service>    Remove a service from Tailscale Funnel"
+            echo "  verify                Check Tailscale secrets, API, devices, and operator"
+            exit "$EXIT_GENERAL_ERROR"
+            ;;
+    esac
+}
+
+cmd_tailscale_expose() {
+    local service="${1:-}"
+    if [[ -z "$service" ]]; then
+        log_error "Usage: uis tailscale expose <service>"
+        echo "Example: uis tailscale expose whoami"
+        exit "$EXIT_GENERAL_ERROR"
+    fi
+    print_section "Exposing $service via Tailscale Funnel"
+    cd /mnt/urbalurbadisk && ./networking/tailscale/802-tailscale-tunnel-deploy.sh "$service"
+}
+
+cmd_tailscale_unexpose() {
+    local service="${1:-}"
+    if [[ -z "$service" ]]; then
+        log_error "Usage: uis tailscale unexpose <service>"
+        echo "Example: uis tailscale unexpose whoami"
+        exit "$EXIT_GENERAL_ERROR"
+    fi
+    print_section "Removing $service from Tailscale Funnel"
+    cd /mnt/urbalurbadisk && ./networking/tailscale/803-tailscale-tunnel-deletehost.sh "$service"
+}
+
+cmd_tailscale_verify() {
     print_section "Verifying Tailscale Configuration"
     ansible-playbook "$ANSIBLE_DIR/803-verify-tailscale.yml"
 }
@@ -1259,6 +1325,9 @@ main() {
             ;;
         verify)
             cmd_verify "$@"
+            ;;
+        tailscale)
+            cmd_tailscale "$@"
             ;;
         *)
             log_error "Unknown command: $command"
