@@ -344,6 +344,28 @@ TAILSCALE_CLIENTSECRET=tskey-client-YOUR-NEW-CLIENT-SECRET
 ./uis deploy tailscale-tunnel
 ```
 
+### TLS Handshake Timeout (Let's Encrypt Rate Limiting)
+
+If `./uis deploy tailscale-tunnel` or `./uis tailscale expose <service>` reports a TLS handshake timeout, check the Tailscale proxy pod logs:
+
+```bash
+./uis shell
+kubectl logs -n tailscale -l tailscale.com/parent-resource=traefik-ingress --tail=50
+```
+
+If you see an error like:
+```
+cert("k8s.dog-pence.ts.net"): getCertPEM: 429 urn:ietf:params:acme:error:rateLimited:
+too many certificates (5) already issued for this exact set of identifiers
+```
+
+This means **Let's Encrypt ACME rate limiting** is blocking TLS certificate issuance. The limit is **5 certificates per exact hostname per 7 days**. This typically happens when you repeatedly deploy/undeploy the same hostname during testing.
+
+**Solutions:**
+1. **Wait** for the rate limit to reset (the error message includes the retry-after timestamp)
+2. **Use a different hostname** — change `TAILSCALE_CLUSTER_HOSTNAME` in `.uis.secrets/config/00-common-values.env` (e.g., `k8s-2` instead of `k8s`), then `./uis secrets generate` and redeploy
+3. **Avoid repeated deploy/undeploy cycles** with the same hostname during testing
+
 ### Script Execution Issues
 
 **Check Tailscale status in provision-host:**

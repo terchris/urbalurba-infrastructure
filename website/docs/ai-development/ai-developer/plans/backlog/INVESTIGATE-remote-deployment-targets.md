@@ -1,6 +1,6 @@
 # INVESTIGATE: Remote Deployment Targets
 
-**Related**: [INVESTIGATE-topsecret-cleanup](INVESTIGATE-topsecret-cleanup.md), [STATUS-service-migration](STATUS-service-migration.md)
+**Related**: [INVESTIGATE-topsecret-cleanup](../completed/INVESTIGATE-topsecret-cleanup.md), [STATUS-service-migration](STATUS-service-migration.md)
 **Created**: 2026-02-22
 **Status**: INVESTIGATION COMPLETE
 

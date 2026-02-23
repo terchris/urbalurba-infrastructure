@@ -2,6 +2,8 @@
 
 **Related Plan**: [PLAN-004-secrets-cleanup](../completed/PLAN-004-secrets-cleanup.md) - Secrets migration cleanup and finalization
 
+## Status: Backlog
+
 ## Problem
 
 The password system has a design mismatch between two files that serve different roles.
