@@ -238,14 +238,22 @@ ssh_keys_exist() {
 }
 
 # Copy secrets templates to .uis.secrets/secrets-config/ on first run
+# Also syncs the master template on every run (structural, not user-edited)
 # Workflow: edit secrets-config/, then generate kubernetes secrets
 # Returns: 0 if copied or already exists
 copy_secrets_templates() {
     local templates_src="$TEMPLATES_DIR/secrets-templates"
     local secrets_config="$SECRETS_DIR/secrets-config"
 
-    # Skip if secrets-config already has templates
+    # If common-values already exists, just sync the master template
+    # (master template is structural — new image versions may add keys)
     if [[ -f "$secrets_config/00-common-values.env.template" ]]; then
+        local src_master="$templates_src/00-master-secrets.yml.template"
+        local dst_master="$secrets_config/00-master-secrets.yml.template"
+        if [[ -f "$src_master" ]] && ! diff -q "$src_master" "$dst_master" >/dev/null 2>&1; then
+            cp "$src_master" "$dst_master"
+            log_info "Updated master secrets template (new keys available)"
+        fi
         return 0
     fi
 

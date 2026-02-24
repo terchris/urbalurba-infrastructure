@@ -10,10 +10,10 @@ SCRIPT_DESCRIPTION="Secure tunnel to Cloudflare network"
 SCRIPT_CATEGORY="NETWORK"
 
 # === UIS-Specific (Optional) ===
-SCRIPT_PLAYBOOK="820-setup-network-cloudflare-tunnel.yml"
+SCRIPT_PLAYBOOK="820-deploy-network-cloudflare-tunnel.yml"
 SCRIPT_MANIFEST=""
-SCRIPT_CHECK_COMMAND="kubectl get pods -n network -l app.kubernetes.io/name=cloudflared --no-headers 2>/dev/null | grep -q Running"
-SCRIPT_REMOVE_PLAYBOOK=""
+SCRIPT_CHECK_COMMAND="kubectl get pods -n default -l app=cloudflared --no-headers 2>/dev/null | grep -q Running"
+SCRIPT_REMOVE_PLAYBOOK="821-remove-network-cloudflare-tunnel.yml"
 SCRIPT_REQUIRES=""
 SCRIPT_PRIORITY="101"
 

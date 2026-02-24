@@ -1,0 +1,196 @@
+---
+# file: ansible/playbooks/822-verify-cloudflare.yml
+# Description: Verify Cloudflare tunnel configuration and readiness
+#
+# This playbook checks:
+# 1. CLOUDFLARE_TUNNEL_TOKEN is present in secrets and not a placeholder
+# 2. Network connectivity (DNS resolution and port 7844 reachability)
+# 3. Pod status if deployed
+# 4. Pod logs summary if deployed
+# 5. End-to-end HTTP connectivity through the tunnel
+#
+# Usage:
+#   ansible-playbook playbooks/822-verify-cloudflare.yml
+
+- name: Verify Cloudflare tunnel configuration
+  hosts: localhost
+  gather_facts: false
+  vars:
+    kubeconfig_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
+    tunnel_namespace: "default"
+    check_results: []
+
+  tasks:
+    # ============================================================
+    # Check 1: Secrets present and valid
+    # ============================================================
+    - name: "01 Check for urbalurba-secrets"
+      kubernetes.core.k8s_info:
+        kind: Secret
+        name: urbalurba-secrets
+        namespace: default
+        kubeconfig: "{{ kubeconfig_file }}"
+      register: urbalurba_secrets
+      ignore_errors: true
+
+    - name: "02 Extract Cloudflare tunnel token and domain"
+      ansible.builtin.set_fact:
+        cf_tunnel_token: "{{ urbalurba_secrets.resources[0].data.CLOUDFLARE_TUNNEL_TOKEN | b64decode }}"
+        cf_dns_token: "{{ urbalurba_secrets.resources[0].data.CLOUDFLARE_DNS_TOKEN | default('') | b64decode | default('not set', true) }}"
+        cf_domain: "{{ urbalurba_secrets.resources[0].data.BASE_DOMAIN_CLOUDFLARE | default('') | b64decode | default('', true) }}"
+      when: urbalurba_secrets.resources | length > 0
+      ignore_errors: true
+
+    - name: "03 Set defaults if secrets not found"
+      ansible.builtin.set_fact:
+        cf_tunnel_token: ""
+        cf_dns_token: "not set"
+        cf_domain: ""
+      when: urbalurba_secrets.resources | length == 0 or cf_tunnel_token is not defined
+
+    - name: "04 Validate token is not a placeholder"
+      ansible.builtin.set_fact:
+        token_valid: >-
+          {{
+            cf_tunnel_token != "" and
+            "your-cloudflare-tunnel-token" not in cf_tunnel_token
+          }}
+        domain_valid: >-
+          {{
+            cf_domain != "" and
+            "your-domain" not in cf_domain
+          }}
+
+    - name: "05 Report secrets check"
+      ansible.builtin.set_fact:
+        check_results: "{{ check_results + [secrets_result] }}"
+      vars:
+        secrets_result: >-
+          {% if urbalurba_secrets.resources | length == 0 %}FAIL: Secrets - urbalurba-secrets not found in cluster
+          {% elif not token_valid %}FAIL: Secrets - CLOUDFLARE_TUNNEL_TOKEN is a placeholder value
+          {% else %}PASS: Secrets - CLOUDFLARE_TUNNEL_TOKEN is configured ({{ cf_tunnel_token[:8] }}...){% endif %}
+
+    # ============================================================
+    # Check 2: Network connectivity
+    # ============================================================
+    - name: "06 Test DNS resolution for Cloudflare tunnel endpoint"
+      ansible.builtin.shell: >-
+        getent hosts region1.v2.argotunnel.com >/dev/null 2>&1 && echo "OK" || echo "FAIL"
+      register: dns_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: "07 Test TCP connectivity to Cloudflare on port 7844"
+      ansible.builtin.shell: >-
+        timeout 5 bash -c 'echo > /dev/tcp/region1.v2.argotunnel.com/7844' 2>/dev/null && echo "OK" || echo "FAIL"
+      register: port_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: "08 Report network connectivity"
+      ansible.builtin.set_fact:
+        check_results: "{{ check_results + [network_result] }}"
+      vars:
+        network_result: >-
+          {% if dns_check.stdout | default('') == 'OK' and port_check.stdout | default('') == 'OK' %}PASS: Network - DNS resolves and port 7844 is reachable
+          {% elif dns_check.stdout | default('') == 'OK' %}WARN: Network - DNS resolves but port 7844 is blocked (corporate firewall?)
+          {% else %}FAIL: Network - cannot resolve region1.v2.argotunnel.com (no internet or DNS issue){% endif %}
+
+    # ============================================================
+    # Check 3: Pod status
+    # ============================================================
+    - name: "09 Check cloudflared pods"
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: "{{ tunnel_namespace }}"
+        label_selectors:
+          - "app=cloudflared"
+        kubeconfig: "{{ kubeconfig_file }}"
+      register: cf_pods
+      ignore_errors: true
+
+    - name: "10 Report pod status"
+      ansible.builtin.set_fact:
+        check_results: "{{ check_results + [pod_result] }}"
+      vars:
+        running_pods: "{{ cf_pods.resources | default([]) | selectattr('status.phase', 'equalto', 'Running') | list }}"
+        pod_result: >-
+          {% if cf_pods.resources | default([]) | length == 0 %}INFO: Pods - not deployed (deploy with: uis deploy cloudflare-tunnel)
+          {% elif running_pods | length == cf_pods.resources | length %}PASS: Pods - {{ running_pods | length }}/{{ cf_pods.resources | length }} running
+          {% else %}WARN: Pods - {{ running_pods | length }}/{{ cf_pods.resources | length }} running ({{ cf_pods.resources | map(attribute='status.phase') | list | join(', ') }}){% endif %}
+
+    # ============================================================
+    # Check 4: Pod logs summary (if deployed)
+    # ============================================================
+    - name: "11 Get recent logs from cloudflared pods"
+      kubernetes.core.k8s_log:
+        name: "{{ cf_pods.resources[0].metadata.name }}"
+        namespace: "{{ tunnel_namespace }}"
+        kubeconfig: "{{ kubeconfig_file }}"
+        tail_lines: 10
+      register: cf_logs
+      when: cf_pods.resources | default([]) | length > 0
+      ignore_errors: true
+
+    - name: "12 Report logs summary"
+      ansible.builtin.set_fact:
+        check_results: "{{ check_results + [logs_result] }}"
+      vars:
+        logs_result: >-
+          {% if cf_pods.resources | default([]) | length == 0 %}SKIP: Logs - no pods deployed
+          {% elif cf_logs.log is defined and 'Registered tunnel connection' in cf_logs.log %}PASS: Logs - tunnel connection registered
+          {% elif cf_logs.log is defined and 'ERR' in cf_logs.log %}WARN: Logs - errors found in recent logs
+          {% elif cf_logs.log is defined %}INFO: Logs - tunnel starting (may need 1-2 minutes)
+          {% else %}SKIP: Logs - could not retrieve{% endif %}
+
+    # ============================================================
+    # Check 5: End-to-end HTTP connectivity through tunnel
+    # ============================================================
+    - name: "13 Test end-to-end HTTP connectivity through tunnel"
+      ansible.builtin.uri:
+        url: "https://{{ cf_domain }}"
+        method: GET
+        status_code: [200, 301, 302, 404]
+        validate_certs: true
+        timeout: 15
+      register: e2e_test
+      failed_when: false
+      when:
+        - domain_valid | bool
+        - cf_pods.resources | default([]) | length > 0
+
+    - name: "14 Report end-to-end connectivity"
+      ansible.builtin.set_fact:
+        check_results: "{{ check_results + [e2e_result] }}"
+      vars:
+        e2e_result: >-
+          {% if not domain_valid | default(false) | bool %}SKIP: End-to-end - BASE_DOMAIN_CLOUDFLARE not configured
+          {% elif cf_pods.resources | default([]) | length == 0 %}SKIP: End-to-end - no pods deployed
+          {% elif e2e_test.status is defined and e2e_test.status in [200, 301, 302, 404] %}PASS: End-to-end - HTTP {{ e2e_test.status }} from https://{{ cf_domain }}
+          {% else %}WARN: End-to-end - could not reach https://{{ cf_domain }} (status: {{ e2e_test.status | default('timeout') }}){% endif %}
+
+    # ============================================================
+    # Summary
+    # ============================================================
+    - name: "15 Display verification results"
+      ansible.builtin.debug:
+        msg:
+          - "==================================================="
+          - "Cloudflare Tunnel Verification Results"
+          - "==================================================="
+          - ""
+          - "Configuration:"
+          - "  Tunnel Token: {{ cf_tunnel_token[:8] + '...' if cf_tunnel_token | length > 8 else 'not set' }}"
+          - "  DNS Token: {{ 'configured' if cf_dns_token != 'not set' and cf_dns_token != '' else 'not set' }}"
+          - "  Domain: {{ cf_domain if domain_valid | default(false) | bool else 'not configured' }}"
+          - ""
+          - "Checks:"
+          - "{% for result in check_results %}  {{ result | trim }}\n{% endfor %}"
+          - ""
+          - "Commands:"
+          - "  Deploy:   uis deploy cloudflare-tunnel"
+          - "  Remove:   uis undeploy cloudflare-tunnel"
+          - "  Teardown: uis cloudflare teardown"
+          - "  Logs:     kubectl logs -n default -l app=cloudflared --tail=50"
+          - ""
+          - "==================================================="

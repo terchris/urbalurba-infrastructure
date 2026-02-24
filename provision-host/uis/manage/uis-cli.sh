@@ -95,6 +95,10 @@ Tailscale:
   tailscale unexpose <service>  Remove a service from Tailscale Funnel
   tailscale verify              Check Tailscale secrets, API, devices, and operator
 
+Cloudflare:
+  cloudflare verify             Check Cloudflare secrets, network, and pod status
+  cloudflare teardown           Remove tunnel and show dashboard cleanup steps
+
 Documentation:
   docs generate           Generate JSON files for website
 
@@ -119,6 +123,8 @@ Examples:
   uis tools install azure-cli  # Install Azure CLI
   uis tailscale expose whoami  # Expose whoami via Tailscale Funnel
   uis tailscale verify         # Check Tailscale configuration
+  uis cloudflare verify        # Check Cloudflare tunnel configuration
+  uis deploy cloudflare-tunnel # Deploy Cloudflare tunnel
 
 EOF
 }
@@ -1008,6 +1014,7 @@ cmd_verify() {
         echo ""
         echo "Available verifications:"
         echo "  tailscale    Check Tailscale secrets, API, devices, and operator"
+        echo "  cloudflare   Check Cloudflare secrets, network, and pod status"
         exit "$EXIT_GENERAL_ERROR"
     fi
 
@@ -1015,11 +1022,15 @@ cmd_verify() {
         tailscale|tailscale-tunnel)
             cmd_tailscale_verify
             ;;
+        cloudflare|cloudflare-tunnel)
+            cmd_cloudflare_verify
+            ;;
         *)
             log_error "Unknown verify target: $target"
             echo ""
             echo "Available verifications:"
             echo "  tailscale    Check Tailscale secrets, API, devices, and operator"
+            echo "  cloudflare   Check Cloudflare secrets, network, and pod status"
             exit "$EXIT_GENERAL_ERROR"
             ;;
     esac
@@ -1090,6 +1101,56 @@ cmd_tailscale_unexpose() {
 cmd_tailscale_verify() {
     print_section "Verifying Tailscale Configuration"
     ansible-playbook "$ANSIBLE_DIR/803-verify-tailscale.yml"
+}
+
+# ============================================================
+# Cloudflare Commands
+# ============================================================
+
+cmd_cloudflare() {
+    local subcmd="${1:-}"
+    shift || true
+
+    if [[ -z "$subcmd" ]]; then
+        log_error "Usage: uis cloudflare <command>"
+        echo ""
+        echo "Commands:"
+        echo "  verify                Check Cloudflare secrets, network, and pod status"
+        echo "  teardown              Remove tunnel and show dashboard cleanup steps"
+        exit "$EXIT_GENERAL_ERROR"
+    fi
+
+    case "$subcmd" in
+        verify)
+            cmd_cloudflare_verify
+            ;;
+        teardown)
+            cmd_cloudflare_teardown
+            ;;
+        *)
+            log_error "Unknown cloudflare command: $subcmd"
+            echo ""
+            echo "Commands:"
+            echo "  verify                Check Cloudflare secrets, network, and pod status"
+            echo "  teardown              Remove tunnel and show dashboard cleanup steps"
+            exit "$EXIT_GENERAL_ERROR"
+            ;;
+    esac
+}
+
+cmd_cloudflare_verify() {
+    print_section "Verifying Cloudflare Tunnel Configuration"
+    ansible-playbook "$ANSIBLE_DIR/822-verify-cloudflare.yml"
+}
+
+cmd_cloudflare_teardown() {
+    print_section "Cloudflare Tunnel Teardown"
+    ansible-playbook "$ANSIBLE_DIR/821-remove-network-cloudflare-tunnel.yml"
+    echo ""
+    echo "Manual cleanup required:"
+    echo "  1. Go to Cloudflare dashboard > Zero Trust > Networks > Tunnels"
+    echo "  2. Find and delete the tunnel"
+    echo "  3. Remove any DNS records pointing to the tunnel"
 }
 
 # ============================================================
@@ -1328,6 +1389,9 @@ main() {
             ;;
         tailscale)
             cmd_tailscale "$@"
+            ;;
+        cloudflare)
+            cmd_cloudflare "$@"
             ;;
         *)
             log_error "Unknown command: $command"

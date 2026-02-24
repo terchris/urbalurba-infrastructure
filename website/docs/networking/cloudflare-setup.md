@@ -43,7 +43,7 @@ Internet User → Cloudflare Edge (CDN/WAF) → Tunnel → Traefik → Your Serv
 The token-based approach follows the same pattern as all other UIS services:
 
 1. **Configure in Cloudflare dashboard** (one-time): Create tunnel, get token, configure routes
-2. **Add token to secrets**: Put `CLOUDFLARE_TUNNEL_TOKEN` in `.uis.secrets/config/00-common-values.env`
+2. **Add token to secrets**: Put `CLOUDFLARE_TUNNEL_TOKEN` in `.uis.secrets/secrets-config/00-common-values.env.template`
 3. **Deploy**: `./uis deploy cloudflare-tunnel`
 
 No interactive browser auth from the container. No generated credential files.
@@ -98,7 +98,7 @@ Click **"Add a published application route"**:
 | **Domain** | Select your domain (e.g., `urbalurba.no`) |
 | **Path** | *(leave empty)* |
 | **Type** | HTTP |
-| **URL** | `traefik.default.svc.cluster.local:80` |
+| **URL** | `traefik.kube-system.svc.cluster.local:80` |
 
 Click **Save**.
 
@@ -112,7 +112,7 @@ Click **"Add a published application route"** again:
 | **Domain** | Select your domain (e.g., `urbalurba.no`) |
 | **Path** | *(leave empty)* |
 | **Type** | HTTP |
-| **URL** | `traefik.default.svc.cluster.local:80` |
+| **URL** | `traefik.kube-system.svc.cluster.local:80` |
 
 Click **Save**.
 
@@ -136,29 +136,30 @@ Your tunnel should now show two published application routes:
 
 | # | Route | Path | Service |
 |---|-------|------|---------|
-| 1 | `*.urbalurba.no` | `*` | `http://traefik.default.svc.cluster.local:80` |
-| 2 | `urbalurba.no` | `*` | `http://traefik.default.svc.cluster.local:80` |
+| 1 | `*.urbalurba.no` | `*` | `http://traefik.kube-system.svc.cluster.local:80` |
+| 2 | `urbalurba.no` | `*` | `http://traefik.kube-system.svc.cluster.local:80` |
 
 ## Step 4: Configure UIS Secrets
 
 Add the tunnel token to your secrets config:
 
 ```bash
-# Edit the secrets file
-nano .uis.secrets/config/00-common-values.env
+# Edit the secrets file (opens in your default editor)
+./uis secrets edit
 ```
 
-Add or update these lines:
+This opens `.uis.secrets/secrets-config/00-common-values.env.template`. Add or update these lines:
 
 ```bash
 BASE_DOMAIN_CLOUDFLARE=urbalurba.no
 CLOUDFLARE_TUNNEL_TOKEN=eyJhIjoiOT...your-full-token-here
 ```
 
-Then regenerate secrets:
+Then regenerate and apply secrets:
 
 ```bash
 ./uis secrets generate
+./uis secrets apply
 ```
 
 ## Step 5: Deploy the Tunnel
@@ -167,15 +168,25 @@ Then regenerate secrets:
 ./uis deploy cloudflare-tunnel
 ```
 
-This deploys a `cloudflared` pod that connects to Cloudflare using the token. All routing is managed by Cloudflare's dashboard — no local configuration files needed.
+This deploys 2 `cloudflared` pods (for high availability) that connect to Cloudflare using the token. All routing is managed by Cloudflare's dashboard — no local configuration files needed.
 
 ## Step 6: Verify
 
 ```bash
-# Check tunnel pod is running
+# Run all verification checks
 ./uis cloudflare verify
+```
 
-# Test from outside (or use curl)
+This runs 5 checks:
+1. **Secrets** — `CLOUDFLARE_TUNNEL_TOKEN` is configured and not a placeholder
+2. **Network** — DNS resolves and port 7844 is reachable
+3. **Pods** — 2/2 cloudflared pods are running
+4. **Logs** — Tunnel connection registered with Cloudflare edge
+5. **End-to-end** — HTTP request through the tunnel returns a response
+
+You can also test manually:
+
+```bash
 curl https://whoami.urbalurba.no
 curl https://urbalurba.no
 ```
@@ -256,7 +267,7 @@ User Request → Cloudflare Edge (CDN/WAF/TLS) → Tunnel Pod → Traefik → Se
 
 ### Components
 - **Cloudflare Edge**: Global CDN, DDoS protection, TLS termination
-- **Tunnel Connector**: Single `cloudflared` pod in your cluster
+- **Tunnel Connector**: 2 `cloudflared` pods in your cluster (HA)
 - **Traefik**: Ingress controller routing to services via IngressRoutes
 - **Services**: Your applications with HostRegexp IngressRoute patterns
 

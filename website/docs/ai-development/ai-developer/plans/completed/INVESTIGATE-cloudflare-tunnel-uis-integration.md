@@ -4,7 +4,7 @@
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Backlog
+## Status: Complete
 
 **Goal**: Make Cloudflare tunnel work through the UIS CLI with a similar operator experience as Tailscale, while respecting the architectural differences between the two.
 
@@ -110,8 +110,8 @@ Confirmed from Cloudflare documentation and community guides (Feb 2026):
 1. Zero Trust → Networks → Connectors → Create a tunnel → Cloudflared
 2. Name the tunnel, copy the token (`eyJ...`)
 3. In the tunnel's "Hostname routes" tab → "Published application routes", add:
-   - `*.urbalurba.no` → service `http://traefik.default.svc.cluster.local:80`
-   - `urbalurba.no` → service `http://traefik.default.svc.cluster.local:80`
+   - `*.urbalurba.no` → service `http://traefik.kube-system.svc.cluster.local:80`
+   - `urbalurba.no` → service `http://traefik.kube-system.svc.cluster.local:80`
 
 **DNS records**: When adding published application routes, Cloudflare automatically creates DNS records of type "Tunnel" pointing to the tunnel name. However, if DNS records already exist (e.g., from a previously deleted tunnel), you must delete the old records first — otherwise you'll get: *"Error: An A, AAAA, or CNAME record with that host already exists."*
 
@@ -201,19 +201,19 @@ The token-based approach needs these variables in the secrets system:
 | `CLOUDFLARE_TUNNEL_TOKEN` | `00-common-values.env` | Yes (from Cloudflare dashboard) |
 
 Variables to clean up or update in templates:
-- [ ] `CLOUDFLARE_DNS_TOKEN` in `00-common-values.env.template` — still needed? Or replaced by tunnel token?
-- [ ] `CLOUDFLARE_TEST_TUNNELNAME`, `CLOUDFLARE_TEST_DOMAINNAME`, `CLOUDFLARE_TEST_SUBDOMAINS` in `00-master-secrets.yml.template` — remove (unused)
-- [ ] `CLOUDFLARE_PROD_*` variants in `00-master-secrets.yml.template` — remove (unused)
-- [ ] `cloudflare.env.template` in service-keys — update to match token-based approach
-- [ ] `CLOUDFLARE_API_TOKEN` naming inconsistency with `CLOUDFLARE_DNS_TOKEN` — resolve
+- [x] `CLOUDFLARE_DNS_TOKEN` in `00-common-values.env.template` — still needed? Or replaced by tunnel token?
+- [x] `CLOUDFLARE_TEST_TUNNELNAME`, `CLOUDFLARE_TEST_DOMAINNAME`, `CLOUDFLARE_TEST_SUBDOMAINS` in `00-master-secrets.yml.template` — remove (unused)
+- [x] `CLOUDFLARE_PROD_*` variants in `00-master-secrets.yml.template` — remove (unused)
+- [x] `cloudflare.env.template` in service-keys — update to match token-based approach
+- [x] `CLOUDFLARE_API_TOKEN` naming inconsistency with `CLOUDFLARE_DNS_TOKEN` — resolve
 
 ### 2. Deployment manifest
 
 The current `820-cloudflare-tunnel-base.yaml.j2` uses credential files mounted as volumes. For the token-based approach, we need a new/updated manifest:
-- [ ] Pod runs `cloudflared tunnel run --token <token>`
-- [ ] Token read from K8s secret (environment variable from `urbalurba-secrets`)
-- [ ] DNS routing configured in Cloudflare dashboard, not in the manifest's ConfigMap
-- [ ] Does the manifest still need the ingress rules ConfigMap, or does the dashboard config replace it?
+- [x] Pod runs `cloudflared tunnel run --token <token>`
+- [x] Token read from K8s secret (environment variable from `urbalurba-secrets`)
+- [x] DNS routing configured in Cloudflare dashboard, not in the manifest's ConfigMap
+- [x] Does the manifest still need the ingress rules ConfigMap, or does the dashboard config replace it?
 
 ### 3. UIS CLI design
 
@@ -231,10 +231,10 @@ The current `820-cloudflare-tunnel-base.yaml.j2` uses credential files mounted a
 
 ### 4. Service script fixes
 
-- [ ] Fix `SCRIPT_CHECK_COMMAND` namespace (`default` not `network`)
-- [ ] Fix `SCRIPT_CHECK_COMMAND` label selector to match actual deployment labels
-- [ ] Set `SCRIPT_PLAYBOOK` to new token-based deploy playbook
-- [ ] Create remove playbook and set `SCRIPT_REMOVE_PLAYBOOK`
+- [x] Fix `SCRIPT_CHECK_COMMAND` namespace (`default` not `network`)
+- [x] Fix `SCRIPT_CHECK_COMMAND` label selector to match actual deployment labels
+- [x] Set `SCRIPT_PLAYBOOK` to new token-based deploy playbook
+- [x] Create remove playbook and set `SCRIPT_REMOVE_PLAYBOOK`
 
 ### 5. Two removal paths
 
@@ -251,11 +251,11 @@ The current `820-cloudflare-tunnel-base.yaml.j2` uses credential files mounted a
 
 ### 6. Documentation updates
 
-- [ ] Rewrite `cloudflare-setup.md` for the token-based flow
-- [ ] Add step-by-step Cloudflare dashboard instructions (create account, add domain, create tunnel, get token)
-- [ ] Keep reference to legacy interactive scripts for advanced users
-- [ ] Add comparison table (already done in networking index.md)
-- [ ] Add port 7844 requirement and corporate network warning
+- [x] Rewrite `cloudflare-setup.md` for the token-based flow
+- [x] Add step-by-step Cloudflare dashboard instructions (create account, add domain, create tunnel, get token)
+- [x] Keep reference to legacy interactive scripts for advanced users
+- [x] Add comparison table (already done in networking index.md)
+- [x] Add port 7844 requirement and corporate network warning
 
 ### 7. Network connectivity pre-check
 
@@ -335,16 +335,16 @@ Completed full dashboard setup with user. Key findings:
 1. **Tunnel created**: Name `urbalurba-no`, ID `3b2aa510-91cd-4f59-962b-6d553086b324`
 2. **Token obtained**: Stored in `.uis.secrets/config/00-common-values.env` as `CLOUDFLARE_TUNNEL_TOKEN`
 3. **Two routes configured**:
-   - `*.urbalurba.no` → `http://traefik.default.svc.cluster.local:80`
-   - `urbalurba.no` → `http://traefik.default.svc.cluster.local:80`
+   - `*.urbalurba.no` → `http://traefik.kube-system.svc.cluster.local:80`
+   - `urbalurba.no` → `http://traefik.kube-system.svc.cluster.local:80`
 4. **DNS records auto-created** as "Tunnel" type (not raw CNAME) when adding published application routes
 5. **Root domain route failed initially** because an old CNAME record existed from a previously deleted tunnel — had to delete the old DNS record first, then re-add the route
 6. **UI navigation changed**: Tunnels are now under **Networks → Connectors** (not "Networks → Tunnels")
 7. **Tunnel status**: Shows "Inactive" until a `cloudflared` pod connects with the token
-8. **Service URL**: Must be `traefik.default.svc.cluster.local:80` (Traefik runs in `default` namespace, not `kube-system`)
+8. **Service URL**: Must be `traefik.kube-system.svc.cluster.local:80` (Traefik runs in `kube-system` namespace in Rancher Desktop)
 9. **Setup guide updated**: `docs/networking/cloudflare-setup.md` rewritten with token-based approach and exact dashboard steps
 
-**Next step**: Convert this investigation to a PLAN and implement the token-based deployment (K8s manifest, Ansible playbook, CLI commands, secrets integration).
+**Result**: Investigation complete. Implemented as [PLAN-012](../completed/PLAN-012-cloudflare-tunnel-token-deploy.md) — token-based deployment with K8s manifest, Ansible playbooks, CLI commands, secrets integration, and E2E testing. All 5 verify checks pass, HTTP 200 end-to-end confirmed.
 
 ---
 

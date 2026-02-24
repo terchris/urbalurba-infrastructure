@@ -158,7 +158,7 @@ show_secrets_status() {
 
     echo ""
     echo "External Services (configure when needed):"
-    local vars_external="TAILSCALE_SECRET CLOUDFLARE_DNS_TOKEN OPENAI_API_KEY ANTHROPIC_API_KEY GITHUB_ACCESS_TOKEN"
+    local vars_external="TAILSCALE_SECRET CLOUDFLARE_DNS_TOKEN CLOUDFLARE_TUNNEL_TOKEN OPENAI_API_KEY ANTHROPIC_API_KEY GITHUB_ACCESS_TOKEN"
     for var in $vars_external; do
         local value
         value=$(get_default_secret "$var")
@@ -179,6 +179,8 @@ show_secrets_status() {
 # Reads: .uis.secrets/secrets-config/
 # Creates: .uis.secrets/generated/kubernetes/kubernetes-secrets.yml
 generate_secrets() {
+    # Sync master template from source (picks up new keys from image updates)
+    copy_secrets_templates
     # Use the generate function from first-run.sh
     generate_kubernetes_secrets
 }
