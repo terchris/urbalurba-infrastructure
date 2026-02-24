@@ -413,9 +413,10 @@
     "website": "https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/"
     ,"summary": "Cloudflare Tunnel creates a secure, outbound-only connection between your origin and Cloudflares edge. No need to open public inbound ports - traffic is routed through Cloudflares network."
     ,"docs": "/docs/packages/network/cloudflare"
-    ,"playbook": "820-setup-network-cloudflare-tunnel.yml"
+    ,"playbook": "820-deploy-network-cloudflare-tunnel.yml"
     ,"priority": 101
-    ,"checkCommand": "kubectl get pods -n network -l app.kubernetes.io/name=cloudflared --no-headers 2>/dev/null | grep -q Running"
+    ,"checkCommand": "kubectl get pods -n default -l app=cloudflared --no-headers 2>/dev/null | grep -q Running"
+    ,"removePlaybook": "821-remove-network-cloudflare-tunnel.yml"
   }
 ,
   {
