@@ -116,6 +116,23 @@ You have successfully deployed your cluster and everything works on development 
 | **Production Ready** | Personal/team use | Enterprise grade |
 | **Access Control** | Tailscale accounts | Internet + optional auth |
 
+### 🔧 Technical Architecture Comparison
+
+The two tunnels work very differently under the hood:
+
+| Aspect | Tailscale | Cloudflare |
+|--------|-----------|------------|
+| **Domain** | Auto-assigned `*.ts.net` | Your custom domain (e.g., `urbalurba.no`) |
+| **Wildcard routing** | No — each service needs its own ingress | Yes — `*.urbalurba.no` routes all subdomains through one tunnel |
+| **How it works** | Tailscale operator creates a separate proxy pod per exposed service | Single `cloudflared` pod routes all traffic to Traefik |
+| **Service exposure** | Explicit per-service (`./uis tailscale expose whoami`) | Automatic — any service with a Traefik IngressRoute is accessible |
+| **Auth setup** | API tokens + OAuth (automated) | Browser-based interactive login (one-time) |
+| **TLS certificates** | Let's Encrypt via Tailscale (5 per hostname per 7 days) | Cloudflare edge (automatic, no rate limits) |
+| **DNS** | Automatic via MagicDNS | Automatic CNAME to tunnel |
+| **CDN / DDoS protection** | No | Yes |
+
+**Key difference**: With **Tailscale**, you choose exactly which services to expose — each gets its own pod and public URL. With **Cloudflare**, the tunnel exposes everything that has a Traefik IngressRoute matching your domain — one tunnel pod handles all traffic via wildcard routing.
+
 ### 🚀 Can You Use Both?
 
 **Yes!** Your **HostRegexp routing architecture** supports both simultaneously:
