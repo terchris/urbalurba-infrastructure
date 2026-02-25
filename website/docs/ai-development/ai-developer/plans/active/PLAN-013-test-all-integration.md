@@ -4,7 +4,7 @@
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Backlog
+## Status: Active
 
 **Goal**: Automate the full integration test as `./uis test-all` — runs the same `./uis deploy`/`./uis undeploy` commands the manual tester runs, for all 23 services.
 
@@ -159,7 +159,7 @@ Log file: /tmp/uis-test-all-2026-02-25-143012.log
 
 ---
 
-## Phase 1: Create Test Script
+## Phase 1: Create Test Script — IN PROGRESS
 
 ### Tasks
 
