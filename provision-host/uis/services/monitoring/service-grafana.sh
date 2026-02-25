@@ -15,7 +15,7 @@ SCRIPT_PLAYBOOK="034-setup-grafana.yml"
 SCRIPT_MANIFEST=""
 SCRIPT_CHECK_COMMAND="kubectl get pods -n monitoring -l app.kubernetes.io/name=grafana --no-headers 2>/dev/null | grep -q Running"
 SCRIPT_REMOVE_PLAYBOOK="034-remove-grafana.yml"
-SCRIPT_REQUIRES="prometheus"
+SCRIPT_REQUIRES="prometheus loki tempo otel-collector"
 SCRIPT_PRIORITY="20"
 
 # === Website Metadata (Optional) ===

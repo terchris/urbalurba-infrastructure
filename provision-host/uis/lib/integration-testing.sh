@@ -122,7 +122,7 @@ print_test_plan() {
     for entry in "${_FOUNDATION_SERVICES[@]}"; do
         local sid=$(_entry_id "$entry")
         echo "  $step. deploy $sid (keep running)"
-        ((step++))
+        step=$((step + 1))
     done
     echo ""
 
@@ -132,13 +132,13 @@ print_test_plan() {
         local verify_cmd=""
         verify_cmd=$(_get_verify_command "$sid") || true
         echo "  $step. deploy $sid"
-        ((step++))
+        step=$((step + 1))
         if [[ -n "$verify_cmd" ]]; then
             echo "  $step. verify $sid"
-            ((step++))
+            step=$((step + 1))
         fi
         echo "  $step. undeploy $sid"
-        ((step++))
+        step=$((step + 1))
     done
     echo ""
 
@@ -148,7 +148,7 @@ print_test_plan() {
     for (( i=${#_FOUNDATION_SERVICES[@]}-1; i>=0; i-- )); do
         local sid=$(_entry_id "${_FOUNDATION_SERVICES[$i]}")
         echo "  $step. undeploy $sid"
-        ((step++))
+        step=$((step + 1))
     done
     echo ""
 
@@ -433,18 +433,18 @@ _run_tests_inner() {
     # Count total operations
     local total_ops=0
     for entry in "${_FOUNDATION_SERVICES[@]}"; do
-        ((total_ops++))  # deploy
+        total_ops=$((total_ops + 1))  # deploy
     done
     for entry in "${_REGULAR_SERVICES[@]}"; do
         local sid=$(_entry_id "$entry")
-        ((total_ops++))  # deploy
+        total_ops=$((total_ops + 1))  # deploy
         local verify_cmd=""
         verify_cmd=$(_get_verify_command "$sid") || true
-        [[ -n "$verify_cmd" ]] && ((total_ops++))  # verify
-        ((total_ops++))  # undeploy
+        [[ -n "$verify_cmd" ]] && total_ops=$((total_ops + 1))  # verify
+        total_ops=$((total_ops + 1))  # undeploy
     done
     for entry in "${_FOUNDATION_SERVICES[@]}"; do
-        ((total_ops++))  # undeploy
+        total_ops=$((total_ops + 1))  # undeploy
     done
 
     # Print header
@@ -470,7 +470,7 @@ _run_tests_inner() {
             print_test_summary "$test_end_time" "$((test_end_time - test_start_time))"
             return 1
         fi
-        ((step++))
+        step=$((step + 1))
     done
 
     # Phase 2: Test regular services (deploy + verify + undeploy)
@@ -487,7 +487,7 @@ _run_tests_inner() {
             print_test_summary "$test_end_time" "$((test_end_time - test_start_time))"
             return 1
         fi
-        ((step++))
+        step=$((step + 1))
 
         # Verify (if applicable)
         local verify_cmd=""
@@ -499,7 +499,7 @@ _run_tests_inner() {
                 print_test_summary "$test_end_time" "$((test_end_time - test_start_time))"
                 return 1
             fi
-            ((step++))
+            step=$((step + 1))
         fi
 
         # Undeploy
@@ -509,7 +509,7 @@ _run_tests_inner() {
             print_test_summary "$test_end_time" "$((test_end_time - test_start_time))"
             return 1
         fi
-        ((step++))
+        step=$((step + 1))
     done
 
     # Phase 3: Cleanup foundation services (reverse order)
@@ -525,7 +525,7 @@ _run_tests_inner() {
             print_test_summary "$test_end_time" "$((test_end_time - test_start_time))"
             return 1
         fi
-        ((step++))
+        step=$((step + 1))
     done
 
     # All passed - print summary
