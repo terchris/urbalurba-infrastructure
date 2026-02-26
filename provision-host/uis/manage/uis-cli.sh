@@ -26,6 +26,7 @@ source "$LIB_DIR/menu-helpers.sh" 2>/dev/null || true
 source "$LIB_DIR/tool-installation.sh" 2>/dev/null || true
 source "$LIB_DIR/secrets-management.sh" 2>/dev/null || true
 source "$LIB_DIR/uis-hosts.sh" 2>/dev/null || true
+source "$LIB_DIR/integration-testing.sh" 2>/dev/null || true
 
 # Version
 UIS_VERSION="0.1.0"
@@ -99,6 +100,17 @@ Cloudflare:
   cloudflare verify             Check Cloudflare secrets, network, and pod status
   cloudflare teardown           Remove tunnel and show dashboard cleanup steps
 
+ArgoCD:
+  argocd register <repo>        Register a GitHub repo as ArgoCD application
+  argocd remove <repo>          Remove an ArgoCD-managed application
+  argocd list                   List registered ArgoCD applications
+  argocd verify                 Run E2E health checks on ArgoCD server
+
+Testing:
+  test-all                Run full integration test (deploy+undeploy all services)
+  test-all --dry-run      Show test plan without executing
+  test-all --clean        Undeploy all services first, then run tests
+
 Documentation:
   docs generate           Generate JSON files for website
 
@@ -125,6 +137,12 @@ Examples:
   uis tailscale verify         # Check Tailscale configuration
   uis cloudflare verify        # Check Cloudflare tunnel configuration
   uis deploy cloudflare-tunnel # Deploy Cloudflare tunnel
+  uis argocd register my-app   # Register GitHub repo as ArgoCD app
+  uis argocd list              # List registered ArgoCD applications
+  uis argocd verify            # Run ArgoCD E2E tests
+  uis test-all                  # Run full integration test
+  uis test-all --dry-run        # Preview test plan
+  uis test-all --clean          # Clean cluster first, then test
 
 EOF
 }
@@ -1015,6 +1033,7 @@ cmd_verify() {
         echo "Available verifications:"
         echo "  tailscale    Check Tailscale secrets, API, devices, and operator"
         echo "  cloudflare   Check Cloudflare secrets, network, and pod status"
+        echo "  argocd       Run E2E health checks on ArgoCD server"
         exit "$EXIT_GENERAL_ERROR"
     fi
 
@@ -1025,12 +1044,16 @@ cmd_verify() {
         cloudflare|cloudflare-tunnel)
             cmd_cloudflare_verify
             ;;
+        argocd)
+            cmd_argocd_verify
+            ;;
         *)
             log_error "Unknown verify target: $target"
             echo ""
             echo "Available verifications:"
             echo "  tailscale    Check Tailscale secrets, API, devices, and operator"
             echo "  cloudflare   Check Cloudflare secrets, network, and pod status"
+            echo "  argocd       Run E2E health checks on ArgoCD server"
             exit "$EXIT_GENERAL_ERROR"
             ;;
     esac
@@ -1151,6 +1174,122 @@ cmd_cloudflare_teardown() {
     echo "  1. Go to Cloudflare dashboard > Zero Trust > Networks > Tunnels"
     echo "  2. Find and delete the tunnel"
     echo "  3. Remove any DNS records pointing to the tunnel"
+}
+
+# ============================================================
+# ArgoCD Commands
+# ============================================================
+
+cmd_argocd() {
+    local subcmd="${1:-}"
+    shift || true
+
+    if [[ -z "$subcmd" ]]; then
+        log_error "Usage: uis argocd <command> [options]"
+        echo ""
+        echo "Commands:"
+        echo "  register <repo>       Register a GitHub repo as ArgoCD application"
+        echo "  remove <repo>         Remove an ArgoCD-managed application"
+        echo "  list                  List registered ArgoCD applications"
+        echo "  verify                Run E2E health checks on ArgoCD server"
+        exit "$EXIT_GENERAL_ERROR"
+    fi
+
+    case "$subcmd" in
+        register)
+            cmd_argocd_register "$@"
+            ;;
+        remove)
+            cmd_argocd_remove "$@"
+            ;;
+        list)
+            cmd_argocd_list
+            ;;
+        verify)
+            cmd_argocd_verify
+            ;;
+        *)
+            log_error "Unknown argocd command: $subcmd"
+            echo ""
+            echo "Commands:"
+            echo "  register <repo>       Register a GitHub repo as ArgoCD application"
+            echo "  remove <repo>         Remove an ArgoCD-managed application"
+            echo "  list                  List registered ArgoCD applications"
+            echo "  verify                Run E2E health checks on ArgoCD server"
+            exit "$EXIT_GENERAL_ERROR"
+            ;;
+    esac
+}
+
+cmd_argocd_register() {
+    local repo_name="${1:-}"
+    if [[ -z "$repo_name" ]]; then
+        log_error "Usage: uis argocd register <repo_name>"
+        echo "Example: uis argocd register my-k8s-app"
+        exit "$EXIT_GENERAL_ERROR"
+    fi
+
+    print_section "Registering $repo_name with ArgoCD"
+
+    # Extract GitHub credentials from K8s secrets
+    local kubeconf="/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
+    local github_username
+    local github_pat
+
+    github_username=$(kubectl get secret urbalurba-secrets -n default \
+        -o jsonpath='{.data.YOUR_GITHUB_USERNAME}' \
+        --kubeconfig="$kubeconf" 2>/dev/null | base64 -d 2>/dev/null) || true
+
+    github_pat=$(kubectl get secret urbalurba-secrets -n default \
+        -o jsonpath='{.data.GITHUB_ACCESS_TOKEN}' \
+        --kubeconfig="$kubeconf" 2>/dev/null | base64 -d 2>/dev/null) || true
+
+    # Validate username is configured
+    if [[ -z "$github_username" || "$github_username" == "your-github-username" ]]; then
+        log_error "GitHub username not configured in secrets."
+        echo "Set GITHUB_USERNAME in .uis.secrets/secrets-config/00-common-values.env"
+        echo "Then run: uis secrets generate && uis secrets apply"
+        exit "$EXIT_GENERAL_ERROR"
+    fi
+
+    # Token is optional — public repos work without it
+    if [[ -z "$github_pat" || "$github_pat" == "your-github-token-here" ]]; then
+        github_pat=""
+        echo "Note: No GitHub token configured. Only public repos can be registered."
+        echo ""
+    fi
+
+    echo "GitHub user: $github_username"
+    echo "Repository:  $repo_name"
+    echo ""
+
+    ansible-playbook "$ANSIBLE_DIR/argocd-register-app.yml" \
+        -e "github_username=$github_username" \
+        -e "repo_name=$repo_name" \
+        -e "github_pat=$github_pat"
+}
+
+cmd_argocd_remove() {
+    local repo_name="${1:-}"
+    if [[ -z "$repo_name" ]]; then
+        log_error "Usage: uis argocd remove <repo_name>"
+        echo "Example: uis argocd remove my-k8s-app"
+        exit "$EXIT_GENERAL_ERROR"
+    fi
+
+    print_section "Removing $repo_name from ArgoCD"
+    ansible-playbook "$ANSIBLE_DIR/argocd-remove-app.yml" \
+        -e "repo_name=$repo_name"
+}
+
+cmd_argocd_list() {
+    print_section "ArgoCD Applications"
+    ansible-playbook "$ANSIBLE_DIR/argocd-list-apps.yml"
+}
+
+cmd_argocd_verify() {
+    print_section "Verifying ArgoCD Deployment"
+    ansible-playbook "$ANSIBLE_DIR/220-test-argocd.yml"
 }
 
 # ============================================================
@@ -1303,6 +1442,19 @@ cmd_secrets() {
 }
 
 # ============================================================
+# Test Commands
+# ============================================================
+
+cmd_test_all() {
+    if ! type run_integration_tests &>/dev/null; then
+        log_error "integration-testing.sh not loaded"
+        exit "$EXIT_GENERAL_ERROR"
+    fi
+
+    run_integration_tests "$@"
+}
+
+# ============================================================
 # Main Command Router
 # ============================================================
 
@@ -1392,6 +1544,12 @@ main() {
             ;;
         cloudflare)
             cmd_cloudflare "$@"
+            ;;
+        argocd)
+            cmd_argocd "$@"
+            ;;
+        test-all)
+            cmd_test_all "$@"
             ;;
         *)
             log_error "Unknown command: $command"

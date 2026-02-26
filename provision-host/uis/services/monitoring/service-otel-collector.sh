@@ -15,7 +15,7 @@ SCRIPT_PLAYBOOK="033-setup-otel-collector.yml"
 SCRIPT_MANIFEST=""
 SCRIPT_CHECK_COMMAND="kubectl get pods -n monitoring -l app.kubernetes.io/name=opentelemetry-collector --no-headers 2>/dev/null | grep -q Running"
 SCRIPT_REMOVE_PLAYBOOK="033-remove-otel-collector.yml"
-SCRIPT_REQUIRES=""
+SCRIPT_REQUIRES="prometheus loki tempo"
 SCRIPT_PRIORITY="13"
 
 # === Website Metadata (Optional) ===

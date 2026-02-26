@@ -4,11 +4,12 @@
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Backlog
+## Status: Completed
 
 **Goal**: Automate the full integration test as `./uis test-all` — runs the same `./uis deploy`/`./uis undeploy` commands the manual tester runs, for all 23 services.
 
-**Last Updated**: 2026-02-25
+**Completed**: 2026-02-26
+**Last Updated**: 2026-02-26
 
 ---
 
@@ -74,7 +75,7 @@ Deploy/undeploy commands produce lots of Ansible and kubectl output. All of it s
 
 ```
 ══════════════════════════════════════════════════════════════
-[14:30:12] TEST 4/23: deploy whoami
+[14:30:12] STEP 4/47: deploy whoami
 ══════════════════════════════════════════════════════════════
 ```
 
@@ -92,83 +93,58 @@ Deploy/undeploy commands produce lots of Ansible and kubectl output. All of it s
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Test Summary
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Finished: 2026-02-25 14:58:37
-Duration: 28m 25s
+Finished: 2026-02-26 08:41:05
+Duration: 38m 40s
 
-SERVICE          DEPLOY   UNDEPLOY  VERIFY
-─────────────────────────────────────────────
-nginx            PASS     PASS      -
-postgresql       PASS     PASS      -
-whoami           PASS     PASS      -
-authentik        PASS     PASS      -
-argocd           PASS     PASS      PASS
+SERVICE              DEPLOY     UNDEPLOY   VERIFY
+─────────────────────────────────────────────────────────
+prometheus           PASS       PASS       -
+loki                 PASS       PASS       -
 ...
-─────────────────────────────────────────────
-Result: 43/43 PASS (0 FAIL)
+argocd               PASS       PASS       PASS
+─────────────────────────────────────────────────────────
+Result: ALL PASSED (47/47 operations)
 ```
-
-Key details:
-- **Timestamps on every marker** — shows when each step started/ended
-- **Duration per operation** — makes slow services visible
-- **Total duration** — printed at the end so user knows how long the full run took
-- **Step counter** `4/23` — number is services (not operations), so user can estimate time remaining
-- **No output suppression** — everything streams live, markers are just bookends
 
 ### Log file
 
 All console output (markers + ansible/kubectl output) is captured to a log file using `tee`. The log file path is printed at the start and end of the run.
 
 ```
-Log file: /tmp/uis-test-all-2026-02-25-143012.log
+Log file: /tmp/uis-test-all-2026-02-26-080225.log
 ```
-
-This lets the user scroll back through the full output after a long run, or share the log file for debugging.
 
 ### Failure behavior: stop on first failure
 
-The test stops immediately when any operation returns a non-zero exit code. This means:
-- If `deploy postgresql` fails, the test stops — no point testing services that depend on it
-- If `deploy mysql` fails, the test stops — the user fixes the issue and reruns
-- The summary table shows what passed and which operation failed
+The test stops immediately when any operation returns a non-zero exit code. The summary table shows what passed and which operation failed.
 
-This gives fast feedback. The user fixes one problem at a time and reruns `./uis test-all`.
+### Clean state check
 
-On failure, the summary shows completed results plus the failed operation:
+Before running, the test checks if any services are currently deployed. If the cluster is not clean, it refuses to run and tells the user to use `--clean`:
 
 ```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Test Summary
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Finished: 2026-02-25 14:45:10
-Duration: 15m 02s
-STOPPED: deploy authentik FAILED
+ERROR: Cluster is not in a clean state. The following services are deployed:
+  - nginx
+  - postgresql
 
-SERVICE          DEPLOY   UNDEPLOY  VERIFY
-─────────────────────────────────────────────
-nginx            PASS     -         -
-postgresql       PASS     -         -
-redis            PASS     -         -
-whoami           PASS     PASS      -
-mysql            PASS     PASS      -
-authentik        FAIL     -         -
-─────────────────────────────────────────────
-Result: FAILED at deploy authentik (10/43 operations completed)
-
-Log file: /tmp/uis-test-all-2026-02-25-143012.log
+Run with --clean to undeploy all services first:
+  ./uis test-all --clean
 ```
+
+With `--clean`, all deployed services are undeployed in reverse priority order before starting the test.
 
 ---
 
-## Phase 1: Create Test Script
+## Phase 1: Create Test Script — DONE
 
 ### Tasks
 
-- [ ] 1.1 Create `provision-host/uis/lib/integration-testing.sh` with:
+- [x] 1.1 Create `provision-host/uis/lib/integration-testing.sh` with:
   - `build_test_plan()` — scans services, computes foundation/regular/skip sets, returns ordered plan
   - `run_integration_tests()` — executes the plan, records results
   - `print_test_summary()` — prints PASS/FAIL table and totals
 
-- [ ] 1.2 Implementation details:
+- [x] 1.2 Implementation details:
   - Use `get_all_service_ids` + `find_service_script` to scan (from `service-scanner.sh`)
   - Source each service script to read `SCRIPT_REQUIRES` and `SCRIPT_PRIORITY`
   - Compute foundation set: any service ID that appears in another service's `SCRIPT_REQUIRES`
@@ -181,60 +157,60 @@ Log file: /tmp/uis-test-all-2026-02-25-143012.log
   - Capture all output (markers + ansible/kubectl) to log file via `tee`
   - Print log file path at start and end of run
 
-- [ ] 1.3 Support `--dry-run` flag — print the computed test plan without executing
+- [x] 1.3 Support `--dry-run` flag — print the computed test plan without executing
 
-### Validation
-
-`./uis test-all --dry-run` shows the computed plan with foundation/regular/skip grouping.
+- [x] 1.4 Support `--clean` flag — check for clean state, undeploy all if --clean passed
 
 ---
 
-## Phase 2: Wire Into CLI
+## Phase 2: Wire Into CLI — DONE
 
 ### Tasks
 
-- [ ] 2.1 Add `source "$LIB_DIR/integration-testing.sh" 2>/dev/null || true` to `uis-cli.sh`
-- [ ] 2.2 Add `cmd_test_all()` function that calls `run_integration_tests "$@"`
-- [ ] 2.3 Add `test-all)` case to the command router in `main()`
-- [ ] 2.4 Add to help text under a new "Testing:" section
-
-### Validation
-
-`./uis test-all --dry-run` works from the host.
+- [x] 2.1 Add `source "$LIB_DIR/integration-testing.sh" 2>/dev/null || true` to `uis-cli.sh`
+- [x] 2.2 Add `cmd_test_all()` function that calls `run_integration_tests "$@"`
+- [x] 2.3 Add `test-all)` case to the command router in `main()`
+- [x] 2.4 Add to help text under a new "Testing:" section
 
 ---
 
-## Phase 3: Build and Test
+## Phase 3: Build and Test — DONE
 
 ### Tasks
 
-- [ ] 3.1 Build image
-- [ ] 3.2 Tester runs `./uis test-all` on clean cluster
-- [ ] 3.3 All 23 services pass
-
-### Validation
-
-Tester confirms all pass.
+- [x] 3.1 Build image
+- [x] 3.2 Tester runs `./uis test-all --clean` on cluster
+- [x] 3.3 All 23 services pass — 47/47 operations PASS in 38m 40s
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] `./uis test-all` runs deploy/undeploy for all 23 services using regular `./uis` commands
-- [ ] `./uis test-all --dry-run` shows the computed plan without executing
-- [ ] Test order respects `SCRIPT_REQUIRES` dependencies (foundations first, dependents after)
-- [ ] Stops on first failure with summary of what passed and what failed
-- [ ] All output captured to log file (path printed at start and end)
-- [ ] Summary table at end with PASS/FAIL per service per operation
-- [ ] Timestamps and duration on every operation
-- [ ] Exit code 0 = all pass, 1 = any fail
-- [ ] Adding a new service requires zero changes (unless it needs to be skipped)
+- [x] `./uis test-all` runs deploy/undeploy for all 23 services using regular `./uis` commands
+- [x] `./uis test-all --dry-run` shows the computed plan without executing
+- [x] `./uis test-all --clean` undeploys all services first, then runs tests
+- [x] Test order respects `SCRIPT_REQUIRES` dependencies (foundations first, dependents after)
+- [x] Stops on first failure with summary of what passed and what failed
+- [x] All output captured to log file (path printed at start and end)
+- [x] Summary table at end with PASS/FAIL per service per operation
+- [x] Timestamps and duration on every operation
+- [x] Exit code 0 = all pass, 1 = any fail
+- [x] Adding a new service requires zero changes (unless it needs to be skipped)
 
 ---
 
-## Files to Modify
+## Files Modified
 
 | File | Action |
 |------|--------|
-| `provision-host/uis/lib/integration-testing.sh` | **Create** — test orchestration |
-| `provision-host/uis/manage/uis-cli.sh` | Add source, command, help text |
+| `provision-host/uis/lib/integration-testing.sh` | **Created** — test orchestration |
+| `provision-host/uis/manage/uis-cli.sh` | Added source, command, help text |
+| `provision-host/uis/services/monitoring/service-otel-collector.sh` | Fixed `SCRIPT_REQUIRES` to include prometheus, loki, tempo |
+| `provision-host/uis/services/monitoring/service-grafana.sh` | Fixed `SCRIPT_REQUIRES` to include prometheus, loki, tempo, otel-collector |
+
+## Bugs Fixed During Implementation
+
+- `((var++))` with `set -e` kills script when var is 0 (post-increment returns falsy) — use `var=$((var + 1))`
+- Kubernetes namespace deletion race condition — added 5s sleep after undeploy
+- Word splitting in `VERIFY_SERVICES` — changed from `for entry in` to `while IFS= read -r`
+- otel-collector and grafana `SCRIPT_REQUIRES` were incomplete — needed full observability stack as dependencies
