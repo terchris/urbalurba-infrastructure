@@ -3,10 +3,10 @@
 # Description: Remove Cloudflare tunnel from Kubernetes cluster
 #
 # This playbook:
-# 1. Deletes the cloudflare-tunnel Deployment
-# 2. Cleans up legacy resources (ConfigMap, credentials Secret)
+# 1. Validates kubeconfig
+# 2. Deletes the cloudflare-tunnel Deployment
 # 3. Waits for pod termination
-# 4. Prints manual cleanup reminder
+# 4. Displays removal summary
 #
 # Usage:
 #   ansible-playbook playbooks/821-remove-network-cloudflare-tunnel.yml
@@ -21,7 +21,17 @@
     tunnel_namespace: "default"
 
   tasks:
-    - name: "01 Check for cloudflared deployment"
+    - name: "01 Verify kubeconfig file exists"
+      ansible.builtin.stat:
+        path: "{{ kubeconfig_file }}"
+      register: kubeconfig_stat
+
+    - name: "01a Fail if kubeconfig file does not exist"
+      ansible.builtin.fail:
+        msg: "Kubeconfig file not found at {{ kubeconfig_file }}"
+      when: not kubeconfig_stat.stat.exists
+
+    - name: "02 Check for cloudflared deployment"
       kubernetes.core.k8s_info:
         kind: Deployment
         name: cloudflare-tunnel
@@ -30,7 +40,7 @@
       register: cf_deployment
       ignore_errors: true
 
-    - name: "02 Delete cloudflare-tunnel deployment"
+    - name: "03 Delete cloudflare-tunnel deployment"
       kubernetes.core.k8s:
         src: "{{ manifests_folder }}/{{ manifest_file }}"
         kubeconfig: "{{ kubeconfig_file }}"
@@ -38,25 +48,7 @@
       when: cf_deployment.resources | default([]) | length > 0
       ignore_errors: true
 
-    - name: "03 Clean up legacy ConfigMap (cloudflare-tunnel-config)"
-      kubernetes.core.k8s:
-        kind: ConfigMap
-        name: cloudflare-tunnel-config
-        namespace: "{{ tunnel_namespace }}"
-        kubeconfig: "{{ kubeconfig_file }}"
-        state: absent
-      ignore_errors: true
-
-    - name: "04 Clean up legacy Secret (cloudflared-credentials)"
-      kubernetes.core.k8s:
-        kind: Secret
-        name: cloudflared-credentials
-        namespace: "{{ tunnel_namespace }}"
-        kubeconfig: "{{ kubeconfig_file }}"
-        state: absent
-      ignore_errors: true
-
-    - name: "05 Wait for cloudflared pods to terminate"
+    - name: "04 Wait for cloudflared pods to terminate"
       kubernetes.core.k8s_info:
         kind: Pod
         namespace: "{{ tunnel_namespace }}"
@@ -69,7 +61,7 @@
       delay: 5
       ignore_errors: true
 
-    - name: "06 Display removal summary"
+    - name: "05 Display removal summary"
       ansible.builtin.debug:
         msg:
           - "==================================================="
@@ -77,8 +69,6 @@
           - "==================================================="
           - ""
           - "Deployment: {{ 'Removed' if cf_deployment.resources | default([]) | length > 0 else 'Not found (already removed)' }}"
-          - "Legacy ConfigMap: Cleaned up"
-          - "Legacy Secret: Cleaned up"
           - "Pods remaining: {{ cf_pods_remaining.resources | default([]) | length }}"
           - ""
           - "NOTE: The tunnel still exists in Cloudflare dashboard."

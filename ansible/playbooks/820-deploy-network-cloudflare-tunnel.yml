@@ -145,45 +145,7 @@
       failed_when: false
       when: cf_domain != "" and "your-domain" not in cf_domain
 
-    - name: "15 Display tunnel connectivity test results"
-      ansible.builtin.debug:
-        msg:
-          - "Cloudflare tunnel connectivity test:"
-          - "URL tested: https://{{ cf_domain }}"
-          - "Response status: {{ tunnel_test.status | default('timeout') }}"
-          - "Tunnel is working - Cloudflare is routing traffic to the cluster"
-      when:
-        - cf_domain != "" and "your-domain" not in cf_domain
-        - tunnel_test.status is defined
-        - tunnel_test.status in [200, 301, 302, 404]
-
-    - name: "15a Display tunnel connectivity test failure"
-      ansible.builtin.debug:
-        msg:
-          - "Cloudflare tunnel connectivity test FAILED"
-          - "URL tested: https://{{ cf_domain }}"
-          - "Status: {{ tunnel_test.status | default('connection failed or timed out') }}"
-          - ""
-          - "The pods deployed successfully, but the tunnel is not accessible."
-          - "This could mean:"
-          - "- DNS hasn't propagated yet (try again in a few minutes)"
-          - "- Tunnel routing not configured in Cloudflare dashboard"
-          - "- The domain {{ cf_domain }} is not pointing to this tunnel"
-          - ""
-          - "Check Cloudflare dashboard: Zero Trust > Networks > Tunnels"
-          - "Manual test: curl -v https://{{ cf_domain }}"
-      when:
-        - cf_domain != "" and "your-domain" not in cf_domain
-        - tunnel_test.status is not defined or tunnel_test.status not in [200, 301, 302, 404]
-
-    - name: "15b Skip connectivity test - domain not configured"
-      ansible.builtin.debug:
-        msg:
-          - "Skipping end-to-end connectivity test - BASE_DOMAIN_CLOUDFLARE not configured"
-          - "Set BASE_DOMAIN_CLOUDFLARE in 00-common-values.env.template to enable"
-      when: cf_domain == "" or "your-domain" in cf_domain
-
-    - name: "16 Final deployment summary"
+    - name: "15 Final deployment summary"
       ansible.builtin.debug:
         msg:
           - "==================================================="
