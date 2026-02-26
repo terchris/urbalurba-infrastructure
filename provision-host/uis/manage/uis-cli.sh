@@ -925,6 +925,10 @@ cmd_init() {
         echo "  BASE_DOMAIN: ${BASE_DOMAIN:-localhost}"
         echo ""
         echo "To reconfigure, remove .uis.extend/ and run 'uis init' again"
+
+        # Self-healing: ensure secrets templates exist even if .uis.secrets/ was recreated
+        copy_secrets_templates || true
+
         return 0
     fi
 
