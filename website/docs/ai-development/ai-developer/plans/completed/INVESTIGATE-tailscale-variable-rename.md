@@ -4,7 +4,7 @@
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Backlog
+## Status: Complete
 
 **Goal**: Rename UIS-invented Tailscale hostname variables for clarity, and fix misleading comments in the secrets template.
 
@@ -86,10 +86,14 @@ TAILSCALE_OPERATOR_PREFIX=k8s-terje
 
 ---
 
+## Outcome
+
+Investigation complete. Created [PLAN-tailscale-variable-rename.md](../completed/PLAN-tailscale-variable-rename.md) which was implemented and verified by tester.
+
 ## Acceptance Criteria
 
-- [ ] All references to `TAILSCALE_CLUSTER_HOSTNAME` replaced with `TAILSCALE_PUBLIC_HOSTNAME`
-- [ ] All references to `TAILSCALE_INTERNAL_HOSTNAME` replaced with `TAILSCALE_OPERATOR_PREFIX`
-- [ ] Comments in `00-common-values.env.template` clearly explain each Tailscale variable
-- [ ] `./uis test-all --only tailscale-tunnel` passes with the new variable names
-- [ ] Documentation updated
+- [x] All references to `TAILSCALE_CLUSTER_HOSTNAME` replaced with `TAILSCALE_PUBLIC_HOSTNAME`
+- [x] All references to `TAILSCALE_INTERNAL_HOSTNAME` replaced with `TAILSCALE_OPERATOR_PREFIX`
+- [x] Comments in `00-common-values.env.template` clearly explain each Tailscale variable
+- [x] `./uis deploy tailscale-tunnel` succeeds with new variable names (tested)
+- [x] Documentation updated
