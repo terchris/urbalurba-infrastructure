@@ -418,6 +418,7 @@
     ,"priority": 101
     ,"checkCommand": "kubectl get pods -n default -l app=cloudflared --no-headers 2>/dev/null | grep -q Running"
     ,"removePlaybook": "821-remove-network-cloudflare-tunnel.yml"
+    ,"requires": ["nginx"]
   }
 ,
   {
@@ -434,8 +435,9 @@
     ,"docs": "/docs/packages/network/tailscale"
     ,"playbook": "802-deploy-network-tailscale-tunnel.yml"
     ,"priority": 100
-    ,"checkCommand": "kubectl get pods -n network -l app.kubernetes.io/name=tailscale --no-headers 2>/dev/null | grep -q Running"
+    ,"checkCommand": "kubectl get pods -n tailscale -l app=operator --no-headers 2>/dev/null | grep -q Running"
     ,"removePlaybook": "801-remove-network-tailscale-tunnel.yml"
+    ,"requires": ["nginx"]
   }
 ,
   {
