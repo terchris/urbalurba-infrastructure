@@ -4,13 +4,13 @@
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Backlog
+## Status: Complete
 
 **Goal**: Investigate the full state of tailscale-tunnel and cloudflare-tunnel services — verify deploy works, create remove playbooks, and test the full deploy/undeploy cycle.
 
-**Last Updated**: 2026-02-23
+**Last Updated**: 2026-02-26
 
-**Priority**: Low — Tailscale is done (PLAN-009/010/011). Only Cloudflare remains, requires external account.
+**Priority**: Low — Both Tailscale and Cloudflare are now fully complete.
 
 **Parent**: [STATUS-service-migration.md](STATUS-service-migration.md) — Phase 3 and Phase 5
 
@@ -23,7 +23,7 @@ All 26 UIS services have deploy playbooks. 24 of 26 have been verified working. 
 | Service | Deploy Playbook | Remove Playbook | External Requirement | Status |
 |---------|----------------|-----------------|---------------------|--------|
 | **tailscale-tunnel** | ✅ `802-deploy-network-tailscale-tunnel.yml` | ✅ `801-remove-network-tailscale-tunnel.yml` | Tailscale auth key | **COMPLETE** (PLAN-009/010/011) |
-| **cloudflare-tunnel** | `820-setup-network-cloudflare-tunnel.yml` | Missing | Cloudflare API token | Not started |
+| **cloudflare-tunnel** | ✅ `820-deploy-network-cloudflare-tunnel.yml` | ✅ `821-remove-network-cloudflare-tunnel.yml` | Cloudflare tunnel token | **COMPLETE** (PLAN-cloudflare-tunnel-undeploy, PR #43) |
 
 Cloudflare cannot be tested without a live external account (API token and configured tunnel in Cloudflare dashboard).
 
@@ -46,26 +46,25 @@ All Tailscale work completed in PLAN-009/010/011:
 - [x] `./uis tailscale unexpose <service>` removes services with device cleanup
 - [x] `./uis tailscale verify` checks secrets, API, stale devices, operator
 
-### Cloudflare — Deploy
-- [ ] Does `./uis deploy cloudflare-tunnel` work?
-- [ ] If not, what needs fixing in `820-setup-network-cloudflare-tunnel.yml`?
-- [ ] Does the deployed tunnel successfully register with Cloudflare?
+### Cloudflare — COMPLETE
 
-### Cloudflare — Remove
-- [ ] What Kubernetes resources does the deploy create?
-- [ ] Are there Cloudflare-side resources (tunnel routes, DNS records) that need cleanup?
-- [ ] What is the correct teardown order?
+All Cloudflare work completed in PLAN-cloudflare-tunnel-undeploy (PR #43):
+- [x] `./uis deploy cloudflare-tunnel` works (token-based, E2E connectivity verified)
+- [x] `./uis undeploy cloudflare-tunnel` works (removes deployment, waits for pod termination)
+- [x] `./uis cloudflare verify` checks secrets, network, and pod status
+- [x] Reduced replicas from 2 to 1 (sufficient for local dev)
+- [x] Cleaned up confusing deploy output (removed redundant skip messages)
 
 ## Expected Deliverables
 
 1. ~~Verify or fix `./uis deploy tailscale-tunnel`~~ ✅ Done (PLAN-009)
-2. Verify or fix `./uis deploy cloudflare-tunnel`
+2. ~~Verify or fix `./uis deploy cloudflare-tunnel`~~ ✅ Done (PLAN-012, PLAN-cloudflare-tunnel-undeploy)
 3. ~~Create `ansible/playbooks/801-remove-network-tailscale-tunnel.yml`~~ ✅ Done (PLAN-009)
-4. Create `ansible/playbooks/820-remove-network-cloudflare-tunnel.yml` — tested with a live deployment
+4. ~~Create `ansible/playbooks/821-remove-network-cloudflare-tunnel.yml`~~ ✅ Done (PR #43)
 5. ~~Update `service-tailscale-tunnel.sh`: set `SCRIPT_REMOVE_PLAYBOOK`~~ ✅ Done (PLAN-009)
-6. Update `service-cloudflare-tunnel.sh`: set `SCRIPT_REMOVE_PLAYBOOK="820-remove-network-cloudflare-tunnel.yml"`
+6. ~~`service-cloudflare-tunnel.sh`: `SCRIPT_REMOVE_PLAYBOOK` already set~~ ✅
 7. ~~Verify full `./uis deploy` and `./uis undeploy` cycle for tailscale-tunnel~~ ✅ Done (PLAN-010)
-8. Verify full `./uis deploy` and `./uis undeploy` cycle for cloudflare-tunnel
+8. ~~Verify full `./uis deploy` and `./uis undeploy` cycle for cloudflare-tunnel~~ ✅ Done (PR #43)
 
 ## Related Files
 

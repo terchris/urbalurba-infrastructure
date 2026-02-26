@@ -8,7 +8,7 @@
 
 **Goal**: Track migration status of all 26 UIS services and complete remaining work for services that are not fully migrated.
 
-**Last Updated**: 2026-02-26 (PLAN-012 cloudflare tunnel, PLAN-013 test-all 47/47 PASS)
+**Last Updated**: 2026-02-26 (cloudflare-tunnel fully verified: deploy, undeploy, E2E connectivity)
 
 **Priority**: Medium — core services work, remaining items are edge cases
 
@@ -102,7 +102,7 @@ All 26 services have service scripts (`provision-host/uis/services/*/service-*.s
 | Service | Service Script | Deploy | Remove | Verified | Notes |
 |---------|:---:|:---:|:---:|:---:|-------|
 | **tailscale-tunnel** | ✅ | ✅ `802-deploy-network-tailscale-tunnel.yml` | ✅ `801-remove-network-tailscale-tunnel.yml` | ✅ | Fully verified in PLAN-009/010/011. CLI: `uis tailscale expose/unexpose/verify` |
-| **cloudflare-tunnel** | ✅ | ✅ `820-setup-network-cloudflare-tunnel.yml` | ❌ Missing | ❌ | PLAN-012 done (token-based deploy). No remove playbook. Requires Cloudflare token |
+| **cloudflare-tunnel** | ✅ | ✅ `820-deploy-network-cloudflare-tunnel.yml` | ✅ `821-remove-network-cloudflare-tunnel.yml` | ✅ | Fully verified: deploy, undeploy, E2E connectivity (PLAN-cloudflare-tunnel-undeploy) |
 
 ---
 
@@ -119,8 +119,8 @@ All 26 services have service scripts (`provision-host/uis/services/*/service-*.s
 | Management | 4 | 3 | gravitee broken before migration |
 | AI | 2 | 2 | None |
 | Data Science | 3 | 3 | None |
-| Network | 2 | 1 | cloudflare-tunnel: PLAN-012 deploy done, missing remove playbook, requires token |
-| **Total** | **26** | **24** | **2 not verified** (gravitee broken, cloudflare-tunnel needs token) |
+| Network | 2 | 2 | None |
+| **Total** | **26** | **25** | **1 not verified** (gravitee broken before migration) |
 
 ### Automated Integration Test (PLAN-013)
 
@@ -190,9 +190,9 @@ These must be fixed before PLAN-004-secrets-cleanup can remove backwards compati
 ### Tasks
 
 - [x] 3.1 Create `801-remove-network-tailscale-tunnel.yml` — tear down Tailscale tunnel deployment and namespace ✓ (PLAN-009)
-- [ ] 3.2 Create `820-remove-network-cloudflare-tunnel.yml` — tear down Cloudflare tunnel deployment and namespace
+- [x] 3.2 Create `821-remove-network-cloudflare-tunnel.yml` — tear down Cloudflare tunnel deployment ✓ (PLAN-cloudflare-tunnel-undeploy, PR #43)
 - [x] 3.3 Update `service-tailscale-tunnel.sh` with `SCRIPT_REMOVE_PLAYBOOK` ✓ (PLAN-009)
-- [ ] 3.4 Update `service-cloudflare-tunnel.sh` with `SCRIPT_REMOVE_PLAYBOOK`
+- [x] 3.4 `service-cloudflare-tunnel.sh` already had `SCRIPT_REMOVE_PLAYBOOK` set ✓
 
 ---
 
@@ -228,9 +228,9 @@ Service dependency fixes during PLAN-013:
 - [x] 5.5 Verify other: nginx, elasticsearch, rabbitmq ✓ (talk9.md)
 - [x] 5.6 Verify management: pgadmin, redisinsight ✓ (talk10.md)
 - [x] 5.7 Verify tailscale-tunnel ✓ (PLAN-009/010/011 — 12+ rounds of testing)
-- [ ] 5.8 Verify cloudflare-tunnel (requires Cloudflare token)
+- [x] 5.8 Verify cloudflare-tunnel ✓ (PLAN-cloudflare-tunnel-undeploy — deploy, undeploy, E2E connectivity all passed)
 
-**Skipped**: gravitee (broken before migration), cloudflare-tunnel (requires token).
+**Skipped**: gravitee (broken before migration).
 
 ---
 
@@ -240,7 +240,7 @@ Service dependency fixes during PLAN-013:
 |------|--------|
 | `provision-host/uis/services/management/service-argocd.sh` | ✅ Done — Add `SCRIPT_REMOVE_PLAYBOOK` |
 | `provision-host/uis/services/network/service-tailscale-tunnel.sh` | ✅ Done — `SCRIPT_REMOVE_PLAYBOOK` added (PLAN-009) |
-| `provision-host/uis/services/network/service-cloudflare-tunnel.sh` | Add `SCRIPT_REMOVE_PLAYBOOK` |
+| `provision-host/uis/services/network/service-cloudflare-tunnel.sh` | ✅ Done — Already had `SCRIPT_REMOVE_PLAYBOOK` |
 | `ansible/playbooks/350-setup-jupyterhub.yml` | ✅ Done — Replace hardcoded `topsecret/` path (PR #35) |
 | `ansible/playbooks/01-configure_provision-host.yml` | ✅ Done — Replace hardcoded `secrets/` SSH key path (PR #35) |
 | `ansible/playbooks/802-deploy-network-tailscale-tunnel.yml` | ✅ Done — Update error message text (PR #35) |
@@ -250,5 +250,5 @@ Service dependency fixes during PLAN-013:
 | File | Purpose |
 |------|---------|
 | ~~`ansible/playbooks/801-remove-network-tailscale-tunnel.yml`~~ | ✅ Done (PLAN-009) |
-| `ansible/playbooks/820-remove-network-cloudflare-tunnel.yml` | Cloudflare tunnel removal |
+| ~~`ansible/playbooks/821-remove-network-cloudflare-tunnel.yml`~~ | ✅ Done (PLAN-cloudflare-tunnel-undeploy, PR #43) |
 | `ansible/playbooks/090-remove-gravitee.yml` | Gravitee removal (if service is fixed) |
