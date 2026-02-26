@@ -168,7 +168,7 @@ Update these variables:
 TAILSCALE_SECRET=tskey-auth-YOUR-AUTH-KEY           # From Step 3: Auth Key
 TAILSCALE_TAILNET=your-tailnet-name                 # From Step 1: Your tailnet name
 TAILSCALE_DOMAIN=your-magic-dns-domain              # From Step 5: MagicDNS domain
-TAILSCALE_CLUSTER_HOSTNAME=k8s                      # Becomes: k8s.[your-domain].ts.net (cluster ingress only)
+TAILSCALE_PUBLIC_HOSTNAME=k8s                      # Becomes: k8s.[your-domain].ts.net (cluster ingress only)
 TAILSCALE_CLIENTID=YOUR-OAUTH-CLIENT-ID             # From Step 4: OAuth Client ID
 TAILSCALE_CLIENTSECRET=tskey-client-YOUR-SECRET      # From Step 4: OAuth Client Secret
 ```
@@ -178,7 +178,7 @@ Then regenerate the Kubernetes secrets:
 ./uis secrets generate
 ```
 
-**Important: TAILSCALE_CLUSTER_HOSTNAME:**
+**Important: TAILSCALE_PUBLIC_HOSTNAME:**
 - This is used for the cluster-wide ingress only (when no service parameter is provided)
 - Example: If set to `k8s` and your domain is `dog-pence.ts.net`:
   - `k8s.dog-pence.ts.net` → Routes to Traefik's default backend (nginx catch-all)
@@ -363,7 +363,7 @@ This means **Let's Encrypt ACME rate limiting** is blocking TLS certificate issu
 
 **Solutions:**
 1. **Wait** for the rate limit to reset (the error message includes the retry-after timestamp)
-2. **Use a different hostname** — change `TAILSCALE_CLUSTER_HOSTNAME` in `.uis.secrets/config/00-common-values.env` (e.g., `k8s-2` instead of `k8s`), then `./uis secrets generate` and redeploy
+2. **Use a different hostname** — change `TAILSCALE_PUBLIC_HOSTNAME` in `.uis.secrets/config/00-common-values.env` (e.g., `k8s-2` instead of `k8s`), then `./uis secrets generate` and redeploy
 3. **Avoid repeated deploy/undeploy cycles** with the same hostname during testing
 
 ### Script Execution Issues

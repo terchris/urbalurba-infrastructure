@@ -8,7 +8,7 @@
 
 **Goal**: Track migration status of all 26 UIS services and complete remaining work for services that are not fully migrated.
 
-**Last Updated**: 2026-02-23 (PLAN-009/010/011 complete — tailscale-tunnel fully verified)
+**Last Updated**: 2026-02-26 (PLAN-012 cloudflare tunnel, PLAN-013 test-all 47/47 PASS)
 
 **Priority**: Medium — core services work, remaining items are edge cases
 
@@ -102,7 +102,7 @@ All 26 services have service scripts (`provision-host/uis/services/*/service-*.s
 | Service | Service Script | Deploy | Remove | Verified | Notes |
 |---------|:---:|:---:|:---:|:---:|-------|
 | **tailscale-tunnel** | ✅ | ✅ `802-deploy-network-tailscale-tunnel.yml` | ✅ `801-remove-network-tailscale-tunnel.yml` | ✅ | Fully verified in PLAN-009/010/011. CLI: `uis tailscale expose/unexpose/verify` |
-| **cloudflare-tunnel** | ✅ | ✅ `820-setup-network-cloudflare-tunnel.yml` | ❌ Missing | ❌ | No remove playbook |
+| **cloudflare-tunnel** | ✅ | ✅ `820-setup-network-cloudflare-tunnel.yml` | ❌ Missing | ❌ | PLAN-012 done (token-based deploy). No remove playbook. Requires Cloudflare token |
 
 ---
 
@@ -119,8 +119,12 @@ All 26 services have service scripts (`provision-host/uis/services/*/service-*.s
 | Management | 4 | 3 | gravitee broken before migration |
 | AI | 2 | 2 | None |
 | Data Science | 3 | 3 | None |
-| Network | 2 | 1 | cloudflare-tunnel missing remove playbook; requires external account |
+| Network | 2 | 1 | cloudflare-tunnel: PLAN-012 deploy done, missing remove playbook, requires token |
 | **Total** | **26** | **24** | **2 not verified** (gravitee broken, cloudflare-tunnel needs token) |
+
+### Automated Integration Test (PLAN-013)
+
+`./uis test-all` automates deploy/undeploy for all 23 testable services (47 operations). First run: **47/47 PASS** in 38m 40s. Also supports `--dry-run` and `--clean`.
 
 ### Playbooks with Old Path References (2026-02-18 scan)
 
@@ -207,7 +211,13 @@ Gravitee was not working before the migration. This is effectively a fresh setup
 
 ## Phase 5: Deployment Verification — COMPLETE
 
-23/26 services verified. All deploy and undeploy cleanly from a factory-reset clean slate (talk9.md, talk10.md).
+23/26 services verified. All deploy and undeploy cleanly.
+
+**Automated testing (PLAN-013):** `./uis test-all` runs 47 operations (deploy + undeploy + verify) for all 23 services. First full automated run: 47/47 PASS in 38m 40s (2026-02-26).
+
+Service dependency fixes during PLAN-013:
+- `service-otel-collector.sh`: Added `SCRIPT_REQUIRES="prometheus loki tempo"` (E2E needs backends)
+- `service-grafana.sh`: Added `SCRIPT_REQUIRES="prometheus loki tempo otel-collector"` (E2E sends data via OTEL)
 
 ### Tasks
 

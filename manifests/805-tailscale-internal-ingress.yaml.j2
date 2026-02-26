@@ -10,7 +10,7 @@
 # Usage: This file is used by the Ansible playbook 805-deploy-tailscale-internal-ingress.yml
 # with variable substitution for the hostname
 #
-# The TAILSCALE_INTERNAL_HOSTNAME value will be used as the Tailscale device name
+# The TAILSCALE_OPERATOR_PREFIX value will be used as the Tailscale device name
 # and will be accessible at http://[hostname].[tailnet-domain].ts.net (HTTP, not HTTPS!)
 # but ONLY from devices on the same Tailnet
 #
@@ -27,7 +27,7 @@ metadata:
   name: traefik-tailscale
   namespace: kube-system
   annotations:
-    tailscale.com/hostname: "{{ TAILSCALE_INTERNAL_HOSTNAME }}"  # Device name in Tailscale admin
+    tailscale.com/hostname: "{{ TAILSCALE_OPERATOR_PREFIX }}"  # Device name in Tailscale admin
     tailscale.com/tags: "tag:k8s-operator"                       # Tags for ACL
 spec:
   type: LoadBalancer

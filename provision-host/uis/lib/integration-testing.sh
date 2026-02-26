@@ -17,8 +17,67 @@ _UIS_INTEGRATION_TESTING_LOADED=1
 # Configuration
 # ============================================================
 
-# Services to skip (need external config or not testable)
-SKIP_SERVICES="gravitee tailscale-tunnel cloudflare-tunnel"
+# Services always skipped (broken or not testable)
+SKIP_SERVICES_ALWAYS="gravitee"
+
+# Services skipped unless credentials are configured.
+# Each service lists the variables that must have real (non-placeholder) values
+# in secrets-config/00-common-values.env.template.
+# Format: one entry per line, service_id:VAR1,VAR2,...
+SKIP_SERVICES_CONDITIONAL="
+tailscale-tunnel:TAILSCALE_CLIENTID,TAILSCALE_CLIENTSECRET,TAILSCALE_DOMAIN
+cloudflare-tunnel:CLOUDFLARE_TUNNEL_TOKEN
+"
+
+# Check if a value is a placeholder (not configured).
+# Returns 0 if placeholder, 1 if real value.
+_is_placeholder() {
+    local val="$1"
+    [[ -z "$val" ]] && return 0
+    [[ "$val" == "your-"* ]] && return 0
+    [[ "$val" == "your_"* ]] && return 0
+    [[ "$val" == *"-here" ]] && return 0
+    [[ "$val" == *"-name" ]] && return 0
+    return 1
+}
+
+# Build effective skip list at runtime
+_build_skip_list() {
+    local skip_list="$SKIP_SERVICES_ALWAYS"
+
+    # Find the secrets config file
+    local secrets_config="${SECRETS_DIR:-$(get_secrets_dir)}/secrets-config/00-common-values.env.template"
+
+    local line
+    while IFS= read -r line; do
+        [[ -z "$line" ]] && continue
+        local service_id="${line%%:*}"
+        local required_vars="${line#*:}"
+
+        local skip=false
+
+        # If secrets config doesn't exist, skip the service
+        if [[ ! -f "$secrets_config" ]]; then
+            skip=true
+        else
+            # Check each required variable
+            local var
+            for var in ${required_vars//,/ }; do
+                local val=""
+                val=$(grep "^${var}=" "$secrets_config" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
+                if _is_placeholder "$val"; then
+                    skip=true
+                    break
+                fi
+            done
+        fi
+
+        if [[ "$skip" == "true" ]]; then
+            skip_list="$skip_list $service_id"
+        fi
+    done <<< "$SKIP_SERVICES_CONDITIONAL"
+    echo "$skip_list"
+}
 
 # Services with a verify step (one per line, format: service_id:cli_args)
 VERIFY_SERVICES="
@@ -37,10 +96,19 @@ _SKIPPED_SERVICES=()
 # Build the test plan from service metadata.
 # Populates _FOUNDATION_SERVICES, _REGULAR_SERVICES, _SKIPPED_SERVICES.
 # Each entry: "service_id:priority"
+# Args: optional list of service IDs to test (--only filter)
 build_test_plan() {
     _FOUNDATION_SERVICES=()
     _REGULAR_SERVICES=()
     _SKIPPED_SERVICES=()
+
+    # Capture --only filter if provided
+    local -A only_filter=()
+    local has_only_filter=false
+    for arg in "$@"; do
+        only_filter[$arg]=1
+        has_only_filter=true
+    done
 
     # Collect all service metadata: id, priority, requires
     local all_ids=()
@@ -72,28 +140,74 @@ build_test_plan() {
         requires_map[$service_id]="$requires"
     done
 
-    # Build the set of all required-by (foundation) services
-    local -A is_foundation=()
-    for service_id in "${all_ids[@]}"; do
-        for dep in ${requires_map[$service_id]}; do
-            is_foundation[$dep]=1
+    if [[ "$has_only_filter" == "true" ]]; then
+        # --only mode: test only specified services + their dependencies
+        # Validate that all requested services exist
+        for sid in "${!only_filter[@]}"; do
+            local found=false
+            for id in "${all_ids[@]}"; do
+                [[ "$id" == "$sid" ]] && found=true && break
+            done
+            if [[ "$found" == "false" ]]; then
+                log_error "Unknown service: $sid"
+                return 1
+            fi
         done
-    done
 
-    # Classify each service
-    for service_id in "${all_ids[@]}"; do
-        # Check skip list
-        if [[ " $SKIP_SERVICES " == *" $service_id "* ]]; then
-            _SKIPPED_SERVICES+=("$service_id:${priorities[$service_id]}")
-            continue
-        fi
+        # Resolve dependencies recursively for the requested services
+        local -A needed_deps=()
+        _resolve_deps() {
+            local sid="$1"
+            for dep in ${requires_map[$sid]}; do
+                if [[ -z "${needed_deps[$dep]:-}" ]]; then
+                    needed_deps[$dep]=1
+                    _resolve_deps "$dep"
+                fi
+            done
+        }
+        for sid in "${!only_filter[@]}"; do
+            _resolve_deps "$sid"
+        done
 
-        if [[ -n "${is_foundation[$service_id]:-}" ]]; then
-            _FOUNDATION_SERVICES+=("$service_id:${priorities[$service_id]}")
-        else
-            _REGULAR_SERVICES+=("$service_id:${priorities[$service_id]}")
-        fi
-    done
+        # Classify: requested services are regular, their deps are foundation
+        for service_id in "${all_ids[@]}"; do
+            if [[ -n "${only_filter[$service_id]:-}" ]]; then
+                _REGULAR_SERVICES+=("$service_id:${priorities[$service_id]}")
+            elif [[ -n "${needed_deps[$service_id]:-}" ]]; then
+                _FOUNDATION_SERVICES+=("$service_id:${priorities[$service_id]}")
+            fi
+            # Everything else is simply not included
+        done
+    else
+        # Full mode: test all services except skip list
+
+        # Build the set of all required-by (foundation) services
+        local -A is_foundation=()
+        for service_id in "${all_ids[@]}"; do
+            for dep in ${requires_map[$service_id]}; do
+                is_foundation[$dep]=1
+            done
+        done
+
+        # Build dynamic skip list based on available credentials
+        local effective_skip
+        effective_skip=$(_build_skip_list)
+
+        # Classify each service
+        for service_id in "${all_ids[@]}"; do
+            # Check skip list
+            if [[ " $effective_skip " == *" $service_id "* ]]; then
+                _SKIPPED_SERVICES+=("$service_id:${priorities[$service_id]}")
+                continue
+            fi
+
+            if [[ -n "${is_foundation[$service_id]:-}" ]]; then
+                _FOUNDATION_SERVICES+=("$service_id:${priorities[$service_id]}")
+            else
+                _REGULAR_SERVICES+=("$service_id:${priorities[$service_id]}")
+            fi
+        done
+    fi
 
     # Sort by priority (numeric)
     _FOUNDATION_SERVICES=($(printf '%s\n' "${_FOUNDATION_SERVICES[@]}" | sort -t: -k2 -n))
@@ -157,7 +271,12 @@ print_test_plan() {
     if [[ ${#_SKIPPED_SERVICES[@]} -gt 0 ]]; then
         echo -e "${LOG_BOLD}── Skipped services ──${LOG_NC}"
         for entry in "${_SKIPPED_SERVICES[@]}"; do
-            echo "  - $(_entry_id "$entry")"
+            local sid=$(_entry_id "$entry")
+            local reason="not testable"
+            if [[ " $SKIP_SERVICES_ALWAYS " != *" $sid "* ]]; then
+                reason="credentials not configured"
+            fi
+            echo "  - $sid ($reason)"
         done
         echo ""
     fi
@@ -448,18 +567,26 @@ print_test_summary() {
 run_integration_tests() {
     local dry_run=false
     local clean=false
+    local only_services=()
 
     # Parse args
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --dry-run) dry_run=true; shift ;;
             --clean)  clean=true; shift ;;
+            --only)
+                shift
+                while [[ $# -gt 0 && "$1" != --* ]]; do
+                    only_services+=("$1")
+                    shift
+                done
+                ;;
             *) log_error "Unknown option: $1"; return 1 ;;
         esac
     done
 
     # Build the plan
-    build_test_plan
+    build_test_plan "${only_services[@]}"
 
     # Dry run - just print and exit
     if [[ "$dry_run" == "true" ]]; then

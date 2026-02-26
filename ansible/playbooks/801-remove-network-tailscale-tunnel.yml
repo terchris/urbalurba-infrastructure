@@ -184,7 +184,7 @@
         ts_clientid: "{{ ts_secrets.resources[0].data.TAILSCALE_CLIENTID | b64decode }}"
         ts_clientsecret: "{{ ts_secrets.resources[0].data.TAILSCALE_CLIENTSECRET | b64decode }}"
         ts_tailnet: "{{ ts_secrets.resources[0].data.TAILSCALE_TAILNET | b64decode }}"
-        ts_hostname: "{{ ts_secrets.resources[0].data.TAILSCALE_CLUSTER_HOSTNAME | default('') | b64decode | default('k8s', true) }}"
+        ts_hostname: "{{ ts_secrets.resources[0].data.TAILSCALE_PUBLIC_HOSTNAME | default('') | b64decode | default('k8s', true) }}"
       when:
         - remove_tailnet_devices | bool
         - ts_secrets.resources | default([]) | length > 0

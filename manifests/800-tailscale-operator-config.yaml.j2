@@ -2,7 +2,7 @@
 # Installs Tailscale Kubernetes Operator with ingress functionality
 #
 # This is a Jinja2 template - used by Ansible playbook 805-deploy-tailscale-internal-ingress.yml
-# Variable: TAILSCALE_INTERNAL_HOSTNAME - used for both operator and ingress device names
+# Variable: TAILSCALE_OPERATOR_PREFIX - used for both operator and ingress device names
 #
 # Usage: This file is rendered by Ansible, then used with:
 # helm install tailscale-operator tailscale/tailscale-operator -n tailscale --create-namespace \
@@ -25,8 +25,8 @@ apiServerProxyConfig:
 # See: https://tailscale.com/kb/1236/kubernetes-operator
 #
 # Per-cluster naming convention (matches Tailscale docs naming + our cluster prefix):
-#   Operator: {{ TAILSCALE_INTERNAL_HOSTNAME }}-tailscale-operator (controller that manages Tailscale resources)
-#   Ingress:  {{ TAILSCALE_INTERNAL_HOSTNAME }} (configured in 805-tailscale-internal-ingress.yaml.j2)
+#   Operator: {{ TAILSCALE_OPERATOR_PREFIX }}-tailscale-operator (controller that manages Tailscale resources)
+#   Ingress:  {{ TAILSCALE_OPERATOR_PREFIX }} (configured in 805-tailscale-internal-ingress.yaml.j2)
 #
 # Example for 3 clusters - Tailscale admin console will show 6 devices:
 #   k8s-terje-tailscale-operator, k8s-terje          (MacBook cluster)
@@ -36,7 +36,7 @@ apiServerProxyConfig:
 # The "-tailscale-operator" suffix matches the default name from Tailscale docs,
 # making it clear this is the Tailscale Kubernetes Operator (not a custom component).
 operatorConfig:
-  hostname: "{{ TAILSCALE_INTERNAL_HOSTNAME }}-tailscale-operator"  # Unique operator name per cluster
+  hostname: "{{ TAILSCALE_OPERATOR_PREFIX }}-tailscale-operator"  # Unique operator name per cluster
   tags: "tag:k8s-operator"  # Tag for the operator itself
   logging: "info"           # Use info level for production
 

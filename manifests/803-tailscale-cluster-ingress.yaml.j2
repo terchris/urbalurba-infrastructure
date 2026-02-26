@@ -16,7 +16,7 @@ metadata:
     tailscale.com/funnel: "true"  # Enables public internet access via Tailscale Funnel
     tailscale.com/tags: "tag:k8s-operator"  # Explicitly define tags
     tailscale.com/expose-metrics: "true"  # Expose metrics for monitoring
-    tailscale.com/hostname: "{{ TAILSCALE_CLUSTER_HOSTNAME }}"  # Explicit hostname
+    tailscale.com/hostname: "{{ TAILSCALE_PUBLIC_HOSTNAME }}"  # Explicit hostname
     # Removed wildcard routing - routes directly to Traefik's default backend (nginx)
 spec:
   ingressClassName: tailscale
@@ -27,4 +27,4 @@ spec:
         number: 80  # Updated to match Traefik's HTTP port
   tls:
     - hosts:
-        - {{ TAILSCALE_CLUSTER_HOSTNAME }}  # Using Jinja2 template syntax for Ansible
+        - {{ TAILSCALE_PUBLIC_HOSTNAME }}  # Using Jinja2 template syntax for Ansible

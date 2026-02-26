@@ -69,7 +69,7 @@ TAILSCALE_TAILNET=businessmodel.io
 TAILSCALE_DOMAIN=taile269d.ts.net
 
 # Internal hostname - UNIQUE PER CLUSTER
-TAILSCALE_INTERNAL_HOSTNAME=k8s-terje   # k8s-imac for iMac, k8s-tecmacdev for tecmacdev
+TAILSCALE_OPERATOR_PREFIX=k8s-terje   # k8s-imac for iMac, k8s-tecmacdev for tecmacdev
 ```
 
 ### Step 2: Deploy Internal Ingress
@@ -147,7 +147,7 @@ metadata:
   name: traefik-tailscale
   namespace: kube-system
   annotations:
-    tailscale.com/hostname: "{{ TAILSCALE_INTERNAL_HOSTNAME }}"  # Device name
+    tailscale.com/hostname: "{{ TAILSCALE_OPERATOR_PREFIX }}"  # Device name
     tailscale.com/tags: "tag:k8s-operator"
 spec:
   type: LoadBalancer
@@ -176,7 +176,7 @@ The operator gets a unique hostname per cluster:
 ```yaml
 # From 800-tailscale-operator-config.yaml.j2
 operatorConfig:
-  hostname: "{{ TAILSCALE_INTERNAL_HOSTNAME }}-tailscale-operator"
+  hostname: "{{ TAILSCALE_OPERATOR_PREFIX }}-tailscale-operator"
   tags: "tag:k8s-operator"
   logging: "info"
 ```
@@ -283,7 +283,7 @@ If the operator device shows as generic `tailscale-operator` instead of `k8s-ter
 
 ### Helm Chart Default Behavior
 
-The Tailscale Helm chart has a default `operatorConfig.hostname: "tailscale-operator"`. Our Jinja2 template (`800-tailscale-operator-config.yaml.j2`) overrides this with `{{ TAILSCALE_INTERNAL_HOSTNAME }}-tailscale-operator` to give each cluster a unique name.
+The Tailscale Helm chart has a default `operatorConfig.hostname: "tailscale-operator"`. Our Jinja2 template (`800-tailscale-operator-config.yaml.j2`) overrides this with `{{ TAILSCALE_OPERATOR_PREFIX }}-tailscale-operator` to give each cluster a unique name.
 
 ## See Also
 

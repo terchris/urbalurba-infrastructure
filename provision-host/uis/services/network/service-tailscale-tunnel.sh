@@ -12,9 +12,9 @@ SCRIPT_CATEGORY="NETWORK"
 # === UIS-Specific (Optional) ===
 SCRIPT_PLAYBOOK="802-deploy-network-tailscale-tunnel.yml"
 SCRIPT_MANIFEST=""
-SCRIPT_CHECK_COMMAND="kubectl get pods -n network -l app.kubernetes.io/name=tailscale --no-headers 2>/dev/null | grep -q Running"
+SCRIPT_CHECK_COMMAND="kubectl get pods -n tailscale -l app=operator --no-headers 2>/dev/null | grep -q Running"
 SCRIPT_REMOVE_PLAYBOOK="801-remove-network-tailscale-tunnel.yml"
-SCRIPT_REQUIRES=""
+SCRIPT_REQUIRES="nginx"
 SCRIPT_PRIORITY="100"
 
 # === Website Metadata (Optional) ===

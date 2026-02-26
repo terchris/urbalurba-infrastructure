@@ -22,7 +22,8 @@
   vars:
     manifests_folder: "/mnt/urbalurbadisk/manifests"
     merged_kubeconf_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
-    whoami_test_app_file: "{{ manifests_folder }}/990-whoami-test-app.yaml"
+    whoami_service_file: "{{ manifests_folder }}/070-whoami-service-and-deployment.yaml"
+    whoami_ingress_file: "{{ manifests_folder }}/071-whoami-public-ingressroute.yaml"
     test_timeout: 120  # 2 minutes timeout for tests
     # operation variable is passed as external parameter, defaults handled in tasks
 
@@ -61,9 +62,9 @@
           register: delete_service_result
           changed_when: true
 
-        - name: "Delete 3: Remove whoami ingress"
+        - name: "Delete 3: Remove whoami IngressRoute"
           ansible.builtin.shell: |
-            kubectl delete ingress whoami -n default --ignore-not-found=true
+            kubectl delete ingressroute whoami-public -n default --ignore-not-found=true
           environment:
             KUBECONFIG: "{{ merged_kubeconf_file }}"
           register: delete_ingress_result
@@ -71,7 +72,7 @@
 
         - name: "Delete 4: Verify cleanup"
           ansible.builtin.shell: |
-            kubectl get pods,svc,ingress -l app=whoami -n default 2>/dev/null || echo "No whoami resources found"
+            kubectl get pods,svc,ingressroute -l app=whoami -n default 2>/dev/null || echo "No whoami resources found"
           environment:
             KUBECONFIG: "{{ merged_kubeconf_file }}"
           register: cleanup_verify
@@ -84,10 +85,10 @@
               🗑️ Whoami Test Application Cleanup Complete
               ===============================================
               
-              ✅ Cleanup Results:
+              Cleanup Results:
               • Deployment: Removed
-              • Service: Removed  
-              • Ingress: Removed
+              • Service: Removed
+              • IngressRoute: Removed
               
               🔍 Verification:
               {{ cleanup_verify.stdout }}
@@ -99,17 +100,23 @@
 
     # DEPLOY OPERATION
     - block:
-        - name: "Step 1.1: Deploy whoami test application"
+        - name: "Step 1.1: Deploy whoami service and deployment"
           ansible.builtin.command: >
-            kubectl apply -f {{ whoami_test_app_file }}
+            kubectl apply -f {{ whoami_service_file }}
           environment:
             KUBECONFIG: "{{ merged_kubeconf_file }}"
-          register: whoami_deploy_result
           changed_when: true
 
-        - name: "Step 1.2: Display deployment result"
+        - name: "Step 1.2: Deploy whoami public IngressRoute"
+          ansible.builtin.command: >
+            kubectl apply -f {{ whoami_ingress_file }}
+          environment:
+            KUBECONFIG: "{{ merged_kubeconf_file }}"
+          changed_when: true
+
+        - name: "Step 1.3: Display deployment result"
           ansible.builtin.debug:
-            msg: "✅ Whoami application deployed"
+            msg: "Whoami application deployed (service + IngressRoute)"
 
         - name: "Step 2.1: Wait for whoami deployment to be ready"
           ansible.builtin.shell: |
@@ -156,34 +163,34 @@
             fail_msg: "Whoami service is not responding correctly"
             success_msg: "✅ Whoami service responds correctly via cluster DNS"
 
-        - name: "Step 4.1: Check whoami ingress exists"
+        - name: "Step 4.1: Check whoami IngressRoute exists"
           ansible.builtin.shell: |
-            kubectl get ingress whoami -n default -o jsonpath='{.metadata.name}'
+            kubectl get ingressroute whoami-public -n default -o jsonpath='{.metadata.name}'
           environment:
             KUBECONFIG: "{{ merged_kubeconf_file }}"
           register: whoami_ingress_check
           changed_when: false
 
-        - name: "Step 4.2: Get ingress details"
+        - name: "Step 4.2: Get IngressRoute details"
           ansible.builtin.shell: |
-            kubectl describe ingress whoami -n default
+            kubectl get ingressroute whoami-public -n default -o yaml
           environment:
             KUBECONFIG: "{{ merged_kubeconf_file }}"
           register: whoami_ingress_details
           changed_when: false
 
-        - name: "Step 4.3: Verify ingress configuration"
+        - name: "Step 4.3: Verify IngressRoute configuration"
           ansible.builtin.assert:
             that:
-              - "'whoami.localhost' in whoami_ingress_details.stdout"
-              - "'whoami:80' in whoami_ingress_details.stdout"
-            fail_msg: "Whoami ingress is not configured correctly"
-            success_msg: "✅ Whoami ingress configured for whoami.localhost"
+              - "'whoami-public' in whoami_ingress_details.stdout"
+              - "'whoami' in whoami_ingress_details.stdout"
+            fail_msg: "Whoami IngressRoute is not configured correctly"
+            success_msg: "Whoami IngressRoute configured with HostRegexp (whoami-public.*)"
 
-        - name: "Step 5.1: Test whoami via Traefik ingress (from cluster)"
+        - name: "Step 5.1: Test whoami via Traefik IngressRoute (from cluster)"
           ansible.builtin.shell: |
             kubectl run curl-test-ingress --image=curlimages/curl --rm -i --restart=Never --command -- \
-              curl -s -H "Host: whoami.localhost" -w "HTTP_STATUS:%{http_code}" \
+              curl -s -H "Host: whoami-public.localhost" -w "HTTP_STATUS:%{http_code}" \
               http://traefik.kube-system.svc.cluster.local
           environment:
             KUBECONFIG: "{{ merged_kubeconf_file }}"
@@ -203,8 +210,8 @@
             kubectl get pods -l app=whoami -n default
             echo "=== SERVICES ==="
             kubectl get svc whoami -n default
-            echo "=== INGRESS ==="
-            kubectl get ingress whoami -n default
+            echo "=== INGRESSROUTE ==="
+            kubectl get ingressroute whoami-public -n default
           environment:
             KUBECONFIG: "{{ merged_kubeconf_file }}"
           register: whoami_final_status
@@ -221,25 +228,26 @@
               • Deployment: Ready and available
               • Pods: Running and ready  
               • Service: Responding correctly ({{ whoami_service_info.stdout }})
-              • Ingress: Configured for whoami.localhost
+              • IngressRoute: Configured with HostRegexp (whoami-public.*)
               • Cluster Access: Working via http://whoami.default.svc.cluster.local
-              
-              📊 Resources Created:
+
+              Resources Created:
               {{ whoami_final_status.stdout }}
-              
-              🧪 Verification Results:
-              • Cluster-internal access: ✅ Working
-              • Service discovery: ✅ Working 
-              • Ingress configuration: ✅ Correct
+
+              Verification Results:
+              • Cluster-internal access: Working
+              • Service discovery: Working
+              • IngressRoute configuration: Correct
               • External access: Test from host machine
-              
-              🌐 Access Information:
+
+              Access Information:
               • Internal: http://whoami.default.svc.cluster.local
-              • External: http://whoami.localhost (requires host DNS)
+              • Local: http://whoami-public.localhost
+              • External: https://whoami-public.urbalurba.no (when Cloudflare tunnel configured)
               • Cluster IP: {{ whoami_service_info.stdout }}
-              
-              🔄 Next Steps:
-              • Test external access from host: curl http://whoami.localhost
+
+              Next Steps:
+              • Test local access: curl http://whoami-public.localhost
               • Ready for authentication middleware integration
               • Can proceed with Authentik deployment and auth flow setup
               
