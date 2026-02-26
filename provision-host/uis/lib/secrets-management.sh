@@ -140,13 +140,13 @@ show_secrets_status() {
 
     # Show default values status
     echo "Core Variables (have working defaults):"
-    local vars_core="DEFAULT_ADMIN_EMAIL DEFAULT_ADMIN_PASSWORD DEFAULT_DATABASE_PASSWORD"
+    local vars_core="DEFAULT_ADMIN_EMAIL DEFAULT_ADMIN_PASSWORD DEFAULT_DATABASE_PASSWORD DEFAULT_REDIS_PASSWORD DEFAULT_AUTHENTIK_SECRET_KEY DEFAULT_AUTHENTIK_BOOTSTRAP_PASSWORD DEFAULT_OPENWEBUI_SECRET_KEY"
     for var in $vars_core; do
         local value
         value=$(get_default_secret "$var")
         if [[ -n "$value" ]]; then
-            # Mask passwords
-            if [[ "$var" == *PASSWORD* ]]; then
+            # Mask passwords and secret keys
+            if [[ "$var" == *PASSWORD* ]] || [[ "$var" == *SECRET* ]]; then
                 echo "  ✅ $var: ********"
             else
                 echo "  ✅ $var: $value"
@@ -181,6 +181,13 @@ show_secrets_status() {
 generate_secrets() {
     # Sync master template from source (picks up new keys from image updates)
     copy_secrets_templates
+
+    # Validate before generating — fail early on bad email or missing variables
+    if has_user_secrets && ! validate_secrets; then
+        log_error "Fix validation errors before generating secrets"
+        return 1
+    fi
+
     # Use the generate function from first-run.sh
     generate_kubernetes_secrets
 }
@@ -261,7 +268,7 @@ validate_secrets() {
     set +a
 
     # Check required variables
-    local required_vars="DEFAULT_ADMIN_EMAIL DEFAULT_ADMIN_PASSWORD DEFAULT_DATABASE_PASSWORD"
+    local required_vars="DEFAULT_ADMIN_EMAIL DEFAULT_ADMIN_PASSWORD DEFAULT_DATABASE_PASSWORD DEFAULT_REDIS_PASSWORD DEFAULT_AUTHENTIK_SECRET_KEY DEFAULT_AUTHENTIK_BOOTSTRAP_PASSWORD DEFAULT_OPENWEBUI_SECRET_KEY"
     for var in $required_vars; do
         local value
         eval "value=\${$var:-}"
@@ -271,14 +278,28 @@ validate_secrets() {
         fi
     done
 
-    # Check for weak default passwords if using custom config
-    if [[ "${DEFAULT_ADMIN_PASSWORD:-}" == "LocalDev123" ]]; then
-        log_warn "Using default admin password - change for production"
+    # Validate email format — pgAdmin crashes if email lacks a proper domain
+    local admin_email="${DEFAULT_ADMIN_EMAIL:-}"
+    if [[ -n "$admin_email" ]]; then
+        local email_user="${admin_email%%@*}"
+        local email_domain="${admin_email##*@}"
+        if [[ "$admin_email" != *"@"* ]] || [[ -z "$email_user" ]] || [[ -z "$email_domain" ]] || [[ "$email_domain" != *.* ]]; then
+            log_error "Invalid DEFAULT_ADMIN_EMAIL: '$admin_email'"
+            log_error "Must be a valid email with a real domain (e.g. admin@example.com)"
+            log_error "Emails like admin@localhost will cause pgAdmin to crash on startup"
+            has_issues=true
+        fi
     fi
 
-    if [[ "${DEFAULT_DATABASE_PASSWORD:-}" == "LocalDevDB456" ]]; then
-        log_warn "Using default database password - change for production"
-    fi
+    # Check for weak default passwords if using custom config
+    local weak_pattern="^LocalDev"
+    for var in DEFAULT_ADMIN_PASSWORD DEFAULT_DATABASE_PASSWORD DEFAULT_REDIS_PASSWORD DEFAULT_AUTHENTIK_SECRET_KEY DEFAULT_AUTHENTIK_BOOTSTRAP_PASSWORD DEFAULT_OPENWEBUI_SECRET_KEY; do
+        local value
+        eval "value=\${$var:-}"
+        if [[ "$value" =~ $weak_pattern ]]; then
+            log_warn "$var is using a development default - change for production"
+        fi
+    done
 
     if [[ "$has_issues" == "true" ]]; then
         return 1
