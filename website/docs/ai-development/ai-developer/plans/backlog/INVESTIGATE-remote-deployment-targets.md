@@ -1,14 +1,90 @@
-# INVESTIGATE: Remote Deployment Targets
+# INVESTIGATE: Remote Deployment Targets & Target Management
+
+> **IMPLEMENTATION RULES:** Before implementing this plan, read and follow:
+> - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
+> - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
 **Related**: [INVESTIGATE-topsecret-cleanup](../completed/INVESTIGATE-topsecret-cleanup.md), [STATUS-service-migration](STATUS-service-migration.md)
-**Created**: 2026-02-22
+**Created**: 2026-02-22 (merged with PLAN-006-target-host-management on 2026-02-26)
 **Status**: INVESTIGATION COMPLETE
 
 ## Background
 
 The UIS system currently targets local Rancher Desktop. However, the codebase also contains scripts for provisioning remote servers and edge devices. These scripts predate the UIS system and still reference `topsecret/` for secrets. They require separate planning and real infrastructure testing before their secrets paths can be migrated.
 
-## Deployment Targets
+Additionally, users have no easy way to see which cluster they're deploying to or switch between targets.
+
+---
+
+## Part 1: Target Management UX (from PLAN-006)
+
+### Problem
+
+Users have no easy way to:
+1. See which Kubernetes cluster they're deploying to
+2. Switch between different targets (rancher-desktop, azure-aks, etc.)
+3. Understand the relationship between UIS hosts and kubectl context
+
+Currently:
+- Target defaults to `rancher-desktop`
+- User must manually manage kubectl context
+- `./uis host list` shows configured hosts but not the active target
+- No synchronization between UIS and kubectl context
+
+### Quick Fix Already Implemented
+
+Added target cluster display to `./uis status`:
+```
+Target cluster: rancher-desktop
+```
+
+### Proposed New Commands
+
+1. `./uis target` - Show current target cluster
+2. `./uis target list` - List available targets
+3. `./uis target set <name>` - Switch to a different target
+
+### Implementation Requirements
+
+1. **Track active target** in `.uis.extend/active-target`
+2. **Sync kubectl context** when target changes
+3. **Validate target exists** before switching
+4. **Show target in commands** that deploy/interact with cluster
+5. **Handle multiple kubeconfigs** for different clusters
+
+### User Flow
+
+```bash
+# See current target
+./uis target
+# Output: Current target: rancher-desktop
+
+# List available targets
+./uis target list
+# Output:
+#   rancher-desktop (active)
+#   azure-aks-prod
+#   raspberry-pi-cluster
+
+# Switch target
+./uis target set azure-aks-prod
+# Output: Switched to azure-aks-prod
+```
+
+### Files to Modify
+
+- `provision-host/uis/manage/uis-cli.sh` - Add target commands
+- `provision-host/uis/lib/uis-hosts.sh` - Target management logic
+- `uis` wrapper - Pass target commands through
+
+### Dependencies
+
+- Requires kubeconfig files for each target in `.uis.secrets/generated/kubeconfig/`
+- Host templates should generate appropriate kubeconfig entries
+
+---
+
+## Part 2: Deployment Targets Inventory
 
 ### 1. Rancher Desktop (local development) — DEFAULT
 
@@ -127,9 +203,10 @@ Creates the provision-host VM in Multipass and copies repo files to it. Currentl
 
 ## Proposed Approach
 
-This investigation documents the current state. A separate implementation plan should be created when there is time and infrastructure to test these changes. The migration for each target involves:
+This investigation documents the current state. A separate implementation plan should be created when there is time and infrastructure to test these changes. The work involves:
 
-1. Remove `topsecret/` fallback paths — use `.uis.secrets/` only
-2. Ensure `paths.sh` is sourced in scripts that don't yet use it (Multipass, Raspberry Pi)
-3. Test the full deployment cycle on each target platform
-4. Update documentation in `website/docs/hosts/`
+1. Implement `./uis target` commands (Part 1)
+2. Remove `topsecret/` fallback paths — use `.uis.secrets/` only
+3. Ensure `paths.sh` is sourced in scripts that don't yet use it (Multipass, Raspberry Pi)
+4. Test the full deployment cycle on each target platform
+5. Update documentation in `website/docs/hosts/`
