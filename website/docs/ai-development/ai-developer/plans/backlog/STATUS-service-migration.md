@@ -8,7 +8,7 @@
 
 **Goal**: Track migration status of all 26 UIS services and complete remaining work for services that are not fully migrated.
 
-**Last Updated**: 2026-02-26 (cloudflare-tunnel fully verified: deploy, undeploy, E2E connectivity)
+**Last Updated**: 2026-02-27 (password architecture fixed: orphaned defaults connected, email validation added)
 
 **Priority**: Medium — core services work, remaining items are edge cases
 
@@ -160,6 +160,21 @@ In addition to the playbook fixes above (PR #35), a full topsecret cleanup was c
 
 - `INVESTIGATE-rancher-reset-and-full-verification.md` → moved to `completed/`
 - `INVESTIGATE-unity-catalog-crashloop.md` → moved to `completed/`
+
+### Password Architecture Fix (PR #44)
+
+Fixed `default-secrets.env` single-source-of-truth pattern — 8 of 11 DEFAULT_ variables were orphaned (never applied to templates). See [PLAN-fix-password-architecture](../completed/PLAN-fix-password-architecture.md).
+
+| What | Change |
+|------|--------|
+| Removed redundant variables | 4 removed from `default-secrets.env` (`DEFAULT_DATABASE_ROOT_PASSWORD`, `DEFAULT_POSTGRES_PASSWORD`, `DEFAULT_MONGODB_ROOT_PASSWORD`, `DEFAULT_AUTHENTIK_BOOTSTRAP_EMAIL`) |
+| Connected orphaned defaults | Extended sed replacements from 5→8 in `first-run.sh` |
+| Removed hardcoded credentials | Replaced in `00-common-values.env.template` and `00-master-secrets.yml.template` |
+| Email consolidation | Removed 2 orphaned email variables, kept single `DEFAULT_ADMIN_EMAIL` |
+| Validation | Extended from 3→7 variables, added email format check, weak-password detection |
+| Self-healing init | Fixed bug where fresh `.uis.secrets/` didn't get templates when `.uis.extend/` already existed |
+
+Tested: postgresql, redis, pgadmin, authentik, openwebui — all deploy/undeploy clean with correct credentials.
 
 ---
 
