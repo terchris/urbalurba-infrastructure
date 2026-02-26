@@ -326,7 +326,7 @@
     ,"priority": 20
     ,"checkCommand": "kubectl get pods -n monitoring -l app.kubernetes.io/name=grafana --no-headers 2>/dev/null | grep -q Running"
     ,"removePlaybook": "034-remove-grafana.yml"
-    ,"requires": ["prometheus"]
+    ,"requires": ["prometheus", "loki", "tempo", "otel-collector"]
   }
 ,
   {
@@ -363,6 +363,7 @@
     ,"priority": 13
     ,"checkCommand": "kubectl get pods -n monitoring -l app.kubernetes.io/name=opentelemetry-collector --no-headers 2>/dev/null | grep -q Running"
     ,"removePlaybook": "033-remove-otel-collector.yml"
+    ,"requires": ["prometheus", "loki", "tempo"]
   }
 ,
   {
