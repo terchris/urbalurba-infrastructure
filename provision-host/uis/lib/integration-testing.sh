@@ -20,8 +20,10 @@ _UIS_INTEGRATION_TESTING_LOADED=1
 # Services to skip (need external config or not testable)
 SKIP_SERVICES="gravitee tailscale-tunnel cloudflare-tunnel"
 
-# Services with a verify step (service_id:cli_command)
-VERIFY_SERVICES="argocd:argocd verify"
+# Services with a verify step (one per line, format: service_id:cli_args)
+VERIFY_SERVICES="
+argocd:argocd verify
+"
 
 # ============================================================
 # Test Plan Builder
@@ -164,18 +166,76 @@ print_test_plan() {
 }
 
 # ============================================================
+# Clean State Check
+# ============================================================
+
+# Check if any testable services are currently deployed.
+# Returns 0 if cluster is clean, 1 if services are running.
+# Prints the list of deployed services to stdout.
+_check_clean_state() {
+    local deployed=()
+    for entry in "${_FOUNDATION_SERVICES[@]}" "${_REGULAR_SERVICES[@]}"; do
+        local sid=$(_entry_id "$entry")
+        if check_service_deployed "$sid" 2>/dev/null; then
+            deployed+=("$sid")
+        fi
+    done
+
+    if [[ ${#deployed[@]} -gt 0 ]]; then
+        printf '%s\n' "${deployed[@]}"
+        return 1
+    fi
+    return 0
+}
+
+# Undeploy all currently deployed services (reverse priority order).
+_clean_cluster() {
+    local cli_script="$SCRIPT_DIR/uis-cli.sh"
+
+    # Build reverse list: regular services first (reverse priority), then foundation (reverse priority)
+    local all_reverse=()
+    local i
+    for (( i=${#_REGULAR_SERVICES[@]}-1; i>=0; i-- )); do
+        all_reverse+=("${_REGULAR_SERVICES[$i]}")
+    done
+    for (( i=${#_FOUNDATION_SERVICES[@]}-1; i>=0; i-- )); do
+        all_reverse+=("${_FOUNDATION_SERVICES[$i]}")
+    done
+
+    for entry in "${all_reverse[@]}"; do
+        local sid=$(_entry_id "$entry")
+        if check_service_deployed "$sid" 2>/dev/null; then
+            echo -e "${LOG_BOLD}[$(_timestamp)] Cleaning: undeploy $sid${LOG_NC}"
+            local exit_code=0
+            "$cli_script" undeploy "$sid" || exit_code=$?
+            if [[ $exit_code -ne 0 ]]; then
+                log_error "Failed to undeploy $sid during cleanup (exit code $exit_code)"
+                return 1
+            fi
+            sleep 5
+        fi
+    done
+
+    echo ""
+    log_success "Cluster cleaned — all services undeployed"
+    return 0
+}
+
+# ============================================================
 # Verify command lookup
 # ============================================================
 
 _get_verify_command() {
     local service_id="$1"
-    local entry
-    for entry in $VERIFY_SERVICES; do
-        if [[ "${entry%%:*}" == "$service_id" ]]; then
-            echo "${entry#*:}"
+    local line
+    while IFS= read -r line; do
+        # Skip empty lines
+        [[ -z "$line" ]] && continue
+        if [[ "${line%%:*}" == "$service_id" ]]; then
+            echo "${line#*:}"
             return 0
         fi
-    done
+    done <<< "$VERIFY_SERVICES"
     return 1
 }
 
@@ -277,6 +337,12 @@ _run_test_operation() {
     else
         echo -e "${LOG_BOLD}[$(_timestamp)] RESULT: $operation $service_id — ${LOG_RED}FAIL${LOG_NC} (exit code $exit_code, $(_format_duration $duration))${LOG_NC}"
         _record_result "$service_id" "$operation" "FAIL" "$duration"
+    fi
+
+    # After undeploy, wait for Kubernetes namespace cleanup to avoid race conditions
+    # (namespace deletion is async — next deploy may fail if namespace is still terminating)
+    if [[ "$operation" == "undeploy" && $exit_code -eq 0 ]]; then
+        sleep 5
     fi
 
     return $exit_code
@@ -381,11 +447,13 @@ print_test_summary() {
 
 run_integration_tests() {
     local dry_run=false
+    local clean=false
 
     # Parse args
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --dry-run) dry_run=true; shift ;;
+            --clean)  clean=true; shift ;;
             *) log_error "Unknown option: $1"; return 1 ;;
         esac
     done
@@ -397,6 +465,33 @@ run_integration_tests() {
     if [[ "$dry_run" == "true" ]]; then
         print_test_plan
         return 0
+    fi
+
+    # Check for clean cluster state
+    local deployed_list=""
+    deployed_list=$(_check_clean_state) || true
+
+    if [[ -n "$deployed_list" ]]; then
+        if [[ "$clean" == "true" ]]; then
+            print_section "Cleaning cluster before test"
+            echo "Deployed services found — undeploying all before test..."
+            echo ""
+            if ! _clean_cluster; then
+                log_error "Cleanup failed — cannot proceed with tests"
+                return 1
+            fi
+            echo ""
+        else
+            log_error "Cluster is not in a clean state. The following services are deployed:"
+            echo ""
+            echo "$deployed_list" | while IFS= read -r sid; do
+                echo "  - $sid"
+            done
+            echo ""
+            echo "Run with --clean to undeploy all services first:"
+            echo "  ./uis test-all --clean"
+            return 1
+        fi
     fi
 
     # Set up log file — redirect stdout+stderr through tee in the current shell

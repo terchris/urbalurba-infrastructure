@@ -109,6 +109,7 @@ ArgoCD:
 Testing:
   test-all                Run full integration test (deploy+undeploy all services)
   test-all --dry-run      Show test plan without executing
+  test-all --clean        Undeploy all services first, then run tests
 
 Documentation:
   docs generate           Generate JSON files for website
@@ -141,6 +142,7 @@ Examples:
   uis argocd verify            # Run ArgoCD E2E tests
   uis test-all                  # Run full integration test
   uis test-all --dry-run        # Preview test plan
+  uis test-all --clean          # Clean cluster first, then test
 
 EOF
 }
