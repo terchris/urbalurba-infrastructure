@@ -14,7 +14,7 @@ SCRIPT_PLAYBOOK="820-deploy-network-cloudflare-tunnel.yml"
 SCRIPT_MANIFEST=""
 SCRIPT_CHECK_COMMAND="kubectl get pods -n default -l app=cloudflared --no-headers 2>/dev/null | grep -q Running"
 SCRIPT_REMOVE_PLAYBOOK="821-remove-network-cloudflare-tunnel.yml"
-SCRIPT_REQUIRES=""
+SCRIPT_REQUIRES="nginx"
 SCRIPT_PRIORITY="101"
 
 # === Website Metadata (Optional) ===

@@ -15,7 +15,7 @@
 # - Kubernetes cluster with kubectl configured
 # - Valid kubeconfig file
 # - Tailscale API credentials in urbalurba-secrets
-# - TAILSCALE_INTERNAL_HOSTNAME set in secrets (or passed as argument)
+# - TAILSCALE_OPERATOR_PREFIX set in secrets (or passed as argument)
 #
 # Usage: ./03-setup-tailscale-internal.sh [hostname]
 # Examples:
@@ -38,7 +38,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 
 # Get hostname from argument
-TAILSCALE_INTERNAL_HOSTNAME="${1:-}"
+TAILSCALE_OPERATOR_PREFIX="${1:-}"
 
 echo "=========================================="
 echo "Tailscale Internal Ingress Deployment"
@@ -55,12 +55,12 @@ echo ""
 
 # Call Ansible playbook
 echo "Deploying Tailscale internal ingress via Ansible..."
-if [ -n "$TAILSCALE_INTERNAL_HOSTNAME" ]; then
-    echo "Using hostname: $TAILSCALE_INTERNAL_HOSTNAME"
+if [ -n "$TAILSCALE_OPERATOR_PREFIX" ]; then
+    echo "Using hostname: $TAILSCALE_OPERATOR_PREFIX"
     ansible-playbook "$PROJECT_ROOT/ansible/playbooks/805-deploy-tailscale-internal-ingress.yml" \
-        -e "TAILSCALE_INTERNAL_HOSTNAME=$TAILSCALE_INTERNAL_HOSTNAME"
+        -e "TAILSCALE_OPERATOR_PREFIX=$TAILSCALE_OPERATOR_PREFIX"
 else
-    echo "Using hostname from secrets (TAILSCALE_INTERNAL_HOSTNAME)"
+    echo "Using hostname from secrets (TAILSCALE_OPERATOR_PREFIX)"
     ansible-playbook "$PROJECT_ROOT/ansible/playbooks/805-deploy-tailscale-internal-ingress.yml"
 fi
 

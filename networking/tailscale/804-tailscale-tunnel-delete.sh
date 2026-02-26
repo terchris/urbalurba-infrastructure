@@ -124,8 +124,8 @@ if [ "$HAVE_API_ACCESS" = true ]; then
         "https://api.tailscale.com/api/v2/tailnet/${TAILSCALE_TAILNET}/devices" 2>/dev/null || true)
     
     if [ -n "$DEVICES_JSON" ] && echo "$DEVICES_JSON" | jq -e '.devices' >/dev/null 2>&1; then
-        # Find devices related to this cluster (k8s hostname from TAILSCALE_CLUSTER_HOSTNAME)
-        CLUSTER_HOSTNAME=$(kubectl --kubeconfig="$KUBECONFIG_PATH" get secret urbalurba-secrets -n default -o jsonpath='{.data.TAILSCALE_CLUSTER_HOSTNAME}' | base64 -d 2>/dev/null)
+        # Find devices related to this cluster (k8s hostname from TAILSCALE_PUBLIC_HOSTNAME)
+        CLUSTER_HOSTNAME=$(kubectl --kubeconfig="$KUBECONFIG_PATH" get secret urbalurba-secrets -n default -o jsonpath='{.data.TAILSCALE_PUBLIC_HOSTNAME}' | base64 -d 2>/dev/null)
         
         CLUSTER_DEVICES=$(echo "$DEVICES_JSON" | jq -r ".devices[] | 
             select(.name | test(\"tailscale-operator|${CLUSTER_HOSTNAME:-k8s}|provision-host\")) | 

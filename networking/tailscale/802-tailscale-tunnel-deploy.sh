@@ -68,9 +68,9 @@ if [ -z "$TAILSCALE_DOMAIN" ]; then
 fi
 
 # Get cluster hostname from secrets
-TAILSCALE_CLUSTER_HOSTNAME=$(kubectl --kubeconfig="$KUBECONFIG_PATH" get secret urbalurba-secrets -n default -o jsonpath='{.data.TAILSCALE_CLUSTER_HOSTNAME}' | base64 -d 2>/dev/null)
-if [ -z "$TAILSCALE_CLUSTER_HOSTNAME" ]; then
-    echo "Error: TAILSCALE_CLUSTER_HOSTNAME not found in urbalurba-secrets"
+TAILSCALE_PUBLIC_HOSTNAME=$(kubectl --kubeconfig="$KUBECONFIG_PATH" get secret urbalurba-secrets -n default -o jsonpath='{.data.TAILSCALE_PUBLIC_HOSTNAME}' | base64 -d 2>/dev/null)
+if [ -z "$TAILSCALE_PUBLIC_HOSTNAME" ]; then
+    echo "Error: TAILSCALE_PUBLIC_HOSTNAME not found in urbalurba-secrets"
     exit 1
 fi
 
@@ -121,13 +121,13 @@ fi
 if [ -z "$SERVICE_NAME" ]; then
     if [ "$OPERATOR_RUNNING" = false ]; then
         echo ""
-        echo "Deploying Tailscale operator: $TAILSCALE_CLUSTER_HOSTNAME"
+        echo "Deploying Tailscale operator: $TAILSCALE_PUBLIC_HOSTNAME"
         echo "Using playbook: $OPERATOR_PLAYBOOK_PATH"
         echo ""
         
         # Execute the operator deployment playbook (includes cluster ingress)
         echo "Deploying Tailscale operator (this may take a few minutes)..."
-        cd /mnt/urbalurbadisk/ansible && ansible-playbook $OPERATOR_PLAYBOOK_PATH -e TAILSCALE_CLUSTER_HOSTNAME="$TAILSCALE_CLUSTER_HOSTNAME"
+        cd /mnt/urbalurbadisk/ansible && ansible-playbook $OPERATOR_PLAYBOOK_PATH -e TAILSCALE_PUBLIC_HOSTNAME="$TAILSCALE_PUBLIC_HOSTNAME"
         check_command_success "Deploy Tailscale operator"
         
         # Wait for operator to be ready
@@ -173,7 +173,7 @@ if [ "$OPERATOR_RUNNING" = false ]; then
     
     # Execute the operator deployment playbook (includes cluster ingress - we'll clean it up)
     echo "Deploying Tailscale operator (this may take a few minutes)..."
-    cd /mnt/urbalurbadisk/ansible && ansible-playbook $OPERATOR_PLAYBOOK_PATH -e TAILSCALE_CLUSTER_HOSTNAME="$TAILSCALE_CLUSTER_HOSTNAME"
+    cd /mnt/urbalurbadisk/ansible && ansible-playbook $OPERATOR_PLAYBOOK_PATH -e TAILSCALE_PUBLIC_HOSTNAME="$TAILSCALE_PUBLIC_HOSTNAME"
     check_command_success "Deploy Tailscale operator"
     
     # Wait for operator to be ready

@@ -4,16 +4,17 @@
 #
 # This playbook:
 # 1. Validates prerequisites
-# 2. Installs the Tailscale operator via Helm
-# 3. Sets up cluster ingress configuration
-# 4. Verifies deployment
+# 2. Cleans up stale Tailscale devices via API (prevents -1, -2 hostname suffixes)
+# 3. Installs the Tailscale operator via Helm
+# 4. Sets up cluster ingress configuration
+# 5. Verifies deployment
 #
 # Usage:
-#   ansible-playbook playbooks/802-deploy-network-tailscale-tunnel.yml 
-#     -e TAILSCALE_CLUSTER_HOSTNAME="k8s" 
+#   ansible-playbook playbooks/802-deploy-network-tailscale-tunnel.yml
+#     -e TAILSCALE_PUBLIC_HOSTNAME="k8s"
 #
 # Required parameters:
-#   TAILSCALE_CLUSTER_HOSTNAME: Base hostname for the cluster ingress (defaults to 'k8s')
+#   TAILSCALE_PUBLIC_HOSTNAME: Public Funnel hostname for the cluster ingress (defaults to 'k8s')
 
 - name: Deploy Tailscale operator to Kubernetes cluster
   hosts: localhost
@@ -51,14 +52,97 @@
         tailscale_clientid: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_CLIENTID | b64decode }}"
         tailscale_clientsecret: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_CLIENTSECRET | b64decode }}"
         tailscale_domain: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_DOMAIN | b64decode }}"
-        tailscale_cluster_hostname: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_CLUSTER_HOSTNAME | default('') | b64decode | default(default_cluster_hostname, true) }}"
-        tailscale_internal_hostname: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_INTERNAL_HOSTNAME | default('') | b64decode | default(default_cluster_hostname, true) }}"
+        tailscale_public_hostname: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_PUBLIC_HOSTNAME | default('') | b64decode | default(default_cluster_hostname, true) }}"
+        tailscale_operator_prefix: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_OPERATOR_PREFIX | default('') | b64decode | default(default_cluster_hostname, true) }}"
       when: urbalurba_secrets.resources | length > 0
 
     - name: "05 Ensure Tailscale credentials were retrieved"
       ansible.builtin.fail:
         msg: "Failed to retrieve Tailscale credentials from urbalurba-secrets."
       when: tailscale_clientid is not defined or tailscale_clientsecret is not defined
+
+    # Pre-deploy cleanup: remove stale devices that would cause hostname conflicts (-1, -2 suffixes)
+    - name: "05a Obtain OAuth access token for device cleanup"
+      ansible.builtin.uri:
+        url: "https://api.tailscale.com/api/v2/oauth/token"
+        method: POST
+        body_format: form-urlencoded
+        body:
+          client_id: "{{ tailscale_clientid }}"
+          client_secret: "{{ tailscale_clientsecret }}"
+          grant_type: "client_credentials"
+        status_code: [200]
+        timeout: 15
+      register: oauth_token_response
+      ignore_errors: true
+      no_log: true
+
+    - name: "05b Extract access token"
+      ansible.builtin.set_fact:
+        ts_access_token: "{{ oauth_token_response.json.access_token }}"
+      when: oauth_token_response.status is defined and oauth_token_response.status == 200
+      no_log: true
+
+    - name: "05c List devices in tailnet"
+      ansible.builtin.uri:
+        url: "https://api.tailscale.com/api/v2/tailnet/{{ urbalurba_secrets.resources[0].data.TAILSCALE_TAILNET | b64decode }}/devices"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ ts_access_token }}"
+        status_code: [200]
+        timeout: 15
+      register: devices_response
+      when: ts_access_token is defined
+      ignore_errors: true
+
+    - name: "05d Find stale devices matching cluster hostname"
+      ansible.builtin.set_fact:
+        stale_devices: >-
+          {{ devices_response.json.devices | default([]) |
+             selectattr('name', 'search', '^' + tailscale_public_hostname + '(-[0-9]+)?[.]') |
+             list }}
+      when: devices_response.status is defined and devices_response.status == 200
+
+    - name: "05e Find stale devices matching operator hostname"
+      ansible.builtin.set_fact:
+        stale_operator_devices: >-
+          {{ devices_response.json.devices | default([]) |
+             selectattr('name', 'search', '^' + tailscale_operator_prefix + '-tailscale-operator(-[0-9]+)?[.]') |
+             list }}
+      when: devices_response.status is defined and devices_response.status == 200
+
+    - name: "05f Report stale devices found"
+      ansible.builtin.debug:
+        msg: "Found {{ (stale_devices | default([]) | length) + (stale_operator_devices | default([]) | length) }} stale device(s) — cleaning up before deploy: {{ (stale_devices | default([]) + stale_operator_devices | default([])) | map(attribute='name') | join(', ') }}"
+      when: (stale_devices | default([]) | length) + (stale_operator_devices | default([]) | length) > 0
+
+    - name: "05g Delete stale cluster ingress devices"
+      ansible.builtin.uri:
+        url: "https://api.tailscale.com/api/v2/device/{{ item.id }}"
+        method: DELETE
+        headers:
+          Authorization: "Bearer {{ ts_access_token }}"
+        status_code: [200, 204]
+        timeout: 15
+      loop: "{{ stale_devices | default([]) }}"
+      loop_control:
+        label: "{{ item.name }}"
+      ignore_errors: true
+      no_log: true
+
+    - name: "05h Delete stale operator devices"
+      ansible.builtin.uri:
+        url: "https://api.tailscale.com/api/v2/device/{{ item.id }}"
+        method: DELETE
+        headers:
+          Authorization: "Bearer {{ ts_access_token }}"
+        status_code: [200, 204]
+        timeout: 15
+      loop: "{{ stale_operator_devices | default([]) }}"
+      loop_control:
+        label: "{{ item.name }}"
+      ignore_errors: true
+      no_log: true
 
     - name: "06 Add Tailscale Helm repository"
       kubernetes.core.helm_repository:
@@ -77,7 +161,7 @@
         src: "{{ manifests_folder }}/{{ operator_config_template }}"
         dest: "{{ temp_operator_config_file.path }}"
       vars:
-        TAILSCALE_INTERNAL_HOSTNAME: "{{ tailscale_internal_hostname }}"
+        TAILSCALE_OPERATOR_PREFIX: "{{ tailscale_operator_prefix }}"
 
     - name: "07 Create values file with Tailscale credentials for Helm"
       ansible.builtin.tempfile:
@@ -222,7 +306,7 @@
         src: "{{ manifests_folder }}/{{ ingress_manifest }}"
         dest: "{{ temp_ingress_file.path }}"
       vars:
-        TAILSCALE_CLUSTER_HOSTNAME: "{{ tailscale_cluster_hostname }}"
+        TAILSCALE_PUBLIC_HOSTNAME: "{{ tailscale_public_hostname }}"
 
     - name: "14 Apply Tailscale Ingress configuration"
       kubernetes.core.k8s:
@@ -243,8 +327,8 @@
       ansible.builtin.debug:
         msg: 
           - "✅ Tailscale operator deployed successfully!"
-          - "Cluster hostname: {{ tailscale_cluster_hostname }}"
-          - "Services will be accessible at: https://service.{{ tailscale_cluster_hostname }}.{{ tailscale_domain }}"
+          - "Cluster hostname: {{ tailscale_public_hostname }}"
+          - "Services will be accessible at: https://service.{{ tailscale_public_hostname }}.{{ tailscale_domain }}"
 
     - name: "17 Wait for Tailscale ingress to be fully operational"
       ansible.builtin.pause:
@@ -253,7 +337,7 @@
 
     - name: "18 Test Tailscale tunnel connectivity"
       ansible.builtin.uri:
-        url: "https://{{ tailscale_cluster_hostname }}.{{ tailscale_domain }}"
+        url: "https://{{ tailscale_public_hostname }}.{{ tailscale_domain }}"
         method: GET
         status_code: 200
         validate_certs: false
@@ -268,7 +352,7 @@
       ansible.builtin.debug:
         msg:
           - "🌐 Tailscale Funnel connectivity test:"
-          - "URL tested: https://{{ tailscale_cluster_hostname }}.{{ tailscale_domain }}"
+          - "URL tested: https://{{ tailscale_public_hostname }}.{{ tailscale_domain }}"
           - "Response status: {{ tunnel_test.status | default('timeout') }}"
           - "✅ Tunnel is working correctly - nginx catch-all responded with 'Hello World'"
       when: tunnel_test.status is defined and tunnel_test.status == 200
@@ -277,7 +361,7 @@
       ansible.builtin.fail:
         msg:
           - "❌ Tailscale Funnel connectivity test FAILED!"
-          - "URL tested: https://{{ tailscale_cluster_hostname }}.{{ tailscale_domain }}"
+          - "URL tested: https://{{ tailscale_public_hostname }}.{{ tailscale_domain }}"
           - "Status: Connection failed or timed out"
           - ""
           - "The operator deployed successfully, but the tunnel is not accessible from the internet."
@@ -289,7 +373,7 @@
           - "Check the operator pod logs:"
           - "kubectl logs -n tailscale -l app=operator"
           - ""
-          - "Manual test: curl https://{{ tailscale_cluster_hostname }}.{{ tailscale_domain }}"
+          - "Manual test: curl https://{{ tailscale_public_hostname }}.{{ tailscale_domain }}"
       when: tunnel_test.status is not defined or tunnel_test.status != 200
 
     - name: "20 Final deployment summary - SUCCESS"
@@ -298,7 +382,7 @@
           - "🎉 Tailscale tunnel deployment complete and VERIFIED!"
           - "✅ Connectivity test passed - tunnel is working"
           - "Your cluster is now accessible via Tailscale Funnel:"
-          - "  https://{{ tailscale_cluster_hostname }}.{{ tailscale_domain }} (cluster ingress)"
-          - "  https://whoami.{{ tailscale_cluster_hostname }}.{{ tailscale_domain }} (whoami service)"
-          - "  https://SERVICE.{{ tailscale_cluster_hostname }}.{{ tailscale_domain }} (any service)"
+          - "  https://{{ tailscale_public_hostname }}.{{ tailscale_domain }} (cluster ingress)"
+          - "  https://whoami.{{ tailscale_public_hostname }}.{{ tailscale_domain }} (whoami service)"
+          - "  https://SERVICE.{{ tailscale_public_hostname }}.{{ tailscale_domain }} (any service)"
       when: tunnel_test.status is defined and tunnel_test.status == 200

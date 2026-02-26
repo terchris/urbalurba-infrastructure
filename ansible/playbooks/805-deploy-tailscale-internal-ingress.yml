@@ -12,10 +12,10 @@
 #
 # Usage:
 #   ansible-playbook playbooks/805-deploy-tailscale-internal-ingress.yml \
-#     -e TAILSCALE_INTERNAL_HOSTNAME="k8s-imac"
+#     -e TAILSCALE_OPERATOR_PREFIX="k8s-imac"
 #
 # Required parameters:
-#   TAILSCALE_INTERNAL_HOSTNAME: Hostname for the cluster (e.g., k8s-imac, k8s-tecmacdev)
+#   TAILSCALE_OPERATOR_PREFIX: Operator device name prefix (e.g., k8s-imac, k8s-tecmacdev)
 
 - name: Deploy Tailscale internal ingress to Kubernetes cluster
   hosts: localhost
@@ -26,7 +26,7 @@
     operator_config_template: "800-tailscale-operator-config.yaml.j2"
     internal_ingress_manifest: "805-tailscale-internal-ingress.yaml.j2"
     # Default hostname if not provided via -e or K8s secret
-    default_internal_hostname: "k8s"
+    default_operator_prefix: "k8s"
     operator_namespace: "tailscale"
     operator_release_name: "tailscale-operator"
 
@@ -54,7 +54,7 @@
         tailscale_clientid: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_CLIENTID | b64decode }}"
         tailscale_clientsecret: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_CLIENTSECRET | b64decode }}"
         tailscale_domain: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_DOMAIN | b64decode }}"
-        tailscale_internal_hostname: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_INTERNAL_HOSTNAME | default('') | b64decode | default(default_internal_hostname, true) }}"
+        tailscale_operator_prefix: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_OPERATOR_PREFIX | default('') | b64decode | default(default_operator_prefix, true) }}"
       when: urbalurba_secrets.resources | length > 0
 
     - name: "05 Ensure Tailscale credentials were retrieved"
@@ -79,7 +79,7 @@
         src: "{{ manifests_folder }}/{{ operator_config_template }}"
         dest: "{{ temp_operator_config_file.path }}"
       vars:
-        TAILSCALE_INTERNAL_HOSTNAME: "{{ tailscale_internal_hostname }}"
+        TAILSCALE_OPERATOR_PREFIX: "{{ tailscale_operator_prefix }}"
 
     - name: "07 Create values file with Tailscale credentials for Helm"
       ansible.builtin.tempfile:
@@ -187,7 +187,7 @@
         src: "{{ manifests_folder }}/{{ internal_ingress_manifest }}"
         dest: "{{ temp_ingress_file.path }}"
       vars:
-        TAILSCALE_INTERNAL_HOSTNAME: "{{ tailscale_internal_hostname }}"
+        TAILSCALE_OPERATOR_PREFIX: "{{ tailscale_operator_prefix }}"
 
     - name: "15 Apply Tailscale Internal Ingress configuration"
       kubernetes.core.k8s:
@@ -224,8 +224,8 @@
           - "==================================================="
           - ""
           - "Tailscale devices for this cluster:"
-          - "  Operator: {{ tailscale_internal_hostname }}-tailscale-operator"
-          - "  LoadBalancer:  {{ tailscale_internal_hostname }}"
+          - "  Operator: {{ tailscale_operator_prefix }}-tailscale-operator"
+          - "  LoadBalancer:  {{ tailscale_operator_prefix }}"
           - ""
           - "Tailnet domain: {{ tailscale_domain }}"
           - ""
@@ -234,7 +234,7 @@
           - "- NOT accessible from public internet"
           - "- Accessible ONLY from devices on the same Tailnet"
           - ""
-          - "Internal URL (HTTP): http://{{ tailscale_internal_hostname }}.{{ tailscale_domain }}"
+          - "Internal URL (HTTP): http://{{ tailscale_operator_prefix }}.{{ tailscale_domain }}"
           - ""
           - "For SovereignSky developers:"
           - "  Configure DNS: *.sovereignsky.no -> [Tailscale IP]"

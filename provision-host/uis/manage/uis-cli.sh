@@ -107,9 +107,10 @@ ArgoCD:
   argocd verify                 Run E2E health checks on ArgoCD server
 
 Testing:
-  test-all                Run full integration test (deploy+undeploy all services)
-  test-all --dry-run      Show test plan without executing
-  test-all --clean        Undeploy all services first, then run tests
+  test-all                       Run full integration test (deploy+undeploy all services)
+  test-all --dry-run             Show test plan without executing
+  test-all --clean               Undeploy all services first, then run tests
+  test-all --only <svc> [svc...] Test only specified services (+ their dependencies)
 
 Documentation:
   docs generate           Generate JSON files for website
@@ -140,9 +141,10 @@ Examples:
   uis argocd register my-app   # Register GitHub repo as ArgoCD app
   uis argocd list              # List registered ArgoCD applications
   uis argocd verify            # Run ArgoCD E2E tests
-  uis test-all                  # Run full integration test
-  uis test-all --dry-run        # Preview test plan
-  uis test-all --clean          # Clean cluster first, then test
+  uis test-all                                  # Run full integration test
+  uis test-all --dry-run                        # Preview test plan
+  uis test-all --clean                          # Clean cluster first, then test
+  uis test-all --only tailscale-tunnel --clean  # Test only specific services
 
 EOF
 }

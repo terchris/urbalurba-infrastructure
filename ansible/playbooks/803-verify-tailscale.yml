@@ -39,7 +39,7 @@
         ts_tailnet: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_TAILNET | b64decode }}"
         ts_domain: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_DOMAIN | b64decode }}"
         ts_secret: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_SECRET | b64decode }}"
-        ts_cluster_hostname: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_CLUSTER_HOSTNAME | default('') | b64decode | default('not set', true) }}"
+        ts_public_hostname: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_PUBLIC_HOSTNAME | default('') | b64decode | default('not set', true) }}"
       when: urbalurba_secrets.resources | length > 0
       ignore_errors: true
 
@@ -50,7 +50,7 @@
         ts_tailnet: ""
         ts_domain: ""
         ts_secret: ""
-        ts_cluster_hostname: "not set"
+        ts_public_hostname: "not set"
       when: urbalurba_secrets.resources | length == 0
 
     - name: "04 Validate secrets are not placeholders"
@@ -190,7 +190,7 @@
           - "Configuration:"
           - "  Tailnet: {{ ts_tailnet | default('not set') }}"
           - "  Domain: {{ ts_domain | default('not set') }}"
-          - "  Cluster Hostname: {{ ts_cluster_hostname }}"
+          - "  Public Hostname: {{ ts_public_hostname }}"
           - "  OAuth Client ID: {{ ts_clientid[:8] + '...' if ts_clientid | length > 8 else ts_clientid | default('not set') }}"
           - ""
           - "Checks:"

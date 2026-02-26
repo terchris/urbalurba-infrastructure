@@ -1,0 +1,61 @@
+---
+# file: ansible/playbooks/argocd-list-apps.yml
+# List all ArgoCD-managed applications with their health and sync status.
+#
+# Usage:
+#   ansible-playbook ansible/playbooks/argocd-list-apps.yml
+
+- name: List ArgoCD applications
+  hosts: localhost
+  gather_facts: false
+  vars:
+    merged_kubeconf_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
+    argocd_namespace: "argocd"
+
+  tasks:
+    - name: "1. Check if ArgoCD namespace exists"
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Namespace
+        name: "{{ argocd_namespace }}"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: argocd_ns
+
+    - name: "2. Fail if ArgoCD is not deployed"
+      ansible.builtin.fail:
+        msg: |
+          ArgoCD namespace '{{ argocd_namespace }}' not found.
+          Deploy ArgoCD first: uis deploy argocd
+      when: argocd_ns.resources | length == 0
+
+    - name: "3. Get all ArgoCD Application resources"
+      kubernetes.core.k8s_info:
+        api_version: argoproj.io/v1alpha1
+        kind: Application
+        namespace: "{{ argocd_namespace }}"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: argocd_apps
+
+    - name: "4. Display applications"
+      ansible.builtin.debug:
+        msg: |
+          ===============================================
+          ArgoCD Applications ({{ argocd_apps.resources | length }} registered)
+          ===============================================
+          {% if argocd_apps.resources | length == 0 %}
+          No applications registered.
+
+          Register one with: uis argocd register <repo_name>
+          {% else %}
+          {% for app in argocd_apps.resources %}
+          Name:   {{ app.metadata.name }}
+          Repo:   {{ app.spec.source.repoURL | default('N/A') }}
+          Path:   {{ app.spec.source.path | default('/') }}
+          Health: {{ app.status.health.status | default('Unknown') }}
+          Sync:   {{ app.status.sync.status | default('Unknown') }}
+          {% if not loop.last %}
+          ---
+          {% endif %}
+          {% endfor %}
+          {% endif %}
+          ===============================================
