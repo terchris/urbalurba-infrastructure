@@ -217,6 +217,8 @@ const sidebars: SidebarsConfig = {
         description: 'Reference documentation and troubleshooting guides.',
       },
       items: [
+        'reference/uis-cli-reference',
+        'reference/service-dependencies',
         'reference/documentation-index',
         'reference/manifests',
         'reference/secrets-management',

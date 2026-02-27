@@ -147,27 +147,27 @@ sidebar_label: <Service Name>
 
 ---
 
-## Phase 3: Foundation Docs
+## Phase 3: Foundation Docs — DONE
 
 Create new reference pages that don't exist today.
 
 ### Tasks
 
-- [ ] 3.1 Create `reference/uis-cli-reference.md` — full CLI reference covering:
+- [x] 3.1 Create `reference/uis-cli-reference.md` — 56+ commands across 13 categories
   - Container management: `start`, `stop`, `shell`, `build`
   - Service management: `list`, `deploy`, `undeploy`, `verify`
   - Secrets: `secrets status`, `secrets generate`
   - Testing: `test-all`, `test-all --dry-run`, `test-all --clean`
   - Service-specific: `tailscale expose/unexpose/verify`
   - Initialization: `init`, `provision`
-- [ ] 3.2 Create service dependency matrix page with Mermaid diagram
-- [ ] 3.3 Add sidebar entries for new reference pages
+- [x] 3.2 Create `reference/service-dependencies.md` with Mermaid graph, tables, deploy order
+- [x] 3.3 Add sidebar entries for new reference pages
 
 ### Validation
 
-- [ ] CLI reference covers all commands from `uis-cli.sh`
-- [ ] Dependency graph matches actual `SCRIPT_REQUIRES` values across all 26 scripts
-- [ ] Docusaurus builds cleanly
+- [x] CLI reference covers all commands from `uis-cli.sh`
+- [x] Dependency graph matches actual `SCRIPT_REQUIRES` values across all 26 scripts
+- [x] Docusaurus builds cleanly
 
 ---
 
@@ -197,7 +197,7 @@ Apply the validated template to all remaining services. Work category by categor
 
 - [ ] Every deployable service has exactly one primary page following the template
 - [ ] No remaining references to old `./scripts/packages/` paths
-- [ ] Docusaurus builds cleanly
+- [x] Docusaurus builds cleanly
 
 ---
 
