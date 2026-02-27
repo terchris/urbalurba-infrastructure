@@ -73,6 +73,7 @@ const sidebars: SidebarsConfig = {
             id: 'packages/ai/index',
           },
           items: [
+            'packages/ai/openwebui',
             'packages/ai/litellm',
             'packages/ai/litellm-client-keys',
             'packages/ai/openwebui-model-access',
@@ -149,6 +150,8 @@ const sidebars: SidebarsConfig = {
             description: 'VPN tunnels and network access services.',
           },
           items: [
+            'packages/networking/tailscale-tunnel',
+            'packages/networking/cloudflare-tunnel',
             'networking/tailscale-setup',
             'networking/tailscale-network-isolation',
             'networking/tailscale-internal-ingress',
@@ -173,6 +176,7 @@ const sidebars: SidebarsConfig = {
           },
           items: [
             'packages/integration/rabbitmq',
+            'packages/integration/gravitee',
           ],
         },
       ],
