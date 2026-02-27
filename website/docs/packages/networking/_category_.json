@@ -1,0 +1,8 @@
+{
+  "label": "Networking",
+  "position": 7,
+  "link": {
+    "type": "generated-index",
+    "description": "VPN tunnels and network access services."
+  }
+}

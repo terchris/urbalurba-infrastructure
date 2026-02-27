@@ -46,9 +46,25 @@ const sidebars: SidebarsConfig = {
       label: 'Packages',
       link: {
         type: 'generated-index',
-        description: 'Service packages available in the infrastructure stack.',
+        description: 'Service packages and categories available in the infrastructure stack.',
       },
       items: [
+        {
+          type: 'category',
+          label: 'Observability',
+          link: {
+            type: 'doc',
+            id: 'packages/observability/index',
+          },
+          items: [
+            'packages/observability/prometheus',
+            'packages/observability/grafana',
+            'packages/observability/loki',
+            'packages/observability/tempo',
+            'packages/observability/otel',
+            'packages/observability/sovdev-logger',
+          ],
+        },
         {
           type: 'category',
           label: 'AI & Machine Learning',
@@ -65,28 +81,30 @@ const sidebars: SidebarsConfig = {
         },
         {
           type: 'category',
-          label: 'Authentication',
+          label: 'Analytics',
           link: {
             type: 'doc',
-            id: 'packages/authentication/index',
+            id: 'packages/analytics/index',
           },
           items: [
-            'packages/authentication/auth10',
-            'packages/authentication/developer-guide',
-            'packages/authentication/blueprints-syntax',
-            'packages/authentication/technical-implementation',
-            'packages/authentication/test-users',
+            'packages/analytics/jupyterhub',
+            'packages/analytics/spark',
+            'packages/analytics/unitycatalog',
           ],
         },
         {
           type: 'category',
-          label: 'Core Services',
+          label: 'Identity',
           link: {
             type: 'doc',
-            id: 'packages/core/index',
+            id: 'packages/identity/index',
           },
           items: [
-            'packages/core/nginx',
+            'packages/identity/auth10',
+            'packages/identity/developer-guide',
+            'packages/identity/blueprints-syntax',
+            'packages/identity/technical-implementation',
+            'packages/identity/test-users',
           ],
         },
         {
@@ -102,31 +120,8 @@ const sidebars: SidebarsConfig = {
             'packages/databases/mysql',
             'packages/databases/mongodb',
             'packages/databases/qdrant',
-          ],
-        },
-        {
-          type: 'category',
-          label: 'Data Science',
-          link: {
-            type: 'doc',
-            id: 'packages/datascience/index',
-          },
-          items: [
-            'packages/datascience/jupyterhub',
-            'packages/datascience/spark',
-            'packages/datascience/unitycatalog',
-          ],
-        },
-        {
-          type: 'category',
-          label: 'Development',
-          link: {
-            type: 'doc',
-            id: 'packages/development/index',
-          },
-          items: [
-            'packages/development/argocd',
-            'packages/development/templates',
+            'packages/databases/redis',
+            'packages/databases/elasticsearch',
           ],
         },
         {
@@ -137,64 +132,47 @@ const sidebars: SidebarsConfig = {
             id: 'packages/management/index',
           },
           items: [
+            'packages/management/argocd',
             'packages/management/pgadmin',
-            'packages/management/rabbitmq',
             'packages/management/redisinsight',
+            'packages/management/nginx',
+            'packages/management/templates',
           ],
         },
         {
           type: 'category',
-          label: 'Monitoring',
+          label: 'Networking',
           link: {
-            type: 'doc',
-            id: 'packages/monitoring/index',
+            type: 'generated-index',
+            description: 'VPN tunnels and network access services.',
           },
           items: [
-            'packages/monitoring/prometheus',
-            'packages/monitoring/grafana',
-            'packages/monitoring/loki',
-            'packages/monitoring/tempo',
-            'packages/monitoring/otel',
-            'packages/monitoring/sovdev-logger',
+            'networking/tailscale-setup',
+            'networking/tailscale-network-isolation',
+            'networking/tailscale-internal-ingress',
+            'networking/cloudflare-setup',
           ],
         },
         {
           type: 'category',
-          label: 'Message Queues',
+          label: 'Storage',
           link: {
-            type: 'doc',
-            id: 'packages/queues/index',
+            type: 'generated-index',
+            description: 'Platform storage infrastructure.',
           },
-          items: [
-            'packages/queues/rabbitmq',
-            'packages/queues/redis',
-          ],
+          items: [],
         },
         {
           type: 'category',
-          label: 'Search',
+          label: 'Integration',
           link: {
             type: 'doc',
-            id: 'packages/search/index',
+            id: 'packages/integration/index',
           },
           items: [
-            'packages/search/elasticsearch',
+            'packages/integration/rabbitmq',
           ],
         },
-      ],
-    },
-    {
-      type: 'category',
-      label: 'Networking',
-      link: {
-        type: 'doc',
-        id: 'networking/index',
-      },
-      items: [
-        'networking/tailscale-setup',
-        'networking/tailscale-network-isolation',
-        'networking/tailscale-internal-ingress',
-        'networking/cloudflare-setup',
       ],
     },
     {

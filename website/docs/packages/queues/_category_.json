@@ -1,8 +1,0 @@
-{
-  "label": "Message Queues",
-  "position": 9,
-  "link": {
-    "type": "doc",
-    "id": "packages/queues/index"
-  }
-}

@@ -1,8 +1,0 @@
-{
-  "label": "Authentication",
-  "position": 2,
-  "link": {
-    "type": "doc",
-    "id": "packages/authentication/index"
-  }
-}

@@ -90,19 +90,19 @@ start_test "CATEGORY_ORDER array is defined"
 assert_var_defined "CATEGORY_ORDER" && pass_test
 
 # Test category functionality
-start_test "CORE is a valid category"
-if is_valid_category "CORE"; then
+start_test "MANAGEMENT is a valid category"
+if is_valid_category "MANAGEMENT"; then
     pass_test
 else
     fail_test
 fi
 
-start_test "get_category_name returns non-empty for CORE"
-name=$(get_category_name "CORE")
+start_test "get_category_name returns non-empty for MANAGEMENT"
+name=$(get_category_name "MANAGEMENT")
 assert_not_empty "$name" "Category name is empty" && pass_test
 
-start_test "get_category_name MONITORING returns 'Observability'"
-name=$(get_category_name "MONITORING")
+start_test "get_category_name OBSERVABILITY returns 'Observability'"
+name=$(get_category_name "OBSERVABILITY")
 assert_equals "Observability" "$name" && pass_test
 
 start_test "INVALID_CAT is not a valid category"
