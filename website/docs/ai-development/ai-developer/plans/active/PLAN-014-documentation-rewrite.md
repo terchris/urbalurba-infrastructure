@@ -96,7 +96,7 @@ All subsequent phases depend on the new names being in place. This phase renames
 
 ---
 
-## Phase 2: Design Validation — Prototype 3 Service Pages
+## Phase 2: Design Validation — Prototype 3 Service Pages — DONE
 
 Rewrite 3 service pages at different complexity levels using the standard template from the investigation. Review the results before proceeding to all services.
 
@@ -133,17 +133,17 @@ sidebar_label: <Service Name>
 
 ### Tasks
 
-- [ ] 2.1 Rewrite **whoami** page (simple — no dependencies, minimal config)
-- [ ] 2.2 Rewrite **redis** page (medium — used as dependency, secrets, common issues)
-- [ ] 2.3 Rewrite **authentik** page (complex — multi-service deps, blueprints, extensive config)
-- [ ] 2.4 Review prototypes — does the template work at all complexity levels? Adjust if needed.
+- [x] 2.1 Rewrite **whoami** page (simple — no dependencies, minimal config)
+- [x] 2.2 Rewrite **redis** page (medium — used as dependency, secrets, common issues)
+- [x] 2.3 Rewrite **authentik** page (complex — multi-service deps, blueprints, extensive config)
+- [x] 2.4 Review prototypes — template works at all complexity levels. Minor adjustment: added Image row for manifest-only services (whoami), Helm chart row for Helm services.
 
 ### Validation
 
-- [ ] All 3 pages follow the same template structure
-- [ ] Info table is accurate (dependencies, namespace, helm chart)
-- [ ] Deploy/undeploy commands match actual `./uis` commands
-- [ ] Docusaurus builds cleanly
+- [x] All 3 pages follow the same template structure
+- [x] Info table is accurate (dependencies, namespace, helm chart)
+- [x] Deploy/undeploy commands match actual `./uis` commands
+- [x] Docusaurus builds cleanly
 
 ---
 

@@ -100,6 +100,7 @@ const sidebars: SidebarsConfig = {
             id: 'packages/identity/index',
           },
           items: [
+            'packages/identity/authentik',
             'packages/identity/auth10',
             'packages/identity/developer-guide',
             'packages/identity/blueprints-syntax',
@@ -136,6 +137,7 @@ const sidebars: SidebarsConfig = {
             'packages/management/pgadmin',
             'packages/management/redisinsight',
             'packages/management/nginx',
+            'packages/management/whoami',
             'packages/management/templates',
           ],
         },
