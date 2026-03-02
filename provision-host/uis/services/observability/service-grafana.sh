@@ -18,6 +18,10 @@ SCRIPT_REMOVE_PLAYBOOK="034-remove-grafana.yml"
 SCRIPT_REQUIRES="prometheus loki tempo otel-collector"
 SCRIPT_PRIORITY="20"
 
+# === Deployment Details (Optional) ===
+SCRIPT_HELM_CHART="grafana/grafana"
+SCRIPT_NAMESPACE="monitoring"
+
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Observability platform for metrics, logs, and distributed tracing"
 SCRIPT_LOGO="grafana-logo.webp"

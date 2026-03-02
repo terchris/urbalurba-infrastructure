@@ -17,6 +17,10 @@ SCRIPT_REMOVE_PLAYBOOK=""
 SCRIPT_REQUIRES=""
 SCRIPT_PRIORITY="81"
 
+# === Deployment Details (Optional) ===
+SCRIPT_HELM_CHART="graviteeio/apim"
+SCRIPT_NAMESPACE="default"
+
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Open-source API management platform for designing, deploying, and managing APIs"
 SCRIPT_LOGO="gravitee-logo.webp"

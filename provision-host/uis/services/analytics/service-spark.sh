@@ -17,6 +17,10 @@ SCRIPT_REMOVE_PLAYBOOK="330-remove-spark.yml"
 SCRIPT_REQUIRES=""
 SCRIPT_PRIORITY="91"
 
+# === Deployment Details (Optional) ===
+SCRIPT_HELM_CHART="spark-kubernetes-operator/spark-kubernetes-operator"
+SCRIPT_NAMESPACE="spark-operator"
+
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Fast and general-purpose cluster computing system for big data processing"
 SCRIPT_LOGO="spark-logo.webp"

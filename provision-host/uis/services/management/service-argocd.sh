@@ -17,6 +17,10 @@ SCRIPT_REMOVE_PLAYBOOK="220-remove-argocd.yml"
 SCRIPT_REQUIRES=""
 SCRIPT_PRIORITY="80"
 
+# === Deployment Details (Optional) ===
+SCRIPT_HELM_CHART="argo/argo-cd"
+SCRIPT_NAMESPACE="argocd"
+
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Declarative GitOps CD for Kubernetes"
 SCRIPT_LOGO="argocd-logo.webp"

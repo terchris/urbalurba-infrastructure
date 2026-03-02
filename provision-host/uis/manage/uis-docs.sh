@@ -96,6 +96,7 @@ generate_services_json() {
         local id="" name="" desc="" cat="" abstract="" logo="" website=""
         local playbook="" priority="" tags="" summary="" docs=""
         local check_command="" remove_playbook="" requires=""
+        local helm_chart="" namespace="" image=""
 
         while IFS= read -r line; do
             case "$line" in
@@ -174,6 +175,21 @@ generate_services_json() {
                     requires="${requires//\"/}"
                     requires="${requires//\'/}"
                     ;;
+                SCRIPT_HELM_CHART=*)
+                    helm_chart="${line#SCRIPT_HELM_CHART=}"
+                    helm_chart="${helm_chart//\"/}"
+                    helm_chart="${helm_chart//\'/}"
+                    ;;
+                SCRIPT_NAMESPACE=*)
+                    namespace="${line#SCRIPT_NAMESPACE=}"
+                    namespace="${namespace//\"/}"
+                    namespace="${namespace//\'/}"
+                    ;;
+                SCRIPT_IMAGE=*)
+                    image="${line#SCRIPT_IMAGE=}"
+                    image="${image//\"/}"
+                    image="${image//\'/}"
+                    ;;
             esac
         done < "$script"
 
@@ -247,6 +263,9 @@ EOF
         [[ -n "$check_command" ]] && echo "    ,\"checkCommand\": \"$check_command\"" >> "$temp_file"
         [[ -n "$remove_playbook" ]] && echo "    ,\"removePlaybook\": \"$remove_playbook\"" >> "$temp_file"
         [[ -n "$requires" ]] && echo "    ,\"requires\": $requires_json" >> "$temp_file"
+        [[ -n "$helm_chart" ]] && echo "    ,\"helmChart\": \"$(json_escape "$helm_chart")\"" >> "$temp_file"
+        [[ -n "$namespace" ]] && echo "    ,\"namespace\": \"$(json_escape "$namespace")\"" >> "$temp_file"
+        [[ -n "$image" ]] && echo "    ,\"image\": \"$(json_escape "$image")\"" >> "$temp_file"
 
         # Close JSON object
         echo "  }" >> "$temp_file"
@@ -422,6 +441,33 @@ validate_json() {
 # ============================================================
 
 main() {
+    # Check for --markdown flag to delegate to markdown generator
+    local markdown_args=()
+    local run_json=true
+    for arg in "$@"; do
+        case "$arg" in
+            --markdown)
+                run_json=false
+                ;;
+            --force|--dry-run|--service)
+                markdown_args+=("$arg")
+                ;;
+            *)
+                markdown_args+=("$arg")
+                ;;
+        esac
+    done
+
+    if [[ "$run_json" == "false" ]]; then
+        local md_script="$SCRIPT_DIR/uis-docs-markdown.sh"
+        if [[ -x "$md_script" ]]; then
+            exec "$md_script" "${markdown_args[@]}"
+        else
+            log_error "Markdown generator not found: $md_script"
+            exit 1
+        fi
+    fi
+
     print_section "UIS Documentation Generator"
     echo ""
     echo "Output directory: $OUTPUT_DIR"

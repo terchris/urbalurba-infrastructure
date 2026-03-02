@@ -17,6 +17,10 @@ SCRIPT_REMOVE_PLAYBOOK="040-remove-database-postgresql.yml"
 SCRIPT_REQUIRES=""
 SCRIPT_PRIORITY="30"
 
+# === Deployment Details (Optional) ===
+SCRIPT_HELM_CHART="bitnami/postgresql"
+SCRIPT_NAMESPACE="default"
+
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="World's most advanced open-source relational database"
 SCRIPT_LOGO="postgresql-logo.webp"

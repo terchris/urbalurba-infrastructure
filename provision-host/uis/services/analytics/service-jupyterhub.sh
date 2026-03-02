@@ -17,6 +17,10 @@ SCRIPT_REMOVE_PLAYBOOK="350-remove-jupyterhub.yml"
 SCRIPT_REQUIRES=""
 SCRIPT_PRIORITY="92"
 
+# === Deployment Details (Optional) ===
+SCRIPT_HELM_CHART="jupyterhub/jupyterhub"
+SCRIPT_NAMESPACE="jupyterhub"
+
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Multi-user server for Jupyter notebooks enabling collaborative data science"
 SCRIPT_LOGO="jupyterhub-logo.webp"

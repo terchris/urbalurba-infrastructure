@@ -17,6 +17,10 @@ SCRIPT_REMOVE_PLAYBOOK="641-remove-pgadmin.yml"
 SCRIPT_REQUIRES="postgresql"
 SCRIPT_PRIORITY="90"
 
+# === Deployment Details (Optional) ===
+SCRIPT_HELM_CHART="runix/pgadmin4"
+SCRIPT_NAMESPACE="default"
+
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Web administration interface for PostgreSQL"
 SCRIPT_LOGO="pgadmin-logo.webp"

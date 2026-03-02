@@ -18,6 +18,10 @@ SCRIPT_REMOVE_PLAYBOOK="031-remove-tempo.yml"
 SCRIPT_REQUIRES=""
 SCRIPT_PRIORITY="12"
 
+# === Deployment Details (Optional) ===
+SCRIPT_HELM_CHART="grafana/tempo"
+SCRIPT_NAMESPACE="monitoring"
+
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Open source distributed tracing backend"
 SCRIPT_LOGO="tempo-logo.webp"

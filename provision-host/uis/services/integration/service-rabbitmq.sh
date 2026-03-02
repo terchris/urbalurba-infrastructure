@@ -17,6 +17,10 @@ SCRIPT_REMOVE_PLAYBOOK="080-remove-rabbitmq.yml"
 SCRIPT_REQUIRES=""
 SCRIPT_PRIORITY="60"
 
+# === Deployment Details (Optional) ===
+SCRIPT_HELM_CHART="bitnami/rabbitmq"
+SCRIPT_NAMESPACE="default"
+
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Reliable message broker supporting multiple messaging protocols"
 SCRIPT_LOGO="rabbitmq-logo.webp"

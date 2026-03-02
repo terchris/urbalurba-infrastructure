@@ -17,6 +17,10 @@ SCRIPT_REMOVE_PLAYBOOK="060-remove-elasticsearch.yml"
 SCRIPT_REQUIRES=""
 SCRIPT_PRIORITY="70"
 
+# === Deployment Details (Optional) ===
+SCRIPT_HELM_CHART="elastic/elasticsearch"
+SCRIPT_NAMESPACE="default"
+
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="RESTful search and analytics engine for all types of data"
 SCRIPT_LOGO="elasticsearch-logo.webp"

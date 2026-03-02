@@ -17,6 +17,10 @@ SCRIPT_REMOVE_PLAYBOOK="210-remove-litellm.yml"
 SCRIPT_REQUIRES="postgresql"
 SCRIPT_PRIORITY="51"
 
+# === Deployment Details (Optional) ===
+SCRIPT_HELM_CHART="oci://ghcr.io/berriai/litellm-helm"
+SCRIPT_NAMESPACE="ai"
+
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Call 100+ LLM APIs using OpenAI format"
 SCRIPT_LOGO="litellm-logo.webp"
