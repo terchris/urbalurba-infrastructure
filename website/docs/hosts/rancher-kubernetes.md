@@ -103,7 +103,7 @@ kubectl config current-context               # Verify current
 To completely reset and start fresh:
 
 :::warning
-All data, configurations, and certificates will be permanently lost. If you manage multiple clusters, back up your kubeconfig first.
+All data, configurations, and certificates will be permanently lost. If you manage multiple clusters, back up your kubeconfig first with `kubeconf-copy2local.sh`.
 :::
 
 1. Open Rancher Desktop
