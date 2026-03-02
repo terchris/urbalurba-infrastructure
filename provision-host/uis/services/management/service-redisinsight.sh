@@ -17,6 +17,10 @@ SCRIPT_REMOVE_PLAYBOOK="651-remove-redisinsight.yml"
 SCRIPT_REQUIRES="redis"
 SCRIPT_PRIORITY="90"
 
+# === Deployment Details (Optional) ===
+SCRIPT_HELM_CHART="redisinsight/redisinsight"
+SCRIPT_NAMESPACE="default"
+
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Visual management interface for Redis"
 SCRIPT_LOGO="redisinsight-logo.webp"

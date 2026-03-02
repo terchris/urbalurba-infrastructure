@@ -17,6 +17,10 @@ SCRIPT_REMOVE_PLAYBOOK="044-remove-qdrant.yml"
 SCRIPT_REQUIRES=""
 SCRIPT_PRIORITY="33"
 
+# === Deployment Details (Optional) ===
+SCRIPT_HELM_CHART="qdrant/qdrant"
+SCRIPT_NAMESPACE="default"
+
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="High-performance vector database for AI applications"
 SCRIPT_LOGO="qdrant-logo.webp"

@@ -18,6 +18,10 @@ SCRIPT_REMOVE_PLAYBOOK="030-remove-prometheus.yml"
 SCRIPT_REQUIRES=""
 SCRIPT_PRIORITY="10"
 
+# === Deployment Details (Optional) ===
+SCRIPT_HELM_CHART="prometheus-community/prometheus"
+SCRIPT_NAMESPACE="monitoring"
+
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Time-series database for metrics collection, storage, and alerting"
 SCRIPT_LOGO="prometheus-logo.webp"

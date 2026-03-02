@@ -18,6 +18,10 @@ SCRIPT_REMOVE_PLAYBOOK="020-remove-nginx.yml"
 SCRIPT_REQUIRES=""
 SCRIPT_PRIORITY="1"
 
+# === Deployment Details (Optional) ===
+SCRIPT_HELM_CHART="bitnami/nginx"
+SCRIPT_NAMESPACE="default"
+
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="High-performance web server and reverse proxy"
 SCRIPT_LOGO="nginx-logo.webp"

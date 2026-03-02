@@ -17,6 +17,10 @@ SCRIPT_REMOVE_PLAYBOOK="070-remove-authentik.yml"
 SCRIPT_REQUIRES="postgresql redis"
 SCRIPT_PRIORITY="40"
 
+# === Deployment Details (Optional) ===
+SCRIPT_HELM_CHART="bitnami/authentik"
+SCRIPT_NAMESPACE="authentik"
+
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Open-source identity provider with SSO, MFA, and user management"
 SCRIPT_LOGO="authentik-logo.webp"

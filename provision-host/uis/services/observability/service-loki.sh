@@ -18,6 +18,10 @@ SCRIPT_REMOVE_PLAYBOOK="032-remove-loki.yml"
 SCRIPT_REQUIRES=""
 SCRIPT_PRIORITY="11"
 
+# === Deployment Details (Optional) ===
+SCRIPT_HELM_CHART="grafana/loki"
+SCRIPT_NAMESPACE="monitoring"
+
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Horizontally-scalable log aggregation system"
 SCRIPT_LOGO="loki-logo.webp"

@@ -17,6 +17,10 @@ SCRIPT_REMOVE_PLAYBOOK="821-remove-network-cloudflare-tunnel.yml"
 SCRIPT_REQUIRES="nginx"
 SCRIPT_PRIORITY="101"
 
+# === Deployment Details (Optional) ===
+SCRIPT_IMAGE="cloudflare/cloudflared:latest"
+SCRIPT_NAMESPACE="default"
+
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Secure outbound-only tunnel to expose services via Cloudflare"
 SCRIPT_LOGO="cloudflare-logo.webp"

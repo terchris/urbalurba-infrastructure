@@ -17,6 +17,10 @@ SCRIPT_REMOVE_PLAYBOOK="320-remove-unity-catalog.yml"
 SCRIPT_REQUIRES="postgresql"
 SCRIPT_PRIORITY="90"
 
+# === Deployment Details (Optional) ===
+SCRIPT_IMAGE="unitycatalog/unitycatalog:latest"
+SCRIPT_NAMESPACE="unity-catalog"
+
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Open-source data catalog for unified governance across data and AI assets"
 SCRIPT_LOGO="unity-catalog-logo.webp"

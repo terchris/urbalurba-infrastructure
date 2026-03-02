@@ -17,6 +17,10 @@ SCRIPT_REMOVE_PLAYBOOK="040-remove-database-mysql.yml"
 SCRIPT_REQUIRES=""
 SCRIPT_PRIORITY="31"
 
+# === Deployment Details (Optional) ===
+SCRIPT_IMAGE="mysql:8.0"
+SCRIPT_NAMESPACE="default"
+
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Popular open-source relational database for web applications"
 SCRIPT_LOGO="mysql-logo.webp"

@@ -17,6 +17,10 @@ SCRIPT_REMOVE_PLAYBOOK="801-remove-network-tailscale-tunnel.yml"
 SCRIPT_REQUIRES="nginx"
 SCRIPT_PRIORITY="100"
 
+# === Deployment Details (Optional) ===
+SCRIPT_HELM_CHART="tailscale/tailscale-operator"
+SCRIPT_NAMESPACE="tailscale"
+
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Zero-config WireGuard-based mesh VPN for secure remote access"
 SCRIPT_LOGO="tailscale-logo.webp"

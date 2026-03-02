@@ -17,6 +17,10 @@ SCRIPT_REMOVE_PLAYBOOK="040-remove-database-mongodb.yml"
 SCRIPT_REQUIRES=""
 SCRIPT_PRIORITY="31"
 
+# === Deployment Details (Optional) ===
+SCRIPT_IMAGE="mongo:8.0.5"
+SCRIPT_NAMESPACE="default"
+
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="General purpose document database"
 SCRIPT_LOGO="mongodb-logo.webp"

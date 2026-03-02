@@ -17,6 +17,10 @@ SCRIPT_REMOVE_PLAYBOOK="025-setup-whoami-testpod.yml -e operation=delete"
 SCRIPT_REQUIRES=""
 SCRIPT_PRIORITY="2"
 
+# === Deployment Details (Optional) ===
+SCRIPT_IMAGE="traefik/whoami:v1.10.2"
+SCRIPT_NAMESPACE="default"
+
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Lightweight test container for debugging ingress and authentication"
 SCRIPT_LOGO=""

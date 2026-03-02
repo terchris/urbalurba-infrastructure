@@ -18,6 +18,10 @@ SCRIPT_REMOVE_PLAYBOOK="033-remove-otel-collector.yml"
 SCRIPT_REQUIRES="prometheus loki tempo"
 SCRIPT_PRIORITY="13"
 
+# === Deployment Details (Optional) ===
+SCRIPT_HELM_CHART="open-telemetry/opentelemetry-collector"
+SCRIPT_NAMESPACE="monitoring"
+
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Vendor-agnostic telemetry collection and processing"
 SCRIPT_LOGO="opentelemetry-logo.webp"

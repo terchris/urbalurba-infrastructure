@@ -96,6 +96,7 @@ generate_services_json() {
         local id="" name="" desc="" cat="" abstract="" logo="" website=""
         local playbook="" priority="" tags="" summary="" docs=""
         local check_command="" remove_playbook="" requires=""
+        local helm_chart="" namespace="" image=""
 
         while IFS= read -r line; do
             case "$line" in
@@ -174,6 +175,21 @@ generate_services_json() {
                     requires="${requires//\"/}"
                     requires="${requires//\'/}"
                     ;;
+                SCRIPT_HELM_CHART=*)
+                    helm_chart="${line#SCRIPT_HELM_CHART=}"
+                    helm_chart="${helm_chart//\"/}"
+                    helm_chart="${helm_chart//\'/}"
+                    ;;
+                SCRIPT_NAMESPACE=*)
+                    namespace="${line#SCRIPT_NAMESPACE=}"
+                    namespace="${namespace//\"/}"
+                    namespace="${namespace//\'/}"
+                    ;;
+                SCRIPT_IMAGE=*)
+                    image="${line#SCRIPT_IMAGE=}"
+                    image="${image//\"/}"
+                    image="${image//\'/}"
+                    ;;
             esac
         done < "$script"
 
@@ -247,6 +263,9 @@ EOF
         [[ -n "$check_command" ]] && echo "    ,\"checkCommand\": \"$check_command\"" >> "$temp_file"
         [[ -n "$remove_playbook" ]] && echo "    ,\"removePlaybook\": \"$remove_playbook\"" >> "$temp_file"
         [[ -n "$requires" ]] && echo "    ,\"requires\": $requires_json" >> "$temp_file"
+        [[ -n "$helm_chart" ]] && echo "    ,\"helmChart\": \"$(json_escape "$helm_chart")\"" >> "$temp_file"
+        [[ -n "$namespace" ]] && echo "    ,\"namespace\": \"$(json_escape "$namespace")\"" >> "$temp_file"
+        [[ -n "$image" ]] && echo "    ,\"image\": \"$(json_escape "$image")\"" >> "$temp_file"
 
         # Close JSON object
         echo "  }" >> "$temp_file"

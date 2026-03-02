@@ -17,6 +17,10 @@ SCRIPT_REMOVE_PLAYBOOK="050-remove-redis.yml"
 SCRIPT_REQUIRES=""
 SCRIPT_PRIORITY="32"
 
+# === Deployment Details (Optional) ===
+SCRIPT_HELM_CHART="bitnami/redis"
+SCRIPT_NAMESPACE="default"
+
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="In-memory data structure store for caching and messaging"
 SCRIPT_LOGO="redis-logo.webp"

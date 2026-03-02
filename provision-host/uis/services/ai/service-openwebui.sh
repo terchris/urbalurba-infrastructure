@@ -17,6 +17,10 @@ SCRIPT_REMOVE_PLAYBOOK="200-remove-open-webui.yml"
 SCRIPT_REQUIRES="postgresql"
 SCRIPT_PRIORITY="50"
 
+# === Deployment Details (Optional) ===
+SCRIPT_HELM_CHART="open-webui/open-webui"
+SCRIPT_NAMESPACE="ai"
+
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Self-hosted AI interface supporting multiple model providers"
 SCRIPT_LOGO="openwebui-logo.webp"
