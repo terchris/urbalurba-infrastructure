@@ -20,14 +20,14 @@ The software and programs in the system work consistently across all host types.
 
 ## 🚀 Host Provisioning Strategy
 
-Ubuntu-based hosts (Azure MicroK8s, Multipass, Raspberry Pi) use **cloud-init** for automated provisioning, while managed services (Azure AKS, Rancher Desktop) use their own provisioning mechanisms. For detailed information about cloud-init configuration and templates, see [hosts-cloud-init-readme.md](./hosts-cloud-init-readme.md).
+Ubuntu-based hosts (Azure MicroK8s, Multipass, Raspberry Pi) use **cloud-init** for automated provisioning, while managed services (Azure AKS, Rancher Desktop) use their own provisioning mechanisms. For detailed information about cloud-init configuration and templates, see [hosts-cloud-init-readme.md](./cloud-init/index.md).
 
 ## 🏗️ Host Types
 
 The system supports several types of host configurations:
 
 ### 1. Rancher Kubernetes Hosts
-**Documentation**: [hosts-rancher-kubernetes.md](./hosts-rancher-kubernetes.md) | **Scripts**: `hosts/rancher-kubernetes/`
+**Documentation**: [hosts-rancher-kubernetes.md](./rancher-kubernetes.md) | **Scripts**: `hosts/rancher-kubernetes/`
 - Deploys Rancher-managed Kubernetes clusters
 - Default local development environment
 - Supports multi-node clusters
@@ -36,14 +36,14 @@ The system supports several types of host configurations:
 - No cloud-init required (uses Rancher Desktop)
 
 ### 2. Azure AKS Hosts
-**Documentation**: [hosts-azure-aks.md](./hosts-azure-aks.md) | **Scripts**: `hosts/azure-aks/`
+**Documentation**: [hosts-azure-aks.md](./azure-aks.md) | **Scripts**: `hosts/azure-aks/`
 - Managed Kubernetes service on Azure
 - Production-ready with Azure integration
 - Cost management and scaling features
 - No cloud-init required (managed service)
 
 ### 3. Azure MicroK8s Hosts
-**Documentation**: [hosts-azure-microk8s.md](./hosts-azure-microk8s.md) | **Scripts**: `hosts/azure-microk8s/`
+**Documentation**: [hosts-azure-microk8s.md](./azure-microk8s.md) | **Scripts**: `hosts/azure-microk8s/`
 - Deploys MicroK8s on Azure VMs
 - Uses Azure-specific cloud-init configuration ✅
 - Supports automatic scaling
@@ -51,7 +51,7 @@ The system supports several types of host configurations:
 - Includes Tailscale VPN for secure access
 
 ### 4. Raspberry Pi MicroK8s Hosts
-**Documentation**: [hosts-raspberry-microk8s.md](./hosts-raspberry-microk8s.md) | **Scripts**: `hosts/raspberry-microk8s/`
+**Documentation**: [hosts-raspberry-microk8s.md](./raspberry-microk8s.md) | **Scripts**: `hosts/raspberry-microk8s/`
 - Uses Raspberry Pi-specific cloud-init configuration ✅
 - Optimized for ARM architecture
 - Resource-efficient configuration
@@ -60,7 +60,7 @@ The system supports several types of host configurations:
 - Includes WiFi configuration
 
 ### 5. Multipass MicroK8s Hosts (LEGACY)
-**Documentation**: [hosts-multipass-microk8s.md](./hosts-multipass-microk8s.md) | **Scripts**: `hosts/multipass-microk8s/`
+**Documentation**: [hosts-multipass-microk8s.md](./multipass-microk8s.md) | **Scripts**: `hosts/multipass-microk8s/`
 - **REPLACED BY RANCHER DESKTOP** - Kept for historical reference
 - Deploys MicroK8s using Multipass
 - Uses Multipass-specific cloud-init configuration ✅
@@ -81,7 +81,7 @@ cd /mnt/urbalurbadisk/hosts
 
 ### To set up Azure AKS
 
-Read documentation: [hosts-azure-aks.md](./hosts-azure-aks.md)
+Read documentation: [hosts-azure-aks.md](./azure-aks.md)
 
 ```bash
 ./install-azure-aks.sh
@@ -89,7 +89,7 @@ Read documentation: [hosts-azure-aks.md](./hosts-azure-aks.md)
 
 ### To set up a VM in Azure and then prepare microk8s kubernetes on it
 
-Read documentation: [hosts-azure-microk8s.md](./hosts-azure-microk8s.md)
+Read documentation: [hosts-azure-microk8s.md](./azure-microk8s.md)
 
 ```bash
 ./install-azure-microk8s-v2.sh
@@ -99,11 +99,11 @@ Read documentation: [hosts-azure-microk8s.md](./hosts-azure-microk8s.md)
 
 Raspberry Pi (manual setup required)
 
-See documentation: [hosts-raspberry-microk8s.md](./hosts-raspberry-microk8s.md)
+See documentation: [hosts-raspberry-microk8s.md](./raspberry-microk8s.md)
 
 ### Multipass MicroK8s (LEGACY - replaced by Rancher Desktop)
 
-See documentation: [hosts-multipass-microk8s.md](./hosts-multipass-microk8s.md)
+See documentation: [hosts-multipass-microk8s.md](./multipass-microk8s.md)
 
 
 
@@ -172,10 +172,10 @@ kubectl config get-contexts
 
 For comprehensive setup guides, troubleshooting, and configuration details:
 
-- **[hosts-cloud-init-readme.md](./hosts-cloud-init-readme.md)** - Cloud-init configuration and templates
-- **[hosts-azure-microk8s.md](./hosts-azure-microk8s.md)** - Azure MicroK8s deployment guide
-- **[hosts-azure-aks.md](./hosts-azure-aks.md)** - Azure AKS deployment guide
-- **[hosts-multipass-microk8s.md](./hosts-multipass-microk8s.md)** - Multipass MicroK8s deployment guide
-- **[hosts-raspberry-microk8s.md](./hosts-raspberry-microk8s.md)** - Raspberry Pi MicroK8s deployment guide
-- **[hosts-rancher-kubernetes.md](./hosts-rancher-kubernetes.md)** - Rancher Kubernetes deployment guide
+- **[hosts-cloud-init-readme.md](./cloud-init/index.md)** - Cloud-init configuration and templates
+- **[hosts-azure-microk8s.md](./azure-microk8s.md)** - Azure MicroK8s deployment guide
+- **[hosts-azure-aks.md](./azure-aks.md)** - Azure AKS deployment guide
+- **[hosts-multipass-microk8s.md](./multipass-microk8s.md)** - Multipass MicroK8s deployment guide
+- **[hosts-raspberry-microk8s.md](./raspberry-microk8s.md)** - Raspberry Pi MicroK8s deployment guide
+- **[hosts-rancher-kubernetes.md](./rancher-kubernetes.md)** - Rancher Kubernetes deployment guide
 

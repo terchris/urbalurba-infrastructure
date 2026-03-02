@@ -1,6 +1,6 @@
 # INVESTIGATE: Rancher Reset and Full Service Verification
 
-**Related**: [STATUS-service-migration](STATUS-service-migration.md), [INVESTIGATE-unity-catalog-crashloop](INVESTIGATE-unity-catalog-crashloop.md)
+**Related**: [STATUS-service-migration](../backlog/STATUS-service-migration.md), [INVESTIGATE-unity-catalog-crashloop](INVESTIGATE-unity-catalog-crashloop.md)
 **Created**: 2026-02-19
 **Status**: COMPLETE
 **Completed**: 2026-02-20

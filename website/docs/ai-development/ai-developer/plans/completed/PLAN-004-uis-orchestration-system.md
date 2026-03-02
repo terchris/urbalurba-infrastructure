@@ -29,7 +29,7 @@ This epic is split into 4 implementation plans. Execute them in order:
 | [PLAN-004C: Distribution](../completed/PLAN-004C-distribution.md) | 7-8 | Install script, cross-platform | ✅ Complete |
 | [PLAN-004D: Website & Testing](../completed/PLAN-004D-website-testing.md) | 9-10 | JSON generation, test framework | ✅ Complete |
 | [PLAN-004E: JSON Schema Validation](../completed/PLAN-004E-json-schema-validation.md) | - | Schema validation framework | ✅ Complete |
-| [PLAN-004F: Build and Test](../active/PLAN-004F-build-and-test.md) | - | Build container, run tests | 🚧 In Progress |
+| [PLAN-004F: Build and Test](./PLAN-004F-build-and-test.md) | - | Build container, run tests | 🚧 In Progress |
 
 **Delivery Summary**:
 - **004A**: `uis list`, `uis deploy`, `uis enable/disable`, first-run initialization
@@ -747,7 +747,7 @@ Create configuration wizard for customizing the setup.
 
 - [ ] 6.3 Create `uis secrets` subcommands
   - **File**: `provision-host/uis/lib/secrets-management.sh`
-  - **Based on**: Existing [Secrets Management System](../../../reference/secrets-management.md)
+  - **Based on**: Existing [Secrets Management System](../../../../reference/secrets-management.md)
 
   **Commands:**
   ```bash
@@ -790,7 +790,7 @@ Create configuration wizard for customizing the setup.
   Users do NOT need to run `uis secrets init` to get started - the system works immediately.
 
   > **Note**: The `.template` suffix is kept in `secrets-config/` per the existing convention
-  > documented in [secrets-management.md](../../../reference/secrets-management.md).
+  > documented in [secrets-management.md](../../../../reference/secrets-management.md).
 
   **Key Variables in 00-common-values.env:**
 
@@ -1421,8 +1421,8 @@ All the heavy lifting (scanning services, deploying to Kubernetes, Ansible, kube
 ### Secrets Architecture
 
 > **Reference Documentation:**
-> - [Secrets Management Quick Start](../../../reference/secrets-management.md) - How-to guide
-> - [Secrets Management Rules](../../../rules/secrets-management.md) - Detailed rules and patterns
+> - [Secrets Management Quick Start](../../../../reference/secrets-management.md) - How-to guide
+> - [Secrets Management Rules](../../../../rules/secrets-management.md) - Detailed rules and patterns
 
 **Migration from `topsecret/` to `.uis.secrets/`**
 

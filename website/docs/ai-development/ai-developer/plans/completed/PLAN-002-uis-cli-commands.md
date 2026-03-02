@@ -18,7 +18,7 @@
 
 **Prerequisites**: PLAN-001 complete ✓
 
-**Related**: [INVESTIGATE-secrets-consolidation.md](../backlog/INVESTIGATE-secrets-consolidation.md)
+**Related**: [INVESTIGATE-secrets-consolidation.md](./INVESTIGATE-secrets-consolidation.md)
 
 ---
 

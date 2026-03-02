@@ -287,6 +287,6 @@ The Tailscale Helm chart has a default `operatorConfig.hostname: "tailscale-oper
 
 ## See Also
 
-- [networking-tailscale-setup.md](networking-tailscale-setup.md) - Funnel-based public internet access
+- [networking-tailscale-setup.md](./tailscale-setup.md) - Funnel-based public internet access
 - [Tailscale Kubernetes Operator documentation](https://tailscale.com/kb/1236/kubernetes-operator)
 - [Tailscale Cluster Ingress documentation](https://tailscale.com/kb/1439/kubernetes-operator-cluster-ingress)

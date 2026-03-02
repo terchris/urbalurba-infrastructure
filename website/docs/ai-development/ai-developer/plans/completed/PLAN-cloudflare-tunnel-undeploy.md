@@ -12,7 +12,7 @@
 
 **Priority**: Low — deploy works, undeploy is the missing half
 
-**Parent**: [STATUS-service-migration.md](STATUS-service-migration.md) — Phase 3
+**Parent**: [STATUS-service-migration.md](../backlog/STATUS-service-migration.md) — Phase 3
 
 ---
 

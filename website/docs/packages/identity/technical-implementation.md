@@ -512,11 +512,11 @@ kubectl exec -it deployment/postgresql -n default -- psql -U authentik -c "CREAT
 
 ## Related Documentation
 
-- **[Main Authentication Guide](package-auth-authentik.md)** - Overview and getting started
-- **[Auth10 System Guide](package-auth-authentik-auth10.md)** - Configuration-driven authentication
-- **[Developer Guide](package-auth-authentik-auth10-developer-guide.md)** - Practical implementation
-- **[Blueprint Syntax](package-auth-authentik-blueprints-syntax.md)** - Blueprint reference
-- **[Test Users Guide](package-auth-authentik-testusers.md)** - User management
+- **[Main Authentication Guide](./authentik.md)** - Overview and getting started
+- **[Auth10 System Guide](./auth10.md)** - Configuration-driven authentication
+- **[Developer Guide](./developer-guide.md)** - Practical implementation
+- **[Blueprint Syntax](./blueprints-syntax.md)** - Blueprint reference
+- **[Test Users Guide](./test-users.md)** - User management
 
 ---
 

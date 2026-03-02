@@ -9,7 +9,7 @@
 
 All VMs that we create are configured using cloud-init.yml. An "ansible" user is created and set up so that it can log in using SSH key authentication. This document provides instructions for creating the SSH key that is used by ansible to connect to all hosts.
 
-This is a **prerequisite step** for cloud-init deployment - see [hosts-cloud-init-readme.md](./hosts-cloud-init-readme.md) for the main cloud-init documentation.
+This is a **prerequisite step** for cloud-init deployment - see [hosts-cloud-init-readme.md](./index.md) for the main cloud-init documentation.
 
 > **Important:** The SSH key files (`id_rsa_ansible` and `id_rsa_ansible.pub`) will be created on your local disk and should never be committed to the repository. They contain sensitive authentication credentials.
 

@@ -639,9 +639,9 @@ The platform includes comprehensive debugging scripts in the `troubleshooting/` 
 
 ### Contact and Resources
 
-- **📖 Documentation**: Start with [doc/README.md](./README.md)
-- **🏗️ Architecture**: Review [doc/overview-system-architecture.md](./overview-system-architecture.md)
-- **🔧 Commands**: See [doc/provision-host-commands.md](./provision-host-commands.md)
+- **📖 Documentation**: Start with the [documentation home](../index.md)
+- **🏗️ Architecture**: Review the [system architecture](../getting-started/architecture.md)
+- **🔧 Commands**: See the [UIS CLI reference](./uis-cli-reference.md)
 - **🤖 Debug Scripts**: Use automated tools in `troubleshooting/` folder
 - **🐛 Issues**: Report at GitHub repository issues
 

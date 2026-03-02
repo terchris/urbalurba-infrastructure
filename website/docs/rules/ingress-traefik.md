@@ -477,7 +477,7 @@ spec:
 ### **File Organization**:
 All ingress configuration files are located in the **`manifests/`** folder.
 
-**⚠️ See [doc/rules-naming-conventions.md](rules-naming-conventions.md#manifest-files) for complete naming patterns.**
+**⚠️ See [doc/rules-naming-conventions.md](./naming-conventions.md) for complete naming patterns.**
 
 **Quick Reference**:
 - **File Naming**: IngressRoute files end with `-ingressroute.yaml`

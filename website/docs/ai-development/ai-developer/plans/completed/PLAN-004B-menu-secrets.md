@@ -190,7 +190,7 @@ Create configuration wizard and secrets commands.
 
 - [x] 6.3 Create `uis secrets` subcommands ✅
   - **File**: `provision-host/uis/lib/secrets-management.sh`
-  - **Based on**: Existing [Secrets Management System](../../../reference/secrets-management.md)
+  - **Based on**: Existing [Secrets Management System](../../../../reference/secrets-management.md)
 
   **Commands:**
   ```bash

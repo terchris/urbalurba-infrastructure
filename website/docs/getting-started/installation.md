@@ -80,7 +80,7 @@ ls -la urbalurba-infrastructure/
 
 After downloading the infrastructure package, you'll need to deploy the services to your Kubernetes cluster:
 
-1. **Follow the [Getting Started Guide](./overview-getting-started.md)** in the downloaded package for deployment instructions
+1. **Follow the [Getting Started Guide](./overview.md)** in the downloaded package for deployment instructions
 2. **Use the provision scripts** to set up and deploy services
 3. **Access services** once deployed at `*.localhost` domains:
 

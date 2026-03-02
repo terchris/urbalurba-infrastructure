@@ -70,7 +70,7 @@ The plan is a markdown file. Edit it if something's wrong. Only after you approv
 **They create documentation.** Completed plans show what was implemented and why.
 :::
 
-Learn more: [Creating Plans](creating-plans)
+Learn more: [Creating Plans](./creating-plans.md)
 
 ---
 
@@ -130,5 +130,5 @@ Then tell it what you want to build. It will create a plan for your review.
 
 ## Next Steps
 
-- [Workflow](workflow) - The full flow from idea to implementation
-- [Creating Plans](creating-plans) - Plan templates and best practices
+- [Workflow](./workflow.md) - The full flow from idea to implementation
+- [Creating Plans](./creating-plans.md) - Plan templates and best practices

@@ -14,7 +14,7 @@ This document covers **how to implement individual deployment scripts**:
 - Implementation best practices
 
 For **how scripts are organized and executed automatically**, see:
-→ [Rules for Automated Kubernetes Deployment](rules-automated-kubernetes-deployment.md) - Orchestration and automation framework
+→ [Rules for Automated Kubernetes Deployment](./kubernetes-deployment.md) - Orchestration and automation framework
 
 ## 📋 **Overview**
 
@@ -64,7 +64,7 @@ echo "✅ LiteLLM deployment complete"
 
 ### **Rule 1B: Script Naming Convention**
 
-**⚠️ See [doc/rules-naming-conventions.md](rules-naming-conventions.md#shell-scripts) for complete naming patterns.**
+**⚠️ See [doc/rules-naming-conventions.md](./naming-conventions.md) for complete naming patterns.**
 
 **Quick Reference:**
 - **Setup Script**: `[NN]-setup-[service-name].sh` (e.g., `05-setup-postgres.sh`)
@@ -385,7 +385,7 @@ ok: [localhost]
 
 All Ansible tasks MUST follow consistent naming and numbering conventions.
 
-**⚠️ See [doc/rules-naming-conventions.md](rules-naming-conventions.md#ansible-playbooks) for complete patterns.**
+**⚠️ See [doc/rules-naming-conventions.md](./naming-conventions.md) for complete patterns.**
 
 **Mandatory Requirements**:
 - ✅ **Sequential numbering**: Tasks numbered 1, 2, 3... in execution order

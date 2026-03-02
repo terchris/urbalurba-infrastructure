@@ -14,7 +14,7 @@
 
 **Prerequisites**: None - this is a standalone fix
 
-**Related**: [INVESTIGATE-authentik-automation.md](../backlog/INVESTIGATE-authentik-automation.md)
+**Related**: [INVESTIGATE-authentik-automation.md](./INVESTIGATE-authentik-auto-deployment.md)
 
 ---
 
@@ -362,4 +362,4 @@ If issues occur, remove the added tasks (1.5 and 1.6) from the playbook. The man
 
 The tester suggested a feature idea during testing:
 
-- **Authentik CLI** - `./uis authentik users list` etc. (added to [INVESTIGATE-authentik-automation.md](../backlog/INVESTIGATE-authentik-automation.md))
+- **Authentik CLI** - `./uis authentik users list` etc. (added to [INVESTIGATE-authentik-automation.md](./INVESTIGATE-authentik-auto-deployment.md))

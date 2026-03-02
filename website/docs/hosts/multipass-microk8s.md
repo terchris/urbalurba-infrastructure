@@ -8,7 +8,7 @@
 > ⚠️ **LEGACY DOCUMENTATION** - This setup has been **REPLACED BY RANCHER DESKTOP**
 >
 > For new installations, use the default Rancher Desktop setup instead.
-> See [hosts-rancher-kubernetes.md](./hosts-rancher-kubernetes.md) for current instructions.
+> See [hosts-rancher-kubernetes.md](./rancher-kubernetes.md) for current instructions.
 
 ## 📋 Overview
 
@@ -57,7 +57,7 @@ The VM is now created. To set it up we use the VM named provision-host.
 ## Register multipass-microk8s in ansible inventory
 
 For the provision-host VM to be able to reach the multipass-microk8s VM we must set up the ansible inventory file.
-This is described in the file [provision-host/02-register-ansible-inventory.md](/provision-host/02-register-ansible-inventory.md).
+This is described in the [Provision Host documentation](../provision-host/index.md).
 
 (there is now a script that does this) Tasks:
 
@@ -150,7 +150,7 @@ The playbook merges all *-kubeconfig files in the folder `/mnt/urbalurbadisk/kub
 source ~/.bashrc
 ```
 
-Now you can use the kubectl command to manage the cluster. The commands are described in the file [/commands/kubectl-commands.md](/commands/kubectl-commands.md)
+Now you can use the kubectl command to manage the cluster. See the [UIS CLI Reference](../reference/uis-cli-reference.md) for available commands.
 
 #### Install Helm
 

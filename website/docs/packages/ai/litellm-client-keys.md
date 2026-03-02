@@ -301,8 +301,8 @@ kubectl logs -n ai deployment/litellm | grep "claude-code-developer-name"
 
 ## 🔗 Related Documentation
 
-- **[package-ai-litellm.md](./package-ai-litellm.md)** - Main LiteLLM documentation
-- **[package-ai-readme.md](./package-ai-readme.md)** - AI services overview
+- **[package-ai-litellm.md](./litellm.md)** - Main LiteLLM documentation
+- **[package-ai-readme.md](./index.md)** - AI services overview
 - **DevContainer nginx configuration** - `.devcontainer/additions/nginx/`
 
 ## 📝 Notes

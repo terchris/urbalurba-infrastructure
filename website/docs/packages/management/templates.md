@@ -41,5 +41,5 @@ The deployment is done using ArgoCD. And once deployed you can open your browser
 
 ## Database Setup
 
-- See [MySQL Setup Documentation](./package-datascience.md#mysql-setup-documentation) for details on deploying and verifying MySQL in the cluster.
+- See [MySQL Setup Documentation](../analytics/index.md) for details on deploying and verifying MySQL in the cluster.
 

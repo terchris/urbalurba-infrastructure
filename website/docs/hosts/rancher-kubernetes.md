@@ -186,10 +186,9 @@ kubectl config current-context
 
 ## 📖 Related Documentation
 
-- **[hosts-readme.md](./hosts-readme.md)** - Main hosts overview
-- **[CLAUDE.md](../CLAUDE.md)** - Repository instructions
-- **[install-rancher-desktop-mac.md](./install-rancher-desktop-mac.md)** - Rancher Desktop installation guide
-- **[rules-git-workflow.md](./rules-git-workflow.md)** - Development workflow standards
+- **[Hosts Overview](./index.md)** - Main hosts overview
+- **[Rancher Desktop Installation](https://rancherdesktop.io/)** - Rancher Desktop installation guide
+- **[Git Workflow](../rules/git-workflow.md)** - Development workflow standards
 
 ## 📝 Notes
 
