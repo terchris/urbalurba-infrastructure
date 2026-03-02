@@ -198,3 +198,4 @@ AUTHENTIK_BOOTSTRAP_EMAIL: "${DEFAULT_ADMIN_EMAIL}"
 ## Related Docs
 
 - [Secrets Management Rules](../rules/secrets-management.md) - Detailed rules and patterns
+

@@ -905,8 +905,8 @@ async function queryDatabase(query, params) {
 - **[Grafana Visualization](./grafana.md)** - Query and visualization
 
 **Configuration & Rules**:
-- **[Traefik IngressRoute](../../rules/ingress-traefik.md)** - External access patterns
-- **[Development Workflow](../../rules/development-workflow.md)** - Application integration
+- **[Traefik IngressRoute](../../contributors/rules/ingress-traefik.md)** - External access patterns
+- **[Development Workflow](../../contributors/rules/development-workflow.md)** - Application integration
 
 **External Resources**:
 - **OpenTelemetry Protocol Specification**: https://opentelemetry.io/docs/specs/otlp/

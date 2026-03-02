@@ -2,7 +2,6 @@
  * CategoryCard component - displays a category with service count.
  */
 import React from 'react';
-import Link from '@docusaurus/Link';
 import useBaseUrl from '@docusaurus/useBaseUrl';
 import type { CategoryCardProps } from '../../types/category';
 import { getCategoryPath } from '../../utils/paths';
@@ -16,7 +15,7 @@ export default function CategoryCard({
   const categoryPath = getCategoryPath(category.codeValue);
 
   return (
-    <Link to={categoryPath} className={styles.categoryCard}>
+    <a href={categoryPath} className={styles.categoryCard}>
       <div className={styles.logoContainer}>
         <img
           src={logoUrl}
@@ -32,6 +31,6 @@ export default function CategoryCard({
           {serviceCount} {serviceCount === 1 ? 'service' : 'services'}
         </span>
       </div>
-    </Link>
+    </a>
   );
 }

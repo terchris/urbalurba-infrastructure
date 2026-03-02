@@ -37,8 +37,8 @@ Host Machine
 
 ## Guides
 
-- **[Tools Reference](./tools.md)** — All tools available inside the container
-- **[Kubernetes Deployment](./kubernetes.md)** — How services are deployed to the cluster
+- **[Tools Reference](../contributors/architecture/tools.md)** — All tools available inside the container
+- **[Kubernetes Deployment](../contributors/architecture/deploy-system.md)** — How services are deployed to the cluster
 - **[Rancher Desktop Integration](./rancher.md)** — Setup specific to Rancher Desktop
 
 ## Key Concepts
@@ -51,5 +51,5 @@ Host Machine
 ## Related Documentation
 
 - **[Architecture](../getting-started/architecture.md)** — Full system architecture
-- **[Secrets Management](../reference/secrets-management.md)** — How credentials are managed
+- **[Secrets Management](../contributors/architecture/secrets.md)** — How credentials are managed
 - **[UIS CLI Reference](../reference/uis-cli-reference.md)** — Complete command reference

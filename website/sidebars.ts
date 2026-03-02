@@ -3,6 +3,7 @@ import type { SidebarsConfig } from '@docusaurus/plugin-content-docs';
 const sidebars: SidebarsConfig = {
   tutorialSidebar: [
     'index',
+    'about',
     {
       type: 'category',
       label: 'Getting Started',
@@ -190,26 +191,6 @@ const sidebars: SidebarsConfig = {
       },
       items: [
         'provision-host/rancher',
-        'provision-host/kubernetes',
-        'provision-host/tools',
-      ],
-    },
-    {
-      type: 'category',
-      label: 'Rules & Standards',
-      link: {
-        type: 'doc',
-        id: 'rules/index',
-      },
-      items: [
-        'rules/kubernetes-deployment',
-        'rules/ingress-traefik',
-        'rules/secrets-management',
-        'rules/provisioning',
-        'rules/naming-conventions',
-        'rules/git-workflow',
-        'rules/development-workflow',
-        'rules/documentation',
       ],
     },
     {
@@ -223,9 +204,45 @@ const sidebars: SidebarsConfig = {
         'reference/uis-cli-reference',
         'reference/service-dependencies',
         'reference/documentation-index',
-        'reference/manifests',
-        'reference/secrets-management',
         'reference/troubleshooting',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Contributors',
+      link: {
+        type: 'doc',
+        id: 'contributors/index',
+      },
+      items: [
+        {
+          type: 'category',
+          label: 'Rules & Standards',
+          link: {
+            type: 'doc',
+            id: 'contributors/rules/index',
+          },
+          items: [
+            'contributors/rules/kubernetes-deployment',
+            'contributors/rules/ingress-traefik',
+            'contributors/rules/secrets-management',
+            'contributors/rules/provisioning',
+            'contributors/rules/naming-conventions',
+            'contributors/rules/git-workflow',
+            'contributors/rules/development-workflow',
+            'contributors/rules/documentation',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Architecture',
+          items: [
+            'contributors/architecture/deploy-system',
+            'contributors/architecture/tools',
+            'contributors/architecture/manifests',
+            'contributors/architecture/secrets',
+          ],
+        },
       ],
     },
   ],

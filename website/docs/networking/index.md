@@ -157,7 +157,7 @@ match: HostRegexp(`whoami\..+`)
 2. Add **Cloudflare** later when you need custom domains
 3. Use both for different purposes (internal vs external)
 
-*See [Traefik Ingress Rules](../rules/ingress-traefik.md) for complete technical details on HostRegexp routing.*
+*See [Traefik Ingress Rules](../contributors/rules/ingress-traefik.md) for complete technical details on HostRegexp routing.*
 
 ### 🎯 Recommended Decision Path
 
@@ -222,7 +222,7 @@ spec:
 - ✅ **Authentication Ready**: Works with Authentik forward auth middleware
 - ✅ **Future-Proof**: Automatically supports any new domains
 
-*Technical details: [Traefik Ingress Rules Guide](../rules/ingress-traefik.md)*
+*Technical details: [Traefik Ingress Rules Guide](../contributors/rules/ingress-traefik.md)*
 
 ### External Access with Cloudflare
 
