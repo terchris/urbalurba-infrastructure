@@ -92,7 +92,7 @@ Each category has a `not-in-use/` folder containing optional services. You contr
 - **📁 Active Services**: Scripts in the category folder (e.g., `07-ai/01-setup-litellm-openwebui.sh`)
 - **📁 Inactive Services**: Scripts in `not-in-use/` folder (e.g., `07-ai/not-in-use/02-setup-open-webui.sh`)
 
-**Technical Details**: See [Active vs Inactive Management](../rules/kubernetes-deployment.md#active-vs-inactive-management) in the rules documentation.
+**Technical Details**: See [Legacy System](../rules/kubernetes-deployment.md#legacy-system) in the rules documentation. The current system uses `./uis enable`/`./uis disable` — see [Autostart Configuration](../rules/kubernetes-deployment.md#autostart-configuration).
 
 ## Quick Start Guide
 

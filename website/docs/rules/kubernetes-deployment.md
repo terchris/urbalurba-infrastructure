@@ -1,180 +1,359 @@
-# Rules for Automated Kubernetes Deployment
+# Rules for UIS Deployment System
 
 **File**: `docs/rules-automated-kubernetes-deployment.md`
-**Purpose**: Define the **ORCHESTRATION LAYER** - how deployment scripts are organized, discovered, and executed automatically when cluster is built
-**Target Audience**: Developers, DevOps engineers, and LLMs working with the automated deployment system
-**Scope**: Directory structure, naming conventions, execution order, and automation flow
+**Purpose**: Define the **ORCHESTRATION LAYER** — how services are discovered, configured, and deployed through the UIS CLI
+**Target Audience**: Developers, DevOps engineers, and LLMs working with the UIS deployment system
+**Scope**: CLI commands, service metadata, deploy flow, stacks, autostart configuration
 
 ## Relationship to Other Rules
 
 This document covers the **orchestration and automation framework**:
-- How scripts are organized in numbered directories
-- How `provision-kubernetes.sh` discovers and executes scripts
-- Alphabetic ordering and dependency management
-- Active/inactive script management
+- How the UIS CLI discovers and deploys services
+- Service metadata files and the deploy/undeploy lifecycle
+- Stacks (pre-defined service bundles)
+- Autostart configuration via `enabled-services.conf`
 
-For **how to write individual deployment scripts**, see:
-→ [Rules for Provisioning](./provisioning.md) - Implementation patterns for scripts and playbooks
+For **how to write individual Ansible playbooks**, see:
+> [Rules for Provisioning](./provisioning.md) - Implementation patterns for playbooks
+
+For **file and resource naming patterns**, see:
+> [Naming Conventions](./naming-conventions.md)
 
 ## Core Principles
 
-1. **Automated Orchestration**: The `provision-kubernetes.sh` script is the master orchestrator that executes all deployment scripts
-2. **Alphabetic Execution Order**: Directories and scripts are executed in strict alphabetic order based on their names
-3. **Sequential Dependency Management**: Applications MUST be deployed in order based on their dependencies via alphabetic naming
-4. **Idempotency**: All deployment scripts MUST be safe to run multiple times
-5. **Error Resilience**: Deployment process MUST continue even if individual scripts fail, with errors tracked
-6. **Parameterization**: All scripts MUST accept target host as a parameter
+1. **Declarative Service Metadata**: Each service is defined by a metadata file (`service-*.sh`) that declares its properties, deployment method, dependencies, and health check
+2. **CLI-Driven Deployment**: All deployments are performed through `./uis deploy` and `./uis undeploy` commands
+3. **Dependency Management**: Services declare their requirements via `SCRIPT_REQUIRES` and the system verifies dependencies before deploying
+4. **Ansible for Heavy Lifting**: Metadata files delegate actual deployment to Ansible playbooks — no business logic in metadata
+5. **Idempotency**: All deployments MUST be safe to run multiple times
+6. **Health Verification**: Services define a `SCRIPT_CHECK_COMMAND` for post-deploy health checks
 
-## Automated Orchestration System
+## UIS CLI Commands
 
-### Master Script: provision-kubernetes.sh
-
-The **`provision-kubernetes.sh`** is the central automation controller that orchestrates all deployments:
-
-**Repository Path**: `provision-host/kubernetes/provision-kubernetes.sh`
-**Container Path**: `/mnt/urbalurbadisk/provision-host/kubernetes/provision-kubernetes.sh` (when running inside provision-host)
-
-**Key Functions**:
-- Automatically discovers all numbered directories (e.g., `01-core`, `02-databases`)
-- Executes directories in **strict alphabetic order** (not numeric - this is critical!)
-- Within each directory, executes all `*.sh` scripts in **alphabetic order**
-- Ignores scripts in `not-in-use/` folders
-- Passes target host parameter to every script
-- Continues execution even if individual scripts fail
-- Generates comprehensive summary report
-
-**CRITICAL**: The system uses **alphabetic sorting**, not numeric sorting:
-- `01` comes before `02` (correct)
-- `10` comes before `2` (would be wrong - always use leading zeros!)
-- This is why `05-setup-postgres.sh` comes before `10-setup-mysql.sh`
-
-### Automated Execution
-
-**IMPORTANT**: This script is called **automatically** by `./uis provision` during cluster build:
+### Service Deployment
 
 ```bash
-# Automatically executed by ./uis provision:
+# Deploy a single service (also enables it for autostart)
+./uis deploy postgresql
+
+# Deploy all enabled services (from enabled-services.conf)
+./uis deploy
+
+# Undeploy a single service
+./uis undeploy postgresql
+```
+
+### Service Management
+
+```bash
+# List all available services (grouped by category)
+./uis list
+./uis list --all            # Include disabled services
+./uis list --category AI    # Filter by category
+
+# Show deployed services with health status
+./uis status
+
+# Enable/disable autostart (does not deploy/undeploy)
+./uis enable postgresql
+./uis disable postgresql
+
+# List enabled services
+./uis list-enabled
+```
+
+### Stack Operations
+
+```bash
+# List available stacks
+./uis stack list
+
+# Show stack details (services, descriptions)
+./uis stack info observability
+
+# Install a stack (deploys all services in order)
+./uis stack install observability
+
+# Install stack without optional services
+./uis stack install observability --skip-optional
+
+# Remove a stack (undeploys in reverse order)
+./uis stack remove observability
+```
+
+### Other Commands
+
+```bash
+# Show version
+./uis version
+
+# Interactive setup menu
+./uis setup
+
+# First-time initialization
+./uis init
+
+# Sync enabled list with what's actually running in cluster
+./uis sync
+
+# Legacy: run old provision-kubernetes.sh system
 ./uis provision
 ```
 
-The complete cluster setup flow:
-1. User runs `./uis start` in the repo on their host machine (Windows, Mac, Linux)
-2. UIS pulls the pre-built container image and mounts volumes
-3. User runs `./uis provision` which calls provision-kubernetes.sh inside the container
-4. provision-kubernetes.sh deploys all services in alphabetic order
+## Service Architecture
 
-### Manual Usage (for testing/debugging)
+### Service Metadata Files
+
+Every service is defined by a metadata file in `provision-host/uis/services/<category>/`:
+
+```
+provision-host/uis/services/
+├── ai/
+│   ├── service-litellm.sh
+│   └── service-openwebui.sh
+├── analytics/
+│   ├── service-jupyterhub.sh
+│   ├── service-spark.sh
+│   └── service-unity-catalog.sh
+├── databases/
+│   ├── service-elasticsearch.sh
+│   ├── service-mongodb.sh
+│   ├── service-mysql.sh
+│   ├── service-postgresql.sh
+│   └── service-redis.sh
+├── identity/
+│   └── service-authentik.sh
+├── integration/
+│   └── service-rabbitmq.sh
+├── management/
+│   ├── service-argocd.sh
+│   ├── service-pgadmin.sh
+│   ├── service-redisinsight.sh
+│   └── service-whoami.sh
+├── networking/
+│   ├── service-cloudflare-tunnel.sh
+│   └── service-tailscale-tunnel.sh
+└── observability/
+    ├── service-grafana.sh
+    ├── service-loki.sh
+    ├── service-otel-collector.sh
+    ├── service-prometheus.sh
+    └── service-tempo.sh
+```
+
+### Metadata File Structure
+
+Each metadata file declares service properties as shell variables. The scanner reads these by parsing the file line-by-line (it does NOT `source` the file during discovery, for safety).
 
 ```bash
-# From within provision-host container:
-cd /mnt/urbalurbadisk
-./provision-host/kubernetes/provision-kubernetes.sh [target-host]
+#!/bin/bash
+# service-postgresql.sh - PostgreSQL service metadata
+
+# === Service Metadata (Required) ===
+SCRIPT_ID="postgresql"                    # Unique ID used in CLI commands
+SCRIPT_NAME="PostgreSQL"                  # Human-readable display name
+SCRIPT_DESCRIPTION="Open-source relational database"
+SCRIPT_CATEGORY="DATABASES"               # Must match a category ID
+
+# === Deployment Configuration (Optional) ===
+SCRIPT_PLAYBOOK="040-database-postgresql.yml"   # Ansible playbook (preferred)
+SCRIPT_MANIFEST=""                              # Direct kubectl manifest (alternative)
+SCRIPT_REMOVE_PLAYBOOK="040-remove-database-postgresql.yml"
+SCRIPT_CHECK_COMMAND="kubectl get pods -n default -l app.kubernetes.io/name=postgresql --no-headers 2>/dev/null | grep -q Running"
+SCRIPT_REQUIRES=""                        # Space-separated service IDs
+SCRIPT_PRIORITY="30"                      # Deploy order (lower = earlier, default: 50)
+
+# === Deployment Details (Optional) ===
+SCRIPT_HELM_CHART="bitnami/postgresql"
+SCRIPT_NAMESPACE="default"
+
+# === Website Metadata (Optional) ===
+SCRIPT_ABSTRACT="World's most advanced open-source relational database"
+SCRIPT_LOGO="postgresql-logo.webp"
+SCRIPT_WEBSITE="https://www.postgresql.org"
+SCRIPT_TAGS="database,sql,relational,postgres,rdbms"
+SCRIPT_SUMMARY="PostgreSQL is a powerful, open-source object-relational database system..."
+SCRIPT_DOCS="/docs/packages/databases/postgresql"
 ```
 
-Default target-host is `rancher-desktop` if not specified.
+**Three metadata groups:**
 
-## Directory Structure Rules
+| Group | Fields | Purpose |
+|-------|--------|---------|
+| Required | `SCRIPT_ID`, `SCRIPT_NAME`, `SCRIPT_DESCRIPTION`, `SCRIPT_CATEGORY` | Service identity and discovery |
+| Deployment | `SCRIPT_PLAYBOOK`, `SCRIPT_MANIFEST`, `SCRIPT_CHECK_COMMAND`, `SCRIPT_REMOVE_PLAYBOOK`, `SCRIPT_REQUIRES`, `SCRIPT_PRIORITY`, `SCRIPT_NAMESPACE` | How to deploy, verify, and remove |
+| Website | `SCRIPT_ABSTRACT`, `SCRIPT_LOGO`, `SCRIPT_WEBSITE`, `SCRIPT_TAGS`, `SCRIPT_SUMMARY`, `SCRIPT_DOCS` | Documentation generation |
 
-### Category Numbering Standards
+**Important constraints:**
+- `SCRIPT_PLAYBOOK` and `SCRIPT_MANIFEST` are mutually exclusive — if both are set, playbook takes precedence
+- `SCRIPT_REMOVE_PLAYBOOK` can include extra Ansible parameters after the filename (space-separated)
+- Files starting with `_` (e.g., `_helper.sh`) are skipped by the scanner
+- Each variable must be on its own line in `KEY="value"` format for the line-by-line parser
 
-Deployment scripts MUST be organized in numbered categories:
+### Categories
 
-**Repository Structure**:
+Services are organized into 9 categories (defined in `provision-host/uis/lib/categories.sh`):
+
+| Category ID | Display Name | Description | Manifest Range |
+|------------|--------------|-------------|----------------|
+| `OBSERVABILITY` | Observability | Metrics, logs, and tracing | 030-039 |
+| `AI` | AI & ML | AI and machine learning services | 200-229 |
+| `ANALYTICS` | Analytics | Data science and analytics platforms | 300-399 |
+| `IDENTITY` | Identity | Identity and access management | 070-079 |
+| `DATABASES` | Databases | Data storage and caching services | 040-099 |
+| `MANAGEMENT` | Management | Admin tools, GitOps, and test services | 600-799 |
+| `NETWORKING` | Networking | VPN tunnels and network access | — |
+| `STORAGE` | Storage | Platform storage infrastructure | 000-009 |
+| `INTEGRATION` | Integration | Messaging, API gateways, and event streams | — |
+
+**Note**: `STORAGE` and `NETWORKING` are platform-dependent — Traefik and storage provisioners are managed by Rancher Desktop, not by `./uis deploy`.
+
+### Service Discovery
+
+The service scanner (`provision-host/uis/lib/service-scanner.sh`) discovers services by:
+
+1. Walking `provision-host/uis/services/` recursively for `*.sh` files
+2. Skipping files starting with `_` (helper scripts)
+3. Parsing each file line-by-line for `SCRIPT_ID=`, `SCRIPT_NAME=`, etc.
+4. Caching results for performance (cache is an in-memory indexed array)
+
+The scanner never `source`s scripts during discovery — this is a safety measure. Only `deploy_single_service` in `service-deployment.sh` actually sources a metadata file (to load all variables for deployment).
+
+## Deploy Flow
+
+When you run `./uis deploy <service>`, the system follows this sequence:
+
 ```
-provision-host/kubernetes/
-├── 01-core/             # Storage, ingress, DNS, basic infrastructure
-├── 02-databases/        # PostgreSQL, MySQL, MongoDB, etc.
-├── 03-queues/          # Redis, RabbitMQ, message brokers
-├── 04-search/          # Elasticsearch, Solr, search engines
-├── 05-apim/            # API management platforms
-├── 06-management/      # Admin tools (pgAdmin, phpMyAdmin, etc.)
-├── 07-ai/              # AI/ML services (OpenWebUI, LiteLLM, etc.)
-├── 08-development/     # CI/CD tools (ArgoCD, Jenkins, etc.)
-├── 09-network/         # VPN, tunnels, network tools
-├── 10-datascience/    # Jupyter, Unity Catalog, analytics
-├── 11-monitoring/      # Prometheus, Grafana, observability
-└── 12-auth/            # Authentication services (Authentik, Keycloak)
+./uis deploy postgresql
+    │
+    ├─ 1. Find service script via service scanner
+    │     └─ Locates provision-host/uis/services/databases/service-postgresql.sh
+    │
+    ├─ 2. Source metadata file (loads all SCRIPT_* variables)
+    │
+    ├─ 3. Check dependencies (SCRIPT_REQUIRES)
+    │     └─ For each required service, verify it's deployed via SCRIPT_CHECK_COMMAND
+    │     └─ Fail fast if any dependency is missing
+    │
+    ├─ 4. Execute deployment (mutually exclusive methods):
+    │     ├─ If SCRIPT_PLAYBOOK: ansible-playbook <playbook> -e "target_host=<host>"
+    │     └─ If SCRIPT_MANIFEST: kubectl apply -f <manifest>
+    │
+    ├─ 5. Post-deploy health check (if SCRIPT_CHECK_COMMAND is set)
+    │     └─ Wait 2 seconds, then run health check
+    │     └─ Failure is a warning, not an error
+    │
+    └─ 6. Auto-enable service in enabled-services.conf
 ```
 
-**Container Path**: `/mnt/urbalurbadisk/provision-host/kubernetes/` (when mounted in provision-host)
+**`./uis deploy` (no argument)** deploys all services listed in `enabled-services.conf`, in order. Stops on first failure.
 
-### Script Naming Convention
+**`./uis undeploy <service>`** uses a three-tier removal strategy:
+1. If `SCRIPT_REMOVE_PLAYBOOK` is set: run the removal playbook
+2. Else if `SCRIPT_MANIFEST` is set: `kubectl delete -f <manifest> --ignore-not-found`
+3. Else: warn "no removal method found"
 
-**⚠️ See [doc/rules-naming-conventions.md](./naming-conventions.md) for complete naming patterns.**
+### Target Host
 
-Scripts must follow standard naming patterns. For **implementation details** (script structure, error handling), see:
-→ [Rules for Provisioning](./provisioning.md) - Script Template Pattern section
+The target host (default: `rancher-desktop`) is read from `cluster-config.sh`. This determines which Kubernetes context Ansible uses. Supported cluster types:
+- `rancher-desktop` (default, local development)
+- `azure-aks`
+- `azure-microk8s`
+- `multipass-microk8s`
+- `raspberry-microk8s`
 
-### Active vs Inactive Management
+## Stacks
 
-**Purpose**: Control what gets deployed during **automated cluster build** by `./uis provision`
+Stacks are pre-defined bundles of services that work together. They are defined in `provision-host/uis/lib/stacks.sh`.
 
-- **Active scripts**: Placed directly in the category folder - will be deployed automatically
-- **Inactive scripts**: Placed in `not-in-use/` subfolder - skipped during automated build
-- **Activation**: Move script from `not-in-use/` to parent directory for next cluster build
-- **Deactivation**: Move script to `not-in-use/` to exclude from automated deployment
+### Available Stacks
 
-**IMPORTANT**: Scripts in `not-in-use/` can still be run manually anytime:
+| Stack | Services | Optional |
+|-------|----------|----------|
+| **observability** | prometheus, tempo, loki, otel-collector, grafana | otel-collector |
+| **ai-local** | litellm, openwebui | — |
+| **analytics** | spark, jupyterhub, unity-catalog | unity-catalog |
+
+### Stack Behavior
+
+- **Install**: Services are deployed left-to-right in the defined order (dependencies first)
+- **Remove**: Services are removed in **reverse** order (dependents first)
+- **`--skip-optional`**: Skips services listed as optional for the stack
+- Each service installed via a stack is automatically added to `enabled-services.conf`
+
+## Autostart Configuration
+
+The file `.uis.extend/enabled-services.conf` controls which services are deployed when running `./uis deploy` without arguments.
+
 ```bash
-# Manual execution of inactive script (from provision-host container):
-cd /mnt/urbalurbadisk/provision-host/kubernetes/02-databases/not-in-use/
-./04-setup-mongodb.sh rancher-desktop
+# Enable a service (adds to enabled-services.conf)
+./uis enable postgresql
+
+# Disable a service (removes from enabled-services.conf)
+./uis disable postgresql
+
+# List what's enabled
+./uis list-enabled
+
+# Sync enabled list with cluster state
+./uis sync
 ```
 
-**Note**: The path above uses the container mount point (`/mnt/urbalurbadisk/`).
+The `sync` command scans the cluster for running services and adds them to the enabled list — useful after manual deployments or when the enabled list gets out of sync.
 
-This allows you to:
-- Keep optional services ready but not auto-deployed
-- Test services before adding to automated build
-- Maintain different cluster configurations
+## Adding a New Service
 
-## Script Requirements for Orchestration
+To add a new service to UIS:
 
-### Compatibility with Automation
+1. **Create a metadata file** in the appropriate category directory:
+   ```
+   provision-host/uis/services/<category>/service-<name>.sh
+   ```
+   Include at minimum: `SCRIPT_ID`, `SCRIPT_NAME`, `SCRIPT_DESCRIPTION`, `SCRIPT_CATEGORY`
 
-For scripts to work with the automated orchestration system, they MUST:
+2. **Create an Ansible playbook** in `ansible/playbooks/`:
+   ```
+   ansible/playbooks/NNN-setup-<name>.yml
+   ```
+   Follow the patterns in [Rules for Provisioning](./provisioning.md)
 
-1. **Be executable**: File permissions must be 755 (`chmod +x script.sh`)
-2. **Accept target host as first parameter**: The orchestrator passes this automatically
-3. **Follow naming convention**: `[NN]-setup-[service].sh` for proper alphabetic ordering
-4. **Be placed in correct directory**: Active scripts in category folder, inactive in `not-in-use/`
+3. **Create a removal playbook** (if using Ansible deployment):
+   ```
+   ansible/playbooks/NNN-remove-<name>.yml
+   ```
 
-For **implementation details** (how to write the scripts), see:
-→ [Rules for Provisioning](./provisioning.md)
+4. **Create manifest configs** in `manifests/` (if needed):
+   ```
+   manifests/NNN-<name>-config.yaml
+   ```
 
+5. **Set deployment fields** in the metadata file:
+   - `SCRIPT_PLAYBOOK` or `SCRIPT_MANIFEST`
+   - `SCRIPT_REMOVE_PLAYBOOK`
+   - `SCRIPT_CHECK_COMMAND` (health check)
+   - `SCRIPT_REQUIRES` (dependencies)
+   - `SCRIPT_PRIORITY` (deploy order)
 
-## Dependency Management Rules
+6. **Test**: `./uis deploy <name>` then `./uis status`
 
-### Execution Order (Alphabetic!)
+## Legacy System
 
-1. Categories are processed in **alphabetic order** (01 before 02, 10 before 11, etc.)
-2. Scripts within categories execute in **alphabetic order**
-3. Dependencies MUST be satisfied by proper alphabetic ordering:
-   - Databases (02) before applications that use them
-   - Authentication (12) after databases it depends on
-   - Monitoring (11) after services to monitor
+The old deployment system (`provision-host/kubernetes/` with numbered directories and `provision-kubernetes.sh`) still exists for backward compatibility:
 
+```bash
+# Run the old orchestration system
+./uis provision
+```
 
+This executes `provision-host/kubernetes/provision-kubernetes.sh`, which discovers numbered directories (e.g., `01-core/`, `02-databases/`) and runs scripts within them in alphabetic order. The old system uses `not-in-use/` subdirectories to control which scripts execute.
 
-## Automation Integration
-
-The **`provision-kubernetes.sh`** master script implements these orchestration requirements:
-
-1. **Discover all category directories** in alphabetic order
-2. **Execute scripts within each directory** in alphabetic order
-3. **Skip scripts** in `not-in-use/` folders
-4. **Pass target host parameter** to every script
-5. **Continue execution** even if individual scripts fail
-6. **Track successes and failures** for summary report
-7. **Generate comprehensive summary** of all deployment results
-8. **Return appropriate exit code** based on overall success/failure
-
-
-**Key Point**: This discovery pattern ensures **strict alphabetic execution order** for both directories and scripts.
+**The old system is not actively maintained.** New services should use the UIS metadata + Ansible pattern described above.
 
 ---
 
 **Related Documentation:**
-- [Provision Host Kubernetes Guide](../provision-host/kubernetes.md)
+- [Rules for Provisioning](./provisioning.md) - Ansible playbook patterns
+- [Naming Conventions](./naming-conventions.md) - File and resource naming
 - [Rules Overview](./index.md)
 - [Secrets Management](./secrets-management.md)
+- [Ingress and Traefik](./ingress-traefik.md)

@@ -22,20 +22,20 @@ This document establishes mandatory patterns for writing deployment scripts and 
 
 ## 🎯 **Core Deployment Architecture**
 
-### **Rule 1: Script + Ansible Pattern**
-All deployments MUST follow the **Script + Ansible** pattern:
+### **Rule 1: Metadata + Ansible Pattern**
+All deployments MUST follow the **Metadata + Ansible** pattern:
 
 ```
-scripts/packages/[service].sh  →  ansible/playbooks/[nnn]-setup-[service].yml
-     ↑ Minimal orchestration      ↑ Heavy lifting implementation
+service-*.sh metadata  →  ansible/playbooks/[nnn]-setup-[service].yml
+   ↑ Declarative config      ↑ Heavy lifting implementation
 ```
 
-#### **Script Responsibilities** (Keep Minimal):
-- ✅ Check prerequisites (kubectl access, basic dependencies)
-- ✅ Call Ansible playbook with proper parameters
-- ✅ Display final success/failure message
-- ❌ **NO business logic** - delegate to Ansible
-- ❌ **NO complex operations** - keep scripts simple
+#### **Service Metadata Responsibilities** (Declarative Only):
+- ✅ Declare service identity (`SCRIPT_ID`, `SCRIPT_NAME`, `SCRIPT_CATEGORY`)
+- ✅ Point to Ansible playbook (`SCRIPT_PLAYBOOK`) or manifest (`SCRIPT_MANIFEST`)
+- ✅ Declare dependencies (`SCRIPT_REQUIRES`) and health check (`SCRIPT_CHECK_COMMAND`)
+- ❌ **NO business logic** — delegate to Ansible
+- ❌ **NO imperative code** — metadata files are declarative variable assignments
 
 #### **Ansible Playbook Responsibilities** (Heavy Lifting):
 - ✅ All deployment logic and verification
@@ -44,14 +44,15 @@ scripts/packages/[service].sh  →  ansible/playbooks/[nnn]-setup-[service].yml
 - ✅ Error handling with proper retry mechanisms
 - ✅ Status reporting and troubleshooting information
 
-### **Example Structure**:
+#### **How it works**:
+The UIS CLI reads the metadata file, resolves dependencies, then calls the Ansible playbook:
+
 ```bash
-# scripts/packages/litellm.sh
-#!/bin/bash
-set -e
-echo "🚀 Deploying LiteLLM AI Gateway..."
-ansible-playbook ansible/playbooks/210-setup-litellm.yml
-echo "✅ LiteLLM deployment complete"
+# Service metadata declares the playbook:
+# provision-host/uis/services/ai/service-litellm.sh
+SCRIPT_ID="litellm"
+SCRIPT_PLAYBOOK="210-setup-litellm.yml"
+SCRIPT_REQUIRES="postgresql"
 ```
 
 ```yaml
@@ -60,17 +61,21 @@ echo "✅ LiteLLM deployment complete"
   # ... all the actual deployment logic
 ```
 
+For details on the UIS CLI and service metadata format, see:
+> [Rules for UIS Deployment System](./kubernetes-deployment.md)
+
 ## 📝 **Script Template Pattern**
 
-### **Rule 1B: Script Naming Convention**
+### **Rule 1B: Naming Convention**
 
 **⚠️ See [doc/rules-naming-conventions.md](./naming-conventions.md) for complete naming patterns.**
 
 **Quick Reference:**
-- **Setup Script**: `[NN]-setup-[service-name].sh` (e.g., `05-setup-postgres.sh`)
-- **Remove Script**: `[NN]-remove-[service-name].sh` (same number prefix)
+- **Service Metadata**: `service-[name].sh` in `provision-host/uis/services/<category>/`
+- **Setup Playbook**: `[NNN]-setup-[service-name].yml` (e.g., `040-database-postgresql.yml`)
+- **Remove Playbook**: `[NNN]-remove-[service-name].yml` (same number prefix)
 
-**MANDATORY**: Every setup script MUST have a corresponding remove script for clean uninstallation.
+**MANDATORY**: Every service with a `SCRIPT_PLAYBOOK` SHOULD have a corresponding `SCRIPT_REMOVE_PLAYBOOK` for clean uninstallation.
 
 ### **Rule 1C: Check Existing Playbooks First**
 
@@ -656,14 +661,12 @@ When calling utility playbooks from main playbooks, MUST implement "quiet succes
 
 ### **Rule 13: Consistent File Naming and Numbering**
 
-TODO: we need to revise numbering (someday)
-
 ```
-scripts/packages/[service-name].sh
-ansible/playbooks/[nnn]-setup-[service-name].yml
-ansible/playbooks/utility/[unn]-[purpose].yml
-manifests/[nnn]-[service-name]-[component].yaml
-provision-host/kubernetes/[nn]-[category]/[nn]-setup-[service].sh
+provision-host/uis/services/[category]/service-[name].sh   # Service metadata
+ansible/playbooks/[nnn]-setup-[service-name].yml            # Deploy playbook
+ansible/playbooks/[nnn]-remove-[service-name].yml           # Remove playbook
+ansible/playbooks/utility/[unn]-[purpose].yml               # Utility playbook
+manifests/[nnn]-[service-name]-[component].yaml             # Kubernetes manifests
 ```
 
 ### **Rule 14: Retry and Timeout Patterns**
@@ -897,7 +900,7 @@ See `docs/rules-ingress-traefik.md` for complete IngressRoute examples and patte
 - Always follow the Script + Ansible pattern
 
 ### **Validation Checklist**:
-- [ ] Uses Script + Ansible pattern
+- [ ] Uses Metadata + Ansible pattern (service metadata declares playbook)
 - [ ] Tests using kubectl run (not .localhost from host)
 - [ ] Includes comprehensive verification steps
 - [ ] Does not ignore errors for critical dependencies
@@ -905,7 +908,7 @@ See `docs/rules-ingress-traefik.md` for complete IngressRoute examples and patte
 - [ ] Uses sequential task numbering (1, 2, 3...)
 - [ ] Utility files are complete playbooks (not task lists)
 - [ ] Manages required Helm repositories within playbook
-- [ ] Understands auto-execution system (active vs not-in-use placement)
+- [ ] Service metadata file placed in correct category directory
 - [ ] Uses Traefik IngressRoute (not standard Ingress)
 - [ ] Follows file naming conventions
 - [ ] Includes proper status reporting
