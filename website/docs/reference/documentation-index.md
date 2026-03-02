@@ -1,213 +1,277 @@
 # Urbalurba Infrastructure Documentation
 
-**File**: `docs/README.md`
 **Purpose**: Master documentation index and entry point for Urbalurba Infrastructure
 **Target Audience**: All users, developers, and administrators
-**Last Updated**: September 22, 2024
 
-## 📋 Overview
+## Overview
 
-Welcome to the complete documentation for **Urbalurba Infrastructure** - a zero-friction developer platform that provides a complete datacenter environment on your laptop. This documentation covers everything from installation to advanced configuration and troubleshooting.
+Welcome to the complete documentation for **Urbalurba Infrastructure** — a zero-friction developer platform that provides a complete datacenter environment on your laptop. This documentation covers everything from installation to advanced configuration and troubleshooting.
 
-## 🚀 Quick Start
+## Quick Start
 
 **New to Urbalurba?** Start here:
 
-1. **[Getting Started](../getting-started/overview.md)** - 5-minute first test with your browser
-2. **[Installation Guide](../getting-started/installation.md)** - Get up and running in 2 simple steps
-3. **[System Architecture](../getting-started/architecture.md)** - Understand how everything fits together
-4. **[Services Overview](../getting-started/services.md)** - See all available services vs Azure equivalents
+1. **[Getting Started](../getting-started/overview.md)** — 5-minute first test with your browser
+2. **[Installation Guide](../getting-started/installation.md)** — Get up and running in 2 simple steps
+3. **[System Architecture](../getting-started/architecture.md)** — Understand how everything fits together
+4. **[Services Overview](../getting-started/services.md)** — See all available services vs Azure equivalents
 
-## 📚 Documentation Categories
+## Documentation Categories
 
-### 🛠️ **Installation & Getting Started**
+### Getting Started
+
 *Essential guides for new users and system administrators*
 
-| Document | Purpose | Status |
-|----------|---------|---------|
-| **[overview-getting-started.md](../getting-started/overview.md)** | 5-minute first test guide with immediate browser access | ✅ Excellent |
-| **[overview-installation.md](../getting-started/installation.md)** | Simple 2-step installation guide | ✅ Complete |
-| **[overview-system-architecture.md](../getting-started/architecture.md)** | Two-tier architecture overview with detailed diagrams | ✅ Outstanding |
-| **[overview-infrastructure.md](../getting-started/infrastructure.md)** | Infrastructure components and relationships | ✅ Excellent |
-| **[overview-services.md](../getting-started/services.md)** | Complete services comparison with Azure equivalents | ✅ Excellent |
+| Document | Purpose |
+|----------|---------|
+| [Getting Started](../getting-started/overview.md) | 5-minute first test guide with browser access |
+| [Installation Guide](../getting-started/installation.md) | Simple 2-step installation guide |
+| [System Architecture](../getting-started/architecture.md) | Two-tier architecture overview with diagrams |
+| [Infrastructure Overview](../getting-started/infrastructure.md) | Infrastructure components and relationships |
+| [Services Overview](../getting-started/services.md) | Complete services comparison with Azure equivalents |
 
-### 🏗️ **System Architecture & Management**
-*Deep-dive technical documentation for architects and infrastructure engineers*
+### Packages — Observability
 
-| Document | Purpose | Status |
-|----------|---------|---------|
-| **[provision-host-readme.md](../provision-host/index.md)** | Central management container documentation | ✅ Excellent |
-| **[overview-system-architecture.md](../getting-started/architecture.md)** | Complete architectural overview with Mermaid diagrams | ✅ Outstanding |
-| **[provision-host-kubernetes.md](../provision-host/kubernetes.md)** | Kubernetes-specific management tools | ✅ Good |
-| **[provision-host-tools.md](../provision-host/tools.md)** | Command reference and usage patterns | ✅ Good |
+*Metrics, logs, and distributed tracing*
 
-### 🌐 **Networking & External Access**
-*Network configuration, ingress, and external connectivity*
+| Document | Purpose |
+|----------|---------|
+| [Observability Overview](../packages/observability/index.md) | Stack overview and architecture |
+| [Prometheus](../packages/observability/prometheus.md) | Metrics collection and alerting |
+| [Grafana](../packages/observability/grafana.md) | Visualization and dashboards |
+| [Loki](../packages/observability/loki.md) | Log aggregation |
+| [Tempo](../packages/observability/tempo.md) | Distributed tracing |
+| [OpenTelemetry Collector](../packages/observability/otel-collector.md) | Telemetry pipeline |
+| [OTLP Collector](../packages/observability/otel.md) | OTLP ingestion configuration |
+| [sovdev-logger](../packages/observability/sovdev-logger.md) | Multi-language OTLP integration library |
 
-| Document | Purpose | Status |
-|----------|---------|---------|
-| **[networking-readme.md](../networking/index.md)** | Advanced networking architecture | ✅ Outstanding |
-| **[rules-ingress-traefik.md](../rules/ingress-traefik.md)** | Comprehensive Traefik ingress configuration | ✅ Outstanding |
-| **[networking-cloudflare-setup.md](../networking/cloudflare-setup.md)** | Secure external access via Cloudflare | ✅ Excellent |
-| **[networking-tailscale-setup.md](../networking/tailscale-setup.md)** | VPN integration for remote access | ✅ Excellent |
+### Packages — AI & ML
 
+*AI services, LLM integration, and model management*
 
-### 🔐 **Authentication & Security**
-*SSO, security policies, and access control*
+| Document | Purpose |
+|----------|---------|
+| [AI & ML Overview](../packages/ai/index.md) | AI platform overview |
+| [Open WebUI](../packages/ai/openwebui.md) | ChatGPT-like interface |
+| [LiteLLM](../packages/ai/litellm.md) | LLM proxy configuration |
+| [LiteLLM Client Keys](../packages/ai/litellm-client-keys.md) | API key setup for Claude Code integration |
+| [OpenWebUI Model Access](../packages/ai/openwebui-model-access.md) | Model access configuration |
+| [Environment Management](../packages/ai/environment-management.md) | AI environment and model management |
 
-| Document | Purpose | Status |
-|----------|---------|---------|
-| **[package-auth-authentik-readme.md](../packages/identity/index.md)** | Complete Authentik SSO implementation | ✅ Outstanding |
-| **[package-auth-authentik-auth10.md](../packages/identity/auth10.md)** | Authentication flows and OAuth integration | ✅ Excellent |
-| **[package-auth-authentik-blueprints-syntax.md](../packages/identity/blueprints-syntax.md)** | Authentik blueprint configuration | ✅ Excellent |
-| **[package-auth-authentik-technical-implementation.md](../packages/identity/technical-implementation.md)** | Technical implementation details | ✅ Excellent |
-| **[package-auth-authentik-testusers.md](../packages/identity/test-users.md)** | Test user configuration | ✅ Excellent |
-| **[secrets-management-readme.md](./secrets-management.md)** | Modular secrets management system | ✅ Excellent |
+### Packages — Analytics
 
-### 🤖 **AI Platform**
-*AI/ML services, LLM integration, and data science tools*
+*Data science, notebooks, and distributed computing*
 
-| Document | Purpose | Status |
-|----------|---------|---------|
-| **[package-ai-readme.md](../packages/ai/index.md)** | Complete AI platform overview | ✅ Outstanding |
-| **[package-ai-litellm.md](../packages/ai/litellm.md)** | LiteLLM proxy configuration and usage | ✅ Outstanding |
-| **[package-ai-openwebui-model-access-setup.md](../packages/ai/openwebui-model-access.md)** | OpenWebUI model access configuration | ✅ Excellent |
-| **[package-ai-environment-management.md](../packages/ai/environment-management.md)** | AI environment and model management | ✅ Excellent |
+| Document | Purpose |
+|----------|---------|
+| [Analytics Overview](../packages/analytics/index.md) | Analytics platform overview |
+| [Apache Spark](../packages/analytics/spark.md) | Distributed computing |
+| [JupyterHub](../packages/analytics/jupyterhub.md) | Collaborative notebooks |
+| [Unity Catalog](../packages/analytics/unity-catalog.md) | Data governance |
 
-### 📊 **Data Science Platform**
-*Analytics, data processing, and business intelligence*
+### Packages — Identity
 
-| Document | Purpose | Status |
-|----------|---------|---------|
-| **[package-datascience.md](../packages/analytics/index.md)** | Complete data science platform (85% Databricks functionality) | ✅ Outstanding |
+*SSO, authentication, and access control*
 
-### 🏠 **Host Deployment & Cloud Integration**
+| Document | Purpose |
+|----------|---------|
+| [Identity Overview](../packages/identity/index.md) | Identity and access management overview |
+| [Authentik](../packages/identity/authentik.md) | Authentik SSO service |
+| [Auth10 Blueprints](../packages/identity/auth10.md) | Dynamic blueprint creation and management |
+| [Blueprints Syntax](../packages/identity/blueprints-syntax.md) | Authentik blueprint configuration reference |
+| [Developer Guide](../packages/identity/developer-guide.md) | Auth10 developer guide |
+| [Technical Implementation](../packages/identity/technical-implementation.md) | Authentik technical implementation details |
+| [Test Users](../packages/identity/test-users.md) | Test user configuration |
+
+### Packages — Databases
+
+*Data storage and caching services*
+
+| Document | Purpose |
+|----------|---------|
+| [Databases Overview](../packages/databases/index.md) | Database services overview |
+| [PostgreSQL](../packages/databases/postgresql.md) | Primary relational database |
+| [PostgreSQL Container](../packages/databases/postgresql-container.md) | Custom PostgreSQL image with AI/ML extensions |
+| [MySQL](../packages/databases/mysql.md) | Alternative SQL database |
+| [MongoDB](../packages/databases/mongodb.md) | NoSQL document database |
+| [Redis](../packages/databases/redis.md) | In-memory cache and message broker |
+| [Elasticsearch](../packages/databases/elasticsearch.md) | Search and analytics engine |
+| [Qdrant](../packages/databases/qdrant.md) | Vector database |
+
+### Packages — Management
+
+*Admin tools, GitOps, and test services*
+
+| Document | Purpose |
+|----------|---------|
+| [Management Overview](../packages/management/index.md) | Management tools overview |
+| [ArgoCD](../packages/management/argocd.md) | GitOps continuous deployment |
+| [pgAdmin](../packages/management/pgadmin.md) | PostgreSQL administration UI |
+| [RedisInsight](../packages/management/redisinsight.md) | Redis administration UI |
+| [Nginx](../packages/management/nginx.md) | Web server |
+| [Whoami](../packages/management/whoami.md) | Test/debug service |
+| [Dev and Test Templates](../packages/management/templates.md) | Development and testing tools |
+
+### Packages — Integration
+
+*Messaging and API gateways*
+
+| Document | Purpose |
+|----------|---------|
+| [Integration Overview](../packages/integration/index.md) | Integration services overview |
+| [RabbitMQ](../packages/integration/rabbitmq.md) | Message broker |
+| [Gravitee](../packages/integration/gravitee.md) | API management platform |
+
+### Packages — Networking
+
+*VPN tunnels and network access services*
+
+| Document | Purpose |
+|----------|---------|
+| [Networking Packages Overview](../packages/networking/index.md) | Network service packages |
+| [Cloudflare Tunnel](../packages/networking/cloudflare-tunnel.md) | Cloudflare tunnel service |
+| [Tailscale Tunnel](../packages/networking/tailscale-tunnel.md) | Tailscale tunnel service |
+
+### Networking
+
+*Network architecture, ingress, and external connectivity setup guides*
+
+| Document | Purpose |
+|----------|---------|
+| [Networking Overview](../networking/index.md) | Dual-tunnel internet access architecture |
+| [Cloudflare Setup](../networking/cloudflare-setup.md) | Cloudflare tunnel configuration guide |
+| [Tailscale Setup](../networking/tailscale-setup.md) | Tailscale tunnel configuration guide |
+| [Tailscale Internal Ingress](../networking/tailscale-internal-ingress.md) | Tailscale internal access setup |
+| [Tailscale Network Isolation](../networking/tailscale-network-isolation.md) | Tailscale funnel security setup |
+
+### Hosts & Platforms
+
 *Multi-environment deployment strategies and cloud platform integration*
 
-| Document | Purpose | Status |
-|----------|---------|---------|
-| **[hosts-readme.md](../hosts/index.md)** | Host types overview and multi-cluster management | ✅ Excellent |
-| **[hosts-rancher-kubernetes.md](../hosts/rancher-kubernetes.md)** | Default local development environment | ✅ Excellent |
-| **[hosts-azure-aks.md](../hosts/azure-aks.md)** | Production Azure Kubernetes Service deployment | ✅ Outstanding |
-| **[hosts-azure-microk8s.md](../hosts/azure-microk8s.md)** | Azure VM with MicroK8s deployment | ✅ Excellent |
-| **[hosts-multipass-microk8s.md](../hosts/multipass-microk8s.md)** | Legacy Multipass deployment (superseded by Rancher) | ⚠️ Legacy |
-| **[hosts-raspberry-microk8s.md](../hosts/raspberry-microk8s.md)** | Edge computing on Raspberry Pi | ⚠️ Incomplete |
-| **[hosts-cloud-init-readme.md](../hosts/cloud-init/index.md)** | Cloud-init automation for Ubuntu-based hosts | ✅ Good |
-| **[hosts-cloud-init-secrets.md](../hosts/cloud-init/secrets.md)** | SSH key setup for cloud-init and Ansible | ✅ Good |
+| Document | Purpose |
+|----------|---------|
+| [Hosts Overview](../hosts/index.md) | Host types and deployment strategies |
+| [Rancher Kubernetes](../hosts/rancher-kubernetes.md) | Default local development environment |
+| [Azure AKS](../hosts/azure-aks.md) | Production Azure Kubernetes Service |
+| [Azure MicroK8s](../hosts/azure-microk8s.md) | Azure VM with MicroK8s |
+| [Multipass MicroK8s](../hosts/multipass-microk8s.md) | Legacy Multipass deployment (superseded by Rancher) |
+| [Raspberry Pi MicroK8s](../hosts/raspberry-microk8s.md) | Edge computing on Raspberry Pi |
+| [Cloud-Init Guide](../hosts/cloud-init/index.md) | Cloud-init automation for Ubuntu-based hosts |
+| [Cloud-Init Secrets](../hosts/cloud-init/secrets.md) | SSH key setup for cloud-init and Ansible |
 
-### 📦 **Package Documentation**
-*Individual service configurations and container builds*
+### Provision Host
 
-| Document | Purpose | Status |
-|----------|---------|---------|
-| **[package-development-readme.md](../packages/management/index.md)** | Development tools and environment setup | 📝 TODO |
-| **[package-development-argocd.md](../packages/management/argocd.md)** | ArgoCD GitOps deployment configuration | 📝 TODO |
-| **[package-databases-postgresql-container.md](../packages/databases/postgresql-container.md)** | Custom PostgreSQL with AI/ML extensions + GitHub Actions CI/CD | ✅ Outstanding |
+*Central management container documentation*
 
-### 📏 **Rules, Standards & Best Practices**
-*Development guidelines, workflows, and architectural principles*
+| Document | Purpose |
+|----------|---------|
+| [Provision Host Overview](../provision-host/index.md) | Central management container guide |
+| [Kubernetes Management](../provision-host/kubernetes.md) | Kubernetes-specific management tools |
+| [Rancher Desktop](../provision-host/rancher.md) | Rancher Desktop configuration |
+| [Tools Reference](../provision-host/tools.md) | Command reference and usage patterns |
 
-| Document | Purpose | Status |
-|----------|---------|---------|
-| **[rules-git-workflow.md](../rules/git-workflow.md)** | Comprehensive Git workflow standards | ✅ Outstanding |
-| **[rules-automated-kubernetes-deployment.md](../rules/kubernetes-deployment.md)** | Infrastructure design principles and patterns | ✅ Outstanding |
-| **[rules-ingress-traefik.md](../rules/ingress-traefik.md)** | Traefik configuration standards | ✅ Outstanding |
-| **[rules-secrets-management.md](../rules/secrets-management.md)** | Secrets management best practices | ✅ Excellent |
-| **[rules-readme.md](../rules/index.md)** | Documentation and development standards | ✅ Excellent |
+### Rules & Standards
 
-### ⚙️ **Configuration & Management**
-*System configuration, deployment automation, and operational procedures*
+*Development guidelines, workflows, and architectural standards*
 
-| Document | Purpose | Status |
-|----------|---------|---------|
-| **[secrets-management-readme.md](./secrets-management.md)** | Modular secrets management system | ✅ Excellent |
-| **draft/doc-gravitee-apim.md** | API management platform (draft) | ⚠️ Draft |
+| Document | Purpose |
+|----------|---------|
+| [Rules Overview](../rules/index.md) | Rules guide and index |
+| [UIS Deployment System](../rules/kubernetes-deployment.md) | UIS CLI, service metadata, stacks, and deploy flow |
+| [Provisioning](../rules/provisioning.md) | Ansible playbook patterns and testing standards |
+| [Naming Conventions](../rules/naming-conventions.md) | File, resource, and identifier naming patterns |
+| [Ingress & Traefik](../rules/ingress-traefik.md) | Traefik IngressRoute standards |
+| [Git Workflow](../rules/git-workflow.md) | Git branching, commits, and PR standards |
+| [Secrets Management](../rules/secrets-management.md) | Secrets management rules |
+| [Development Workflow](../rules/development-workflow.md) | Development workflow and command execution |
+| [Documentation Guide](../rules/documentation.md) | Documentation standards |
+| [Documentation Legacy](../rules/documentation-legacy.md) | Legacy documentation standards (historical reference) |
 
-### 🔧 **Troubleshooting & Support**
-*Problem diagnosis, solutions, and maintenance procedures*
+### Reference
 
-| Document | Purpose | Status |
-|----------|---------|---------|
-| **[troubleshooting-readme.md](./troubleshooting.md)** | Comprehensive troubleshooting guide for common issues and solutions | ✅ Excellent |
+*Configuration, troubleshooting, and operational reference*
 
-## 🎯 **Documentation Quality Overview**
+| Document | Purpose |
+|----------|---------|
+| [UIS CLI Reference](./uis-cli-reference.md) | Complete UIS command-line reference |
+| [Service Dependencies](./service-dependencies.md) | Service dependency graph |
+| [Kubernetes Manifests](./manifests.md) | Manifest file reference |
+| [Secrets Management System](./secrets-management.md) | Secrets management system documentation |
+| [Factory Reset](./factory-reset.md) | Factory reset and full verification guide |
+| [Troubleshooting](./troubleshooting.md) | Troubleshooting guide for common issues |
 
-### **Excellence Standards**
-- ✅ **Outstanding (9 docs)**: World-class documentation with comprehensive coverage
-- ✅ **Excellent (29 docs)**: High-quality, complete documentation
-- ✅ **Good (9 docs)**: Solid documentation meeting requirements
-- ⚠️ **Needs Attention (3 docs)**: Incomplete or legacy content
+### AI Development
 
-### **Coverage Analysis**
-- **🏆 Strengths**: Authentication (outstanding), AI platform (outstanding), networking (outstanding), Git workflows (outstanding), troubleshooting (excellent)
-- **✅ Complete Coverage**: All critical documentation areas now covered
-- **📈 Quality**: Outstanding to Excellent coverage across all major areas
+*Guides for contributors using AI-assisted development*
 
-## 🔍 **Finding What You Need**
+| Document | Purpose |
+|----------|---------|
+| [Developing with AI](../ai-development/index.md) | AI-assisted development overview |
+| [AI Development Workflow](../ai-development/workflow.md) | Workflow for AI-assisted contributions |
+| [Creating Plans](../ai-development/creating-plans.md) | How to create implementation plans |
 
-### **By Role**
+## Finding What You Need
 
-**👨‍💻 Developers:**
-- Start: [overview-installation.md](../getting-started/installation.md) → [overview-system-architecture.md](../getting-started/architecture.md) → [provision-host-readme.md](../provision-host/index.md)
-- AI Development: [package-ai-readme.md](../packages/ai/index.md)
-- Authentication: [package-auth-authentik-readme.md](../packages/identity/index.md)
+### By Role
 
-**🏗️ Infrastructure Engineers:**
-- Start: [overview-system-architecture.md](../getting-started/architecture.md) → [hosts-readme.md](../hosts/index.md)
-- Production: [hosts-azure-aks.md](../hosts/azure-aks.md)
-- Networking: [rules-ingress-traefik.md](../rules/ingress-traefik.md)
+**Developers:**
+- Start: [Installation](../getting-started/installation.md) → [Architecture](../getting-started/architecture.md) → [Provision Host](../provision-host/index.md)
+- AI Development: [AI & ML Overview](../packages/ai/index.md)
+- Authentication: [Identity Overview](../packages/identity/index.md)
 
-**🏢 Architects:**
-- Start: [overview-system-architecture.md](../getting-started/architecture.md) → [rules-automated-kubernetes-deployment.md](../rules/kubernetes-deployment.md)
-- Security: [package-auth-authentik-readme.md](../packages/identity/index.md) → [secrets-management-readme.md](./secrets-management.md)
+**Infrastructure Engineers:**
+- Start: [Architecture](../getting-started/architecture.md) → [Hosts](../hosts/index.md)
+- Production: [Azure AKS](../hosts/azure-aks.md)
+- Networking: [Traefik Rules](../rules/ingress-traefik.md)
 
-**📊 Data Scientists:**
-- Start: [package-datascience.md](../packages/analytics/index.md)
-- AI/ML: [package-ai-readme.md](../packages/ai/index.md) → [package-ai-litellm.md](../packages/ai/litellm.md)
+**Architects:**
+- Start: [Architecture](../getting-started/architecture.md) → [UIS Deployment System](../rules/kubernetes-deployment.md)
+- Security: [Identity](../packages/identity/index.md) → [Secrets Management](./secrets-management.md)
 
-### **By Use Case**
+**Data Scientists:**
+- Start: [Analytics Overview](../packages/analytics/index.md)
+- AI/ML: [AI Overview](../packages/ai/index.md) → [LiteLLM](../packages/ai/litellm.md)
 
-**🚀 Getting Started:**
-1. [overview-installation.md](../getting-started/installation.md) - Install and setup
-2. [overview-system-architecture.md](../getting-started/architecture.md) - Understand the system
-3. [provision-host-readme.md](../provision-host/index.md) - Learn management tools
+### By Use Case
 
-**🔐 Setting Up Authentication:**
-1. [package-auth-authentik-readme.md](../packages/identity/index.md) - Core SSO setup
-2. [package-auth-authentik-auth10.md](../packages/identity/auth10.md) - OAuth and authentication flows
-3. [package-auth-authentik-technical-implementation.md](../packages/identity/technical-implementation.md) - Integration details
+**Getting Started:**
+1. [Installation Guide](../getting-started/installation.md) — Install and setup
+2. [System Architecture](../getting-started/architecture.md) — Understand the system
+3. [Provision Host](../provision-host/index.md) — Learn management tools
 
-**🤖 AI Development:**
-1. [package-ai-readme.md](../packages/ai/index.md) - Platform overview
-2. [package-ai-litellm.md](../packages/ai/litellm.md) - LLM proxy setup
-3. [package-ai-openwebui-model-access-setup.md](../packages/ai/openwebui-model-access.md) - Chat interface
+**Setting Up Authentication:**
+1. [Identity Overview](../packages/identity/index.md) — Core SSO setup
+2. [Auth10 Blueprints](../packages/identity/auth10.md) — Blueprint management
+3. [Technical Implementation](../packages/identity/technical-implementation.md) — Integration details
 
-**☁️ Production Deployment:**
-1. [hosts-readme.md](../hosts/index.md) - Deployment strategies
-2. [hosts-azure-aks.md](../hosts/azure-aks.md) - Azure production
-3. [networking-readme.md](../networking/index.md) - External access
+**AI Development:**
+1. [AI & ML Overview](../packages/ai/index.md) — Platform overview
+2. [LiteLLM](../packages/ai/litellm.md) — LLM proxy setup
+3. [Open WebUI](../packages/ai/openwebui.md) — Chat interface
 
-**🌐 External Access:**
-1. [networking-cloudflare-setup.md](../networking/cloudflare-setup.md) - Cloudflare setup
-2. [networking-tailscale-setup.md](../networking/tailscale-setup.md) - VPN access
-3. [networking-readme.md](../networking/index.md) - Network architecture
+**Production Deployment:**
+1. [Hosts Overview](../hosts/index.md) — Deployment strategies
+2. [Azure AKS](../hosts/azure-aks.md) — Azure production
+3. [Networking Overview](../networking/index.md) — External access
 
-## 🆘 **Getting Help**
+**External Access:**
+1. [Cloudflare Setup](../networking/cloudflare-setup.md) — Cloudflare tunnels
+2. [Tailscale Setup](../networking/tailscale-setup.md) — VPN access
+3. [Networking Overview](../networking/index.md) — Network architecture
 
-- **🔧 Technical Issues**: See [troubleshooting-readme.md](./troubleshooting.md)
-- **🏗️ Architecture Questions**: Review [overview-system-architecture.md](../getting-started/architecture.md)
-- **📖 Missing Documentation**: Check this index for the most current documentation
-- **🐛 Bug Reports**: Use the GitHub issues in the main repository
-- **💡 Feature Requests**: Follow [rules-git-workflow.md](../rules/git-workflow.md) for contributions
+## Getting Help
 
-## 📈 **Documentation Standards**
+- **Technical Issues**: See [Troubleshooting Guide](./troubleshooting.md)
+- **Architecture Questions**: Review [System Architecture](../getting-started/architecture.md)
+- **Bug Reports**: Use GitHub issues in the main repository
+- **Contributions**: Follow [Git Workflow Rules](../rules/git-workflow.md)
 
-All documentation in this repository follows the standards defined in:
-- **[rules-readme.md](../rules/index.md)** - Documentation guidelines and best practices
-- **[rules-git-workflow.md](../rules/git-workflow.md)** - Git workflow and contribution standards
+## Documentation Standards
+
+All documentation follows the standards defined in:
+- [Documentation Guide](../rules/documentation.md) — Documentation writing standards
+- [Git Workflow Rules](../rules/git-workflow.md) — Git workflow and contribution standards
 
 ---
 
-**📊 Total Documentation**: 45 files | **📍 Last Updated**: September 22, 2024 | **🎯 Quality**: Outstanding to Excellent coverage across all major areas
-
-*This documentation index provides comprehensive coverage of the Urbalurba Infrastructure platform. For the most current information, always refer to the specific documentation files linked above.*
+**Total Documentation**: 92 pages (excluding internal plans) | **Last Updated**: March 2026
