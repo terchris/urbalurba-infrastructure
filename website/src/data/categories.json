@@ -5,56 +5,64 @@
       "order": 0,
       "description": "Metrics, logs, and tracing",
       "icon": "chart-line"
-    },
+    }
+,
     {
       "id": "AI",
       "name": "AI & ML",
       "order": 1,
       "description": "AI and machine learning services",
       "icon": "brain"
-    },
+    }
+,
     {
       "id": "ANALYTICS",
       "name": "Analytics",
       "order": 2,
       "description": "Data science and analytics platforms",
       "icon": "flask"
-    },
+    }
+,
     {
       "id": "IDENTITY",
       "name": "Identity",
       "order": 3,
       "description": "Identity and access management",
       "icon": "shield"
-    },
+    }
+,
     {
       "id": "DATABASES",
       "name": "Databases",
       "order": 4,
       "description": "Data storage and caching services",
       "icon": "database"
-    },
+    }
+,
     {
       "id": "MANAGEMENT",
       "name": "Management",
       "order": 5,
       "description": "Admin tools, GitOps, and test services",
       "icon": "cog"
-    },
+    }
+,
     {
       "id": "NETWORKING",
       "name": "Networking",
       "order": 6,
       "description": "VPN tunnels and network access",
       "icon": "globe"
-    },
+    }
+,
     {
       "id": "STORAGE",
       "name": "Storage",
       "order": 7,
       "description": "Platform storage infrastructure",
       "icon": "hard-drive"
-    },
+    }
+,
     {
       "id": "INTEGRATION",
       "name": "Integration",

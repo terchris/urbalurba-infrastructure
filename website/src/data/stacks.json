@@ -79,10 +79,10 @@
       "name": "Analytics Stack",
       "description": "Collaborative data science platform with notebooks and distributed computing",
       "category": "ANALYTICS",
-      "tags": ["datascience", "spark", "jupyter", "notebooks", "analytics"],
-      "abstract": "Data science platform with Spark, JupyterHub, and Unity Catalog",
+      "tags": ["analytics", "spark", "jupyter", "notebooks", "datascience"],
+      "abstract": "Analytics platform with Spark, JupyterHub, and Unity Catalog",
       "logo": "analytics-stack-logo.svg",
-      "summary": "The data science stack provides a complete platform for data analysis and ML workflows. Apache Spark handles distributed computing, JupyterHub provides collaborative notebooks, and Unity Catalog manages data governance.",
+      "summary": "The analytics stack provides a complete platform for data analysis and ML workflows. Apache Spark handles distributed computing, JupyterHub provides collaborative notebooks, and Unity Catalog manages data governance.",
       "docs": "/docs/stacks/analytics",
       "components": [
         {

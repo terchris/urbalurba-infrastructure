@@ -39,57 +39,75 @@
 ,
   {
     "@type": "SoftwareApplication",
-    "id": "authentik",
-    "name": "Authentik",
-    "description": "Identity provider and SSO solution",
-    "category": "IDENTITY",
-    "tags": ["authentication", "sso", "identity", "oauth", "saml", "ldap", "mfa"],
-    "abstract": "Open-source identity provider with SSO, MFA, and user management",
-    "logo": "authentik-logo.webp",
-    "website": "https://goauthentik.io"
-    ,"summary": "Authentik is an open-source Identity Provider focused on flexibility and versatility. It supports SAML, OAuth/OIDC, LDAP, and proxy authentication with built-in MFA support."
-    ,"docs": "/docs/packages/identity/authentik"
-    ,"playbook": "070-setup-authentik.yml"
-    ,"priority": 40
-    ,"checkCommand": "kubectl get pods -n authentik -l app.kubernetes.io/name=authentik --no-headers 2>/dev/null | grep -q Running"
-    ,"removePlaybook": "070-remove-authentik.yml"
-    ,"requires": ["postgresql", "redis"]
+    "id": "jupyterhub",
+    "name": "JupyterHub",
+    "description": "Multi-user Jupyter notebook server",
+    "category": "ANALYTICS",
+    "tags": ["notebooks", "jupyter", "python", "data-science", "collaboration"],
+    "abstract": "Multi-user server for Jupyter notebooks enabling collaborative data science",
+    "logo": "jupyterhub-logo.webp",
+    "website": "https://jupyter.org/hub"
+    ,"summary": "JupyterHub is a multi-user server that manages and proxies multiple instances of Jupyter notebooks. It enables teams to share computational environments and collaborate on data science projects."
+    ,"docs": "/docs/packages/analytics/jupyterhub"
+    ,"playbook": "350-setup-jupyterhub.yml"
+    ,"priority": 92
+    ,"checkCommand": "kubectl get pods -n jupyterhub -l app=jupyterhub --no-headers 2>/dev/null | grep -q Running"
+    ,"removePlaybook": "350-remove-jupyterhub.yml"
   }
 ,
   {
     "@type": "SoftwareApplication",
-    "id": "nginx",
-    "name": "Nginx",
-    "description": "Web server and reverse proxy",
-    "category": "MANAGEMENT",
-    "tags": ["webserver", "proxy", "reverse-proxy", "load-balancer", "http"],
-    "abstract": "High-performance web server and reverse proxy",
-    "logo": "nginx-logo.webp",
-    "website": "https://nginx.org"
-    ,"summary": "Nginx is a high-performance HTTP server and reverse proxy, known for its stability, rich feature set, simple configuration, and low resource consumption."
-    ,"docs": "/docs/packages/management/nginx"
-    ,"playbook": "020-setup-nginx.yml"
-    ,"priority": 1
-    ,"checkCommand": "kubectl get pods -n default -l app.kubernetes.io/name=nginx --no-headers 2>/dev/null | grep -q Running"
-    ,"removePlaybook": "020-remove-nginx.yml"
+    "id": "spark",
+    "name": "Apache Spark",
+    "description": "Unified analytics engine for big data",
+    "category": "ANALYTICS",
+    "tags": ["big-data", "analytics", "distributed-computing", "etl", "machine-learning"],
+    "abstract": "Fast and general-purpose cluster computing system for big data processing",
+    "logo": "spark-logo.webp",
+    "website": "https://spark.apache.org"
+    ,"summary": "Apache Spark is a unified analytics engine for large-scale data processing. It provides high-level APIs in Java, Scala, Python, and R, and supports SQL queries, streaming data, machine learning, and graph processing."
+    ,"docs": "/docs/packages/analytics/spark"
+    ,"playbook": "330-setup-spark.yml"
+    ,"priority": 91
+    ,"checkCommand": "kubectl get pods -n spark-operator -l app.kubernetes.io/name=spark-kubernetes-operator --no-headers 2>/dev/null | grep -q Running"
+    ,"removePlaybook": "330-remove-spark.yml"
   }
 ,
   {
     "@type": "SoftwareApplication",
-    "id": "whoami",
-    "name": "Whoami",
-    "description": "Test service for debugging",
-    "category": "MANAGEMENT",
-    "tags": ["testing", "debug", "ingress", "traefik", "development"],
-    "abstract": "Lightweight test container for debugging ingress and authentication",
-    "logo": "",
-    "website": "https://github.com/traefik/whoami"
-    ,"summary": "Whoami is a tiny Go webserver that prints OS information and HTTP request details. Its useful for testing ingress configurations, authentication flows, and debugging network issues."
-    ,"docs": "/docs/packages/management/whoami"
-    ,"playbook": "025-setup-whoami-testpod.yml"
-    ,"priority": 2
-    ,"checkCommand": "kubectl get pods -n default -l app=whoami --no-headers 2>/dev/null | grep -q Running"
-    ,"removePlaybook": "025-setup-whoami-testpod.yml -e operation=delete"
+    "id": "unity-catalog",
+    "name": "Unity Catalog",
+    "description": "Open-source data catalog and governance",
+    "category": "ANALYTICS",
+    "tags": ["data-catalog", "governance", "metadata", "lakehouse", "data-lineage"],
+    "abstract": "Open-source data catalog for unified governance across data and AI assets",
+    "logo": "unity-catalog-logo.webp",
+    "website": "https://www.unitycatalog.io"
+    ,"summary": "Unity Catalog is an open-source data catalog that provides unified governance for data and AI assets. It enables fine-grained access control, data lineage tracking, and metadata management across your data lakehouse."
+    ,"docs": "/docs/packages/analytics/unity-catalog"
+    ,"playbook": "320-setup-unity-catalog.yml"
+    ,"priority": 90
+    ,"checkCommand": "kubectl get pods -n unity-catalog -l app=unity-catalog,component=server --no-headers 2>/dev/null | grep -q Running"
+    ,"removePlaybook": "320-remove-unity-catalog.yml"
+    ,"requires": ["postgresql"]
+  }
+,
+  {
+    "@type": "SoftwareApplication",
+    "id": "elasticsearch",
+    "name": "Elasticsearch",
+    "description": "Distributed search and analytics engine",
+    "category": "DATABASES",
+    "tags": ["search", "full-text", "analytics", "indexing", "distributed"],
+    "abstract": "RESTful search and analytics engine for all types of data",
+    "logo": "elasticsearch-logo.webp",
+    "website": "https://www.elastic.co/elasticsearch"
+    ,"summary": "Elasticsearch is a distributed, RESTful search and analytics engine capable of addressing a growing number of use cases. It centrally stores your data for lightning fast search and fine-tuned relevancy."
+    ,"docs": "/docs/packages/databases/elasticsearch"
+    ,"playbook": "060-setup-elasticsearch.yml"
+    ,"priority": 70
+    ,"checkCommand": "kubectl get pods -n default -l app=elasticsearch-master --no-headers 2>/dev/null | grep -q Running"
+    ,"removePlaybook": "060-remove-elasticsearch.yml"
   }
 ,
   {
@@ -184,57 +202,56 @@
 ,
   {
     "@type": "SoftwareApplication",
-    "id": "jupyterhub",
-    "name": "JupyterHub",
-    "description": "Multi-user Jupyter notebook server",
-    "category": "ANALYTICS",
-    "tags": ["notebooks", "jupyter", "python", "data-science", "collaboration"],
-    "abstract": "Multi-user server for Jupyter notebooks enabling collaborative data science",
-    "logo": "jupyterhub-logo.webp",
-    "website": "https://jupyter.org/hub"
-    ,"summary": "JupyterHub is a multi-user server that manages and proxies multiple instances of Jupyter notebooks. It enables teams to share computational environments and collaborate on data science projects."
-    ,"docs": "/docs/packages/analytics/jupyterhub"
-    ,"playbook": "350-setup-jupyterhub.yml"
-    ,"priority": 92
-    ,"checkCommand": "kubectl get pods -n jupyterhub -l app=jupyterhub --no-headers 2>/dev/null | grep -q Running"
-    ,"removePlaybook": "350-remove-jupyterhub.yml"
+    "id": "authentik",
+    "name": "Authentik",
+    "description": "Identity provider and SSO solution",
+    "category": "IDENTITY",
+    "tags": ["authentication", "sso", "identity", "oauth", "saml", "ldap", "mfa"],
+    "abstract": "Open-source identity provider with SSO, MFA, and user management",
+    "logo": "authentik-logo.webp",
+    "website": "https://goauthentik.io"
+    ,"summary": "Authentik is an open-source Identity Provider focused on flexibility and versatility. It supports SAML, OAuth/OIDC, LDAP, and proxy authentication with built-in MFA support."
+    ,"docs": "/docs/packages/identity/authentik"
+    ,"playbook": "070-setup-authentik.yml"
+    ,"priority": 40
+    ,"checkCommand": "kubectl get pods -n authentik -l app.kubernetes.io/name=authentik --no-headers 2>/dev/null | grep -q Running"
+    ,"removePlaybook": "070-remove-authentik.yml"
+    ,"requires": ["postgresql", "redis"]
   }
 ,
   {
     "@type": "SoftwareApplication",
-    "id": "spark",
-    "name": "Apache Spark",
-    "description": "Unified analytics engine for big data",
-    "category": "ANALYTICS",
-    "tags": ["big-data", "analytics", "distributed-computing", "etl", "machine-learning"],
-    "abstract": "Fast and general-purpose cluster computing system for big data processing",
-    "logo": "spark-logo.webp",
-    "website": "https://spark.apache.org"
-    ,"summary": "Apache Spark is a unified analytics engine for large-scale data processing. It provides high-level APIs in Java, Scala, Python, and R, and supports SQL queries, streaming data, machine learning, and graph processing."
-    ,"docs": "/docs/packages/analytics/spark"
-    ,"playbook": "330-setup-spark.yml"
-    ,"priority": 91
-    ,"checkCommand": "kubectl get pods -n spark-operator -l app.kubernetes.io/name=spark-kubernetes-operator --no-headers 2>/dev/null | grep -q Running"
-    ,"removePlaybook": "330-remove-spark.yml"
+    "id": "gravitee",
+    "name": "Gravitee",
+    "description": "API management and gateway platform",
+    "category": "INTEGRATION",
+    "tags": ["api-gateway", "api-management", "rest", "graphql", "security"],
+    "abstract": "Open-source API management platform for designing, deploying, and managing APIs",
+    "logo": "gravitee-logo.webp",
+    "website": "https://www.gravitee.io"
+    ,"summary": "Gravitee is an open-source API management platform that helps you design, deploy, and manage APIs. It provides a gateway, management console, and developer portal for comprehensive API lifecycle management."
+    ,"docs": "/docs/packages/integration/gravitee"
+    ,"playbook": "090-setup-gravitee.yml"
+    ,"priority": 81
+    ,"checkCommand": "kubectl get pods -n gravitee -l app.kubernetes.io/name=gravitee --no-headers 2>/dev/null | grep -q Running"
   }
 ,
   {
     "@type": "SoftwareApplication",
-    "id": "unity-catalog",
-    "name": "Unity Catalog",
-    "description": "Open-source data catalog and governance",
-    "category": "ANALYTICS",
-    "tags": ["data-catalog", "governance", "metadata", "lakehouse", "data-lineage"],
-    "abstract": "Open-source data catalog for unified governance across data and AI assets",
-    "logo": "unity-catalog-logo.webp",
-    "website": "https://www.unitycatalog.io"
-    ,"summary": "Unity Catalog is an open-source data catalog that provides unified governance for data and AI assets. It enables fine-grained access control, data lineage tracking, and metadata management across your data lakehouse."
-    ,"docs": "/docs/packages/analytics/unity-catalog"
-    ,"playbook": "320-setup-unity-catalog.yml"
-    ,"priority": 90
-    ,"checkCommand": "kubectl get pods -n unity-catalog -l app=unity-catalog,component=server --no-headers 2>/dev/null | grep -q Running"
-    ,"removePlaybook": "320-remove-unity-catalog.yml"
-    ,"requires": ["postgresql"]
+    "id": "rabbitmq",
+    "name": "RabbitMQ",
+    "description": "Message broker for async communication",
+    "category": "INTEGRATION",
+    "tags": ["message-queue", "amqp", "messaging", "async", "pubsub"],
+    "abstract": "Reliable message broker supporting multiple messaging protocols",
+    "logo": "rabbitmq-logo.webp",
+    "website": "https://www.rabbitmq.com"
+    ,"summary": "RabbitMQ is a reliable and mature messaging broker that supports multiple messaging protocols including AMQP. It provides features like message persistence, delivery acknowledgment, and flexible routing."
+    ,"docs": "/docs/packages/integration/rabbitmq"
+    ,"playbook": "080-setup-rabbitmq.yml"
+    ,"priority": 60
+    ,"checkCommand": "kubectl get pods -n default -l app.kubernetes.io/name=rabbitmq --no-headers 2>/dev/null | grep -q Running"
+    ,"removePlaybook": "080-remove-rabbitmq.yml"
   }
 ,
   {
@@ -257,19 +274,20 @@
 ,
   {
     "@type": "SoftwareApplication",
-    "id": "gravitee",
-    "name": "Gravitee",
-    "description": "API management and gateway platform",
+    "id": "nginx",
+    "name": "Nginx",
+    "description": "Web server and reverse proxy",
     "category": "MANAGEMENT",
-    "tags": ["api-gateway", "api-management", "rest", "graphql", "security"],
-    "abstract": "Open-source API management platform for designing, deploying, and managing APIs",
-    "logo": "gravitee-logo.webp",
-    "website": "https://www.gravitee.io"
-    ,"summary": "Gravitee is an open-source API management platform that helps you design, deploy, and manage APIs. It provides a gateway, management console, and developer portal for comprehensive API lifecycle management."
-    ,"docs": "/docs/packages/integration/gravitee"
-    ,"playbook": "090-setup-gravitee.yml"
-    ,"priority": 81
-    ,"checkCommand": "kubectl get pods -n gravitee -l app.kubernetes.io/name=gravitee --no-headers 2>/dev/null | grep -q Running"
+    "tags": ["webserver", "proxy", "reverse-proxy", "load-balancer", "http"],
+    "abstract": "High-performance web server and reverse proxy",
+    "logo": "nginx-logo.webp",
+    "website": "https://nginx.org"
+    ,"summary": "Nginx is a high-performance HTTP server and reverse proxy, known for its stability, rich feature set, simple configuration, and low resource consumption."
+    ,"docs": "/docs/packages/management/nginx"
+    ,"playbook": "020-setup-nginx.yml"
+    ,"priority": 1
+    ,"checkCommand": "kubectl get pods -n default -l app.kubernetes.io/name=nginx --no-headers 2>/dev/null | grep -q Running"
+    ,"removePlaybook": "020-remove-nginx.yml"
   }
 ,
   {
@@ -308,6 +326,62 @@
     ,"checkCommand": "kubectl get pods -n default -l app.kubernetes.io/name=redisinsight --no-headers 2>/dev/null | grep -q Running"
     ,"removePlaybook": "651-remove-redisinsight.yml"
     ,"requires": ["redis"]
+  }
+,
+  {
+    "@type": "SoftwareApplication",
+    "id": "whoami",
+    "name": "Whoami",
+    "description": "Test service for debugging",
+    "category": "MANAGEMENT",
+    "tags": ["testing", "debug", "ingress", "traefik", "development"],
+    "abstract": "Lightweight test container for debugging ingress and authentication",
+    "logo": "",
+    "website": "https://github.com/traefik/whoami"
+    ,"summary": "Whoami is a tiny Go webserver that prints OS information and HTTP request details. Its useful for testing ingress configurations, authentication flows, and debugging network issues."
+    ,"docs": "/docs/packages/management/whoami"
+    ,"playbook": "025-setup-whoami-testpod.yml"
+    ,"priority": 2
+    ,"checkCommand": "kubectl get pods -n default -l app=whoami --no-headers 2>/dev/null | grep -q Running"
+    ,"removePlaybook": "025-setup-whoami-testpod.yml -e operation=delete"
+  }
+,
+  {
+    "@type": "SoftwareApplication",
+    "id": "cloudflare-tunnel",
+    "name": "Cloudflare Tunnel",
+    "description": "Secure tunnel to Cloudflare network",
+    "category": "NETWORKING",
+    "tags": ["tunnel", "cloudflare", "cdn", "ddos-protection", "reverse-proxy"],
+    "abstract": "Secure outbound-only tunnel to expose services via Cloudflare",
+    "logo": "cloudflare-logo.webp",
+    "website": "https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/"
+    ,"summary": "Cloudflare Tunnel creates a secure, outbound-only connection between your origin and Cloudflares edge. No need to open public inbound ports - traffic is routed through Cloudflares network."
+    ,"docs": "/docs/packages/networking/cloudflare"
+    ,"playbook": "820-deploy-network-cloudflare-tunnel.yml"
+    ,"priority": 101
+    ,"checkCommand": "kubectl get pods -n default -l app=cloudflared --no-headers 2>/dev/null | grep -q Running"
+    ,"removePlaybook": "821-remove-network-cloudflare-tunnel.yml"
+    ,"requires": ["nginx"]
+  }
+,
+  {
+    "@type": "SoftwareApplication",
+    "id": "tailscale-tunnel",
+    "name": "Tailscale Tunnel",
+    "description": "Secure mesh VPN tunnel",
+    "category": "NETWORKING",
+    "tags": ["vpn", "wireguard", "mesh-network", "remote-access", "zero-trust"],
+    "abstract": "Zero-config WireGuard-based mesh VPN for secure remote access",
+    "logo": "tailscale-logo.webp",
+    "website": "https://tailscale.com"
+    ,"summary": "Tailscale creates a secure, private network between your servers, computers, and cloud instances using WireGuard encryption. It provides zero-config networking with built-in NAT traversal."
+    ,"docs": "/docs/packages/networking/tailscale"
+    ,"playbook": "802-deploy-network-tailscale-tunnel.yml"
+    ,"priority": 100
+    ,"checkCommand": "kubectl get pods -n tailscale -l app=operator --no-headers 2>/dev/null | grep -q Running"
+    ,"removePlaybook": "801-remove-network-tailscale-tunnel.yml"
+    ,"requires": ["nginx"]
   }
 ,
   {
@@ -400,79 +474,5 @@
     ,"priority": 12
     ,"checkCommand": "kubectl get pods -n monitoring -l app.kubernetes.io/name=tempo --no-headers 2>/dev/null | grep -q Running"
     ,"removePlaybook": "031-remove-tempo.yml"
-  }
-,
-  {
-    "@type": "SoftwareApplication",
-    "id": "cloudflare-tunnel",
-    "name": "Cloudflare Tunnel",
-    "description": "Secure tunnel to Cloudflare network",
-    "category": "NETWORKING",
-    "tags": ["tunnel", "cloudflare", "cdn", "ddos-protection", "reverse-proxy"],
-    "abstract": "Secure outbound-only tunnel to expose services via Cloudflare",
-    "logo": "cloudflare-logo.webp",
-    "website": "https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/"
-    ,"summary": "Cloudflare Tunnel creates a secure, outbound-only connection between your origin and Cloudflares edge. No need to open public inbound ports - traffic is routed through Cloudflares network."
-    ,"docs": "/docs/packages/networking/cloudflare"
-    ,"playbook": "820-deploy-network-cloudflare-tunnel.yml"
-    ,"priority": 101
-    ,"checkCommand": "kubectl get pods -n default -l app=cloudflared --no-headers 2>/dev/null | grep -q Running"
-    ,"removePlaybook": "821-remove-network-cloudflare-tunnel.yml"
-    ,"requires": ["nginx"]
-  }
-,
-  {
-    "@type": "SoftwareApplication",
-    "id": "tailscale-tunnel",
-    "name": "Tailscale Tunnel",
-    "description": "Secure mesh VPN tunnel",
-    "category": "NETWORKING",
-    "tags": ["vpn", "wireguard", "mesh-network", "remote-access", "zero-trust"],
-    "abstract": "Zero-config WireGuard-based mesh VPN for secure remote access",
-    "logo": "tailscale-logo.webp",
-    "website": "https://tailscale.com"
-    ,"summary": "Tailscale creates a secure, private network between your servers, computers, and cloud instances using WireGuard encryption. It provides zero-config networking with built-in NAT traversal."
-    ,"docs": "/docs/packages/networking/tailscale"
-    ,"playbook": "802-deploy-network-tailscale-tunnel.yml"
-    ,"priority": 100
-    ,"checkCommand": "kubectl get pods -n tailscale -l app=operator --no-headers 2>/dev/null | grep -q Running"
-    ,"removePlaybook": "801-remove-network-tailscale-tunnel.yml"
-    ,"requires": ["nginx"]
-  }
-,
-  {
-    "@type": "SoftwareApplication",
-    "id": "rabbitmq",
-    "name": "RabbitMQ",
-    "description": "Message broker for async communication",
-    "category": "INTEGRATION",
-    "tags": ["message-queue", "amqp", "messaging", "async", "pubsub"],
-    "abstract": "Reliable message broker supporting multiple messaging protocols",
-    "logo": "rabbitmq-logo.webp",
-    "website": "https://www.rabbitmq.com"
-    ,"summary": "RabbitMQ is a reliable and mature messaging broker that supports multiple messaging protocols including AMQP. It provides features like message persistence, delivery acknowledgment, and flexible routing."
-    ,"docs": "/docs/packages/integration/rabbitmq"
-    ,"playbook": "080-setup-rabbitmq.yml"
-    ,"priority": 60
-    ,"checkCommand": "kubectl get pods -n default -l app.kubernetes.io/name=rabbitmq --no-headers 2>/dev/null | grep -q Running"
-    ,"removePlaybook": "080-remove-rabbitmq.yml"
-  }
-,
-  {
-    "@type": "SoftwareApplication",
-    "id": "elasticsearch",
-    "name": "Elasticsearch",
-    "description": "Distributed search and analytics engine",
-    "category": "DATABASES",
-    "tags": ["search", "full-text", "analytics", "indexing", "distributed"],
-    "abstract": "RESTful search and analytics engine for all types of data",
-    "logo": "elasticsearch-logo.webp",
-    "website": "https://www.elastic.co/elasticsearch"
-    ,"summary": "Elasticsearch is a distributed, RESTful search and analytics engine capable of addressing a growing number of use cases. It centrally stores your data for lightning fast search and fine-tuned relevancy."
-    ,"docs": "/docs/packages/databases/elasticsearch"
-    ,"playbook": "060-setup-elasticsearch.yml"
-    ,"priority": 70
-    ,"checkCommand": "kubectl get pods -n default -l app=elasticsearch-master --no-headers 2>/dev/null | grep -q Running"
-    ,"removePlaybook": "060-remove-elasticsearch.yml"
   }
 ]}
