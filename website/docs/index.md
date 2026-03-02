@@ -1,17 +1,47 @@
-# Urbalurba Infrastructure
+# Urbalurba Infrastructure Stack
 
-**Complete datacenter on your laptop** - A zero-friction developer platform that provides production-grade infrastructure locally.
+**Your cloud services, on your laptop.**
 
-## What is This?
+## What is UIS?
 
-Urbalurba Infrastructure is a comprehensive Kubernetes-based platform that runs the same configuration in development and production:
+UIS gives you the same services you use from cloud providers — databases, monitoring, AI, authentication — running on your own machine. No cloud account needed. Same configuration works on your laptop and in production.
 
-- **Local Development**: Run everything on your laptop with Rancher Desktop
-- **Production Ready**: Deploy the exact same configuration to Azure AKS or any Kubernetes cluster
-- **Zero Cloud Dependencies**: Develop and test without internet connectivity
-- **Privacy-First AI**: Run LLMs locally on your own data
+## How it Works
 
-## Run Anywhere
+A management container (the **Provision Host**) uses standard tools — Ansible, Helm, kubectl — to deploy services onto any Kubernetes cluster. You interact with it through the `./uis` CLI.
+
+```mermaid
+graph LR
+    subgraph ph["UIS Provision Host (container)"]
+        cli["./uis CLI"]
+        tools["Ansible · Helm · kubectl"]
+    end
+    subgraph k8s["Any Kubernetes Cluster"]
+        svc["PostgreSQL · Grafana · Authentik · OpenWebUI · ..."]
+    end
+    ph -- "manages & deploys" --> k8s
+```
+
+> The same provision host targets your laptop, a cloud cluster, or a Raspberry Pi — only the Kubernetes endpoint changes.
+
+## Cloud Services Comparison
+
+UIS replaces cloud-managed services with open-source equivalents you control:
+
+| What you need | Cloud service you know | UIS gives you |
+|---|---|---|
+| **Monitoring & Observability** | Azure Monitor, CloudWatch | Prometheus, Grafana, Loki, Tempo |
+| **Relational Database** | Azure Database for PostgreSQL | PostgreSQL, MySQL |
+| **AI & LLM Services** | Azure OpenAI, AWS Bedrock | OpenWebUI, LiteLLM, Ollama |
+| **Identity & SSO** | Azure AD, AWS IAM | Authentik |
+| **Data Science & Analytics** | Azure Databricks | Spark, JupyterHub, Unity Catalog |
+| **GitOps & Deployment** | Azure DevOps, GitHub Actions | ArgoCD |
+| **Message Queues** | Azure Service Bus, SQS | RabbitMQ |
+| **API Gateway** | Azure API Management | Gravitee |
+
+[See the full services comparison →](./getting-started/services.md)
+
+## Runs Anywhere
 
 | Platform | Architecture | Use Case |
 |----------|--------------|----------|
@@ -24,49 +54,6 @@ Urbalurba Infrastructure is a comprehensive Kubernetes-based platform that runs 
 Once your Kubernetes cluster is running, everything else is identical regardless of where it runs. Same manifests, same Ansible playbooks, same services, same URLs.
 :::
 
-## Services Included
-
-### Core Infrastructure
-- **Kubernetes** - Container orchestration via Rancher Desktop
-- **Traefik** - Ingress controller with automatic TLS
-- **Nginx** - Web server
-
-### Observability Stack
-- **Prometheus** - Metrics collection
-- **Grafana** - Visualization and dashboards
-- **Loki** - Log aggregation
-- **Tempo** - Distributed tracing
-- **OpenTelemetry Collector** - Telemetry pipeline
-
-### Databases
-- **PostgreSQL** - Primary relational database
-- **MySQL** - Alternative SQL database
-- **MongoDB** - Document database
-- **Qdrant** - Vector database for AI
-- **Redis** - Cache and message broker
-- **Elasticsearch** - Search engine
-
-### AI & Machine Learning
-- **OpenWebUI** - ChatGPT-like interface
-- **LiteLLM** - LLM proxy for multiple providers
-- **Ollama** - Local LLM runtime
-- **Tika** - Document extraction
-
-### Authentication
-- **Authentik** - SSO and identity provider with blueprints
-
-### Message Queues
-- **RabbitMQ** - Message broker
-
-### Development Tools
-- **ArgoCD** - GitOps continuous deployment
-- **pgAdmin** - PostgreSQL administration
-- **RedisInsight** - Redis administration
-
-### Networking
-- **Tailscale** - Secure mesh VPN
-- **Cloudflare Tunnels** - Public access without port forwarding
-
 ## Quick Start
 
 ### Prerequisites
@@ -78,22 +65,39 @@ Once your Kubernetes cluster is running, everything else is identical regardless
 
 ### Installation
 
-```bash
-# Clone the repository
-git clone https://github.com/terchris/urbalurba-infrastructure.git
-cd urbalurba-infrastructure
+Download the `uis` script and start — the container image is pulled automatically:
 
-# Start the UIS container
+**macOS / Linux:**
+
+```bash
+# Download the UIS CLI
+curl -fsSL https://raw.githubusercontent.com/terchris/urbalurba-infrastructure/main/uis -o uis
+chmod +x uis
+
+# Start the UIS provision host (pulls the container image automatically)
 ./uis start
 
-# Deploy all services to kubernetes
-./uis provision
+# Deploy a single service
+./uis deploy postgresql
 
-# Access the provision host shell
-./uis shell
+# Or install a full package
+./uis stack install observability
+```
 
-# Or deploy individual services
-./uis deploy grafana
+**Windows (PowerShell):**
+
+```powershell
+# Download the UIS CLI
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/terchris/urbalurba-infrastructure/main/uis.ps1" -OutFile "uis.ps1"
+
+# Start the UIS provision host (pulls the container image automatically)
+.\uis.ps1 start
+
+# Deploy a single service
+.\uis.ps1 deploy postgresql
+
+# Or install a full package
+.\uis.ps1 stack install observability
 ```
 
 ### Access Your Services
@@ -102,7 +106,6 @@ After deployment, access services at:
 
 | Service | URL |
 |---------|-----|
-| Nginx | [http://localhost](http://localhost) |
 | Grafana | [http://grafana.localhost](http://grafana.localhost) |
 | Prometheus | [http://prometheus.localhost](http://prometheus.localhost) |
 | Authentik | [http://authentik.localhost](http://authentik.localhost) |
@@ -110,27 +113,31 @@ After deployment, access services at:
 | pgAdmin | [http://pgadmin.localhost](http://pgadmin.localhost) |
 | ArgoCD | [http://argocd.localhost](http://argocd.localhost) |
 
-## Documentation Structure
+## Documentation
 
-- **[Getting Started](./getting-started/overview.md)** - First steps and quick start guide
-- **[Hosts & Platforms](./hosts/index.md)** - Supported platforms and setup guides
-- **[Packages](./packages/ai/index.md)** - Service documentation by category
-- **[Networking](./networking/index.md)** - External access via Tailscale and Cloudflare
-- **[Rules & Standards](./rules/index.md)** - Development conventions and patterns
-- **[Troubleshooting](./reference/troubleshooting.md)** - Common issues and solutions
+- **[Getting Started](./getting-started/overview.md)** — First steps and quick start guide
+- **[Hosts & Platforms](./hosts/index.md)** — Supported platforms and setup guides
+- **[Packages](./packages/ai/index.md)** — Service documentation by category
+- **[Networking](./networking/index.md)** — External access via Tailscale and Cloudflare
+- **[Rules & Standards](./rules/index.md)** — Development conventions and patterns
+- **[Troubleshooting](./reference/troubleshooting.md)** — Common issues and solutions
 
-## Repository Structure
+## Your Working Directory
+
+After running `./uis start`, your directory looks like this:
 
 ```
-urbalurba-infrastructure/
-├── ansible/              # Ansible playbooks for deployment
-├── docs/                 # Documentation (this site)
-├── manifests/            # Kubernetes manifests (numbered by category)
-├── provision-host/       # Provision host container scripts
-├── .uis.secrets/         # Secrets management (gitignored)
-├── uis                   # UIS CLI wrapper (main entry point)
-└── mkdocs.yml            # Documentation site configuration
+my-project/
+├── uis                   # UIS CLI (the only file you download)
+├── .uis.extend/          # Service configuration overrides (yours to edit)
+├── .uis.secrets/         # Passwords, API keys, certificates (gitignored)
+└── .gitignore            # Auto-created, excludes .uis.secrets/
 ```
+
+- **`.uis.extend/`** — Customize which services are enabled, cluster settings, and tool preferences. Edit these files to tailor UIS to your environment.
+- **`.uis.secrets/`** — All credentials and sensitive config. Generated with safe defaults on first run. Never committed to git.
+
+Everything else lives inside the container image — manifests, playbooks, and tools are all baked in.
 
 ## Contributing
 
