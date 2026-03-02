@@ -140,7 +140,7 @@ Common issues and solutions.
 
 ## Related Documentation
 
-- [Related Service](../category/related)
+- [Related Service](./index.md)
 ```
 
 ## Markdown Features

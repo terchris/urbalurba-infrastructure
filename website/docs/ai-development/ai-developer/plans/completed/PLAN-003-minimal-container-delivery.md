@@ -12,7 +12,7 @@
 
 **Last Updated**: 2026-01-22
 
-**Based on**: [INVESTIGATE-uis-distribution.md](../backlog/INVESTIGATE-uis-distribution.md)
+**Based on**: [INVESTIGATE-uis-distribution.md](./INVESTIGATE-uis-distribution.md)
 
 **Priority**: High
 

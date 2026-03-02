@@ -365,6 +365,6 @@ Claude Code vs manual workflows and path conventions.
 6. Leave room for related components
 
 **Reference:**
-- [doc/rules-development-workflow.md](rules-development-workflow.md) - Workflow and command execution
-- [doc/rules-automated-kubernetes-deployment.md](rules-automated-kubernetes-deployment.md) - Ansible patterns *(to be created)*
-- [doc/rules-ingress-traefik.md](rules-ingress-traefik.md) - IngressRoute patterns *(to be created)*
+- [doc/rules-development-workflow.md](./development-workflow.md) - Workflow and command execution
+- [doc/rules-automated-kubernetes-deployment.md](./kubernetes-deployment.md) - Ansible patterns *(to be created)*
+- [doc/rules-ingress-traefik.md](./ingress-traefik.md) - IngressRoute patterns *(to be created)*

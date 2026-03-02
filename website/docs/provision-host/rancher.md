@@ -61,5 +61,5 @@ kubectl apply -f /mnt/urbalurbadisk/manifests/000-storage-class-alias.yaml
 ---
 
 **Related Documentation:**
-- [Provision Host Tools Guide](provision-host-tools.md) - Complete tool reference
-- [Provision Host Kubernetes Guide](provision-host-kubernetes.md) - Service deployment
+- [Provision Host Tools Guide](./tools.md) - Complete tool reference
+- [Provision Host Kubernetes Guide](./kubernetes.md) - Service deployment

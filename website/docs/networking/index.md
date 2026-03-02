@@ -157,7 +157,7 @@ match: HostRegexp(`whoami\..+`)
 2. Add **Cloudflare** later when you need custom domains
 3. Use both for different purposes (internal vs external)
 
-*See [Traefik Ingress Rules](rules-ingress-traefik.md) for complete technical details on HostRegexp routing.*
+*See [Traefik Ingress Rules](../rules/ingress-traefik.md) for complete technical details on HostRegexp routing.*
 
 ### 🎯 Recommended Decision Path
 
@@ -222,7 +222,7 @@ spec:
 - ✅ **Authentication Ready**: Works with Authentik forward auth middleware
 - ✅ **Future-Proof**: Automatically supports any new domains
 
-*Technical details: [Traefik Ingress Rules Guide](rules-ingress-traefik.md)*
+*Technical details: [Traefik Ingress Rules Guide](../rules/ingress-traefik.md)*
 
 ### External Access with Cloudflare
 
@@ -359,7 +359,7 @@ Cloudflare provides enterprise-grade security and performance for public-facing 
 - Programmable routing based on domain, path, or headers
 - Automatic failover and load balancing
 
-For detailed setup instructions, see [Cloudflare Tunnel Setup Guide](networking-cloudflare-setup.md).
+For detailed setup instructions, see [Cloudflare Tunnel Setup Guide](./cloudflare-setup.md).
 
 ### Why Tailscale?
 
@@ -383,7 +383,7 @@ Tailscale provides zero-configuration secure networking for both internet access
 - Automatic key rotation and device management
 - Cross-platform support for all environments
 
-For detailed setup instructions, see [Tailscale Funnel Setup Guide](networking-tailscale-setup.md).
+For detailed setup instructions, see [Tailscale Funnel Setup Guide](./tailscale-setup.md).
 
 ---
 
@@ -393,14 +393,14 @@ For detailed setup instructions, see [Tailscale Funnel Setup Guide](networking-t
 
 Choose your tunnel type and follow the setup guide:
 
-1. **🔵 [Tailscale Funnel Setup](networking-tailscale-setup.md)** - Get online in 15 minutes (free)
-2. **⚡ [Cloudflare Tunnel Setup](networking-cloudflare-setup.md)** - Professional setup with custom domain
+1. **🔵 [Tailscale Funnel Setup](./tailscale-setup.md)** - Get online in 15 minutes (free)
+2. **⚡ [Cloudflare Tunnel Setup](./cloudflare-setup.md)** - Professional setup with custom domain
 
 ### Internal Developer Access (SovereignSky)
 
 For internal-only access from within the Tailnet (no public internet):
 
-3. **🔒 [Tailscale Internal Access](networking-tailscale-internal-ingress.md)** - HTTP access for SovereignSky developers via Tailnet VPN
+3. **🔒 [Tailscale Internal Access](./tailscale-internal-ingress.md)** - HTTP access for SovereignSky developers via Tailnet VPN
 
 
 

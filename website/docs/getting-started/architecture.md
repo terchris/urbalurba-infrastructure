@@ -140,7 +140,7 @@ Two ways to start the services in the cluster.
 ### **Automated Provisioning Process**
 
 This is run when the cluster is built. 
-For detailed description see [provision-host-kubernetes.md](./provision-host-kubernetes.md)
+For detailed description see [provision-host-kubernetes.md](../provision-host/kubernetes.md)
 ```mermaid
 sequenceDiagram
     participant Dev as Developer
@@ -163,7 +163,7 @@ sequenceDiagram
 
 ### **Manual Service Management**
 
-This is when you log in to the `provision-host`container and start a service. See the section Starting services in the [overview-getting-started.md](./overview-getting-started.md) for an example on how to start a service.
+This is when you log in to the `provision-host`container and start a service. See the section Starting services in the [overview-getting-started.md](./overview.md) for an example on how to start a service.
 
 ```mermaid
 sequenceDiagram

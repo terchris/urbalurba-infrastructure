@@ -899,14 +899,14 @@ async function queryDatabase(query, params) {
 ## 🔗 Related Documentation
 
 **Monitoring Stack**:
-- **[Monitoring Overview](./package-monitoring-readme.md)** - Complete observability stack
-- **[OTLP Collector](./package-monitoring-otel.md)** - Telemetry ingestion gateway
-- **[Loki Logs](./package-monitoring-loki.md)** - Log storage backend
-- **[Grafana Visualization](./package-monitoring-grafana.md)** - Query and visualization
+- **[Monitoring Overview](./index.md)** - Complete observability stack
+- **[OTLP Collector](./otel.md)** - Telemetry ingestion gateway
+- **[Loki Logs](./loki.md)** - Log storage backend
+- **[Grafana Visualization](./grafana.md)** - Query and visualization
 
 **Configuration & Rules**:
-- **[Traefik IngressRoute](./rules-ingress-traefik.md)** - External access patterns
-- **[Development Workflow](./rules-development-workflow.md)** - Application integration
+- **[Traefik IngressRoute](../../rules/ingress-traefik.md)** - External access patterns
+- **[Development Workflow](../../rules/development-workflow.md)** - Application integration
 
 **External Resources**:
 - **OpenTelemetry Protocol Specification**: https://opentelemetry.io/docs/specs/otlp/

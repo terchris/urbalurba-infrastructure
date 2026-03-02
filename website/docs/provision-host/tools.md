@@ -348,6 +348,6 @@ The provision host container can be used in CI/CD pipelines:
 
 ## Related Documentation
 
-- [Provision Host Setup](./provision-host-readme.md)
-- [Kubernetes Provisioning](./provision-host-kubernetes-readme.md)
-- [Rancher Desktop Integration](./provision-host-rancher-readme.md)
+- [Provision Host Setup](./index.md)
+- [Kubernetes Provisioning](./kubernetes.md)
+- [Rancher Desktop Integration](./rancher.md)

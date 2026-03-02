@@ -9,7 +9,7 @@
 The provision-host container provides a complete automated deployment system for Kubernetes applications. Simply run `./uis start && ./uis provision` and all active services deploy automatically in the correct order.
 
 
-See also [overview-system-architecture.md](./overview-system-architecture.md) 
+See also [overview-system-architecture.md](../getting-started/architecture.md) 
 
 **Key Benefits**:
 - ✅ **Fully Automated**: One command deploys entire cluster
@@ -17,7 +17,7 @@ See also [overview-system-architecture.md](./overview-system-architecture.md)
 - ✅ **Easy Service Management**: Move scripts in/out of `not-in-use/` folders to control what gets deployed when the cluster is built
 - ✅ **Safe Removal**: Removal scripts are protected from accidental execution
 
-**For Technical Details**: See [Rules for Automated Kubernetes Deployment](rules-automated-kubernetes-deployment.md)
+**For Technical Details**: See [Rules for Automated Kubernetes Deployment](../rules/kubernetes-deployment.md)
 
 ## Service Categories
 
@@ -92,7 +92,7 @@ Each category has a `not-in-use/` folder containing optional services. You contr
 - **📁 Active Services**: Scripts in the category folder (e.g., `07-ai/01-setup-litellm-openwebui.sh`)
 - **📁 Inactive Services**: Scripts in `not-in-use/` folder (e.g., `07-ai/not-in-use/02-setup-open-webui.sh`)
 
-**Technical Details**: See [Active vs Inactive Management](rules-automated-kubernetes-deployment.md#active-vs-inactive-management) in the rules documentation.
+**Technical Details**: See [Active vs Inactive Management](../rules/kubernetes-deployment.md#active-vs-inactive-management) in the rules documentation.
 
 ## Quick Start Guide
 
@@ -212,6 +212,6 @@ After deployment, access services via:
 ## Technical Reference
 
 For developers and advanced users:
-- **📋 [Automated Deployment Rules](rules-automated-kubernetes-deployment.md)** - How the orchestration system works
-- **🔧 [Provisioning Rules](rules-provisioning.md)** - How to write deployment scripts
-- **📖 [Provision Host Overview](provision-host-readme.md)** - Complete platform documentation
+- **📋 [Automated Deployment Rules](../rules/kubernetes-deployment.md)** - How the orchestration system works
+- **🔧 [Provisioning Rules](../rules/provisioning.md)** - How to write deployment scripts
+- **📖 [Provision Host Overview](./index.md)** - Complete platform documentation

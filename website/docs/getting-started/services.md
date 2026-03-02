@@ -105,10 +105,10 @@ All services are accessible through consistent localhost URLs:
 
 ## 📚 Related Documentation
 
-- **[System Architecture](./overview-system-architecture.md)** - Technical architecture details
-- **[AI Platform](./package-ai-readme.md)** - AI services configuration
-- **[Authentication](./package-auth-authentik.md)** - SSO setup and management
-- **[Hosts](./hosts-readme.md)** - Deployment environments
+- **[System Architecture](./architecture.md)** - Technical architecture details
+- **[AI Platform](../packages/ai/index.md)** - AI services configuration
+- **[Authentication](../packages/identity/authentik.md)** - SSO setup and management
+- **[Hosts](../hosts/index.md)** - Deployment environments
 
 ---
 

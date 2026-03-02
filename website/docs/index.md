@@ -112,12 +112,12 @@ After deployment, access services at:
 
 ## Documentation Structure
 
-- **[Getting Started](getting-started/overview)** - First steps and quick start guide
-- **[Hosts & Platforms](hosts)** - Supported platforms and setup guides
-- **[Packages](packages/ai)** - Service documentation by category
-- **[Networking](networking)** - External access via Tailscale and Cloudflare
-- **[Rules & Standards](rules)** - Development conventions and patterns
-- **[Troubleshooting](reference/troubleshooting)** - Common issues and solutions
+- **[Getting Started](./getting-started/overview.md)** - First steps and quick start guide
+- **[Hosts & Platforms](./hosts/index.md)** - Supported platforms and setup guides
+- **[Packages](./packages/ai/index.md)** - Service documentation by category
+- **[Networking](./networking/index.md)** - External access via Tailscale and Cloudflare
+- **[Rules & Standards](./rules/index.md)** - Development conventions and patterns
+- **[Troubleshooting](./reference/troubleshooting.md)** - Common issues and solutions
 
 ## Repository Structure
 
@@ -134,7 +134,7 @@ urbalurba-infrastructure/
 
 ## Contributing
 
-Contributions are welcome! Please read the [development workflow](rules/development-workflow) and [git workflow](rules/git-workflow) guides before submitting changes.
+Contributions are welcome! Please read the [development workflow](./rules/development-workflow.md) and [git workflow](./rules/git-workflow.md) guides before submitting changes.
 
 ## License
 

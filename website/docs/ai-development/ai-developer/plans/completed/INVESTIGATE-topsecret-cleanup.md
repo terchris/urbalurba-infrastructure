@@ -1,6 +1,6 @@
 # INVESTIGATE: Remove All `topsecret/` References from Codebase
 
-**Related**: [PLAN-004-secrets-cleanup](../completed/PLAN-004-secrets-cleanup.md), [STATUS-service-migration](STATUS-service-migration.md), [INVESTIGATE-secrets-consolidation](INVESTIGATE-secrets-consolidation.md)
+**Related**: [PLAN-004-secrets-cleanup](./PLAN-004-secrets-cleanup.md), [STATUS-service-migration](../backlog/STATUS-service-migration.md), [INVESTIGATE-secrets-consolidation](./INVESTIGATE-secrets-consolidation.md)
 **Created**: 2026-02-22
 **Status**: INVESTIGATION COMPLETE
 

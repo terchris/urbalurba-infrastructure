@@ -12,7 +12,7 @@ This is the central starting point for understanding all rules, standards, and b
 ## 🚀 **Rule Categories**
 
 ### **Infrastructure Provisioning Rules**
-**📖 [Provisioning Rules Guide](rules-provisioning.md)**
+**📖 [Provisioning Rules Guide](./provisioning.md)**
 
 Comprehensive rules for deploying and managing infrastructure on Kubernetes using the Urbalurba platform patterns:
 
@@ -28,7 +28,7 @@ Comprehensive rules for deploying and managing infrastructure on Kubernetes usin
 ---
 
 ### **Automated Kubernetes Deployment Rules**
-**☸️ [Automated Kubernetes Deployment Rules Guide](rules-automated-kubernetes-deployment.md)**
+**☸️ [Automated Kubernetes Deployment Rules Guide](./kubernetes-deployment.md)**
 
 Mandatory patterns and standards for the automated deployment system in provision-host/kubernetes:
 
@@ -44,7 +44,7 @@ Mandatory patterns and standards for the automated deployment system in provisio
 ---
 
 ### **Ingress and Networking Rules**
-**🚦 [Ingress Rules Guide](rules-ingress-traefik.md)**
+**🚦 [Ingress Rules Guide](./ingress-traefik.md)**
 
 Detailed standards for configuring ingress and networking using Traefik in the Kubernetes cluster:
 
@@ -59,7 +59,7 @@ Detailed standards for configuring ingress and networking using Traefik in the K
 ---
 
 ### **Secrets Management Rules**
-**🔒 [Secrets Management Rules Guide](rules-secrets-management.md)**
+**🔒 [Secrets Management Rules Guide](./secrets-management.md)**
 
 Comprehensive rules for the modular secrets management system ensuring security and maintainability:
 
@@ -75,7 +75,7 @@ Comprehensive rules for the modular secrets management system ensuring security 
 ---
 
 ### **Git Workflow and Development Rules**
-**🔀 [Git Workflow Rules Guide](rules-git-workflow.md)**
+**🔀 [Git Workflow Rules Guide](./git-workflow.md)**
 
 Professional Git workflow standards for maintaining code quality and enabling collaboration:
 
@@ -91,7 +91,7 @@ Professional Git workflow standards for maintaining code quality and enabling co
 ---
 
 ### **Development Workflow Rules**
-**💻 [Development Workflow Rules Guide](rules-development-workflow.md)**
+**💻 [Development Workflow Rules Guide](./development-workflow.md)**
 
 Standards for working with the urbalurba-infrastructure codebase, covering file operations, command execution, and project conventions:
 
@@ -107,7 +107,7 @@ Standards for working with the urbalurba-infrastructure codebase, covering file 
 ---
 
 ### **Naming Conventions Rules**
-**🏷️ [Naming Conventions Rules Guide](rules-naming-conventions.md)**
+**🏷️ [Naming Conventions Rules Guide](./naming-conventions.md)**
 
 Standardized naming patterns for files, manifests, scripts, and resources across the infrastructure:
 
@@ -122,7 +122,7 @@ Standardized naming patterns for files, manifests, scripts, and resources across
 ---
 
 ### **Documentation Standards**
-**📝 [Documentation Standards Guide](rules-howtodoc.md)**
+**📝 [Documentation Standards Guide](./documentation.md)**
 
 Comprehensive guide for writing consistent, high-quality documentation across the infrastructure:
 
@@ -140,26 +140,26 @@ Comprehensive guide for writing consistent, high-quality documentation across th
 ## 🎯 **Quick Reference**
 
 ### **For New Developers**
-1. **Start with**: [Git Workflow Rules](rules-git-workflow.md) - Learn development workflow and collaboration
-2. **Then read**: [Development Workflow Rules](rules-development-workflow.md) - Learn daily development practices
-3. **Next**: [Naming Conventions Rules](rules-naming-conventions.md) - Learn file and resource naming
-4. **Then**: [Documentation Standards](rules-howtodoc.md) - Learn documentation practices
-5. **Next**: [Secrets Management Rules](rules-secrets-management.md) - Learn secure secrets handling
-6. **Then**: [Provisioning Rules](rules-provisioning.md) - Learn infrastructure deployment patterns
-7. **Finally**: [Ingress Rules](rules-ingress-traefik.md) - Understand service exposure
+1. **Start with**: [Git Workflow Rules](./git-workflow.md) - Learn development workflow and collaboration
+2. **Then read**: [Development Workflow Rules](./development-workflow.md) - Learn daily development practices
+3. **Next**: [Naming Conventions Rules](./naming-conventions.md) - Learn file and resource naming
+4. **Then**: [Documentation Standards](./documentation.md) - Learn documentation practices
+5. **Next**: [Secrets Management Rules](./secrets-management.md) - Learn secure secrets handling
+6. **Then**: [Provisioning Rules](./provisioning.md) - Learn infrastructure deployment patterns
+7. **Finally**: [Ingress Rules](./ingress-traefik.md) - Understand service exposure
 
 ### **For Development Work**
-- **Making code changes**: Follow [Git Workflow Rules](rules-git-workflow.md)
-- **Daily development**: Follow [Development Workflow Rules](rules-development-workflow.md)
-- **Naming files/resources**: Follow [Naming Conventions Rules](rules-naming-conventions.md)
-- **Writing documentation**: Follow [Documentation Standards](rules-howtodoc.md)
-- **Managing secrets**: Follow [Secrets Management Rules](rules-secrets-management.md)
-- **Deploying services**: Follow [Provisioning Rules](rules-provisioning.md)
-- **Exposing services**: Follow [Ingress Rules](rules-ingress-traefik.md)
+- **Making code changes**: Follow [Git Workflow Rules](./git-workflow.md)
+- **Daily development**: Follow [Development Workflow Rules](./development-workflow.md)
+- **Naming files/resources**: Follow [Naming Conventions Rules](./naming-conventions.md)
+- **Writing documentation**: Follow [Documentation Standards](./documentation.md)
+- **Managing secrets**: Follow [Secrets Management Rules](./secrets-management.md)
+- **Deploying services**: Follow [Provisioning Rules](./provisioning.md)
+- **Exposing services**: Follow [Ingress Rules](./ingress-traefik.md)
 
 ### **For Troubleshooting**
-- **Deployment issues**: Check Rule 3 in [Provisioning Rules](rules-provisioning.md) for cluster testing patterns
-- **Access issues**: Check DNS resolution in [Ingress Rules](rules-ingress-traefik.md)
+- **Deployment issues**: Check Rule 3 in [Provisioning Rules](./provisioning.md) for cluster testing patterns
+- **Access issues**: Check DNS resolution in [Ingress Rules](./ingress-traefik.md)
 
 ## 🔧 **Rule Enforcement**
 
@@ -193,7 +193,7 @@ Comprehensive guide for writing consistent, high-quality documentation across th
 
 ### **Update Process**
 1. Propose rule changes via pull request
-2. Update relevant rule guide ([Provisioning](rules-provisioning.md) or [Ingress](rules-ingress-traefik.md))
+2. Update relevant rule guide ([Provisioning](./provisioning.md) or [Ingress](./ingress-traefik.md))
 3. Update this central guide if categories change
 4. Ensure all existing code complies with new rules
 

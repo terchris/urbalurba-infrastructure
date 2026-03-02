@@ -156,7 +156,7 @@ The service will be removed and you can verify it by using the `k9s`
 
 Once you have the basic system running:
 
-**Explore Services**: Read the [services overview](./overview-services.md) to understand what's available
+**Explore Services**: Read the [services overview](./services.md) to understand what's available
 
 
 ---

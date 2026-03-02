@@ -44,7 +44,7 @@ Purpose is to set up the same services as your cloud provider (Azure) so that yo
 A local Kubernetes cluster running on your machine:
 - **Rancher Desktop** (default) - Easy setup with GUI
 - **Services** - All applications run as Kubernetes workloads
-See [overview-services.md](./overview-services.md) for list of services and their Azure equivalents
+See [overview-services.md](./services.md) for list of services and their Azure equivalents
 
 
 ## 🔄 How They Work Together
@@ -65,7 +65,7 @@ The key advantage: **same tools, same scripts, same processes** whether running 
 
 ## 📚 Related Documentation
 
-- **[System Architecture](./overview-system-architecture.md)** - Detailed architectural diagrams
-- **[Installation Guide](./overview-installation.md)** - Get started in 2 steps
-- **[Services Overview](./overview-services.md)** - List of services and their Azure equivalents
-- **[Host Types](./hosts-readme.md)** - All deployment options 
+- **[System Architecture](./architecture.md)** - Detailed architectural diagrams
+- **[Installation Guide](./installation.md)** - Get started in 2 steps
+- **[Services Overview](./services.md)** - List of services and their Azure equivalents
+- **[Host Types](../hosts/index.md)** - All deployment options 

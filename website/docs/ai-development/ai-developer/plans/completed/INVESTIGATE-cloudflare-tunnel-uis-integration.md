@@ -12,7 +12,7 @@
 
 **Priority**: Medium — Cloudflare is the production networking solution (custom domains, wildcard routing, CDN). Tailscale is for developer testing.
 
-**Parent**: [STATUS-service-migration.md](STATUS-service-migration.md) — Phase 3 and Phase 5
+**Parent**: [STATUS-service-migration.md](../backlog/STATUS-service-migration.md) — Phase 3 and Phase 5
 
 **Requires**: Cloudflare account with a domain already added (e.g., `urbalurba.no`). May not work from corporate networks that block Cloudflare tunnel traffic.
 

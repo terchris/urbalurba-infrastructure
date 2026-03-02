@@ -177,7 +177,7 @@ The provision-host container at `/mnt/urbalurbadisk/` mirrors the Mac repository
 
 ## File Naming Conventions
 
-**⚠️ See [doc/rules-naming-conventions.md](rules-naming-conventions.md) for complete details.**
+**⚠️ See [doc/rules-naming-conventions.md](./naming-conventions.md) for complete details.**
 
 **Quick Summary:**
 
@@ -255,41 +255,41 @@ vim manifests/036-grafana-sovdev-verification.yaml
 
 ### Core Rules Documents
 
-1. **[doc/rules-development-workflow.md](rules-development-workflow.md)** (this file)
+1. **[doc/rules-development-workflow.md](./development-workflow.md)** (this file)
    - Development workflows (Claude Code vs Manual)
    - File operations and command execution
    - Directory structure and naming conventions
 
-2. **[doc/rules-readme.md](rules-readme.md)** *(to be created)*
+2. **[doc/rules-readme.md](./index.md)** *(to be created)*
    - Overview of all project rules
    - Quick reference for developers
 
-3. **[doc/rules-automated-kubernetes-deployment.md](rules-automated-kubernetes-deployment.md)** *(to be created)*
+3. **[doc/rules-automated-kubernetes-deployment.md](./kubernetes-deployment.md)** *(to be created)*
    - Ansible playbook patterns
    - Helm chart deployment standards
    - External manifest file usage (not inline values)
 
-4. **[doc/rules-ingress-traefik.md](rules-ingress-traefik.md)** *(to be created)*
+4. **[doc/rules-ingress-traefik.md](./ingress-traefik.md)** *(to be created)*
    - IngressRoute patterns
    - HostRegexp for multi-domain support
    - Middleware configuration (auth, CSP headers)
 
-5. **[doc/rules-secrets-management.md](rules-secrets-management.md)** *(to be created)*
+5. **[doc/rules-secrets-management.md](./secrets-management.md)** *(to be created)*
    - .uis.secrets system usage
    - Never commit secrets to git
    - urbalurba-secrets ConfigMap pattern
 
-6. **[doc/rules-provisioning.md](rules-provisioning.md)** *(to be created)*
+6. **[doc/rules-provisioning.md](./provisioning.md)** *(to be created)*
    - Shell script organization
    - Naming conventions
    - Testing patterns
 
-7. **[doc/rules-git-workflow.md](rules-git-workflow.md)** *(to be created)*
+7. **[doc/rules-git-workflow.md](./git-workflow.md)** *(to be created)*
    - Commit message standards
    - Branch naming
    - PR requirements
 
-8. **[doc/rules-howtodoc.md](rules-howtodoc.md)** *(to be created)*
+8. **[doc/rules-howtodoc.md](./documentation.md)** *(to be created)*
    - Documentation structure
    - Markdown formatting
    - Usage instructions pattern

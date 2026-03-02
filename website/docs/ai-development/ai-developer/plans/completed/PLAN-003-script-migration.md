@@ -14,7 +14,7 @@
 
 **Prerequisites**: PLAN-001 ✓ and PLAN-002 ✓ complete
 
-**Related**: [INVESTIGATE-secrets-consolidation.md](../backlog/INVESTIGATE-secrets-consolidation.md)
+**Related**: [INVESTIGATE-secrets-consolidation.md](./INVESTIGATE-secrets-consolidation.md)
 
 **Note**: PLAN-002 created `paths.sh` with base path detection functions. This plan extends that with backwards-compatible path resolution and deprecation warnings for topsecret/ paths.
 

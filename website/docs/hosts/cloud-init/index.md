@@ -23,7 +23,7 @@ This ensures that all hosts, regardless of their deployment environment, are:
 
 **IMPORTANT**: Before using cloud-init templates, you must set up SSH keys for Ansible authentication:
 
-👉 **[SSH Key Setup Guide](./hosts-cloud-init-secrets.md)** - Create the required SSH keys for cloud-init deployments
+👉 **[SSH Key Setup Guide](./secrets.md)** - Create the required SSH keys for cloud-init deployments
 
 The SSH keys created in this prerequisite step are essential for:
 - Ansible automation and host management

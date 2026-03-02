@@ -17,9 +17,9 @@ Secrets are currently scattered across multiple folders with inconsistent naming
 
 ## Related Documentation
 
-- [Cloud-Init Documentation](../../hosts/cloud-init/index.md) - Main cloud-init overview
-- [SSH Key Setup Guide](../../hosts/cloud-init/secrets.md) - SSH key generation for Ansible
-- [Hosts Overview](../../hosts/index.md) - All supported host types
+- [Cloud-Init Documentation](../../../../hosts/cloud-init/index.md) - Main cloud-init overview
+- [SSH Key Setup Guide](../../../../hosts/cloud-init/secrets.md) - SSH key generation for Ansible
+- [Hosts Overview](../../../../hosts/index.md) - All supported host types
 
 ## Current State Analysis
 

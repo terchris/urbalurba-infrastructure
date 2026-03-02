@@ -15,7 +15,7 @@
 
 **Prerequisites**: All old path references in playbooks fixed and verified (PR #35, merged)
 
-**Related**: [INVESTIGATE-secrets-consolidation](../backlog/INVESTIGATE-secrets-consolidation.md), [INVESTIGATE-passwords](../backlog/INVESTIGATE-passwords.md)
+**Related**: [INVESTIGATE-secrets-consolidation](./INVESTIGATE-secrets-consolidation.md), [INVESTIGATE-passwords](./INVESTIGATE-passwords.md)
 
 **Deferred items** (active hard dependencies, separate plan needed):
 - `cloud-init/` folder — still referenced by `provision-host-vm-create.sh`, host scripts

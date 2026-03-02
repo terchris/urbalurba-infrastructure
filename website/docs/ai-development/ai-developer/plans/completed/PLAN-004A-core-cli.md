@@ -10,7 +10,7 @@
 
 **Last Updated**: 2026-01-22
 
-**Part of**: [PLAN-004-uis-orchestration-system.md](../backlog/PLAN-004-uis-orchestration-system.md) (Epic)
+**Part of**: [PLAN-004-uis-orchestration-system.md](./PLAN-004-uis-orchestration-system.md) (Epic)
 
 **Prerequisites**: [PLAN-003-minimal-container-delivery.md](../completed/PLAN-003-minimal-container-delivery.md) - ✅ Complete
 
@@ -1264,4 +1264,4 @@ Create the CLI that the `./uis` wrapper calls into.
 ## Next Plan
 
 After completing this plan, proceed to:
-- [PLAN-004B-menu-secrets.md](../backlog/PLAN-004B-menu-secrets.md) - Interactive menu and secrets management
+- [PLAN-004B-menu-secrets.md](./PLAN-004B-menu-secrets.md) - Interactive menu and secrets management

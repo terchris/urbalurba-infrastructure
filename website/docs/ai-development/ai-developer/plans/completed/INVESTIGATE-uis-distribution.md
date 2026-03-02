@@ -25,7 +25,7 @@
 **Related Plans**:
 - [PLAN-003-minimal-container-delivery.md](PLAN-003-minimal-container-delivery.md) - ✅ Complete
 - [PLAN-004-uis-orchestration-system.md](PLAN-004-uis-orchestration-system.md) - ✅ Complete
-- [PLAN-002-json-generator.md](../backlog/PLAN-002-json-generator.md) - Backlog (may need revision)
+- [PLAN-002-json-generator.md](./PLAN-002-json-generator.md) - Complete
 
 ---
 

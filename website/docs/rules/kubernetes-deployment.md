@@ -14,7 +14,7 @@ This document covers the **orchestration and automation framework**:
 - Active/inactive script management
 
 For **how to write individual deployment scripts**, see:
-→ [Rules for Provisioning](rules-provisioning.md) - Implementation patterns for scripts and playbooks
+→ [Rules for Provisioning](./provisioning.md) - Implementation patterns for scripts and playbooks
 
 ## Core Principles
 
@@ -100,10 +100,10 @@ provision-host/kubernetes/
 
 ### Script Naming Convention
 
-**⚠️ See [doc/rules-naming-conventions.md](rules-naming-conventions.md#shell-scripts) for complete naming patterns.**
+**⚠️ See [doc/rules-naming-conventions.md](./naming-conventions.md) for complete naming patterns.**
 
 Scripts must follow standard naming patterns. For **implementation details** (script structure, error handling), see:
-→ [Rules for Provisioning](rules-provisioning.md) - Script Template Pattern section
+→ [Rules for Provisioning](./provisioning.md) - Script Template Pattern section
 
 ### Active vs Inactive Management
 
@@ -140,7 +140,7 @@ For scripts to work with the automated orchestration system, they MUST:
 4. **Be placed in correct directory**: Active scripts in category folder, inactive in `not-in-use/`
 
 For **implementation details** (how to write the scripts), see:
-→ [Rules for Provisioning](rules-provisioning.md)
+→ [Rules for Provisioning](./provisioning.md)
 
 
 ## Dependency Management Rules
@@ -175,6 +175,6 @@ The **`provision-kubernetes.sh`** master script implements these orchestration r
 ---
 
 **Related Documentation:**
-- [Provision Host Kubernetes Guide](provision-host-kubernetes.md)
-- [Rules Overview](rules-readme.md)
-- [Secrets Management](rules-secrets-management.md)
+- [Provision Host Kubernetes Guide](../provision-host/kubernetes.md)
+- [Rules Overview](./index.md)
+- [Secrets Management](./secrets-management.md)

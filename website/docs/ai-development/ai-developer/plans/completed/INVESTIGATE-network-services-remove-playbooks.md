@@ -12,7 +12,7 @@
 
 **Priority**: Low — Both Tailscale and Cloudflare are now fully complete.
 
-**Parent**: [STATUS-service-migration.md](STATUS-service-migration.md) — Phase 3 and Phase 5
+**Parent**: [STATUS-service-migration.md](../backlog/STATUS-service-migration.md) — Phase 3 and Phase 5
 
 ---
 

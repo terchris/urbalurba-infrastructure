@@ -27,7 +27,7 @@ The provision host is a self-contained Docker container that serves as your **co
 ## 📚 **Documentation Guides**
 
 ### **Container Tools Reference**
-**📖 [Provision Host Tools Guide](provision-host-tools.md)**
+**📖 [Provision Host Tools Guide](./tools.md)**
 
 Complete reference for all tools and software available in the provision host container - pre-configured with all major cloud providers, Kubernetes tools, automation frameworks, and networking capabilities. Includes detailed capabilities, usage examples, and authentication setup.
 
@@ -37,7 +37,7 @@ Complete reference for all tools and software available in the provision host co
 
 
 ### **Kubernetes Service Deployment**
-**☸️ [Provision Host Kubernetes Guide](provision-host-kubernetes.md)**
+**☸️ [Provision Host Kubernetes Guide](./kubernetes.md)**
 
 User guide for deploying and managing applications on Kubernetes clusters using the automated provisioning system:
 
@@ -52,7 +52,7 @@ User guide for deploying and managing applications on Kubernetes clusters using 
 ---
 
 ### **Rancher Desktop Integration**
-**🖥️ [Provision Host Rancher Guide](provision-host-rancher.md)**
+**🖥️ [Provision Host Rancher Guide](./rancher.md)**
 
 Specific setup and compatibility for Rancher Desktop environments:
 
@@ -69,22 +69,22 @@ Specific setup and compatibility for Rancher Desktop environments:
 
 ### **New Developer Getting Started:**
 1. Run `./uis start && ./uis provision` - One command sets up everything automatically
-2. **[Tools Guide](provision-host-tools.md)** - Understand what's available
-3. **[Kubernetes Guide](provision-host-kubernetes.md)** - Deploy your first services
+2. **[Tools Guide](./tools.md)** - Understand what's available
+3. **[Kubernetes Guide](./kubernetes.md)** - Deploy your first services
 
 ### **DevOps Engineer Doing Multi-Cloud:**
-1. **[Tools Guide](provision-host-tools.md)** - Cloud provider capabilities
+1. **[Tools Guide](./tools.md)** - Cloud provider capabilities
 2. Jump to specific cloud authentication sections
 
 ### **Using Rancher Desktop:**
-1. **[Rancher Guide](provision-host-rancher.md)** - Platform-specific setup
-2. **[Kubernetes Guide](provision-host-kubernetes.md)** - Service deployment
+1. **[Rancher Guide](./rancher.md)** - Platform-specific setup
+2. **[Kubernetes Guide](./kubernetes.md)** - Service deployment
 
 ### **Troubleshooting:**
-- Container issues? → **[Tools Guide](provision-host-tools.md)**
-- Installation problems? → **[Setup Guide](provision-host-setup.md)**
-- Service deployment failures? → **[Kubernetes Guide](provision-host-kubernetes.md)**
-- Rancher Desktop issues? → **[Rancher Guide](provision-host-rancher.md)**
+- Container issues? → **[Tools Guide](./tools.md)**
+- Installation problems? → **[Setup Guide](./index.md)**
+- Service deployment failures? → **[Kubernetes Guide](./kubernetes.md)**
+- Rancher Desktop issues? → **[Rancher Guide](./rancher.md)**
 
 ## 🏗️ **Architecture Overview**
 
@@ -127,14 +127,14 @@ Host Machine (Windows/Linux/macOS)
 
 ## 📞 **Getting Help**
 
-- **Tool not working?** Check the [Tools Guide](provision-host-tools.md)
-- **Setup failing?** Follow the [Setup Guide](provision-host-setup.md) step by step
-- **Service won't deploy?** Review the [Kubernetes Guide](provision-host-kubernetes.md)
-- **Rancher issues?** See the [Rancher Guide](provision-host-rancher.md)
+- **Tool not working?** Check the [Tools Guide](./tools.md)
+- **Setup failing?** Follow the [Setup Guide](./index.md) step by step
+- **Service won't deploy?** Review the [Kubernetes Guide](./kubernetes.md)
+- **Rancher issues?** See the [Rancher Guide](./rancher.md)
 
 ---
 
 **Related Documentation:**
-- [Rules Documentation](rules-readme.md) - Infrastructure rules and standards
-- [Secrets Management](rules-secrets-management.md) - Security and secrets handling
-- [Ingress Configuration](rules-ingress-traefik.md) - Networking and routing
+- [Rules Documentation](../rules/index.md) - Infrastructure rules and standards
+- [Secrets Management](../rules/secrets-management.md) - Security and secrets handling
+- [Ingress Configuration](../rules/ingress-traefik.md) - Networking and routing
