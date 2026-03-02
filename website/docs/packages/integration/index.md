@@ -1,6 +1,7 @@
 ---
 title: Integration
 sidebar_label: Integration
+description: Message queues and API gateways with RabbitMQ and Gravitee
 ---
 
 # Integration

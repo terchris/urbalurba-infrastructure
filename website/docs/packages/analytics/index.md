@@ -1,6 +1,7 @@
 ---
 title: Analytics
 sidebar_label: Analytics
+description: Data science with Spark, JupyterHub, and Unity Catalog
 ---
 
 # Analytics

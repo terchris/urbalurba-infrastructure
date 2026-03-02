@@ -1,6 +1,7 @@
 ---
 title: Management
 sidebar_label: Management
+description: Admin tools and GitOps with ArgoCD, pgAdmin, and RedisInsight
 ---
 
 # Management

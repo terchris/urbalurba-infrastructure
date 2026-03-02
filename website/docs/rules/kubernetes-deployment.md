@@ -1,10 +1,5 @@
 # Rules for UIS Deployment System
 
-**File**: `docs/rules-automated-kubernetes-deployment.md`
-**Purpose**: Define the **ORCHESTRATION LAYER** — how services are discovered, configured, and deployed through the UIS CLI
-**Target Audience**: Developers, DevOps engineers, and LLMs working with the UIS deployment system
-**Scope**: CLI commands, service metadata, deploy flow, stacks, autostart configuration
-
 ## Relationship to Other Rules
 
 This document covers the **orchestration and automation framework**:

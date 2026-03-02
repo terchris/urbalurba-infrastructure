@@ -210,7 +210,6 @@ const sidebars: SidebarsConfig = {
         'rules/git-workflow',
         'rules/development-workflow',
         'rules/documentation',
-        'rules/documentation-legacy',
       ],
     },
     {

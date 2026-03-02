@@ -22,8 +22,8 @@ Download from [rancherdesktop.io](https://rancherdesktop.io/) and configure:
 
 - **Kubernetes**: Enabled
 - **Container runtime**: dockerd (moby)
-- **Memory**: At least 8GB (16GB recommended for full stack)
-- **CPU**: 4+ cores
+- **Memory**: At least 8GB — macOS/Linux only, WSL2 manages this automatically
+- **CPU**: 4+ cores — macOS/Linux only, WSL2 manages this automatically
 
 Verify it's ready:
 
@@ -114,10 +114,12 @@ All data, configurations, and certificates will be permanently lost. If you mana
 
 ## Performance Tips
 
-- Allocate at least **8GB RAM** for the full UIS stack (16GB recommended)
-- Use **4+ CPU cores** for responsive performance
 - Ensure **50GB+ free disk space** for container images and persistent volumes
 - Close memory-intensive applications when running the full stack
+
+**macOS / Linux:** In Rancher Desktop settings, allocate at least **8GB RAM** and **4+ CPU cores** for the full UIS stack.
+
+**Windows (WSL2):** Rancher Desktop uses WSL2 which manages resources automatically — no manual allocation needed.
 
 ## Related Documentation
 

@@ -1,8 +1,8 @@
 # Cloud-Init SSH Key Setup
 
-**File**: `docs/hosts-cloud-init-secrets.md`
-**Purpose**: SSH key generation for cloud-init and Ansible automation
-**Target Audience**: Infrastructure engineers setting up cloud-init deployments
+:::caution Not yet migrated to UIS CLI
+This page documents the legacy deployment approach using manual scripts. It has not been updated for the `./uis` CLI workflow. The instructions may be outdated or incomplete.
+:::
 **Last Updated**: September 22, 2024
 
 ## 📋 Overview

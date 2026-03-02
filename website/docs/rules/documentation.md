@@ -76,7 +76,7 @@ website/docs/
 │   └── cloud-init/            # Cloud-init subsection
 ├── packages/                   # Service packages
 │   ├── ai/                    # AI & ML services
-│   ├── authentication/        # Authentik
+│   ├── identity/              # Authentik
 │   ├── databases/             # PostgreSQL, MySQL, etc.
 │   └── ...                    # Other categories
 ├── networking/                 # Network configuration

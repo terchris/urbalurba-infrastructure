@@ -1,8 +1,8 @@
 # Cloud-Init Documentation
 
-**File**: `docs/hosts-cloud-init-readme.md`
-**Purpose**: Cloud-init configuration and templates for automated host provisioning
-**Target Audience**: Infrastructure engineers working with cloud-init deployments
+:::caution Not yet migrated to UIS CLI
+This page documents the legacy deployment approach using manual scripts. It has not been updated for the `./uis` CLI workflow. The instructions may be outdated or incomplete.
+:::
 **Last Updated**: September 22, 2024
 
 ## 📋 Overview
