@@ -441,6 +441,33 @@ validate_json() {
 # ============================================================
 
 main() {
+    # Check for --markdown flag to delegate to markdown generator
+    local markdown_args=()
+    local run_json=true
+    for arg in "$@"; do
+        case "$arg" in
+            --markdown)
+                run_json=false
+                ;;
+            --force|--dry-run|--service)
+                markdown_args+=("$arg")
+                ;;
+            *)
+                markdown_args+=("$arg")
+                ;;
+        esac
+    done
+
+    if [[ "$run_json" == "false" ]]; then
+        local md_script="$SCRIPT_DIR/uis-docs-markdown.sh"
+        if [[ -x "$md_script" ]]; then
+            exec "$md_script" "${markdown_args[@]}"
+        else
+            log_error "Markdown generator not found: $md_script"
+            exit 1
+        fi
+    fi
+
     print_section "UIS Documentation Generator"
     echo ""
     echo "Output directory: $OUTPUT_DIR"
