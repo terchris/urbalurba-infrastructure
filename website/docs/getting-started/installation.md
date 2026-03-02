@@ -1,87 +1,89 @@
 # Installation Guide
 
-**File**: `docs/overview-installation.md`
-**Purpose**: Simple installation guide for Urbalurba Infrastructure
-**Target Audience**: New users and developers getting started
-**Last Updated**: September 22, 2024
+## Prerequisites
 
-## 📋 Overview
+- **Operating System**: macOS, Linux, or Windows with WSL2
+- **Hardware**: 16GB RAM minimum (32GB recommended), 50GB free disk space
+- **Software**: [Rancher Desktop](https://rancherdesktop.io/) installed with Kubernetes enabled
 
-Urbalurba Infrastructure provides a complete datacenter environment on your laptop using Kubernetes and Docker. Installation requires just two steps: install Rancher Desktop, then download and run our installation script.
+## Step 1: Install Rancher Desktop
 
-## 🛠️ Prerequisites
+Rancher Desktop provides Kubernetes and Docker for your local environment.
 
-- **Operating System**: macOS, Windows, or Linux
-- **Hardware**: 8GB+ RAM recommended, 10GB+ free disk space
-- **Internet Connection**: Required for downloading components
+1. Download from [rancherdesktop.io](https://rancherdesktop.io/)
+2. Install and launch — Kubernetes starts automatically
+3. Allocate at least **8GB RAM** and **4 CPU cores** in settings
 
-## 📦 Step 1: Install Rancher Desktop
+:::note
+If you have Docker Desktop installed, uninstall it first as it conflicts with Rancher Desktop.
+:::
 
-Rancher Desktop provides Kubernetes and Docker for your local development environment.
-
-1. **Download Rancher Desktop** from the official website:
-   - 🌐 **https://rancherdesktop.io/**
-
-2. **Install and configure**:
-   - Follow the installation instructions for your operating system
-   - Start Rancher Desktop and enable Kubernetes
-   - Allocate at least **8GB RAM** and **4 CPU cores** for optimal performance
-
-3. **Verify installation**:
-   ```bash
-   # Check that Kubernetes is running
-   kubectl version --client
-
-   # Check that Docker is available
-   docker version
-   ```
-
-> 📝 **Note**: If you have Docker Desktop installed, uninstall it first as it conflicts with Rancher Desktop.
-
-## 🚀 Step 2: Download Urbalurba Infrastructure
-
-Download the latest release ZIP file from GitHub:
-
-1. **Go to releases page**: https://github.com/terchris/urbalurba-infrastructure/releases
-2. **Download the latest release**: Click on `urbalurba-infrastructure.zip`
-3. **Extract the ZIP file** to your desired folder
-
-Or use command line:
+Verify it's ready:
 
 ```bash
-# Download latest release
-curl -L https://github.com/terchris/urbalurba-infrastructure/releases/latest/download/urbalurba-infrastructure.zip -o urbalurba-infrastructure.zip
-
-# Extract
-unzip urbalurba-infrastructure.zip
-
-# Navigate into the folder
-cd urbalurba-infrastructure
+kubectl get nodes
+docker version
 ```
 
-### What You Get
+You should see one node in `Ready` state.
 
-The infrastructure package contains:
-- **Kubernetes manifests** - All service definitions
-- **Provision scripts** - Setup and management tools
-- **Documentation** - Complete guides and references
-- **Configuration files** - Ready-to-use configurations
+## Step 2: Download the UIS CLI
 
-## ✅ Verification
+The `uis` script is the only file you need. The container image with all tools is pulled automatically on first run.
 
-After downloading and extracting, verify you have the infrastructure package:
+**macOS / Linux:**
 
 ```bash
-# Check the main folders are present
-ls -la urbalurba-infrastructure/
+curl -fsSL https://raw.githubusercontent.com/terchris/urbalurba-infrastructure/main/uis -o uis
+chmod +x uis
 ```
 
-## 🌐 Next Steps - Deploy Services
+**Windows (PowerShell):**
 
-After downloading the infrastructure package, you'll need to deploy the services to your Kubernetes cluster:
+```powershell
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/terchris/urbalurba-infrastructure/main/uis.ps1" -OutFile "uis.ps1"
+```
 
-1. **Follow the [Getting Started Guide](./overview.md)** in the downloaded package for deployment instructions
-2. **Use the provision scripts** to set up and deploy services
-3. **Access services** once deployed at `*.localhost` domains:
+## Step 3: Start UIS
 
+```bash
+./uis start
+```
 
+On first run this will:
+1. Pull the `uis-provision-host` container image from the registry
+2. Create `.uis.extend/` and `.uis.secrets/` configuration directories
+3. Initialize default secrets and config files
+4. Start the provision host container
+
+## Verify Installation
+
+```bash
+# Check the container is running
+./uis container
+
+# List all available services
+./uis list
+```
+
+All services should show "Not deployed".
+
+## What You Get
+
+After installation, your directory contains:
+
+```
+my-project/
+├── uis                   # UIS CLI (the only file you downloaded)
+├── .uis.extend/          # Service configuration overrides (yours to edit)
+├── .uis.secrets/         # Passwords, API keys, certificates (gitignored)
+└── .gitignore            # Auto-created, excludes .uis.secrets/
+```
+
+Everything else — Ansible playbooks, Helm charts, Kubernetes manifests, and CLI tools — lives inside the container image.
+
+## Next Steps
+
+- **[Getting Started](./overview.md)** — Deploy your first service
+- **[Services Overview](./services.md)** — See all available services
+- **[Architecture](./architecture.md)** — Understand how UIS works
