@@ -99,78 +99,86 @@
 
 ---
 
-### Shell Scripts (provision-host/kubernetes/*/*)
+### Service Metadata Files (provision-host/uis/services/)
 
-**Pattern:** `NN-action-component.sh`
+**Pattern:** `service-[name].sh`
 
-**Script Number:** Sequential within directory (01, 02, 03...)
-
-**Actions:** Same as playbooks (`setup-`, `remove-`, `update-`, `test-`)
+**Location:** `provision-host/uis/services/<category>/`
 
 **Relationship to Playbooks:**
-- Script number is independent of playbook number
-- Script wraps Ansible playbook call
-- Script provides proper context and parameters
+- Metadata file declares which Ansible playbook to run (`SCRIPT_PLAYBOOK`)
+- The UIS CLI reads the metadata and calls the playbook automatically
+- No imperative code — metadata files are declarative variable assignments
+- Files starting with `_` are skipped by the scanner (used for helper scripts)
 
 **Examples:**
 ```
-provision-host/kubernetes/11-monitoring/not-in-use/
-├── 00-setup-all-monitoring.sh      # Orchestrates all setup scripts
-├── 00-remove-all-monitoring.sh     # Orchestrates all remove scripts
-├── 01-setup-prometheus.sh          # Calls ansible/playbooks/030-setup-prometheus.yml
-├── 01-remove-prometheus.sh         # Calls ansible/playbooks/030-remove-prometheus.yml
-├── 02-setup-tempo.sh               # Calls ansible/playbooks/031-setup-tempo.yml
-├── 02-remove-tempo.sh              # Calls ansible/playbooks/031-remove-tempo.yml
-├── 03-setup-loki.sh                # Calls ansible/playbooks/032-setup-loki.yml
-├── 03-remove-loki.sh               # Calls ansible/playbooks/032-remove-loki.yml
-├── 04-setup-otel-collector.sh      # Calls ansible/playbooks/033-setup-otel-collector.yml
-├── 04-remove-otel-collector.sh     # Calls ansible/playbooks/033-remove-otel-collector.yml
-├── 05-setup-grafana.sh             # Calls ansible/playbooks/034-setup-grafana.yml
-└── 05-remove-grafana.sh            # Calls ansible/playbooks/034-remove-grafana.yml
+provision-host/uis/services/
+├── observability/
+│   ├── service-prometheus.sh        # SCRIPT_PLAYBOOK="030-setup-prometheus.yml"
+│   ├── service-tempo.sh             # SCRIPT_PLAYBOOK="031-setup-tempo.yml"
+│   ├── service-loki.sh              # SCRIPT_PLAYBOOK="032-setup-loki.yml"
+│   ├── service-otel-collector.sh    # SCRIPT_PLAYBOOK="033-setup-otel-collector.yml"
+│   └── service-grafana.sh           # SCRIPT_PLAYBOOK="034-setup-grafana.yml"
+├── databases/
+│   ├── service-postgresql.sh        # SCRIPT_PLAYBOOK="040-database-postgresql.yml"
+│   ├── service-mysql.sh             # SCRIPT_PLAYBOOK="041-database-mysql.yml"
+│   └── service-redis.sh             # SCRIPT_PLAYBOOK="043-setup-redis.yml"
+└── ai/
+    ├── service-litellm.sh           # SCRIPT_PLAYBOOK="210-setup-litellm.yml"
+    └── service-openwebui.sh         # SCRIPT_PLAYBOOK="208-setup-openwebui.yml"
 ```
 
-**Script Content Pattern:**
+**Metadata File Structure:**
 ```bash
 #!/bin/bash
-# Description of what this script does
+# service-[name].sh - [Service] service metadata
 
-# Check if target host provided
-if [ -z "$1" ]; then
-    echo "Usage: $0 <target_host>"
-    exit 1
-fi
+# === Required ===
+SCRIPT_ID="name"                        # Unique CLI identifier
+SCRIPT_NAME="Display Name"              # Human-readable name
+SCRIPT_DESCRIPTION="Brief description"
+SCRIPT_CATEGORY="CATEGORY_ID"           # One of the 9 categories
 
-TARGET_HOST="$1"
-
-# Call Ansible playbook
-ansible-playbook /mnt/urbalurbadisk/ansible/playbooks/030-setup-prometheus.yml \
-    -e "target_host=${TARGET_HOST}"
+# === Deployment (Optional) ===
+SCRIPT_PLAYBOOK="NNN-setup-name.yml"    # Ansible playbook
+SCRIPT_REMOVE_PLAYBOOK="NNN-remove-name.yml"
+SCRIPT_CHECK_COMMAND="kubectl get pods ..."
+SCRIPT_REQUIRES=""                      # Space-separated service IDs
+SCRIPT_PRIORITY="50"                    # Deploy order (lower = earlier)
 ```
 
 ---
 
 ### Directory Structure
 
-**Pattern:** Numbered directories for deployment order
-
-**Examples:**
+**UIS Service Directory** — services organized by category:
 ```
-provision-host/kubernetes/
-├── 00-system/                      # Core system setup
-├── 01-storage/                     # Storage provisioners
-├── 02-ingress/                     # Traefik ingress
-├── 03-dns/                         # DNS services
-├── 11-monitoring/                  # Monitoring stack
-│   └── not-in-use/                # Testing/development area
-├── 12-databases/                   # Database services
-├── 13-auth/                        # Authentication services
-└── 20-applications/                # Application deployments
+provision-host/uis/services/
+├── ai/                             # AI & ML services
+├── analytics/                      # Data science and analytics
+├── databases/                      # Data storage and caching
+├── identity/                       # Identity and access management
+├── integration/                    # Messaging and API gateways
+├── management/                     # Admin tools and GitOps
+├── networking/                     # VPN tunnels and network access
+├── observability/                  # Metrics, logs, and tracing
+└── storage/                        # Platform storage infrastructure
+```
+
+**Supporting Directories:**
+```
+provision-host/uis/
+├── lib/                            # Core libraries (categories, stacks, deployment logic)
+├── manage/                         # CLI entry point (uis-cli.sh)
+├── services/                       # Service metadata files (see above)
+└── templates/                      # Config templates and defaults
 ```
 
 **Rules:**
-1. Two-digit prefix for ordering
-2. Descriptive name after number
-3. `not-in-use/` subdirectory for scripts under development
+1. Category directories match the 9 UIS categories (lowercase)
+2. Service files use `service-[name].sh` naming pattern
+3. Helper files use `_` prefix (skipped by scanner)
 
 ---
 
@@ -180,20 +188,21 @@ provision-host/kubernetes/
 
 **Pattern:** `lowercase-descriptive`
 
+Most services deploy to the `default` namespace. Dedicated namespaces are used when a service requires isolation or when the Helm chart creates its own namespace.
+
 **Examples:**
 ```
-monitoring          # Monitoring stack (Prometheus, Grafana, Loki, Tempo, OTEL)
-databases          # Database services
+default            # Most services (PostgreSQL, MySQL, Redis, pgAdmin, whoami, LiteLLM, etc.)
+monitoring         # Observability stack (Prometheus, Grafana, Loki, Tempo, OTEL)
 authentik          # Authentik SSO
-openwebui          # OpenWebUI and AI services
-kube-system        # Kubernetes system (default)
+kube-system        # Kubernetes system
 traefik            # Traefik ingress controller
 ```
 
 **Rules:**
 1. Single word or hyphenated
 2. All lowercase
-3. Descriptive of purpose
+3. Prefer `default` namespace unless isolation is needed
 4. No version numbers
 
 ---
@@ -357,14 +366,15 @@ Claude Code vs manual workflows and path conventions.
 8. ✅ Consistent patterns across all file types
 
 **When adding new components:**
-1. Choose appropriate number range
-2. Create manifest file with proper suffix
-3. Create matching Ansible playbooks (setup + remove)
-4. Create shell script wrappers
-5. Follow established patterns
-6. Leave room for related components
+1. Create a service metadata file in `provision-host/uis/services/<category>/service-<name>.sh`
+2. Choose appropriate manifest number range for the category
+3. Create manifest config file(s) in `manifests/`
+4. Create matching Ansible playbooks (setup + remove) in `ansible/playbooks/`
+5. Set `SCRIPT_PLAYBOOK`, `SCRIPT_REMOVE_PLAYBOOK`, and `SCRIPT_CHECK_COMMAND` in metadata
+6. Declare dependencies with `SCRIPT_REQUIRES` if needed
+7. Test with `./uis deploy <name>` and `./uis status`
 
 **Reference:**
 - [doc/rules-development-workflow.md](./development-workflow.md) - Workflow and command execution
-- [doc/rules-automated-kubernetes-deployment.md](./kubernetes-deployment.md) - Ansible patterns *(to be created)*
-- [doc/rules-ingress-traefik.md](./ingress-traefik.md) - IngressRoute patterns *(to be created)*
+- [doc/rules-automated-kubernetes-deployment.md](./kubernetes-deployment.md) - UIS deployment system
+- [doc/rules-ingress-traefik.md](./ingress-traefik.md) - IngressRoute patterns
