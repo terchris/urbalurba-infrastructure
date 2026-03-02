@@ -1,115 +1,120 @@
 # Services Overview
 
-**File**: `docs/overview-services.md`
-**Purpose**: Complete table of services available in Urbalurba Infrastructure vs Azure equivalents
-**Target Audience**: Architects, developers, and infrastructure engineers
-**Last Updated**: September 22, 2024
+Complete list of services available in UIS compared to their cloud equivalents.
 
-## 📋 Platform Services Comparison
+## Cloud Services Comparison
 
-This table shows the comprehensive services available in Urbalurba Infrastructure compared to their Azure equivalents:
+| Functionality | Azure / AWS | UIS Service | Deploy command |
+|---|---|---|---|
+| **Container Orchestration** | Azure AKS, EKS | Rancher Desktop | Platform prerequisite |
+| **Reverse Proxy & Ingress** | Azure Application Gateway | Traefik | Platform built-in |
+| **Web Server** | Azure Static Web Apps | NGINX | `./uis deploy nginx` |
+| **Primary Database** | Azure Database for PostgreSQL | PostgreSQL | `./uis deploy postgresql` |
+| **Alternative SQL** | Azure Database for MySQL | MySQL | `./uis deploy mysql` |
+| **NoSQL Database** | Azure Cosmos DB | MongoDB | `./uis deploy mongodb` |
+| **Cache & Session Store** | Azure Cache for Redis | Redis | `./uis deploy redis` |
+| **Search Engine** | Azure AI Search | Elasticsearch | `./uis deploy elasticsearch` |
+| **Vector Database** | Azure AI Search | Qdrant | `./uis deploy qdrant` |
+| **Authentication & SSO** | Azure AD, AWS IAM | Authentik | `./uis deploy authentik` |
+| **AI Chat Interface** | Azure OpenAI Service | OpenWebUI | `./uis deploy openwebui` |
+| **LLM Proxy & Router** | Azure OpenAI, AWS Bedrock | LiteLLM | `./uis deploy litellm` |
+| **Document Processing** | Azure AI Document Intelligence | Apache Tika | `./uis deploy tika` |
+| **Monitoring & Dashboards** | Azure Monitor, CloudWatch | Grafana | `./uis deploy grafana` |
+| **Metrics Collection** | Azure Monitor | Prometheus | `./uis deploy prometheus` |
+| **Log Aggregation** | Azure Log Analytics | Loki | `./uis deploy loki` |
+| **Distributed Tracing** | Azure Application Insights | Tempo | `./uis deploy tempo` |
+| **Telemetry Pipeline** | Azure Application Insights | OpenTelemetry Collector | `./uis deploy otel-collector` |
+| **Data Processing** | Azure Databricks | Apache Spark | `./uis deploy spark` |
+| **Notebook Environment** | Azure Machine Learning | JupyterHub | `./uis deploy jupyterhub` |
+| **Data Catalog** | Microsoft Purview | Unity Catalog | `./uis deploy unity-catalog` |
+| **Message Broker** | Azure Service Bus, SQS | RabbitMQ | `./uis deploy rabbitmq` |
+| **API Gateway** | Azure API Management | Gravitee | `./uis deploy gravitee` |
+| **GitOps & CD** | Azure DevOps, GitHub Actions | ArgoCD | `./uis deploy argocd` |
+| **Database Admin** | Azure Portal | pgAdmin | `./uis deploy pgadmin` |
+| **Redis Admin** | Azure Portal | RedisInsight | `./uis deploy redisinsight` |
+| **VPN Connectivity** | Azure VPN Gateway | Tailscale | `./uis deploy tailscale-tunnel` |
+| **Public Tunnels** | Azure Front Door | Cloudflare Tunnels | `./uis deploy cloudflare-tunnel` |
+| **Test Service** | — | Whoami | `./uis deploy whoami` |
 
-| Functionality | Azure Service | Urbalurba Service | Status |
-|---------------|---------------|-------------------|---------|
-| **Container Orchestration** | Azure Kubernetes Service (AKS) | Rancher Desktop / MicroK8s | ✅ Active |
-| **Reverse Proxy & Load Balancer** | Azure Application Gateway | Traefik | ✅ Active |
-| **Web Server** | Azure Static Web Apps | NGINX | ✅ Active |
-| **Primary Database** | Azure Database for PostgreSQL | PostgreSQL (Custom) | ✅ Active |
-| **Cache & Session Store** | Azure Cache for Redis | Redis | ✅ Active |
-| **Authentication & SSO** | Azure Active Directory | Authentik | ✅ Active |
-| **AI Chat Interface** | Azure OpenAI Service | OpenWebUI | ✅ Active |
-| **LLM Proxy & Router** | Azure API Management | LiteLLM | ✅ Active |
-| **Document Processing** | Azure AI Document Intelligence | Apache Tika | ✅ Available |
-| **Vector Database** | Azure AI Search | Qdrant | ✅ Available |
-| **Monitoring & Dashboards** | Azure Monitor | Grafana | ✅ Available |
-| **Metrics Collection** | Azure Monitor | Prometheus | ✅ Available |
-| **Log Aggregation** | Azure Log Analytics | Loki | ✅ Available |
-| **Distributed Tracing** | Azure Application Insights | Tempo | ✅ Available |
-| **Observability** | Azure Application Insights | OpenTelemetry | ✅ Available |
-| **Database Admin** | Azure Portal | pgAdmin | ✅ Available |
-| **NoSQL Database** | Azure Cosmos DB | MongoDB | ✅ Available |
-| **Alternative SQL Database** | Azure Database for MySQL | MySQL | ✅ Available |
-| **Search Engine** | Azure AI Search | Elasticsearch | ✅ Available |
-| **Message Broker** | Azure Service Bus | RabbitMQ | ✅ Available |
-| **API Gateway** | Azure API Management | Gravitee | ✅ Available |
-| **Data Processing** | Azure Databricks | Apache Spark | ✅ Available |
-| **Notebook Environment** | Azure Machine Learning | JupyterHub | ✅ Available |
-| **Data Catalog** | Microsoft Purview | Unity Catalog | ❌ **Container Broken** |
-| **VPN Connectivity** | Azure VPN Gateway | Tailscale | ✅ Available |
-| **GitOps & CD** | Azure DevOps | ArgoCD | ✅ Available |
-| **Prometheus Stack** | Azure Monitor | Prometheus + Grafana Stack | ✅ Available |
-| **Test Services** | - | Whoami (public/protected) | ✅ Active |
+## Service Categories
 
-## 🎯 Service Categories
+### Observability
+- **Prometheus** — Metrics collection and alerting
+- **Grafana** — Monitoring dashboards and visualization
+- **Loki** — Log aggregation and analysis
+- **Tempo** — Distributed tracing
+- **OpenTelemetry Collector** — Telemetry pipeline
 
-### Core Infrastructure (Always Active)
-- **Kubernetes** - Container orchestration platform
-- **Traefik** - Reverse proxy and ingress controller
-- **NGINX** - Web server and static content
-- **PostgreSQL** - Primary relational database
-- **Redis** - Cache and session management
-- **Authentik** - Authentication and single sign-on
+Deploy as a package: `./uis stack install observability`
 
-### AI Platform (Active by Default)
-- **OpenWebUI** - Modern chat interface for LLMs
-- **LiteLLM** - Universal LLM proxy and router
-- **Tika** - Document processing and extraction
-- **Qdrant** - Vector database for embeddings
+### AI
+- **OpenWebUI** — Chat interface for LLMs
+- **LiteLLM** — Universal LLM proxy and router
+- **Ollama** — Local LLM runtime
+- **Tika** — Document processing and extraction
+- **Qdrant** — Vector database for embeddings
 
-### Observability Stack (Available)
-- **Grafana** - Monitoring dashboards and visualization
-- **Prometheus** - Metrics collection and alerting
-- **Loki** - Log aggregation and analysis
-- **Tempo** - Distributed tracing
-- **OpenTelemetry** - Observability instrumentation
+### Analytics
+- **Apache Spark** — Distributed data processing
+- **JupyterHub** — Multi-user notebook environment
+- **Unity Catalog** — Data governance and cataloging
 
-### Data Platform (Available)
-- **Apache Spark** - Distributed data processing
-- **JupyterHub** - Multi-user notebook environment
-- **Unity Catalog** - Data governance and cataloging ❌ **NOT WORKING** (container permission issues)
-- **MongoDB** - Document database
-- **MySQL** - Alternative SQL database
-- **Elasticsearch** - Full-text search engine
+### Identity
+- **Authentik** — Authentication, SSO, and identity provider
 
-### Management Tools (Available)
-- **pgAdmin** - PostgreSQL administration interface
-- **ArgoCD** - GitOps continuous delivery
-- **Gravitee** - API lifecycle management
-- **RabbitMQ** - Message queuing system
-- **Tailscale** - Secure VPN connectivity
+### Databases
+- **PostgreSQL** — Primary relational database
+- **MySQL** — Alternative SQL database
+- **MongoDB** — Document database
+- **Redis** — Cache and session store
+- **Elasticsearch** — Full-text search engine
 
-## 📊 Status Legend
+### Management
+- **ArgoCD** — GitOps continuous delivery
+- **pgAdmin** — PostgreSQL administration
+- **RedisInsight** — Redis administration
+- **Gravitee** — API lifecycle management
 
-- **✅ Active** - Deployed by default, ready to use
-- **✅ Available** - Can be deployed on-demand via scripts
-- **❌ Container Broken** - Service exists but Docker images have permission/startup issues
-- **🔧 Manual** - Requires manual configuration
-- **⚠️ Beta** - Experimental or testing phase
+### Networking
+- **Tailscale** — Secure mesh VPN
+- **Cloudflare Tunnels** — Public access without port forwarding
 
-## 🚀 Getting Started
+### Integration
+- **RabbitMQ** — Message queuing
 
-1. **Core Services** - Automatically deployed with `./provision-host/kubernetes/provision-kubernetes.sh`
-2. **AI Platform** - Deploy with `./provision-host/kubernetes/07-ai/01-setup-litellm-openwebui.sh`
-3. **Additional Services** - Use individual setup scripts in respective folders
-4. **Access** - All services available via `http://service-name.localhost`
+## Service Dependencies
 
-## 🌐 Service Access
+Some services require others to be running first:
 
-All services are accessible through consistent localhost URLs:
+| Service | Requires |
+|---------|----------|
+| Authentik | PostgreSQL, Redis |
+| OpenWebUI | PostgreSQL |
+| LiteLLM | PostgreSQL |
+| Unity Catalog | PostgreSQL |
+| pgAdmin | PostgreSQL |
+| RedisInsight | Redis |
+| Grafana | Prometheus, Loki, Tempo (for full functionality) |
+| OTel Collector | Prometheus, Loki, Tempo (as backends) |
 
-- **OpenWebUI**: http://openwebui.localhost
-- **Authentik**: http://authentik.localhost
-- **Grafana**: http://grafana.localhost
-- **pgAdmin**: http://pgadmin.localhost
-- **ArgoCD**: http://argocd.localhost
+UIS checks dependencies automatically and warns if a required service is not deployed.
 
-## 📚 Related Documentation
+## Service Access
 
-- **[System Architecture](./architecture.md)** - Technical architecture details
-- **[AI Platform](../packages/ai/index.md)** - AI services configuration
-- **[Authentication](../packages/identity/authentik.md)** - SSO setup and management
-- **[Hosts](../hosts/index.md)** - Deployment environments
+All services are accessible through `*.localhost` URLs:
 
----
+| Service | URL |
+|---------|-----|
+| Grafana | [http://grafana.localhost](http://grafana.localhost) |
+| Prometheus | [http://prometheus.localhost](http://prometheus.localhost) |
+| Authentik | [http://authentik.localhost](http://authentik.localhost) |
+| OpenWebUI | [http://openwebui.localhost](http://openwebui.localhost) |
+| pgAdmin | [http://pgadmin.localhost](http://pgadmin.localhost) |
+| ArgoCD | [http://argocd.localhost](http://argocd.localhost) |
 
-**💡 Value Proposition**: Urbalurba Infrastructure provides **85% of Azure's enterprise capabilities** in a local development environment, enabling teams to build, test, and iterate without cloud dependencies or costs.
+## Related Documentation
+
+- **[Architecture](./architecture.md)** — How UIS works
+- **[AI Package](../packages/ai/index.md)** — AI services configuration
+- **[Identity Package](../packages/identity/authentik.md)** — SSO setup
+- **[Service Dependencies](../reference/service-dependencies.md)** — Full dependency graph
