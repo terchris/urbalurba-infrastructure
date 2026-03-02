@@ -221,7 +221,7 @@ import TabItem from '@theme/TabItem';
 ### Links
 
 ```markdown
-[Link to another doc](../packages/ai/litellm)
+[Link to another doc](../../packages/ai/litellm)
 [External link](https://example.com)
 ```
 

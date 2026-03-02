@@ -164,7 +164,7 @@ Templates that Ansible renders with variables before applying. Used when manifes
 
 ### Secret References
 
-Sensitive values reference the `urbalurba-secrets` Kubernetes secret, managed via `./uis secrets generate` and `./uis secrets apply`. See [Secrets Management](./secrets-management.md).
+Sensitive values reference the `urbalurba-secrets` Kubernetes secret, managed via `./uis secrets generate` and `./uis secrets apply`. See [Secrets Management](./secrets.md).
 
 ## Best Practices
 

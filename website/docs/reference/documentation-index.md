@@ -166,26 +166,7 @@ Welcome to the complete documentation for **Urbalurba Infrastructure** — a zer
 | Document | Purpose |
 |----------|---------|
 | [Provision Host Overview](../provision-host/index.md) | Central management container guide |
-| [Kubernetes Management](../provision-host/kubernetes.md) | Kubernetes-specific management tools |
 | [Rancher Desktop](../provision-host/rancher.md) | Rancher Desktop configuration |
-| [Tools Reference](../provision-host/tools.md) | Command reference and usage patterns |
-
-### Rules & Standards
-
-*Development guidelines, workflows, and architectural standards*
-
-| Document | Purpose |
-|----------|---------|
-| [Rules Overview](../rules/index.md) | Rules guide and index |
-| [UIS Deployment System](../rules/kubernetes-deployment.md) | UIS CLI, service metadata, stacks, and deploy flow |
-| [Provisioning](../rules/provisioning.md) | Ansible playbook patterns and testing standards |
-| [Naming Conventions](../rules/naming-conventions.md) | File, resource, and identifier naming patterns |
-| [Ingress & Traefik](../rules/ingress-traefik.md) | Traefik IngressRoute standards |
-| [Git Workflow](../rules/git-workflow.md) | Git branching, commits, and PR standards |
-| [Secrets Management](../rules/secrets-management.md) | Secrets management rules |
-| [Development Workflow](../rules/development-workflow.md) | Development workflow and command execution |
-| [Documentation Guide](../rules/documentation.md) | Documentation standards |
-| [Documentation Legacy](../rules/documentation-legacy.md) | Legacy documentation standards (historical reference) |
 
 ### Reference
 
@@ -195,10 +176,35 @@ Welcome to the complete documentation for **Urbalurba Infrastructure** — a zer
 |----------|---------|
 | [UIS CLI Reference](./uis-cli-reference.md) | Complete UIS command-line reference |
 | [Service Dependencies](./service-dependencies.md) | Service dependency graph |
-| [Kubernetes Manifests](./manifests.md) | Manifest file reference |
-| [Secrets Management System](./secrets-management.md) | Secrets management system documentation |
 | [Factory Reset](./factory-reset.md) | Factory reset and full verification guide |
 | [Troubleshooting](./troubleshooting.md) | Troubleshooting guide for common issues |
+
+### Contributors — Rules & Standards
+
+*Development guidelines, workflows, and architectural standards*
+
+| Document | Purpose |
+|----------|---------|
+| [Rules Overview](../contributors/rules/index.md) | Rules guide and index |
+| [UIS Deployment System](../contributors/rules/kubernetes-deployment.md) | UIS CLI, service metadata, stacks, and deploy flow |
+| [Provisioning](../contributors/rules/provisioning.md) | Ansible playbook patterns and testing standards |
+| [Naming Conventions](../contributors/rules/naming-conventions.md) | File, resource, and identifier naming patterns |
+| [Ingress & Traefik](../contributors/rules/ingress-traefik.md) | Traefik IngressRoute standards |
+| [Git Workflow](../contributors/rules/git-workflow.md) | Git branching, commits, and PR standards |
+| [Secrets Management Rules](../contributors/rules/secrets-management.md) | Secrets management rules |
+| [Development Workflow](../contributors/rules/development-workflow.md) | Development workflow and command execution |
+| [Documentation Guide](../contributors/rules/documentation.md) | Documentation standards |
+
+### Contributors — Architecture
+
+*Internal system design and implementation details*
+
+| Document | Purpose |
+|----------|---------|
+| [Deploy System](../contributors/architecture/deploy-system.md) | Kubernetes-specific management tools |
+| [Tools Reference](../contributors/architecture/tools.md) | Command reference and usage patterns |
+| [Kubernetes Manifests](../contributors/architecture/manifests.md) | Manifest file reference |
+| [Secrets Management System](../contributors/architecture/secrets.md) | Secrets management system documentation |
 
 ### AI Development
 
@@ -222,11 +228,11 @@ Welcome to the complete documentation for **Urbalurba Infrastructure** — a zer
 **Infrastructure Engineers:**
 - Start: [Architecture](../getting-started/architecture.md) → [Hosts](../hosts/index.md)
 - Production: [Azure AKS](../hosts/azure-aks.md)
-- Networking: [Traefik Rules](../rules/ingress-traefik.md)
+- Networking: [Traefik Rules](../contributors/rules/ingress-traefik.md)
 
 **Architects:**
-- Start: [Architecture](../getting-started/architecture.md) → [UIS Deployment System](../rules/kubernetes-deployment.md)
-- Security: [Identity](../packages/identity/index.md) → [Secrets Management](./secrets-management.md)
+- Start: [Architecture](../getting-started/architecture.md) → [UIS Deployment System](../contributors/rules/kubernetes-deployment.md)
+- Security: [Identity](../packages/identity/index.md) → [Secrets Management](../contributors/architecture/secrets.md)
 
 **Data Scientists:**
 - Start: [Analytics Overview](../packages/analytics/index.md)
@@ -264,13 +270,13 @@ Welcome to the complete documentation for **Urbalurba Infrastructure** — a zer
 - **Technical Issues**: See [Troubleshooting Guide](./troubleshooting.md)
 - **Architecture Questions**: Review [System Architecture](../getting-started/architecture.md)
 - **Bug Reports**: Use GitHub issues in the main repository
-- **Contributions**: Follow [Git Workflow Rules](../rules/git-workflow.md)
+- **Contributions**: Follow [Git Workflow Rules](../contributors/rules/git-workflow.md)
 
 ## Documentation Standards
 
 All documentation follows the standards defined in:
-- [Documentation Guide](../rules/documentation.md) — Documentation writing standards
-- [Git Workflow Rules](../rules/git-workflow.md) — Git workflow and contribution standards
+- [Documentation Guide](../contributors/rules/documentation.md) — Documentation writing standards
+- [Git Workflow Rules](../contributors/rules/git-workflow.md) — Git workflow and contribution standards
 
 ---
 

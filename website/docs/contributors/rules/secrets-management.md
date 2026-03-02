@@ -223,6 +223,6 @@ On `./uis start`, new template variables are automatically synced to `secrets-co
 
 ## Related Documentation
 
-- **[Secrets Management Reference](../reference/secrets-management.md)** — Commands, file structure, and defaults
+- **[Secrets Management Reference](../architecture/secrets.md)** — Commands, file structure, and defaults
 - **[Provisioning Rules](./provisioning.md)** — Ansible playbook patterns
 - **[Ingress & Networking Rules](./ingress-traefik.md)** — Domain and routing configuration

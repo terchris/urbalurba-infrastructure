@@ -99,6 +99,6 @@ All tools support both architectures:
 
 ## Related Documentation
 
-- **[Provision Host Overview](./index.md)** — How the provision host works
-- **[Kubernetes Deployment](./kubernetes.md)** — Deploying services
-- **[UIS CLI Reference](../reference/uis-cli-reference.md)** — Complete command reference
+- **[Provision Host Overview](../../provision-host/index.md)** — How the provision host works
+- **[Deploy System](./deploy-system.md)** — Deploying services
+- **[UIS CLI Reference](../../reference/uis-cli-reference.md)** — Complete command reference

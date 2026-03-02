@@ -59,7 +59,7 @@ Services are organized into packages by function:
 | **Networking** | Tailscale, Cloudflare Tunnels |
 | **Integration** | RabbitMQ, Gravitee |
 
-See the [full services list](../getting-started/services.md) for cloud equivalents and deploy commands.
+See the [full services list](../../getting-started/services.md) for cloud equivalents and deploy commands.
 
 ## Service Dependencies
 
@@ -89,7 +89,7 @@ http://authentik.localhost
 http://openwebui.localhost
 ```
 
-For external access, see [Tailscale](../networking/tailscale-setup.md) and [Cloudflare Tunnels](../networking/cloudflare-setup.md).
+For external access, see [Tailscale](../../networking/tailscale-setup.md) and [Cloudflare Tunnels](../../networking/cloudflare-setup.md).
 
 ## Debugging Deployments
 
@@ -112,7 +112,7 @@ k9s
 
 ## Related Documentation
 
-- **[Architecture](../getting-started/architecture.md)** — System architecture overview
+- **[Architecture](../../getting-started/architecture.md)** — System architecture overview
 - **[Kubernetes Deployment Rules](../rules/kubernetes-deployment.md)** — Conventions for writing playbooks
 - **[Provisioning Rules](../rules/provisioning.md)** — Script and playbook standards
-- **[UIS CLI Reference](../reference/uis-cli-reference.md)** — Complete command reference
+- **[UIS CLI Reference](../../reference/uis-cli-reference.md)** — Complete command reference

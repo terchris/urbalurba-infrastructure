@@ -119,7 +119,7 @@ After deployment, access services at:
 - **[Hosts & Platforms](./hosts/index.md)** — Supported platforms and setup guides
 - **[Packages](./packages/ai/index.md)** — Service documentation by category
 - **[Networking](./networking/index.md)** — External access via Tailscale and Cloudflare
-- **[Rules & Standards](./rules/index.md)** — Development conventions and patterns
+- **[Contributors](./contributors/index.md)** — Contributing, rules, and architecture
 - **[Troubleshooting](./reference/troubleshooting.md)** — Common issues and solutions
 
 ## Your Working Directory
@@ -141,7 +141,7 @@ Everything else lives inside the container image — manifests, playbooks, and t
 
 ## Contributing
 
-Contributions are welcome! Please read the [development workflow](./rules/development-workflow.md) and [git workflow](./rules/git-workflow.md) guides before submitting changes.
+Contributions are welcome! Please read the [development workflow](./contributors/rules/development-workflow.md) and [git workflow](./contributors/rules/git-workflow.md) guides before submitting changes.
 
 ## License
 
