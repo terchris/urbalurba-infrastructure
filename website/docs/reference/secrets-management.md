@@ -123,6 +123,10 @@ On first run, UIS sets development-friendly defaults so services work immediatel
 | `DEFAULT_ADMIN_EMAIL` | `admin@example.com` | All admin accounts |
 | `DEFAULT_ADMIN_PASSWORD` | `LocalDev123` | All admin accounts |
 | `DEFAULT_DATABASE_PASSWORD` | `LocalDevDB456` | PostgreSQL, MySQL, MongoDB |
+| `DEFAULT_REDIS_PASSWORD` | `LocalDevRedis123` | Redis |
+| `DEFAULT_AUTHENTIK_SECRET_KEY` | `LocalDevAuthentikSecret123` | Authentik internal signing |
+| `DEFAULT_AUTHENTIK_BOOTSTRAP_PASSWORD` | `LocalDevAuthentik123` | Authentik admin bootstrap |
+| `DEFAULT_OPENWEBUI_SECRET_KEY` | `LocalDevOpenWebUI123` | OpenWebUI session signing |
 
 > **Password restriction:** Do NOT use `!`, `$`, `` ` ``, `\`, or `"` in passwords.
 > Bitnami Helm charts pass passwords through bash during container initialization,
@@ -171,10 +175,12 @@ AUTHENTIK_BOOTSTRAP_EMAIL: "${DEFAULT_ADMIN_EMAIL}"
 
 | Command | Description |
 |---------|-------------|
+| `./uis secrets init` | Create secrets configuration structure |
 | `./uis secrets status` | Show current secrets configuration |
+| `./uis secrets edit` | Open secrets config in editor |
 | `./uis secrets generate` | Regenerate secrets from templates |
 | `./uis secrets apply` | Apply secrets to Kubernetes cluster |
-| `./uis secrets edit` | Open secrets config in editor |
+| `./uis secrets validate` | Validate email format and required variables |
 
 ## Safety Rules
 
