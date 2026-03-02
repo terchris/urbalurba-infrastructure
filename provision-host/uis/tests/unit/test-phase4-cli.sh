@@ -128,11 +128,11 @@ else
     fail_test "uis categories failed"
 fi
 
-start_test "uis categories shows MONITORING"
-if "$UIS_CLI" categories 2>&1 | grep -q "MONITORING"; then
+start_test "uis categories shows OBSERVABILITY"
+if "$UIS_CLI" categories 2>&1 | grep -q "OBSERVABILITY"; then
     pass_test
 else
-    fail_test "No 'MONITORING' in categories output"
+    fail_test "No 'OBSERVABILITY' in categories output"
 fi
 
 # ============================================================

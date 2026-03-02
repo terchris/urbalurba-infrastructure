@@ -7,16 +7,15 @@
  */
 export function getCategoryFolder(category: string): string {
   const mapping: Record<string, string> = {
+    OBSERVABILITY: 'observability',
     AI: 'ai',
-    AUTHENTICATION: 'authentication',
+    ANALYTICS: 'analytics',
+    IDENTITY: 'identity',
     DATABASES: 'databases',
-    MONITORING: 'monitoring',
-    QUEUES: 'queues',
-    SEARCH: 'search',
-    DATASCIENCE: 'datascience',
-    CORE: 'core',
     MANAGEMENT: 'management',
-    DEVELOPMENT: 'development',
+    NETWORKING: 'networking',
+    STORAGE: 'storage',
+    INTEGRATION: 'integration',
   };
   return mapping[category] || category.toLowerCase();
 }

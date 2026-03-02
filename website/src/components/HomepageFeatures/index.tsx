@@ -26,19 +26,19 @@ const FeatureList: FeatureItem[] = [
   {
     title: 'Observability',
     description: 'Grafana, Prometheus, Loki, and Tempo for comprehensive monitoring, logging, and tracing.',
-    link: '/docs/packages/monitoring',
+    link: '/docs/packages/observability',
     icon: '📊',
   },
   {
-    title: 'Authentication',
+    title: 'Identity',
     description: 'Authentik SSO with OIDC/OAuth2 support for secure, centralized identity management.',
-    link: '/docs/packages/authentication',
+    link: '/docs/packages/identity',
     icon: '🔐',
   },
   {
-    title: 'Data Science',
+    title: 'Analytics',
     description: 'Apache Spark, JupyterHub, and Unity Catalog for scalable data processing and analysis.',
-    link: '/docs/packages/datascience',
+    link: '/docs/packages/analytics',
     icon: '🔬',
   },
   {

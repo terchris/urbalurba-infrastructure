@@ -3,7 +3,7 @@
  * Maps to categories.json structure (JSON-LD CategoryCode).
  */
 export type Category = {
-  /** Unique identifier (uppercase, e.g., "AI", "MONITORING") */
+  /** Unique identifier (uppercase, e.g., "AI", "OBSERVABILITY") */
   codeValue: string;
   /** Display name */
   name: string;

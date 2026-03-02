@@ -1,8 +1,0 @@
-{
-  "label": "Core Services",
-  "position": 3,
-  "link": {
-    "type": "doc",
-    "id": "packages/core/index"
-  }
-}

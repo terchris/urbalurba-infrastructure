@@ -1,8 +1,0 @@
-{
-  "label": "Data Science",
-  "position": 5,
-  "link": {
-    "type": "doc",
-    "id": "packages/datascience/index"
-  }
-}

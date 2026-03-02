@@ -1,0 +1,8 @@
+{
+  "label": "Analytics",
+  "position": 3,
+  "link": {
+    "type": "doc",
+    "id": "packages/analytics/index"
+  }
+}

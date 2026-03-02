@@ -4,18 +4,21 @@
 # Defines the service categories used to organize UIS services.
 # Compatible with bash 3.x (macOS default) and bash 4.x+
 #
-# Categories map to the manifest numbering scheme:
-#   000-099: Core infrastructure
-#   030-039: Monitoring
-#   040-099: Databases
-#   070-079: Authentication
-#   200-229: AI services
-#   600-799: Management tools
+# Categories align with cloud provider terminology (Azure/AWS/GCP):
+#   OBSERVABILITY: Metrics, logs, tracing (030-039)
+#   DATABASES: Data storage and caching (040-099)
+#   AI: AI and machine learning (200-229)
+#   IDENTITY: Authentication and SSO (070-079)
+#   ANALYTICS: Data science and analytics (300-399)
+#   MANAGEMENT: Admin tools, GitOps, test services (600-799)
+#   NETWORKING: VPN tunnels and network access
+#   STORAGE: Platform storage (000-009)
+#   INTEGRATION: Messaging and API gateways
 #
 # Usage:
 #   source /path/to/categories.sh
-#   get_category_name "MONITORING"    # Returns "Observability"
-#   is_valid_category "AI"            # Returns 0 (true)
+#   get_category_name "OBSERVABILITY"  # Returns "Observability"
+#   is_valid_category "AI"             # Returns 0 (true)
 
 # Guard against multiple sourcing
 [[ -n "${_UIS_CATEGORIES_LOADED:-}" ]] && return 0
@@ -24,23 +27,22 @@ _UIS_CATEGORIES_LOADED=1
 # Category definitions as indexed arrays (bash 3.x compatible)
 # Format: ID|Display Name|Description|tags|icon
 _CATEGORY_DATA=(
-    "CORE|Core Infrastructure|Essential infrastructure services|core,infrastructure|server"
-    "MONITORING|Observability|Metrics, logs, and tracing|monitoring,observability|chart-line"
-    "DATABASES|Databases|Data storage and caching services|database,storage|database"
+    "OBSERVABILITY|Observability|Metrics, logs, and tracing|monitoring,observability|chart-line"
     "AI|AI & ML|AI and machine learning services|ai,ml,llm|brain"
-    "AUTHENTICATION|Authentication|Identity and access management|auth,sso|shield"
-    "QUEUES|Message Queues|Async messaging and event streams|queue,messaging|inbox"
-    "SEARCH|Search|Full-text search and indexing|search,indexing|search"
-    "MANAGEMENT|Management|Admin tools and GitOps|admin,management|cog"
-    "DATASCIENCE|Data Science|Analytics and machine learning platforms|datascience,analytics|flask"
-    "NETWORK|Networking|VPN tunnels and network access|network,vpn|globe"
+    "ANALYTICS|Analytics|Data science and analytics platforms|analytics,datascience|flask"
+    "IDENTITY|Identity|Identity and access management|identity,auth,sso|shield"
+    "DATABASES|Databases|Data storage and caching services|database,storage|database"
+    "MANAGEMENT|Management|Admin tools, GitOps, and test services|admin,management|cog"
+    "NETWORKING|Networking|VPN tunnels and network access|network,vpn|globe"
+    "STORAGE|Storage|Platform storage infrastructure|storage,persistent|hard-drive"
+    "INTEGRATION|Integration|Messaging, API gateways, and event streams|integration,messaging|inbox"
 )
 
 # Category display order (just the IDs)
-CATEGORY_ORDER=(CORE MONITORING DATABASES AI AUTHENTICATION QUEUES SEARCH MANAGEMENT DATASCIENCE NETWORK)
+CATEGORY_ORDER=(OBSERVABILITY AI ANALYTICS IDENTITY DATABASES MANAGEMENT NETWORKING STORAGE INTEGRATION)
 
 # Internal: Find category data by ID
-# Usage: _find_category_data "MONITORING"
+# Usage: _find_category_data "OBSERVABILITY"
 # Returns: The full data string or empty if not found
 _find_category_data() {
     local cat_id="$1"
@@ -56,7 +58,7 @@ _find_category_data() {
 }
 
 # Get display name for a category
-# Usage: get_category_name "MONITORING"
+# Usage: get_category_name "OBSERVABILITY"
 # Output: "Observability"
 get_category_name() {
     local cat_id="$1"
@@ -68,7 +70,7 @@ get_category_name() {
 }
 
 # Get description for a category
-# Usage: get_category_description "MONITORING"
+# Usage: get_category_description "OBSERVABILITY"
 # Output: "Metrics, logs, and tracing"
 get_category_description() {
     local cat_id="$1"
@@ -81,7 +83,7 @@ get_category_description() {
 }
 
 # Get tags for a category
-# Usage: get_category_tags "MONITORING"
+# Usage: get_category_tags "OBSERVABILITY"
 # Output: "monitoring,observability"
 get_category_tags() {
     local cat_id="$1"
@@ -95,7 +97,7 @@ get_category_tags() {
 }
 
 # Get icon for a category
-# Usage: get_category_icon "MONITORING"
+# Usage: get_category_icon "OBSERVABILITY"
 # Output: "chart-line"
 get_category_icon() {
     local cat_id="$1"
@@ -106,7 +108,7 @@ get_category_icon() {
 }
 
 # Check if a category ID is valid
-# Usage: is_valid_category "MONITORING"
+# Usage: is_valid_category "OBSERVABILITY"
 # Returns: 0 if valid, 1 if not
 is_valid_category() {
     local cat_id="$1"

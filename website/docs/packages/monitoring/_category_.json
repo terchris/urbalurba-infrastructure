@@ -1,8 +1,0 @@
-{
-  "label": "Monitoring",
-  "position": 8,
-  "link": {
-    "type": "doc",
-    "id": "packages/monitoring/index"
-  }
-}

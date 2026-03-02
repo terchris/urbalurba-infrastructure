@@ -1,81 +1,65 @@
 {"categories": [
     {
-      "id": "CORE",
-      "name": "Core Infrastructure",
-      "order": 0,
-      "description": "Essential infrastructure services",
-      "icon": "server"
-    }
-,
-    {
-      "id": "MONITORING",
+      "id": "OBSERVABILITY",
       "name": "Observability",
-      "order": 1,
+      "order": 0,
       "description": "Metrics, logs, and tracing",
       "icon": "chart-line"
-    }
-,
-    {
-      "id": "DATABASES",
-      "name": "Databases",
-      "order": 2,
-      "description": "Data storage and caching services",
-      "icon": "database"
-    }
-,
+    },
     {
       "id": "AI",
       "name": "AI & ML",
-      "order": 3,
+      "order": 1,
       "description": "AI and machine learning services",
       "icon": "brain"
-    }
-,
+    },
     {
-      "id": "AUTHENTICATION",
-      "name": "Authentication",
-      "order": 4,
+      "id": "ANALYTICS",
+      "name": "Analytics",
+      "order": 2,
+      "description": "Data science and analytics platforms",
+      "icon": "flask"
+    },
+    {
+      "id": "IDENTITY",
+      "name": "Identity",
+      "order": 3,
       "description": "Identity and access management",
       "icon": "shield"
-    }
-,
+    },
     {
-      "id": "QUEUES",
-      "name": "Message Queues",
-      "order": 5,
-      "description": "Async messaging and event streams",
-      "icon": "inbox"
-    }
-,
-    {
-      "id": "SEARCH",
-      "name": "Search",
-      "order": 6,
-      "description": "Full-text search and indexing",
-      "icon": "search"
-    }
-,
+      "id": "DATABASES",
+      "name": "Databases",
+      "order": 4,
+      "description": "Data storage and caching services",
+      "icon": "database"
+    },
     {
       "id": "MANAGEMENT",
       "name": "Management",
-      "order": 7,
-      "description": "Admin tools and GitOps",
+      "order": 5,
+      "description": "Admin tools, GitOps, and test services",
       "icon": "cog"
-    }
-,
+    },
     {
-      "id": "DATASCIENCE",
-      "name": "Data Science",
-      "order": 8,
-      "description": "Analytics and machine learning platforms",
-      "icon": "flask"
-    }
-,
-    {
-      "id": "NETWORK",
+      "id": "NETWORKING",
       "name": "Networking",
-      "order": 9,
+      "order": 6,
       "description": "VPN tunnels and network access",
       "icon": "globe"
+    },
+    {
+      "id": "STORAGE",
+      "name": "Storage",
+      "order": 7,
+      "description": "Platform storage infrastructure",
+      "icon": "hard-drive"
+    },
+    {
+      "id": "INTEGRATION",
+      "name": "Integration",
+      "order": 8,
+      "description": "Messaging, API gateways, and event streams",
+      "icon": "inbox"
     }
 ]}

@@ -9,7 +9,7 @@ export type Service = {
   name: string;
   /** Brief description (1-2 sentences) */
   description: string;
-  /** Reference to category codeValue (e.g., "AI", "MONITORING") */
+  /** Reference to category codeValue (e.g., "AI", "OBSERVABILITY") */
   applicationCategory: string;
   /** Keywords for search */
   tags: string[];
