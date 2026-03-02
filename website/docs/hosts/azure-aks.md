@@ -1,8 +1,8 @@
 # Azure AKS Host Documentation
 
-**File**: `docs/hosts-azure-aks.md`
-**Purpose**: Complete operational documentation for Urbalurba Infrastructure on Azure Kubernetes Service (AKS)
-**Target Audience**: Infrastructure engineers deploying to Azure AKS
+:::caution Not yet migrated to UIS CLI
+This page documents the legacy deployment approach using manual scripts. It has not been updated for the `./uis` CLI workflow. The instructions may be outdated or incomplete.
+:::
 **Last Updated**: September 22, 2024
 
 **Version 4.0** - All components tested and working in production.

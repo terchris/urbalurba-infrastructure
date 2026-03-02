@@ -1,8 +1,8 @@
 # Multipass MicroK8s Host Documentation
 
-**File**: `docs/hosts-multipass-microk8s.md`
-**Purpose**: LEGACY deployment guide for MicroK8s on Ubuntu VM using Multipass
-**Target Audience**: Historical reference - **USE RANCHER DESKTOP INSTEAD**
+:::caution Not yet migrated to UIS CLI
+This page documents the legacy deployment approach using manual scripts. It has not been updated for the `./uis` CLI workflow. The instructions may be outdated or incomplete.
+:::
 **Last Updated**: September 22, 2024
 
 > ⚠️ **LEGACY DOCUMENTATION** - This setup has been **REPLACED BY RANCHER DESKTOP**

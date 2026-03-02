@@ -1,6 +1,7 @@
 ---
 title: AI & Machine Learning
 sidebar_label: AI & ML
+description: Self-hosted AI platform with OpenWebUI, LiteLLM, and Ollama
 ---
 
 # AI & Machine Learning

@@ -1,6 +1,7 @@
 ---
 title: Observability
 sidebar_label: Observability
+description: Metrics, logs, and traces with Prometheus, Grafana, Loki, and Tempo
 ---
 
 # Observability

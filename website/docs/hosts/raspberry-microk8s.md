@@ -1,8 +1,8 @@
 # Raspberry Pi MicroK8s Host Documentation
 
-**File**: `docs/hosts-raspberry-microk8s.md`
-**Purpose**: Deployment guide for MicroK8s on Raspberry Pi with Tailscale integration
-**Target Audience**: Edge computing enthusiasts and IoT developers
+:::caution Not yet migrated to UIS CLI
+This page documents the legacy deployment approach using manual scripts. It has not been updated for the `./uis` CLI workflow. The instructions may be outdated or incomplete.
+:::
 **Last Updated**: September 22, 2024
 
 ## 📋 Overview

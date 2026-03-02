@@ -1,140 +1,55 @@
-# Provision Host Documentation Guide
+# Provision Host
 
-**File**: `docs/provision-host-readme.md`
-**Purpose**: Central entry point for all provision host documentation and guides
-**Target Audience**: Developers, DevOps engineers, and infrastructure administrators
-**Last Updated**: September 21, 2024
+The provision host is a Docker container that serves as the management hub for UIS. It contains all tools needed to deploy and manage services on any Kubernetes cluster — you don't need to install anything on your local machine besides Docker.
 
-## 📋 **Overview**
+## How it Works
 
-This is the central starting point for understanding the provision host system - a comprehensive Docker container that serves as the management hub for Urbalurba infrastructure. The provision host contains all necessary tools for managing multi-cloud environments, Kubernetes clusters, and infrastructure automation.
-
-## 🔧 **What is the Provision Host?**
-
-The provision host is a self-contained Docker container that serves as your **complete infrastructure management environment**. All cluster and cloud operations are performed from within this container - no need to install any tools on your local machine.
-
-### **Container-First Approach**
-- **No Local Tool Installation**: AWS CLI, kubectl, Terraform, etc. all run in the container
-- **Consistent Environment**: Same container works identically on Windows, Linux, and macOS
-- **Version Controlled**: All tool versions are pinned and tested together
-- **Isolation**: No conflicts with locally installed tools or different versions
-
-### **Fully Automated Setup**
-- **One-Command Deployment**: Run `./uis start && ./uis provision` to set up everything
-- **Two-Stage Process**: First creates and provisions the container, then deploys all cluster services
-- **Zero Manual Steps**: Complete infrastructure from container to running services automatically
-
-## 📚 **Documentation Guides**
-
-### **Container Tools Reference**
-**📖 [Provision Host Tools Guide](./tools.md)**
-
-Complete reference for all tools and software available in the provision host container - pre-configured with all major cloud providers, Kubernetes tools, automation frameworks, and networking capabilities. Includes detailed capabilities, usage examples, and authentication setup.
-
-**When to use**: Understanding available tools, troubleshooting tool issues, cloud authentication setup
-
----
-
-
-### **Kubernetes Service Deployment**
-**☸️ [Provision Host Kubernetes Guide](./kubernetes.md)**
-
-User guide for deploying and managing applications on Kubernetes clusters using the automated provisioning system:
-
-- **Declarative Configuration**: Repository file organization determines what gets deployed automatically
-- **One-Command Deployment**: `./uis start && ./uis provision` builds complete, reproducible clusters
-- **Service Management**: Activate/deactivate services by moving scripts in/out of `not-in-use/` folders
-- **Available Services**: AI services, databases, authentication, monitoring, and more
-- **Manual Operations**: Deploy/test individual services without changing automatic configuration
-
-**When to use**: Setting up your cluster configuration, understanding available services, managing what gets deployed automatically
-
----
-
-### **Rancher Desktop Integration**
-**🖥️ [Provision Host Rancher Guide](./rancher.md)**
-
-Specific setup and compatibility for Rancher Desktop environments:
-
-- **Rancher Desktop Setup**: Container creation and Kubernetes integration
-- **MicroK8s Compatibility**: Context aliasing, storage class mapping
-- **Installation Workflow**: Complete setup process and verification
-- **Troubleshooting**: Common issues and solutions
-
-**When to use**: Using Rancher Desktop as Kubernetes provider, migrating from MicroK8s, troubleshooting Rancher-specific issues
-
----
-
-## 🚀 **Quick Start Paths**
-
-### **New Developer Getting Started:**
-1. Run `./uis start && ./uis provision` - One command sets up everything automatically
-2. **[Tools Guide](./tools.md)** - Understand what's available
-3. **[Kubernetes Guide](./kubernetes.md)** - Deploy your first services
-
-### **DevOps Engineer Doing Multi-Cloud:**
-1. **[Tools Guide](./tools.md)** - Cloud provider capabilities
-2. Jump to specific cloud authentication sections
-
-### **Using Rancher Desktop:**
-1. **[Rancher Guide](./rancher.md)** - Platform-specific setup
-2. **[Kubernetes Guide](./kubernetes.md)** - Service deployment
-
-### **Troubleshooting:**
-- Container issues? → **[Tools Guide](./tools.md)**
-- Installation problems? → **[Setup Guide](./index.md)**
-- Service deployment failures? → **[Kubernetes Guide](./kubernetes.md)**
-- Rancher Desktop issues? → **[Rancher Guide](./rancher.md)**
-
-## 🏗️ **Architecture Overview**
+The `./uis` CLI on your host machine talks to the provision host container. The container has Ansible, Helm, kubectl, and all playbooks baked in. Your local configuration (`.uis.extend/` and `.uis.secrets/`) is mounted into the container.
 
 ```
-Host Machine (Windows/Linux/macOS)
-└── Docker + Rancher Desktop
-    │
-    │ ./uis start + ./uis provision
-    │
-    ├─► 1. Creates & Provisions Container
-    │   ┌─────────────────────────────────────────────────────────────┐
-    │   │                  Provision Host Container                   │
-    │   ├─────────────────────────────────────────────────────────────┤
-    │   │  Cloud Tools: AWS CLI, Azure CLI, GCP SDK, OCI CLI, Terraform │
-    │   │  K8s Tools: kubectl, Helm, k9s, Ansible                   │
-    │   │  Network: Cloudflared, Tailscale                          │
-    │   │  Dev Tools: GitHub CLI, Python, yq/jq                     │
-    │   └─────────────────────────────────────────────────────────────┘
-    │                             │
-    └─► 2. Deploys All Services   ▼
-        ┌─────────────────────────────────────────────────────────────┐
-        │                    Kubernetes Cluster                        │
-        │              (Rancher Desktop / MicroK8s)                    │
-        ├─────────────────────────────────────────────────────────────┤
-        │  Services: Authentik, PostgreSQL, Redis, OpenWebUI, etc.    │
-        │  Storage: PVCs, ConfigMaps, Secrets                         │
-        │  Networking: Traefik, Ingress, Services                     │
-        └─────────────────────────────────────────────────────────────┘
+Host Machine
+├── ./uis CLI                    # Sends commands to the container
+├── .uis.extend/                 # Your service configuration
+├── .uis.secrets/                # Your credentials (gitignored)
+│
+└── Provision Host Container
+    ├── Ansible playbooks        # Service deployment logic
+    ├── Helm charts              # Templated Kubernetes deployments
+    ├── Kubernetes manifests     # Declarative service definitions
+    ├── kubectl, helm, k9s       # Cluster management tools
+    └── jq, yq, git, curl       # Utility tools
+            │
+            ▼
+    Kubernetes Cluster
+    └── Your deployed services
 ```
 
-## 🎯 **Key Concepts**
+## Common Commands
 
-- **Zero Local Installation**: Only Docker required on your machine - all tools run in the container
-- **OS Agnostic**: Identical experience on Windows, Linux, and macOS
-- **Container-First**: All management tools run in a consistent Docker environment
-- **Multi-Cloud Ready**: Support for all major cloud providers out of the box
-- **Kubernetes Native**: Designed for Kubernetes-first infrastructure patterns
-- **Automation Focused**: Ansible playbooks and Infrastructure as Code
-- **Developer Friendly**: Pre-configured tools and streamlined workflows
+```bash
+./uis start          # Start the provision host container
+./uis stop           # Stop the container
+./uis shell          # Open a shell inside the container
+./uis deploy grafana # Deploy a service
+./uis list           # Show all services and their status
+./uis help           # Show all available commands
+```
 
-## 📞 **Getting Help**
+## Guides
 
-- **Tool not working?** Check the [Tools Guide](./tools.md)
-- **Setup failing?** Follow the [Setup Guide](./index.md) step by step
-- **Service won't deploy?** Review the [Kubernetes Guide](./kubernetes.md)
-- **Rancher issues?** See the [Rancher Guide](./rancher.md)
+- **[Tools Reference](./tools.md)** — All tools available inside the container
+- **[Kubernetes Deployment](./kubernetes.md)** — How services are deployed to the cluster
+- **[Rancher Desktop Integration](./rancher.md)** — Setup specific to Rancher Desktop
 
----
+## Key Concepts
 
-**Related Documentation:**
-- [Rules Documentation](../rules/index.md) - Infrastructure rules and standards
-- [Secrets Management](../rules/secrets-management.md) - Security and secrets handling
-- [Ingress Configuration](../rules/ingress-traefik.md) - Networking and routing
+- **No local tool installation** — Only Docker is required on your machine
+- **OS agnostic** — Same container works on macOS, Linux, and Windows
+- **Version controlled** — All tool versions are pinned inside the container image
+- **Isolation** — No conflicts with locally installed tools
+
+## Related Documentation
+
+- **[Architecture](../getting-started/architecture.md)** — Full system architecture
+- **[Secrets Management](../reference/secrets-management.md)** — How credentials are managed
+- **[UIS CLI Reference](../reference/uis-cli-reference.md)** — Complete command reference

@@ -1,6 +1,7 @@
 ---
 title: Databases
 sidebar_label: Databases
+description: PostgreSQL, MySQL, MongoDB, Redis, Elasticsearch, and Qdrant
 ---
 
 # Databases

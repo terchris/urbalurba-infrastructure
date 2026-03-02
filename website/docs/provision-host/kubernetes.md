@@ -1,217 +1,118 @@
-# Provision Host for Kubernetes
+# Kubernetes Deployment
 
-**Purpose**: User guide for managing and deploying applications on Kubernetes clusters using the Urbalurba automated provisioning system.
+How UIS deploys and manages services on your Kubernetes cluster.
 
-**Target Audience**: Users who want to deploy, activate, or manage services on their Kubernetes cluster.
+## How it Works
 
-## Overview
+When you run `./uis deploy <service>`, the provision host:
 
-The provision-host container provides a complete automated deployment system for Kubernetes applications. Simply run `./uis start && ./uis provision` and all active services deploy automatically in the correct order.
+1. Looks up the service's Ansible playbook
+2. Checks dependencies (e.g., PostgreSQL must be running before pgAdmin)
+3. Runs the playbook, which uses Helm and/or kubectl to deploy
+4. Verifies the deployment is healthy
 
+All playbooks, Helm charts, and manifests are baked into the provision host container image.
 
-See also [overview-system-architecture.md](../getting-started/architecture.md) 
+## Deploying Services
 
-**Key Benefits**:
-- ✅ **Fully Automated**: One command deploys entire cluster
-- ✅ **Dependency Management**: Services deploy in correct order automatically
-- ✅ **Easy Service Management**: Move scripts in/out of `not-in-use/` folders to control what gets deployed when the cluster is built
-- ✅ **Safe Removal**: Removal scripts are protected from accidental execution
+```bash
+# Deploy a single service
+./uis deploy postgresql
 
-**For Technical Details**: See [Rules for Automated Kubernetes Deployment](../rules/kubernetes-deployment.md)
+# Deploy a full package (deploys all services in order)
+./uis stack install observability
+
+# List all services and their status
+./uis list
+
+# Remove a service
+./uis undeploy postgresql
+```
+
+## Autostart Configuration
+
+You can configure services to deploy automatically when the cluster is built:
+
+```bash
+# Enable a service for autostart
+./uis enable prometheus
+
+# Disable autostart
+./uis disable prometheus
+
+# See which services are enabled
+./uis list-enabled
+```
 
 ## Service Categories
 
-Services are organized by category to ensure proper deployment order. Each category contains setup and removal scripts for different applications.
+Services are organized into packages by function:
 
-**Current Service Categories**:
+| Category | Services |
+|----------|----------|
+| **Observability** | Prometheus, Grafana, Loki, Tempo, OTel Collector |
+| **AI** | OpenWebUI, LiteLLM, Ollama, Tika, Qdrant |
+| **Analytics** | Spark, JupyterHub, Unity Catalog |
+| **Identity** | Authentik |
+| **Databases** | PostgreSQL, MySQL, MongoDB, Redis, Elasticsearch |
+| **Management** | ArgoCD, pgAdmin, RedisInsight, Nginx, Whoami |
+| **Networking** | Tailscale, Cloudflare Tunnels |
+| **Integration** | RabbitMQ, Gravitee |
 
-```plaintext
-/mnt/urbalurbadisk/provision-host/kubernetes/
-├── 01-core/
-│   ├── 020-setup-nginx.sh
-│   └── not-in-use
-├── 02-databases/
-│   ├── 05-setup-postgres.sh
-│   └── not-in-use/
-│       ├── 04-setup-mongodb.sh
-│       └── 08-setup-mssql.sh
-├── 03-queues/
-│   ├── 06-setup-redis.sh
-│   └── not-in-use/
-│       └── 08-setup-rabbitmq.sh
-├── 04-search/
-│   └── not-in-use/
-│       └── 07-setup-elasticsearch.sh
-├── 05-apim/
-│   └── not-in-use/
-│       └── 09-setup-gravitee.sh
-├── 06-management/
-│   └── not-in-use/
-│       └── 03-setup-pgadmin.sh
-├── 07-ai/
-│   ├── 01-setup-litellm-openwebui.sh
-│   └── not-in-use/
-│       └── 02-setup-open-webui.sh
-├── 08-development/
-│   ├── 02-setup-argocd.sh
-│   └── not-in-use
-├── 09-network/
-│   ├── 01-tailscale-net-start.sh
-│   └── not-in-use
-├── 10-datascience/
-│   └── not-in-use/
-│       ├── unity-catalog setup scripts
-│       └── jupyter setup scripts
-├── 11-monitoring/
-│   └── not-in-use/
-│       └── monitoring setup scripts
-├── 12-auth/
-│   ├── 01-setup-authentik.sh
-│   └── not-in-use/
-├── not-used-apps/
-│   └── 04-cloud-setup-log-monitor.sh
-└── provision-kubernetes.sh
-```
+See the [full services list](../getting-started/services.md) for cloud equivalents and deploy commands.
 
-## How Automated Deployment Works
+## Service Dependencies
 
-When you run `./uis start && ./uis provision`, it automatically calls the deployment system which:
+Some services require others to be running first. UIS warns you if dependencies are missing:
 
-1. **Deploys Core Systems First**: Networking, storage, DNS infrastructure
-2. **Then Databases**: PostgreSQL, Redis, and other data services
-3. **Then Applications**: AI services, authentication, monitoring, etc.
-4. **Provides Progress Updates**: Shows what's being deployed and any issues
-5. **Generates Summary Report**: Complete status of all deployments
+| Service | Requires |
+|---------|----------|
+| Authentik | PostgreSQL, Redis |
+| OpenWebUI | PostgreSQL |
+| LiteLLM | PostgreSQL |
+| Unity Catalog | PostgreSQL |
+| pgAdmin | PostgreSQL |
+| RedisInsight | Redis |
+| Grafana | Prometheus, Loki, Tempo (for full functionality) |
 
-## Managing Active Services
+## Accessing Services
 
-**🎛️ Control What Gets Deployed**:
-
-Each category has a `not-in-use/` folder containing optional services. You control your cluster configuration by moving scripts:
-
-- **📁 Active Services**: Scripts in the category folder (e.g., `07-ai/01-setup-litellm-openwebui.sh`)
-- **📁 Inactive Services**: Scripts in `not-in-use/` folder (e.g., `07-ai/not-in-use/02-setup-open-webui.sh`)
-
-**Technical Details**: See [Legacy System](../rules/kubernetes-deployment.md#legacy-system) in the rules documentation. The current system uses `./uis enable`/`./uis disable` — see [Autostart Configuration](../rules/kubernetes-deployment.md#autostart-configuration).
-
-## Quick Start Guide
-
-### 🚀 Deploy Everything (Recommended)
-
-The easiest way to get a complete cluster:
+After deployment, services are available at `*.localhost` URLs:
 
 ```bash
-# From your host machine in the repository root:
-./uis start && ./uis provision
+# Check what's deployed
+./uis list
+
+# Access in your browser
+http://grafana.localhost
+http://authentik.localhost
+http://openwebui.localhost
 ```
 
-This automatically:
-1. Sets up the provision-host container
-2. Deploys all active services in dependency order
-3. Provides a complete working cluster
+For external access, see [Tailscale](../networking/tailscale-setup.md) and [Cloudflare Tunnels](../networking/cloudflare-setup.md).
 
-### 🎯 Deploy Individual Services
-
-If you only want to deploy specific services manually:
+## Debugging Deployments
 
 ```bash
-# Access the provision-host container:
-docker exec -it provision-host bash
+# Open a shell in the provision host
+./uis shell
 
-# Deploy a specific service:
-cd /mnt/urbalurbadisk/provision-host/kubernetes/07-ai
-./01-setup-litellm-openwebui.sh rancher-desktop
+# Check pod status
+kubectl get pods -A
+
+# View logs for a service
+kubectl logs -n default -l app=grafana --tail=50
+
+# Describe a failing pod
+kubectl describe pod -n default <pod-name>
+
+# Interactive cluster dashboard
+k9s
 ```
 
-## Declarative Cluster Configuration
+## Related Documentation
 
-The system is designed to build a **complete, reproducible cluster** every time. Your repository configuration determines exactly what services get deployed automatically.
-
-### 🎯 How It Works
-
-**The repository is your cluster blueprint**:
-- Services in category folders → Deploy automatically during cluster build
-- Services in `not-in-use/` folders → Available but not deployed
-- Every `./uis start && ./uis provision` creates the exact same cluster based on your current configuration
-
-### ⚙️ Configure Your Cluster
-
-**To include a service in automatic deployment**:
-```bash
-# Move setup script to category folder (from your host machine):
-cd provision-host/kubernetes/02-databases
-mv not-in-use/04-setup-mongodb.sh ./
-
-# Now MongoDB deploys automatically on every cluster rebuild
-./uis start && ./uis provision
-```
-
-**To exclude a service from automatic deployment**:
-```bash
-# Move setup script to not-in-use folder:
-cd provision-host/kubernetes/02-databases
-mv 04-setup-mongodb.sh not-in-use/
-
-# Now MongoDB won't deploy automatically
-./uis start && ./uis provision
-```
-
-### 🚀 Manual Service Deployment
-
-**Deploy a service without changing automatic configuration**:
-```bash
-# Run script directly from not-in-use folder:
-docker exec -it provision-host bash
-cd /mnt/urbalurbadisk/provision-host/kubernetes/02-databases/not-in-use
-./04-setup-mongodb.sh rancher-desktop
-```
-
-**Remove a deployed service**:
-```bash
-# Run removal script (always kept in not-in-use for safety):
-docker exec -it provision-host bash
-cd /mnt/urbalurbadisk/provision-host/kubernetes/02-databases/not-in-use
-./04-remove-mongodb.sh rancher-desktop
-```
-
-### 🔄 Benefits of This Approach
-
-- ✅ **Reproducible**: Same cluster configuration every rebuild
-- ✅ **Version Controlled**: Your cluster config is in git
-- ✅ **Flexible**: Test services manually before adding to automatic deployment
-- ✅ **Safe**: Removal scripts never run automatically
-
-## Available Services
-
-The platform includes a comprehensive set of services organized by category:
-
-| Category | Active Services | Available (Inactive) Services |
-|----------|----------------|------------------------------|
-| **🔧 Core Systems** | Nginx | |
-| **🗄️ Databases** | PostgreSQL, Redis | MongoDB, MySQL, MSSQL |
-| **🔍 Search & Queues** | | Elasticsearch, RabbitMQ |
-| **🚪 API Management** | | Gravitee |
-| **⚡ Management Tools** | | pgAdmin, phpMyAdmin |
-| **🤖 AI Services** | LiteLLM + OpenWebUI | OpenWebUI (standalone) |
-| **🔄 Development** | ArgoCD | |
-| **🌐 Network** | Tailscale | |
-| **🔐 Authentication** | Authentik | Keycloak |
-
-**Legend**:
-- **Active Services**: Deploy automatically with `./uis start && ./uis provision`
-- **Available Services**: In `not-in-use/` folders, can be activated by moving to parent directory
-
-## Access Your Services
-
-After deployment, access services via:
-
-- **Local Development**: `http://service-name.localhost` (e.g., `http://authentik.localhost`)
-- **External Access**: Configure via Cloudflare tunnels or Tailscale
-- **Port Forward**: `kubectl port-forward svc/service-name local-port:service-port -n namespace`
-
-## Technical Reference
-
-For developers and advanced users:
-- **📋 [Automated Deployment Rules](../rules/kubernetes-deployment.md)** - How the orchestration system works
-- **🔧 [Provisioning Rules](../rules/provisioning.md)** - How to write deployment scripts
-- **📖 [Provision Host Overview](./index.md)** - Complete platform documentation
+- **[Architecture](../getting-started/architecture.md)** — System architecture overview
+- **[Kubernetes Deployment Rules](../rules/kubernetes-deployment.md)** — Conventions for writing playbooks
+- **[Provisioning Rules](../rules/provisioning.md)** — Script and playbook standards
+- **[UIS CLI Reference](../reference/uis-cli-reference.md)** — Complete command reference

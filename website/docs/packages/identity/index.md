@@ -1,6 +1,7 @@
 ---
 title: Identity
 sidebar_label: Identity
+description: Authentication and SSO with Authentik
 ---
 
 # Identity
