@@ -42,7 +42,10 @@ const config: Config = {
           sidebarPath: './sidebars.ts',
           editUrl: `https://github.com/${GITHUB_ORG}/${GITHUB_REPO}/tree/main/website/`,
         },
-        blog: false, // No blog
+        blog: {
+          showReadingTime: true,
+          editUrl: `https://github.com/${GITHUB_ORG}/${GITHUB_REPO}/tree/main/website/`,
+        },
         theme: {
           customCss: './src/css/custom.css',
         },
@@ -81,6 +84,7 @@ const config: Config = {
           position: 'left',
           label: 'Docs',
         },
+        { to: '/blog', label: 'Blog', position: 'left' },
         {
           href: `https://github.com/${GITHUB_ORG}/${GITHUB_REPO}`,
           label: 'GitHub',
