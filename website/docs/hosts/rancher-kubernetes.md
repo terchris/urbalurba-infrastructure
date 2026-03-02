@@ -1,198 +1,126 @@
-# Rancher Kubernetes Host Documentation
+# Rancher Desktop
 
-**File**: `docs/hosts-rancher-kubernetes.md`
-**Purpose**: Deployment guide for Rancher Desktop Kubernetes cluster setup
-**Target Audience**: Developers setting up local Kubernetes development environment
-**Last Updated**: September 22, 2024
+Rancher Desktop is the default Kubernetes environment for UIS. It provides a single-node Kubernetes cluster (k3s) with Docker on your laptop — no cloud account needed.
 
-## 📋 Overview
+## Quick Start
 
-Rancher Desktop is the **default Kubernetes environment** for Urbalurba infrastructure. When you run `./uis start && ./uis provision`, it automatically starts both the provision-host container and a Rancher Desktop Kubernetes cluster, providing a complete local development environment.
-
-Unlike other host types, Rancher Desktop comes with Kubernetes (k3s) pre-installed, so the setup process focuses on configuration and integration with the Urbalurba infrastructure.
-
-### **Default Setup**
-- **Automatic provisioning** - Started automatically with `./uis start && ./uis provision`
-- **Provision-host integration** - Container and cluster work together seamlessly
-- **Default context** - All scripts use `rancher-desktop` context by default
-- **Zero configuration** - Works out of the box for development
-
-### **Key Features**
-- **Pre-installed Kubernetes** - No manual cluster setup required
-- **Local development** - Ideal for testing and development workflows
-- **Docker integration** - Built-in container runtime
-- **GUI management** - Easy cluster management through Rancher Desktop UI
-- **No cloud-init required** - Uses Rancher Desktop's built-in provisioning
-
-## 🚀 Quick Start
-
-The Rancher Desktop cluster is automatically set up when you start Urbalurba:
+1. Install [Rancher Desktop](https://rancherdesktop.io/) and enable Kubernetes
+2. Download the `uis` script and start:
 
 ```bash
-# This single command sets up everything:
-# 1. Provision-host container
-# 2. Rancher Desktop Kubernetes cluster
-# 3. All Urbalurba services
-./uis start && ./uis provision
+./uis start
+./uis deploy postgresql
 ```
 
-**That's it!** The provision-host container and Rancher cluster start together, and all services deploy automatically.
+That's it. The provision host connects to Rancher Desktop's cluster automatically.
 
-## 📖 Prerequisites
+## Prerequisites
 
-1. **Rancher Desktop Installation**
-   - Download and install Rancher Desktop from [rancherdesktop.io](https://rancherdesktop.io)
-   - Start Rancher Desktop and enable Kubernetes
-   - The `./uis start && ./uis provision` script will automatically configure everything else
+### Install Rancher Desktop
 
-2. **Linux Users: Enable Privileged Ports**
+Download from [rancherdesktop.io](https://rancherdesktop.io/) and configure:
 
-   On Linux, port 80 and 443 are "privileged" and require extra configuration. Without this, `http://localhost` won't work.
+- **Kubernetes**: Enabled
+- **Container runtime**: dockerd (moby)
+- **Memory**: At least 8GB (16GB recommended for full stack)
+- **CPU**: 4+ cores
 
-   ```bash
-   # Enable port 80/443 access (temporary - until reboot)
-   sudo sysctl -w net.ipv4.ip_unprivileged_port_start=80
-
-   # Make permanent (survives reboot)
-   echo "net.ipv4.ip_unprivileged_port_start=80" | sudo tee -a /etc/sysctl.conf
-   ```
-
-   After running this command, **restart Rancher Desktop** for port forwarding to take effect.
-
-   > See [Rancher Desktop Installation docs](https://docs.rancherdesktop.io/getting-started/installation/) for more details on "Traefik Port Binding Access".
-
-3. **What's Included Automatically**
-   - kubectl (included with Rancher Desktop)
-   - Helm (for package management)
-   - Docker (included with Rancher Desktop)
-   - Provision-host container with all tools
-   - Kubernetes cluster configuration
-   - All Urbalurba services
-
-## 🔧 Installation Process
-
-The installation script (`install-rancher-kubernetes.sh`) **runs automatically inside the provision-host container** when you execute `./uis start && ./uis provision`. This script performs these steps:
-
-1. **Verify Kubernetes Cluster** - Ensures Rancher Desktop Kubernetes is running
-2. **Apply Secrets** - Configures necessary Kubernetes secrets
-3. **Setup Storage** - Configures local storage classes
-4. **Configure Networking** - Sets up ingress and networking components
-
-> ℹ️ **Automatic Execution**: This script is called automatically by the main installation process. You typically don't need to run it manually unless troubleshooting specific issues.
-
-
-## 🏗️ Architecture
-
-### **Cluster Configuration**
-- **Single-node cluster** - All components run on local machine
-- **Storage** - Local path provisioner for persistent volumes
-- **Networking** - Traefik ingress controller with localhost access
-- **Container Runtime** - Docker (default) or containerd
-- **Browser Access** - All services accessible via `http://localhost` URLs
-
-### **Integration Points**
-- **Local development** - Seamless integration with local IDE and tools
-- **Port forwarding** - Easy access to services via localhost
-- **Volume mounts** - Direct access to local filesystem
-- **Resource management** - Configurable CPU and memory limits
-
-## 🛠️ Configuration
-
-### **Rancher Desktop Settings**
-```yaml
-# Recommended Rancher Desktop configuration
-kubernetes:
-  enabled: true
-  version: "v1.28.x"  # Latest stable
-
-container:
-  runtime: docker  # or containerd
-
-resources:
-  memory: 8GB      # Adjust based on your system
-  cpus: 4          # Adjust based on your system
-```
-
-### **Storage Configuration**
-- **Default storage class** - `local-path` (compatible with Urbalurba manifests)
-- **Persistent volumes** - Stored in local directories
-- **Volume size** - Limited by available disk space
-
-
-### **Service Access**
-
-**Browser Access (Primary Method)**
-All Urbalurba services are automatically configured for browser access:
+Verify it's ready:
 
 ```bash
-# Services are accessible directly in your browser at:
-http://<service>.localhost
-
-# Examples of common services:
-http://whoami.localhost          # Whoami test service
-http://grafana.localhost         # Grafana monitoring
-http://pgadmin.localhost         # PostgreSQL admin
-http://openwebui.localhost       # OpenWebUI AI interface
+kubectl get nodes
 ```
 
+You should see one node in `Ready` state.
 
-### **Complete Reset (Factory Reset)**
+### Linux: Enable Privileged Ports
 
-If you need to completely reset the Urbalurba infrastructure, you can perform a factory reset in Rancher Desktop:
+On Linux, ports 80 and 443 require extra configuration for `*.localhost` URLs to work:
 
-⚠️ **Warning**: All data, configurations, and certificates will be permanently lost. If you have multiple clusters configured, the kubeconfig file that provides access to them will be deleted. Use `kubeconf-copy2local.sh` to backup this file before proceeding if you have multiple clusters.
-
-1. **Open Rancher Desktop application**
-2. **Go to Troubleshooting → Factory Reset**
-3. **Confirm the reset** - This will delete all data and configurations
-4. **Restart Rancher Desktop** and enable Kubernetes
-5. **Redeploy** by running `./uis start && ./uis provision`
-
-**Warning**: Factory reset will permanently delete all deployed services, persistent volumes, and configurations. Make sure to backup any important data before proceeding.
-
-## 📈 Performance Optimization
-
-### **Resource Allocation**
-- **Memory** - Allocate at least 8GB for full Urbalurba stack
-- **CPU** - 4+ cores recommended for good performance
-- **Disk** - Ensure sufficient space for persistent volumes
-
-### **Development Workflow**
-- **Hot reloading** - Use volume mounts for development
-- **Service mesh** - Optional for advanced testing scenarios
-- **Monitoring** - Use kubectl top or Rancher Desktop metrics
-
-## 🔗 Integration with Urbalurba
-
-### **Service Deployment**
 ```bash
-# Deploy all Urbalurba services
-cd /mnt/urbalurbadisk/provision-host/kubernetes
-./provision-kubernetes.sh rancher-desktop
+# Enable port 80/443 (temporary — until reboot)
+sudo sysctl -w net.ipv4.ip_unprivileged_port_start=80
 
-# Deploy specific services
-kubectl apply -f manifests/<service-manifest>.yaml
+# Make permanent (survives reboot)
+echo "net.ipv4.ip_unprivileged_port_start=80" | sudo tee -a /etc/sysctl.conf
 ```
 
-### **Context Switching**
+Restart Rancher Desktop after running this.
+
+## Cluster Configuration
+
+| Setting | Value |
+|---------|-------|
+| **Cluster type** | Single-node (k3s) |
+| **Ingress** | Traefik (built-in) |
+| **Storage** | Local path provisioner |
+| **Container runtime** | Docker (default) or containerd |
+| **Service access** | `http://<service>.localhost` |
+
+## Deploying Services
+
 ```bash
-# Switch between different Kubernetes contexts
-kubectl config use-context rancher-desktop  # Local development
-kubectl config use-context azure-aks       # Cloud production
+# Deploy individual services
+./uis deploy grafana
+./uis deploy postgresql
 
-# Verify current context
-kubectl config current-context
+# Deploy a full package
+./uis stack install observability
+
+# List all services and their status
+./uis list
+
+# Remove a service
+./uis undeploy grafana
 ```
 
-## 📖 Related Documentation
+## Service Access
 
-- **[Hosts Overview](./index.md)** - Main hosts overview
-- **[Rancher Desktop Installation](https://rancherdesktop.io/)** - Rancher Desktop installation guide
-- **[Git Workflow](../rules/git-workflow.md)** - Development workflow standards
+All services are accessible in your browser via `*.localhost` URLs:
 
-## 📝 Notes
+| Service | URL |
+|---------|-----|
+| Grafana | [http://grafana.localhost](http://grafana.localhost) |
+| Prometheus | [http://prometheus.localhost](http://prometheus.localhost) |
+| Authentik | [http://authentik.localhost](http://authentik.localhost) |
+| OpenWebUI | [http://openwebui.localhost](http://openwebui.localhost) |
+| pgAdmin | [http://pgadmin.localhost](http://pgadmin.localhost) |
+| ArgoCD | [http://argocd.localhost](http://argocd.localhost) |
 
-- **No cloud-init required** - Rancher Desktop handles all provisioning
-- **GUI management** - Use Rancher Desktop application for cluster management
-- **Local only** - This setup is for development and testing, not production
-- **Resource limits** - Performance depends on your local machine specifications
+## Context Switching
+
+If you manage multiple clusters, switch between them:
+
+```bash
+./uis shell
+kubectl config use-context rancher-desktop   # Local development
+kubectl config use-context azure-aks         # Cloud production
+kubectl config current-context               # Verify current
+```
+
+## Factory Reset
+
+To completely reset and start fresh:
+
+:::warning
+All data, configurations, and certificates will be permanently lost. If you manage multiple clusters, back up your kubeconfig first.
+:::
+
+1. Open Rancher Desktop
+2. Go to **Troubleshooting > Factory Reset**
+3. Confirm — this deletes all data
+4. Restart Rancher Desktop and enable Kubernetes
+5. Re-run `./uis start` and deploy services
+
+## Performance Tips
+
+- Allocate at least **8GB RAM** for the full UIS stack (16GB recommended)
+- Use **4+ CPU cores** for responsive performance
+- Ensure **50GB+ free disk space** for container images and persistent volumes
+- Close memory-intensive applications when running the full stack
+
+## Related Documentation
+
+- **[Hosts Overview](./index.md)** — All supported platforms
+- **[Getting Started](../getting-started/overview.md)** — First steps with UIS
+- **[Services Overview](../getting-started/services.md)** — Available services
