@@ -101,8 +101,8 @@ Cloudflare:
   cloudflare teardown           Remove tunnel and show dashboard cleanup steps
 
 ArgoCD:
-  argocd register <repo>        Register a GitHub repo as ArgoCD application
-  argocd remove <repo>          Remove an ArgoCD-managed application
+  argocd register <name> <url>  Register a GitHub repo as ArgoCD application
+  argocd remove <name>          Remove an ArgoCD-managed application
   argocd list                   List registered ArgoCD applications
   argocd verify                 Run E2E health checks on ArgoCD server
 
@@ -138,9 +138,9 @@ Examples:
   uis tailscale verify         # Check Tailscale configuration
   uis cloudflare verify        # Check Cloudflare tunnel configuration
   uis deploy cloudflare-tunnel # Deploy Cloudflare tunnel
-  uis argocd register my-app   # Register GitHub repo as ArgoCD app
+  uis argocd register my-app https://github.com/owner/repo  # Register repo
+  uis argocd remove my-app     # Remove ArgoCD application
   uis argocd list              # List registered ArgoCD applications
-  uis argocd verify            # Run ArgoCD E2E tests
   uis test-all                                  # Run full integration test
   uis test-all --dry-run                        # Preview test plan
   uis test-all --clean                          # Clean cluster first, then test
@@ -1194,10 +1194,14 @@ cmd_argocd() {
         log_error "Usage: uis argocd <command> [options]"
         echo ""
         echo "Commands:"
-        echo "  register <repo>       Register a GitHub repo as ArgoCD application"
-        echo "  remove <repo>         Remove an ArgoCD-managed application"
+        echo "  register <name> <url> Register a GitHub repo as ArgoCD application"
+        echo "  remove <name>         Remove an ArgoCD-managed application"
         echo "  list                  List registered ArgoCD applications"
         echo "  verify                Run E2E health checks on ArgoCD server"
+        echo ""
+        echo "Examples:"
+        echo "  uis argocd register hello-world https://github.com/owner/repo"
+        echo "  uis argocd remove hello-world"
         exit "$EXIT_GENERAL_ERROR"
     fi
 
@@ -1218,74 +1222,99 @@ cmd_argocd() {
             log_error "Unknown argocd command: $subcmd"
             echo ""
             echo "Commands:"
-            echo "  register <repo>       Register a GitHub repo as ArgoCD application"
-            echo "  remove <repo>         Remove an ArgoCD-managed application"
+            echo "  register <name> <url> Register a GitHub repo as ArgoCD application"
+            echo "  remove <name>         Remove an ArgoCD-managed application"
             echo "  list                  List registered ArgoCD applications"
             echo "  verify                Run E2E health checks on ArgoCD server"
+            echo ""
+            echo "Examples:"
+            echo "  uis argocd register hello-world https://github.com/owner/repo"
+            echo "  uis argocd remove hello-world"
             exit "$EXIT_GENERAL_ERROR"
             ;;
     esac
 }
 
 cmd_argocd_register() {
-    local repo_name="${1:-}"
-    if [[ -z "$repo_name" ]]; then
-        log_error "Usage: uis argocd register <repo_name>"
-        echo "Example: uis argocd register my-k8s-app"
+    local app_name="${1:-}"
+    local repo_url="${2:-}"
+
+    if [[ -z "$app_name" || -z "$repo_url" ]]; then
+        log_error "Usage: uis argocd register <name> <repo-url>"
+        echo "" >&2
+        echo "Arguments:" >&2
+        echo "  <name>      Application name (used as namespace, must be unique)" >&2
+        echo "  <repo-url>  Full GitHub repository URL (https://...)" >&2
+        echo "" >&2
+        echo "Examples:" >&2
+        echo "  uis argocd register hello-world https://github.com/terchris/urb-dev-typescript-hello-world" >&2
+        echo "  uis argocd register my-app https://github.com/myorg/my-k8s-app" >&2
         exit "$EXIT_GENERAL_ERROR"
     fi
 
-    print_section "Registering $repo_name with ArgoCD"
+    # Validate name is DNS-compatible (lowercase alphanumeric and hyphens, max 63 chars)
+    if ! echo "$app_name" | grep -qE '^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$'; then
+        log_error "Invalid name: '$app_name'"
+        echo "Name must be lowercase, alphanumeric, and hyphens only (max 63 chars)." >&2
+        echo "Must start and end with a letter or number." >&2
+        echo "" >&2
+        echo "Examples: hello-world, my-app, staging-api" >&2
+        exit "$EXIT_GENERAL_ERROR"
+    fi
 
-    # Extract GitHub credentials from K8s secrets
+    # Validate repo_url starts with https://
+    if [[ "$repo_url" != https://* ]]; then
+        log_error "Invalid repository URL: '$repo_url'"
+        echo "Repository URL must be a full HTTPS URL." >&2
+        echo "" >&2
+        echo "Example: https://github.com/owner/repo-name" >&2
+        exit "$EXIT_GENERAL_ERROR"
+    fi
+
+    # Check if name is already in use as a namespace
     local kubeconf="/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
-    local github_username
+    if kubectl get namespace "$app_name" --kubeconfig="$kubeconf" &>/dev/null; then
+        log_error "Name '$app_name' is already in use as a Kubernetes namespace."
+        echo "Choose a different name or remove it first: uis argocd remove $app_name" >&2
+        exit "$EXIT_GENERAL_ERROR"
+    fi
+
+    print_section "Registering $app_name with ArgoCD"
+
+    # Try to get GitHub PAT from secrets (optional — for private repos)
     local github_pat
-
-    github_username=$(kubectl get secret urbalurba-secrets -n default \
-        -o jsonpath='{.data.YOUR_GITHUB_USERNAME}' \
-        --kubeconfig="$kubeconf" 2>/dev/null | base64 -d 2>/dev/null) || true
-
     github_pat=$(kubectl get secret urbalurba-secrets -n default \
         -o jsonpath='{.data.GITHUB_ACCESS_TOKEN}' \
         --kubeconfig="$kubeconf" 2>/dev/null | base64 -d 2>/dev/null) || true
 
-    # Validate username is configured
-    if [[ -z "$github_username" || "$github_username" == "your-github-username" ]]; then
-        log_error "GitHub username not configured in secrets."
-        echo "Set GITHUB_USERNAME in .uis.secrets/secrets-config/00-common-values.env"
-        echo "Then run: uis secrets generate && uis secrets apply"
-        exit "$EXIT_GENERAL_ERROR"
-    fi
-
-    # Token is optional — public repos work without it
+    # Clear placeholder values
     if [[ -z "$github_pat" || "$github_pat" == "your-github-token-here" ]]; then
         github_pat=""
         echo "Note: No GitHub token configured. Only public repos can be registered."
         echo ""
     fi
 
-    echo "GitHub user: $github_username"
-    echo "Repository:  $repo_name"
+    echo "App name:    $app_name"
+    echo "Repository:  $repo_url"
     echo ""
 
     ansible-playbook "$ANSIBLE_DIR/argocd-register-app.yml" \
-        -e "github_username=$github_username" \
-        -e "repo_name=$repo_name" \
+        -e "app_name=$app_name" \
+        -e "repo_url=$repo_url" \
         -e "github_pat=$github_pat"
 }
 
 cmd_argocd_remove() {
-    local repo_name="${1:-}"
-    if [[ -z "$repo_name" ]]; then
-        log_error "Usage: uis argocd remove <repo_name>"
-        echo "Example: uis argocd remove my-k8s-app"
+    local app_name="${1:-}"
+    if [[ -z "$app_name" ]]; then
+        log_error "Usage: uis argocd remove <name>"
+        echo "Example: uis argocd remove hello-world" >&2
         exit "$EXIT_GENERAL_ERROR"
     fi
 
-    print_section "Removing $repo_name from ArgoCD"
+    print_section "Removing $app_name from ArgoCD"
     ansible-playbook "$ANSIBLE_DIR/argocd-remove-app.yml" \
-        -e "repo_name=$repo_name"
+        -e "app_name=$app_name"
 }
 
 cmd_argocd_list() {
