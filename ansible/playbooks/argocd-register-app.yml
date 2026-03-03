@@ -3,13 +3,15 @@
 # Register an application with ArgoCD by creating necessary Kubernetes resources.
 #
 # Pre-flight checks (fail fast, nothing created):
-#   - Validates required variables
+#   - Validates required variables (app_name, repo_url)
+#   - Parses GitHub owner and repo name from repo_url
+#   - Verifies ArgoCD is deployed and running
 #   - Verifies GitHub repository exists and is accessible
 #   - Verifies manifests/ directory exists in the repository
 #
 # If pre-flight passes:
-#   - Creates a namespace with the same name as the repository
-#   - Creates a GitHub credentials secret in the argocd namespace
+#   - Creates a namespace with the app_name
+#   - Creates a GitHub credentials secret in the argocd namespace (if PAT provided)
 #   - Registers the application with ArgoCD
 #   - Waits for the application to be synced and healthy
 #   - Verifies all required resources are created and running
@@ -19,17 +21,16 @@
 #   - No orphaned resources are left behind
 #
 # Required Variables:
-#   github_username: GitHub username for repository access
-#   repo_name: Name of the GitHub repository to register (will be used as namespace)
+#   app_name: Application name (used as namespace and ArgoCD app name, must be DNS-compatible)
+#   repo_url: Full GitHub HTTPS URL (e.g., https://github.com/owner/repo)
 #
 # Optional Variables:
 #   github_pat: GitHub Personal Access Token (required for private repos, optional for public)
 #
 # Usage:
 #   ansible-playbook ansible/playbooks/argocd-register-app.yml \
-#     -e "github_username=your_username" \
-#     -e "repo_name=your_repo" \
-#     -e "github_pat=your_token"
+#     -e "app_name=hello-world" \
+#     -e "repo_url=https://github.com/owner/repo"
 
 - name: Register application with ArgoCD
   hosts: localhost
@@ -38,7 +39,7 @@
     manifests_folder: "/mnt/urbalurbadisk/manifests"
     merged_kubeconf_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
     argocd_namespace: "argocd"
-    github_secret_name: "github-{{ repo_name }}"
+    github_secret_name: "github-{{ app_name }}"
     retry_delay: 10
     max_retries: 30
     wait_timeout: 300
@@ -48,23 +49,91 @@
     # Pre-flight checks — fail fast, nothing created
     # ==============================================================
 
-    - name: "1. Check if github_username is provided"
+    - name: "1. Check if app_name is provided"
       ansible.builtin.fail:
-        msg: "The variable 'github_username' is mandatory. Use -e github_username=your_username to specify it."
-      when: github_username is not defined
+        msg: "The variable 'app_name' is mandatory. Use -e app_name=my-app to specify it."
+      when: app_name is not defined
 
-    - name: "2. Check if repo_name is provided"
+    - name: "2. Check if repo_url is provided"
       ansible.builtin.fail:
-        msg: "The variable 'repo_name' is mandatory. Use -e repo_name=your_repo to specify it."
-      when: repo_name is not defined
+        msg: "The variable 'repo_url' is mandatory. Use -e repo_url=https://github.com/owner/repo to specify it."
+      when: repo_url is not defined
 
-    - name: "3. Determine authentication mode"
+    - name: "3. Validate repo_url is an HTTPS URL"
+      ansible.builtin.fail:
+        msg: |
+          ❌ Invalid repo_url: '{{ repo_url }}'
+
+          The repository URL must be a full HTTPS URL.
+          Example: https://github.com/owner/repo-name
+      when: not (repo_url | regex_search('^https://'))
+
+    - name: "4. Parse GitHub owner and repo name from URL"
+      ansible.builtin.set_fact:
+        repo_url_clean: "{{ repo_url | regex_replace('\\.git$', '') | regex_replace('/$', '') }}"
+
+    - name: "4a. Extract owner and repo from URL path"
+      ansible.builtin.set_fact:
+        github_owner: "{{ repo_url_clean.split('/')[-2] }}"
+        repo_name: "{{ repo_url_clean.split('/')[-1] }}"
+
+    - name: "4b. Validate parsed owner and repo are not empty"
+      ansible.builtin.fail:
+        msg: |
+          ❌ Could not parse owner and repository from URL: '{{ repo_url }}'
+
+          Expected format: https://github.com/owner/repo-name
+          Parsed owner: '{{ github_owner }}'
+          Parsed repo: '{{ repo_name }}'
+      when: github_owner | length == 0 or repo_name | length == 0
+
+    - name: "4c. Display parsed URL components"
+      ansible.builtin.debug:
+        msg:
+          - "App name:     {{ app_name }}"
+          - "GitHub owner:  {{ github_owner }}"
+          - "Repo name:     {{ repo_name }}"
+          - "Repo URL:      {{ repo_url_clean }}"
+
+    - name: "5. Check if ArgoCD is deployed"
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: "{{ argocd_namespace }}"
+        label_selectors:
+          - "app.kubernetes.io/name=argocd-server"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: argocd_pods
+      failed_when: false
+
+    - name: "5a. Fail if ArgoCD is not running"
+      ansible.builtin.fail:
+        msg: |
+          ❌ ArgoCD is not deployed or not running.
+
+          No ArgoCD server pods found in namespace '{{ argocd_namespace }}'.
+          Deploy ArgoCD first: uis deploy argocd
+      when: argocd_pods.resources | default([]) | length == 0
+
+    - name: "5b. Check ArgoCD pods are in Running state"
+      ansible.builtin.fail:
+        msg: |
+          ❌ ArgoCD server is not ready.
+
+          Pod status: {{ argocd_pods.resources | map(attribute='status.phase') | list }}
+          Wait for ArgoCD to be fully running before registering applications.
+      when: argocd_pods.resources | selectattr('status.phase', 'ne', 'Running') | list | length > 0
+
+    - name: "5c. Display ArgoCD check passed"
+      ansible.builtin.debug:
+        msg: "✅ ArgoCD server is running"
+
+    - name: "6. Determine authentication mode"
       ansible.builtin.set_fact:
         has_github_token: "{{ github_pat | default('') | length > 0 }}"
 
-    - name: "4. Verify GitHub repository exists (authenticated)"
+    - name: "7. Verify GitHub repository exists (authenticated)"
       ansible.builtin.uri:
-        url: "https://api.github.com/repos/{{ github_username }}/{{ repo_name }}"
+        url: "https://api.github.com/repos/{{ github_owner }}/{{ repo_name }}"
         method: GET
         headers:
           Authorization: "token {{ github_pat }}"
@@ -75,9 +144,9 @@
       failed_when: false
       when: has_github_token | bool
 
-    - name: "4. Verify GitHub repository exists (unauthenticated)"
+    - name: "7. Verify GitHub repository exists (unauthenticated)"
       ansible.builtin.uri:
-        url: "https://api.github.com/repos/{{ github_username }}/{{ repo_name }}"
+        url: "https://api.github.com/repos/{{ github_owner }}/{{ repo_name }}"
         method: GET
         headers:
           Accept: "application/vnd.github.v3+json"
@@ -87,36 +156,36 @@
       failed_when: false
       when: not (has_github_token | bool)
 
-    - name: "4a. Merge repo check results"
+    - name: "7a. Merge repo check results"
       ansible.builtin.set_fact:
         repo_check_status: "{{ (github_repo_check.status | default(0)) if (has_github_token | bool) else (github_repo_check_noauth.status | default(0)) }}"
 
-    - name: "4b. Fail if repository not found or not accessible"
+    - name: "7b. Fail if repository not found or not accessible"
       ansible.builtin.fail:
         msg: |
-          ❌ Repository '{{ github_username }}/{{ repo_name }}' not found or not accessible.
+          ❌ Repository '{{ github_owner }}/{{ repo_name }}' not found or not accessible.
 
           HTTP status: {{ repo_check_status }}
 
           Possible causes:
             - The repository does not exist on GitHub
-            - The repository name is misspelled
+            - The repository URL is incorrect
           {% if not (has_github_token | bool) %}
             - The repository is private (configure GITHUB_ACCESS_TOKEN for private repos)
           {% else %}
             - Your GitHub token does not have access to this repository
           {% endif %}
 
-          Check: https://github.com/{{ github_username }}/{{ repo_name }}
+          Check: {{ repo_url_clean }}
       when: repo_check_status | int != 200
 
-    - name: "4c. Display repository check passed"
+    - name: "7c. Display repository check passed"
       ansible.builtin.debug:
-        msg: "✅ Repository {{ github_username }}/{{ repo_name }} exists and is accessible"
+        msg: "✅ Repository {{ github_owner }}/{{ repo_name }} exists and is accessible"
 
-    - name: "5. Verify manifests/ directory exists (authenticated)"
+    - name: "8. Verify manifests/ directory exists (authenticated)"
       ansible.builtin.uri:
-        url: "https://api.github.com/repos/{{ github_username }}/{{ repo_name }}/contents/manifests"
+        url: "https://api.github.com/repos/{{ github_owner }}/{{ repo_name }}/contents/manifests"
         method: GET
         headers:
           Authorization: "token {{ github_pat }}"
@@ -127,9 +196,9 @@
       failed_when: false
       when: has_github_token | bool
 
-    - name: "5. Verify manifests/ directory exists (unauthenticated)"
+    - name: "8. Verify manifests/ directory exists (unauthenticated)"
       ansible.builtin.uri:
-        url: "https://api.github.com/repos/{{ github_username }}/{{ repo_name }}/contents/manifests"
+        url: "https://api.github.com/repos/{{ github_owner }}/{{ repo_name }}/contents/manifests"
         method: GET
         headers:
           Accept: "application/vnd.github.v3+json"
@@ -139,14 +208,14 @@
       failed_when: false
       when: not (has_github_token | bool)
 
-    - name: "5a. Merge manifests check results"
+    - name: "8a. Merge manifests check results"
       ansible.builtin.set_fact:
         manifests_check_status: "{{ (github_manifests_check.status | default(0)) if (has_github_token | bool) else (github_manifests_check_noauth.status | default(0)) }}"
 
-    - name: "5b. Fail if manifests/ directory not found"
+    - name: "8b. Fail if manifests/ directory not found"
       ansible.builtin.fail:
         msg: |
-          ❌ No manifests/ directory found in repository '{{ github_username }}/{{ repo_name }}'.
+          ❌ No manifests/ directory found in repository '{{ github_owner }}/{{ repo_name }}'.
 
           ArgoCD expects Kubernetes manifests in a manifests/ directory.
           Make sure your repo has this structure:
@@ -157,16 +226,18 @@
                 service.yaml
       when: manifests_check_status | int != 200
 
-    - name: "5c. Display manifests check passed"
+    - name: "8c. Display manifests check passed"
       ansible.builtin.debug:
         msg: "✅ manifests/ directory found in repository"
 
-    - name: "6. Display registration plan"
+    - name: "9. Display registration plan"
       ansible.builtin.debug:
         msg: >
           Registering application with ArgoCD:
-            - Repository: {{ github_username }}/{{ repo_name }} (verified)
-            - Namespace: {{ repo_name }}
+            - App name: {{ app_name }}
+            - Repository: {{ github_owner }}/{{ repo_name }} (verified)
+            - Repo URL: {{ repo_url_clean }}
+            - Namespace: {{ app_name }}
             - ArgoCD Namespace: {{ argocd_namespace }}
             - Wait timeout: {{ wait_timeout }} seconds
 
@@ -176,15 +247,15 @@
 
     - name: "Deploy and verify application"
       block:
-        - name: "7. Create namespace for the application"
+        - name: "10. Create namespace for the application"
           kubernetes.core.k8s:
-            name: "{{ repo_name }}"
+            name: "{{ app_name }}"
             api_version: v1
             kind: Namespace
             state: present
             kubeconfig: "{{ merged_kubeconf_file }}"
 
-        - name: "8. Create GitHub credentials secret (private repos)"
+        - name: "11. Create GitHub credentials secret (private repos)"
           kubernetes.core.k8s:
             name: "{{ github_secret_name }}"
             namespace: "{{ argocd_namespace }}"
@@ -201,19 +272,19 @@
               type: Opaque
               stringData:
                 type: git
-                url: "https://github.com/{{ github_username }}/{{ repo_name }}.git"
-                username: "{{ github_username }}"
+                url: "{{ repo_url_clean }}.git"
+                username: "{{ github_owner }}"
                 password: "{{ github_pat }}"
           when: has_github_token | bool
 
-        - name: "8. Skip credentials secret (public repo, no token)"
+        - name: "11. Skip credentials secret (public repo, no token)"
           ansible.builtin.debug:
             msg: "Skipping credentials secret — public repo, no GitHub token configured"
           when: not (has_github_token | bool)
 
-        - name: "9. Create ArgoCD Application"
+        - name: "12. Create ArgoCD Application"
           kubernetes.core.k8s:
-            name: "{{ repo_name }}"
+            name: "{{ app_name }}"
             namespace: "{{ argocd_namespace }}"
             api_version: argoproj.io/v1alpha1
             kind: Application
@@ -221,17 +292,17 @@
             kubeconfig: "{{ merged_kubeconf_file }}"
             definition:
               metadata:
-                name: "{{ repo_name }}"
+                name: "{{ app_name }}"
                 namespace: "{{ argocd_namespace }}"
               spec:
                 project: default
                 source:
-                  repoURL: "https://github.com/{{ github_username }}/{{ repo_name }}.git"
+                  repoURL: "{{ repo_url_clean }}.git"
                   targetRevision: HEAD
                   path: manifests
                 destination:
                   server: https://kubernetes.default.svc
-                  namespace: "{{ repo_name }}"
+                  namespace: "{{ app_name }}"
                 syncPolicy:
                   automated:
                     prune: true
@@ -239,10 +310,10 @@
                   syncOptions:
                     - CreateNamespace=true
 
-        - name: "10. Wait for ArgoCD Application to be created"
+        - name: "13. Wait for ArgoCD Application to be created"
           kubernetes.core.k8s_info:
             kind: Application
-            name: "{{ repo_name }}"
+            name: "{{ app_name }}"
             namespace: "{{ argocd_namespace }}"
             kubeconfig: "{{ merged_kubeconf_file }}"
             api_version: argoproj.io/v1alpha1
@@ -252,7 +323,7 @@
           delay: "{{ retry_delay }}"
           changed_when: false
 
-        - name: "11. Display initial ArgoCD Application status"
+        - name: "14. Display initial ArgoCD Application status"
           ansible.builtin.debug:
             msg:
               - "ArgoCD Application created. Current status:"
@@ -260,10 +331,10 @@
               - "Sync Status: {{ argocd_app.resources[0].status.sync.status | default('Unknown') }}"
           when: argocd_app.resources | length > 0
 
-        - name: "12. Wait for ArgoCD application to start syncing"
+        - name: "15. Wait for ArgoCD application to start syncing"
           kubernetes.core.k8s_info:
             kind: Application
-            name: "{{ repo_name }}"
+            name: "{{ app_name }}"
             namespace: "{{ argocd_namespace }}"
             kubeconfig: "{{ merged_kubeconf_file }}"
             api_version: argoproj.io/v1alpha1
@@ -276,17 +347,21 @@
           delay: "{{ retry_delay }}"
           changed_when: false
 
-        - name: "13. Check if sync timeout occurred"
+        - name: "16. Check if sync timeout occurred"
           ansible.builtin.fail:
-            msg: "Timeout waiting for ArgoCD application to start syncing"
+            msg: |
+              Timeout waiting for ArgoCD application to start syncing.
+
+              ArgoCD sync error: {{ app_status.resources[0].status.operationState.message | default('No error message available') }}
+              Sync status: {{ app_status.resources[0].status.sync.status | default('Unknown') }}
           when: >
             app_status.resources[0].status.sync.status is not defined or
             app_status.resources[0].status.sync.status == 'Unknown'
 
-        - name: "14. Wait for sync status to be 'Synced'"
+        - name: "17. Wait for sync status to be 'Synced'"
           kubernetes.core.k8s_info:
             kind: Application
-            name: "{{ repo_name }}"
+            name: "{{ app_name }}"
             namespace: "{{ argocd_namespace }}"
             kubeconfig: "{{ merged_kubeconf_file }}"
             api_version: argoproj.io/v1alpha1
@@ -299,14 +374,18 @@
           delay: "{{ retry_delay }}"
           changed_when: false
 
-        - name: "15. Check if sync completion timeout occurred"
+        - name: "18. Check if sync completion timeout occurred"
           ansible.builtin.fail:
-            msg: "Timeout waiting for ArgoCD application to be synced. Current status: {{ sync_status.resources[0].status.sync.status | default('Unknown') }}"
+            msg: |
+              Timeout waiting for ArgoCD application to be synced.
+
+              Sync status: {{ sync_status.resources[0].status.sync.status | default('Unknown') }}
+              ArgoCD sync error: {{ sync_status.resources[0].status.operationState.message | default('No error message available') }}
           when: >
             sync_status.resources[0].status.sync.status is not defined or
             sync_status.resources[0].status.sync.status != 'Synced'
 
-        - name: "16. Display sync complete status"
+        - name: "19. Display sync complete status"
           ansible.builtin.debug:
             msg:
               - "Application has been synced successfully."
@@ -314,10 +393,10 @@
               - "Sync Status: {{ sync_status.resources[0].status.sync.status }}"
           when: sync_status.resources | length > 0
 
-        - name: "17. Wait for health status to be 'Healthy'"
+        - name: "20. Wait for health status to be 'Healthy'"
           kubernetes.core.k8s_info:
             kind: Application
-            name: "{{ repo_name }}"
+            name: "{{ app_name }}"
             namespace: "{{ argocd_namespace }}"
             kubeconfig: "{{ merged_kubeconf_file }}"
             api_version: argoproj.io/v1alpha1
@@ -330,14 +409,18 @@
           delay: "{{ retry_delay }}"
           changed_when: false
 
-        - name: "18. Check if health timeout occurred"
+        - name: "21. Check if health timeout occurred"
           ansible.builtin.fail:
-            msg: "Timeout waiting for ArgoCD application to be healthy. Current status: {{ health_status.resources[0].status.health.status | default('Unknown') }}"
+            msg: |
+              Timeout waiting for ArgoCD application to be healthy.
+
+              Health status: {{ health_status.resources[0].status.health.status | default('Unknown') }}
+              ArgoCD error: {{ health_status.resources[0].status.operationState.message | default('No error message available') }}
           when: >
             health_status.resources[0].status.health.status is not defined or
             health_status.resources[0].status.health.status != 'Healthy'
 
-        - name: "19. Display health status"
+        - name: "22. Display health status"
           ansible.builtin.debug:
             msg:
               - "Application is now healthy."
@@ -345,23 +428,23 @@
               - "Sync Status: {{ health_status.resources[0].status.sync.status }}"
           when: health_status.resources | length > 0
 
-        - name: "20. Get all pods in the application namespace"
+        - name: "23. Get all pods in the application namespace"
           kubernetes.core.k8s_info:
             kind: Pod
-            namespace: "{{ repo_name }}"
+            namespace: "{{ app_name }}"
             kubeconfig: "{{ merged_kubeconf_file }}"
           register: namespace_pods
           changed_when: false
 
-        - name: "21. Display pods in namespace"
+        - name: "24. Display pods in namespace"
           ansible.builtin.debug:
-            msg: "Pods in namespace {{ repo_name }}: {{ namespace_pods.resources | map(attribute='metadata.name') | list }}"
+            msg: "Pods in namespace {{ app_name }}: {{ namespace_pods.resources | map(attribute='metadata.name') | list }}"
           when: namespace_pods.resources | length > 0
 
-        - name: "22. Wait for all pods to be in Running state"
+        - name: "25. Wait for all pods to be in Running state"
           kubernetes.core.k8s_info:
             kind: Pod
-            namespace: "{{ repo_name }}"
+            namespace: "{{ app_name }}"
             kubeconfig: "{{ merged_kubeconf_file }}"
           register: pod_status
           until: >
@@ -372,56 +455,137 @@
           changed_when: false
           when: namespace_pods.resources | length > 0
 
-        - name: "23. Check if pod readiness timeout occurred"
-          ansible.builtin.fail:
-            msg: "Timeout waiting for pods to be in Running state. Current status: {{ pod_status.resources | map(attribute='status.phase') | list }}"
+        - name: "25a. Diagnose pod failures on timeout"
+          block:
+            - name: "25a-1. Check for ImagePullBackOff"
+              ansible.builtin.set_fact:
+                image_pull_failures: >-
+                  {{ pod_status.resources
+                     | selectattr('status.containerStatuses', 'defined')
+                     | map(attribute='status.containerStatuses')
+                     | flatten
+                     | selectattr('state.waiting', 'defined')
+                     | selectattr('state.waiting.reason', 'defined')
+                     | selectattr('state.waiting.reason', 'in', ['ImagePullBackOff', 'ErrImagePull'])
+                     | map(attribute='image')
+                     | list }}
+              failed_when: false
+
+            - name: "25a-2. Check for CrashLoopBackOff"
+              ansible.builtin.set_fact:
+                crash_loop_failures: >-
+                  {{ pod_status.resources
+                     | selectattr('status.containerStatuses', 'defined')
+                     | map(attribute='status.containerStatuses')
+                     | flatten
+                     | selectattr('state.waiting', 'defined')
+                     | selectattr('state.waiting.reason', 'defined')
+                     | selectattr('state.waiting.reason', 'eq', 'CrashLoopBackOff')
+                     | map(attribute='name')
+                     | list }}
+              failed_when: false
+
+            - name: "25a-3. Check for Pending pods"
+              ansible.builtin.set_fact:
+                pending_pods: "{{ pod_status.resources | selectattr('status.phase', 'eq', 'Pending') | map(attribute='metadata.name') | list }}"
+              failed_when: false
+
+            - name: "25a-4. Fail with diagnostic message"
+              ansible.builtin.fail:
+                msg: |
+                  Timeout waiting for pods to be in Running state.
+
+                  Pod phases: {{ pod_status.resources | map(attribute='status.phase') | list }}
+                  {% if image_pull_failures | default([]) | length > 0 %}
+
+                  ❌ IMAGE PULL FAILURE — Container image not found or not accessible.
+                  Failed images: {{ image_pull_failures | join(', ') }}
+                  Check image names and tags in your manifests.
+                  {% endif %}
+                  {% if crash_loop_failures | default([]) | length > 0 %}
+
+                  ❌ CRASH LOOP — Container starts but crashes immediately.
+                  Failing containers: {{ crash_loop_failures | join(', ') }}
+                  Check application logs: kubectl logs -n {{ app_name }} <pod-name>
+                  {% endif %}
+                  {% if pending_pods | default([]) | length > 0 %}
+
+                  ❌ PODS PENDING — Cannot be scheduled.
+                  Pending pods: {{ pending_pods | join(', ') }}
+                  Check cluster resources (CPU/memory) or node availability.
+                  {% endif %}
           when: >
             namespace_pods.resources | length > 0 and
             pod_status.resources | selectattr('status.phase', 'ne', 'Running') | list | length > 0
 
-        - name: "24. Get all services in the application namespace"
+        - name: "26. Get all services in the application namespace"
           kubernetes.core.k8s_info:
             kind: Service
-            namespace: "{{ repo_name }}"
+            namespace: "{{ app_name }}"
             kubeconfig: "{{ merged_kubeconf_file }}"
           register: service_info
           changed_when: false
 
-        - name: "25. Get service connection details"
+        - name: "27. Get service connection details"
           ansible.builtin.set_fact:
-            service_name: "{{ service_info.resources[0].metadata.name | default(repo_name + '-service') }}"
+            service_name: "{{ service_info.resources[0].metadata.name | default(app_name + '-service') }}"
             service_port: "{{ service_info.resources[0].spec.ports[0].port | default(80) }}"
             service_port_name: "{{ service_info.resources[0].spec.ports[0].name | default('http') }}"
             service_target_port: "{{ service_info.resources[0].spec.ports[0].targetPort | default('80') }}"
           when: service_info.resources | length > 0
 
-        - name: "26. Get standard Ingress resources"
+        - name: "27b. Create platform IngressRoute for application"
+          kubernetes.core.k8s:
+            state: present
+            kubeconfig: "{{ merged_kubeconf_file }}"
+            definition:
+              apiVersion: traefik.io/v1alpha1
+              kind: IngressRoute
+              metadata:
+                name: "{{ app_name }}-ingressroute"
+                namespace: "{{ app_name }}"
+                labels:
+                  app: "{{ app_name }}"
+                  routing: unified
+                  managed-by: urbalurba-platform
+              spec:
+                entryPoints:
+                  - web
+                routes:
+                  - match: "HostRegexp(`{{ app_name }}\\..+`)"
+                    kind: Rule
+                    services:
+                      - name: "{{ service_name }}"
+                        port: "{{ service_port | int }}"
+          when: service_info.resources | length > 0
+
+        - name: "28. Get standard Ingress resources"
           kubernetes.core.k8s_info:
             kind: Ingress
-            namespace: "{{ repo_name }}"
+            namespace: "{{ app_name }}"
             kubeconfig: "{{ merged_kubeconf_file }}"
           register: ingress_info
           changed_when: false
 
-        - name: "26b. Get Traefik IngressRoute resources"
+        - name: "28b. Get Traefik IngressRoute resources"
           kubernetes.core.k8s_info:
             api_version: traefik.io/v1alpha1
             kind: IngressRoute
-            namespace: "{{ repo_name }}"
+            namespace: "{{ app_name }}"
             kubeconfig: "{{ merged_kubeconf_file }}"
           register: ingressroute_info
           changed_when: false
           failed_when: false
 
-        - name: "27. Determine application URL"
+        - name: "29. Determine application URL"
           ansible.builtin.set_fact:
             ingress_host: >-
               {% if ingress_info.resources | length > 0 %}
-              {{ ingress_info.resources[0].spec.rules[0].host | default(repo_name + '.localhost') }}
+              {{ ingress_info.resources[0].spec.rules[0].host | default(app_name + '.localhost') }}
               {% elif ingressroute_info.resources | default([]) | length > 0 %}
-              {{ repo_name }}.localhost
+              {{ app_name }}.localhost
               {% else %}
-              {{ repo_name }}.localhost
+              {{ app_name }}.localhost
               {% endif %}
             ingress_type: >-
               {% if ingress_info.resources | length > 0 %}
@@ -433,14 +597,15 @@
               {% endif %}
             ingress_count: "{{ (ingress_info.resources | length) + (ingressroute_info.resources | default([]) | length) }}"
 
-        - name: "28. Display final summary"
+        - name: "30. Display final summary"
           ansible.builtin.debug:
             msg:
               - "=================================================="
               - "APPLICATION REGISTRATION SUCCESSFUL"
               - "=================================================="
-              - "Application '{{ repo_name }}' registered in ArgoCD"
-              - "Namespace '{{ repo_name }}' created and resources deployed"
+              - "Application '{{ app_name }}' registered in ArgoCD"
+              - "Repository: {{ repo_url_clean }}"
+              - "Namespace '{{ app_name }}' created and resources deployed"
               - ""
               - "ArgoCD Status"
               - "   Health: {{ health_status.resources[0].status.health.status }}"
@@ -458,17 +623,20 @@
               - ""
               - "Visit your application at: http://{{ ingress_host | trim }}"
               - ""
+              - "To remove: uis argocd remove {{ app_name }}"
+              - ""
               - "✅ Registration and deployment complete!"
           when: service_info.resources | length > 0
 
-        - name: "29. Display final summary (no services)"
+        - name: "31. Display final summary (no services)"
           ansible.builtin.debug:
             msg:
               - "=================================================="
               - "APPLICATION REGISTRATION INCOMPLETE"
               - "=================================================="
-              - "Application '{{ repo_name }}' registered in ArgoCD"
-              - "Namespace '{{ repo_name }}' created and resources deployed"
+              - "Application '{{ app_name }}' registered in ArgoCD"
+              - "Repository: {{ repo_url_clean }}"
+              - "Namespace '{{ app_name }}' created and resources deployed"
               - ""
               - "ArgoCD Status"
               - "   Health: {{ health_status.resources[0].status.health.status }}"
@@ -499,7 +667,7 @@
 
         - name: "CLEANUP 2. Remove ArgoCD Application"
           kubernetes.core.k8s:
-            name: "{{ repo_name }}"
+            name: "{{ app_name }}"
             namespace: "{{ argocd_namespace }}"
             api_version: argoproj.io/v1alpha1
             kind: Application
@@ -518,11 +686,11 @@
             state: absent
             kubeconfig: "{{ merged_kubeconf_file }}"
           failed_when: false
-          when: has_github_token | bool
+          when: has_github_token | default(false) | bool
 
         - name: "CLEANUP 4. Remove application namespace"
           kubernetes.core.k8s:
-            name: "{{ repo_name }}"
+            name: "{{ app_name }}"
             api_version: v1
             kind: Namespace
             state: absent
@@ -537,7 +705,7 @@
               - "All resources have been cleaned up."
               - ""
               - "To debug, check what went wrong:"
-              - "  - Re-register with: uis argocd register {{ repo_name }}"
+              - "  - Re-register with: uis argocd register {{ app_name }} {{ repo_url }}"
               - "  - Check image names and tags in your manifests"
               - "  - Verify container images are publicly accessible"
 
