@@ -211,8 +211,8 @@ cmd_list() {
     done
 
     echo ""
-    echo "Use 'uis enable <service>' to enable a service"
-    echo "Use 'uis deploy' to deploy all autostart services"
+    echo "Use 'uis deploy <service>' to deploy a service"
+    echo "Use 'uis undeploy <service>' to remove a service"
 }
 
 cmd_status() {
