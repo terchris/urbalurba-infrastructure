@@ -58,8 +58,8 @@ Access the dashboard at [http://argocd.localhost](http://argocd.localhost).
 
 | Command | Description |
 |---------|-------------|
-| `./uis argocd register <repo>` | Register a GitHub repo as ArgoCD application |
-| `./uis argocd remove <repo>` | Remove an ArgoCD application |
+| `./uis argocd register <name> <repo-url>` | Register a GitHub repo as ArgoCD application |
+| `./uis argocd remove <name>` | Remove an ArgoCD application and its namespace |
 | `./uis argocd list` | List registered applications |
 | `./uis argocd verify` | Run health checks |
 
