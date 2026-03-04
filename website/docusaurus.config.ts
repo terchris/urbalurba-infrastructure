@@ -108,7 +108,7 @@ const config: Config = {
             },
             {
               label: 'Hosts',
-              to: '/docs/hosts',
+              to: '/docs/advanced/hosts',
             },
           ],
         },

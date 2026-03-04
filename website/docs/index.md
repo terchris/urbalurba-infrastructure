@@ -116,7 +116,7 @@ After deployment, access services at:
 ## Documentation
 
 - **[Getting Started](./getting-started/overview.md)** — First steps and quick start guide
-- **[Hosts & Platforms](./hosts/index.md)** — Supported platforms and setup guides
+- **[Hosts & Platforms](./advanced/hosts/index.md)** — Supported platforms and setup guides
 - **[Packages](./packages/ai/index.md)** — Service documentation by category
 - **[Networking](./networking/index.md)** — External access via Tailscale and Cloudflare
 - **[Contributors](./contributors/index.md)** — Contributing, rules, and architecture

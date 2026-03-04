@@ -72,4 +72,4 @@ plans/
 
 - [CLAUDE.md](https://github.com/terchris/urbalurba-infrastructure/blob/main/CLAUDE.md) - Project-specific Claude Code instructions (in repo root)
 - [Packages documentation](../../packages/ai/index.md) - Service documentation
-- [Hosts documentation](../../hosts/index.md) - Infrastructure host setup
+- [Hosts documentation](../../advanced/hosts/index.md) - Infrastructure host setup

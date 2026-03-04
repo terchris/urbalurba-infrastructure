@@ -150,14 +150,14 @@ Welcome to the complete documentation for **Urbalurba Infrastructure** — a zer
 
 | Document | Purpose |
 |----------|---------|
-| [Hosts Overview](../hosts/index.md) | Host types and deployment strategies |
-| [Rancher Kubernetes](../hosts/rancher-kubernetes.md) | Default local development environment |
-| [Azure AKS](../hosts/azure-aks.md) | Production Azure Kubernetes Service |
-| [Azure MicroK8s](../hosts/azure-microk8s.md) | Azure VM with MicroK8s |
-| [Multipass MicroK8s](../hosts/multipass-microk8s.md) | Legacy Multipass deployment (superseded by Rancher) |
-| [Raspberry Pi MicroK8s](../hosts/raspberry-microk8s.md) | Edge computing on Raspberry Pi |
-| [Cloud-Init Guide](../hosts/cloud-init/index.md) | Cloud-init automation for Ubuntu-based hosts |
-| [Cloud-Init Secrets](../hosts/cloud-init/secrets.md) | SSH key setup for cloud-init and Ansible |
+| [Hosts Overview](../advanced/hosts/index.md) | Host types and deployment strategies |
+| [Rancher Kubernetes](../advanced/hosts/rancher-kubernetes.md) | Default local development environment |
+| [Azure AKS](../advanced/hosts/azure-aks.md) | Production Azure Kubernetes Service |
+| [Azure MicroK8s](../advanced/hosts/azure-microk8s.md) | Azure VM with MicroK8s |
+| [Multipass MicroK8s](../advanced/hosts/multipass-microk8s.md) | Legacy Multipass deployment (superseded by Rancher) |
+| [Raspberry Pi MicroK8s](../advanced/hosts/raspberry-microk8s.md) | Edge computing on Raspberry Pi |
+| [Cloud-Init Guide](../advanced/hosts/cloud-init/index.md) | Cloud-init automation for Ubuntu-based hosts |
+| [Cloud-Init Secrets](../advanced/hosts/cloud-init/secrets.md) | SSH key setup for cloud-init and Ansible |
 
 ### Provision Host
 
@@ -165,8 +165,8 @@ Welcome to the complete documentation for **Urbalurba Infrastructure** — a zer
 
 | Document | Purpose |
 |----------|---------|
-| [Provision Host Overview](../provision-host/index.md) | Central management container guide |
-| [Rancher Desktop](../provision-host/rancher.md) | Rancher Desktop configuration |
+| [Provision Host Overview](../advanced/provision-host/index.md) | Central management container guide |
+| [Rancher Desktop](../advanced/provision-host/rancher.md) | Rancher Desktop configuration |
 
 ### Reference
 
@@ -221,13 +221,13 @@ Welcome to the complete documentation for **Urbalurba Infrastructure** — a zer
 ### By Role
 
 **Developers:**
-- Start: [Installation](../getting-started/installation.md) → [Architecture](../getting-started/architecture.md) → [Provision Host](../provision-host/index.md)
+- Start: [Installation](../getting-started/installation.md) → [Architecture](../getting-started/architecture.md) → [Provision Host](../advanced/provision-host/index.md)
 - AI Development: [AI & ML Overview](../packages/ai/index.md)
 - Authentication: [Identity Overview](../packages/identity/index.md)
 
 **Infrastructure Engineers:**
-- Start: [Architecture](../getting-started/architecture.md) → [Hosts](../hosts/index.md)
-- Production: [Azure AKS](../hosts/azure-aks.md)
+- Start: [Architecture](../getting-started/architecture.md) → [Hosts](../advanced/hosts/index.md)
+- Production: [Azure AKS](../advanced/hosts/azure-aks.md)
 - Networking: [Traefik Rules](../contributors/rules/ingress-traefik.md)
 
 **Architects:**
@@ -243,7 +243,7 @@ Welcome to the complete documentation for **Urbalurba Infrastructure** — a zer
 **Getting Started:**
 1. [Installation Guide](../getting-started/installation.md) — Install and setup
 2. [System Architecture](../getting-started/architecture.md) — Understand the system
-3. [Provision Host](../provision-host/index.md) — Learn management tools
+3. [Provision Host](../advanced/provision-host/index.md) — Learn management tools
 
 **Setting Up Authentication:**
 1. [Identity Overview](../packages/identity/index.md) — Core SSO setup
@@ -256,8 +256,8 @@ Welcome to the complete documentation for **Urbalurba Infrastructure** — a zer
 3. [Open WebUI](../packages/ai/openwebui.md) — Chat interface
 
 **Production Deployment:**
-1. [Hosts Overview](../hosts/index.md) — Deployment strategies
-2. [Azure AKS](../hosts/azure-aks.md) — Azure production
+1. [Hosts Overview](../advanced/hosts/index.md) — Deployment strategies
+2. [Azure AKS](../advanced/hosts/azure-aks.md) — Azure production
 3. [Networking Overview](../networking/index.md) — External access
 
 **External Access:**

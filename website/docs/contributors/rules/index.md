@@ -52,4 +52,4 @@ Add new rules when recurring anti-patterns are discovered or new deployment patt
 
 - **[Architecture](../../getting-started/architecture.md)** — System architecture overview
 - **[UIS CLI Reference](../../reference/uis-cli-reference.md)** — Complete command reference
-- **[Provision Host](../../provision-host/index.md)** — Container tools and deployment
+- **[Provision Host](../../advanced/provision-host/index.md)** — Container tools and deployment

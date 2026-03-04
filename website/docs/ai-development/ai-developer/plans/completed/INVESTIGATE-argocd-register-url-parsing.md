@@ -192,7 +192,7 @@ If anything fails after resource creation starts, the playbook cleans up:
 
 ## Outcome
 
-All recommendations from this investigation were implemented in [PLAN-argocd-register-redesign](../active/PLAN-argocd-register-redesign.md):
+All recommendations from this investigation were implemented in [PLAN-argocd-register-redesign](../completed/PLAN-argocd-register-redesign.md):
 
 1. **ArgoCD pre-flight check** — implemented in playbook task 5/5a/5b ✓
 2. **Pod timeout diagnostics** — implemented in task 25a (ImagePullBackOff, CrashLoopBackOff, Pending) ✓

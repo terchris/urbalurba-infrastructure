@@ -4,7 +4,7 @@
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Backlog
+## Status: Active
 
 **Goal**: Add a "Developing and Deploying" section to the documentation site with 5 new pages covering the developer workflow from template to deployment, and restructure the sidebar to group infrastructure topics under "Advanced".
 
@@ -26,17 +26,17 @@ Additionally, "Hosts & Platforms" and "Provision Host" are top-level sections th
 
 ---
 
-## Phase 1: Create the 5 new pages
+## Phase 1: Create the 5 new pages — ✅ DONE
 
 Create `website/docs/developing/` directory and write the 5 new pages.
 
 ### Tasks
 
-- [ ] 1.1 Create `website/docs/developing/dev-templates.md` — How to use devcontainer-toolbox `dev-template.sh` to initialize a project from a template. Cover prerequisites, running the command, selecting a template, what gets created.
-- [ ] 1.2 Create `website/docs/developing/template-catalog.md` — Table of current templates (name, language/framework, description) with links to individual READMEs in the `urbalurba-dev-templates` repo. Link to the repo for the full/latest list.
-- [ ] 1.3 Create `website/docs/developing/argocd-pipeline.md` — Mermaid diagram and explanation of the full CI/CD pipeline: developer pushes → GitHub Actions builds image → pushes to GHCR → updates deployment.yaml tag → ArgoCD syncs → platform creates IngressRoute.
-- [ ] 1.4 Create `website/docs/developing/argocd-commands.md` — How to use `uis argocd register <name> <repo-url>`, `remove <name>`, `list`, `verify`. Include examples, what each command does (namespace creation, IngressRoute, sync), common scenarios.
-- [ ] 1.5 Create `website/docs/developing/argocd-dashboard.md` — How to access and use the ArgoCD web UI at `http://argocd.localhost`. Cover viewing app status, sync states, manual sync, deployment history, troubleshooting from the UI.
+- [x] 1.1 Create `website/docs/developing/dev-templates.md`
+- [x] 1.2 Create `website/docs/developing/template-catalog.md`
+- [x] 1.3 Create `website/docs/developing/argocd-pipeline.md` (includes Mermaid sequence diagram)
+- [x] 1.4 Create `website/docs/developing/argocd-commands.md`
+- [x] 1.5 Create `website/docs/developing/argocd-dashboard.md`
 
 ### Validation
 
@@ -44,28 +44,20 @@ User confirms page content is accurate and complete.
 
 ---
 
-## Phase 2: Move files and restructure sidebar
+## Phase 2: Move files and restructure sidebar — ✅ DONE
 
 Move `hosts/` and `provision-host/` under `advanced/`, update `sidebars.ts`, and fix all cross-links.
 
 ### Tasks
 
-- [ ] 2.1 Create `website/docs/advanced/` directory
-- [ ] 2.2 Move `website/docs/hosts/` → `website/docs/advanced/hosts/`
-- [ ] 2.3 Move `website/docs/provision-host/` → `website/docs/advanced/provision-host/`
-- [ ] 2.4 Update relative links in all 17 affected files:
-  - `reference/documentation-index.md` (12 links)
-  - `getting-started/infrastructure.md`
-  - `contributors/rules/index.md`
-  - `contributors/architecture/tools.md`
-  - `ai-development/ai-developer/README.md`
-  - `ai-development/ai-developer/plans/completed/INVESTIGATE-secrets-consolidation.md`
-  - And remaining files found by grep
-- [ ] 2.5 Update `website/sidebars.ts`:
-  - Add "Developing and Deploying" category after "Packages" with the 5 new pages
-  - Create "Advanced" category containing the moved "Hosts & Platforms" and "Provision Host" items
-  - Add `reference/factory-reset` to the "Reference" category
-  - Remove old top-level "Hosts & Platforms" and "Provision Host" entries
+- [x] 2.1 Create `website/docs/advanced/` directory
+- [x] 2.2 Move `website/docs/hosts/` → `website/docs/advanced/hosts/`
+- [x] 2.3 Move `website/docs/provision-host/` → `website/docs/advanced/provision-host/`
+- [x] 2.4 Update relative links in all affected files (12 files updated)
+- [x] 2.5 Update `website/sidebars.ts` — added "Developing and Deploying", created "Advanced", added factory-reset to Reference
+- [x] 2.6 Update `docusaurus.config.ts` footer link from `/docs/hosts` to `/docs/advanced/hosts`
+- [x] 2.7 Update `src/components/HomepageFeatures/index.tsx` link
+- [x] 2.8 Fix stale plan reference in `INVESTIGATE-argocd-register-url-parsing.md`
 
 ### Validation
 
