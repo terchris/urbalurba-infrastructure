@@ -1,9 +1,10 @@
 # INVESTIGATE: ArgoCD Register Command Redesign
 
-**Status:** Investigation Complete — Ready for PLAN
+**Status:** Investigation Complete — PLAN implemented and verified
 **Created:** 2026-03-03
 **Last Updated:** 2026-03-03
-**Related to:** [INVESTIGATE-argocd-migration](../completed/INVESTIGATE-argocd-migration.md) (completed)
+**Related to:** [INVESTIGATE-argocd-migration](INVESTIGATE-argocd-migration.md) (completed)
+**Plan:** [PLAN-argocd-register-redesign](PLAN-argocd-register-redesign.md)
 **Depends on:** None
 
 ---
@@ -189,6 +190,18 @@ If anything fails after resource creation starts, the playbook cleans up:
 
 ---
 
-## Next Step
+## Outcome
 
-Create a PLAN document with implementation tasks.
+All recommendations from this investigation were implemented in [PLAN-argocd-register-redesign](../completed/PLAN-argocd-register-redesign.md):
+
+1. **ArgoCD pre-flight check** — implemented in playbook task 5/5a/5b ✓
+2. **Pod timeout diagnostics** — implemented in task 25a (ImagePullBackOff, CrashLoopBackOff, Pending) ✓
+3. **Sync timeout diagnostics** — implemented in tasks 16, 18, 21 (queries `operationState.message`) ✓
+4. **Two-parameter CLI** — `uis argocd register <name> <repo-url>` with DNS and URL validation ✓
+5. **No GitHub username dependency** — owner parsed from URL ✓
+
+### Additional finding during implementation
+
+The investigation did not anticipate the **IngressRoute routing problem**: when `app_name` differs from the repo name, the repo's own `ingress.yaml` routes `<repo-name>.localhost`, not `<app-name>.localhost`. This was discovered during end-to-end testing (Round 4) and fixed by adding a platform-managed IngressRoute (Phase 6 of the plan).
+
+A secondary finding was that **Ansible Jinja2 renders integers as strings** without `jinja2_native=true`, causing Traefik to misinterpret the port as a named port. Fixed using the `from_yaml` filter pattern.

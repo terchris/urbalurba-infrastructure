@@ -150,7 +150,7 @@ The playbook merges all *-kubeconfig files in the folder `/mnt/urbalurbadisk/kub
 source ~/.bashrc
 ```
 
-Now you can use the kubectl command to manage the cluster. See the [UIS CLI Reference](../reference/uis-cli-reference.md) for available commands.
+Now you can use the kubectl command to manage the cluster. See the [UIS CLI Reference](../../reference/uis-cli-reference.md) for available commands.
 
 #### Install Helm
 

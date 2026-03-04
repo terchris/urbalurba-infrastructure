@@ -21,29 +21,6 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
-      label: 'Hosts & Platforms',
-      link: {
-        type: 'doc',
-        id: 'hosts/index',
-      },
-      items: [
-        'hosts/rancher-kubernetes',
-        'hosts/azure-aks',
-        'hosts/azure-microk8s',
-        'hosts/multipass-microk8s',
-        'hosts/raspberry-microk8s',
-        {
-          type: 'category',
-          label: 'Cloud Init',
-          items: [
-            'hosts/cloud-init/index',
-            'hosts/cloud-init/secrets',
-          ],
-        },
-      ],
-    },
-    {
-      type: 'category',
       label: 'Packages',
       link: {
         type: 'generated-index',
@@ -140,7 +117,6 @@ const sidebars: SidebarsConfig = {
             'packages/management/redisinsight',
             'packages/management/nginx',
             'packages/management/whoami',
-            'packages/management/templates',
           ],
         },
         {
@@ -184,13 +160,61 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
-      label: 'Provision Host',
+      label: 'Developing and Deploying',
       link: {
-        type: 'doc',
-        id: 'provision-host/index',
+        type: 'generated-index',
+        description: 'Create projects from templates and deploy to the cluster with ArgoCD.',
       },
       items: [
-        'provision-host/rancher',
+        'developing/dev-templates',
+        'developing/template-catalog',
+        'developing/argocd-pipeline',
+        'developing/argocd-commands',
+        'developing/argocd-dashboard',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Advanced',
+      link: {
+        type: 'generated-index',
+        description: 'Host configuration, platform setup, and infrastructure details.',
+      },
+      items: [
+        {
+          type: 'category',
+          label: 'Hosts & Platforms',
+          link: {
+            type: 'doc',
+            id: 'advanced/hosts/index',
+          },
+          items: [
+            'advanced/hosts/rancher-kubernetes',
+            'advanced/hosts/azure-aks',
+            'advanced/hosts/azure-microk8s',
+            'advanced/hosts/multipass-microk8s',
+            'advanced/hosts/raspberry-microk8s',
+            {
+              type: 'category',
+              label: 'Cloud Init',
+              items: [
+                'advanced/hosts/cloud-init/index',
+                'advanced/hosts/cloud-init/secrets',
+              ],
+            },
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Provision Host',
+          link: {
+            type: 'doc',
+            id: 'advanced/provision-host/index',
+          },
+          items: [
+            'advanced/provision-host/rancher',
+          ],
+        },
       ],
     },
     {
@@ -203,6 +227,7 @@ const sidebars: SidebarsConfig = {
       items: [
         'reference/uis-cli-reference',
         'reference/service-dependencies',
+        'reference/factory-reset',
         'reference/documentation-index',
         'reference/troubleshooting',
       ],

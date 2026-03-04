@@ -45,7 +45,7 @@
           {% if argocd_apps.resources | length == 0 %}
           No applications registered.
 
-          Register one with: uis argocd register <repo_name>
+          Register one with: uis argocd register <name> <repo-url>
           {% else %}
           {% for app in argocd_apps.resources %}
           Name:   {{ app.metadata.name }}

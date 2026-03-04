@@ -124,5 +124,5 @@ All data, configurations, and certificates will be permanently lost. If you mana
 ## Related Documentation
 
 - **[Hosts Overview](./index.md)** — All supported platforms
-- **[Getting Started](../getting-started/overview.md)** — First steps with UIS
-- **[Services Overview](../getting-started/services.md)** — Available services
+- **[Getting Started](../../getting-started/overview.md)** — First steps with UIS
+- **[Services Overview](../../getting-started/services.md)** — Available services

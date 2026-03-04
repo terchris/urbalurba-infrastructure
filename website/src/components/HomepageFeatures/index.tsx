@@ -44,7 +44,7 @@ const FeatureList: FeatureItem[] = [
   {
     title: 'Multi-Platform',
     description: 'Deploy on your laptop with Rancher Desktop, Azure AKS, or Raspberry Pi clusters.',
-    link: '/docs/hosts',
+    link: '/docs/advanced/hosts',
     icon: '🌐',
   },
 ];

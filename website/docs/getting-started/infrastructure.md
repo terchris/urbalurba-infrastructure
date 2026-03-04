@@ -68,4 +68,4 @@ The key advantage: **same tools, same scripts, same processes** whether running 
 - **[System Architecture](./architecture.md)** - Detailed architectural diagrams
 - **[Installation Guide](./installation.md)** - Get started in 2 steps
 - **[Services Overview](./services.md)** - List of services and their Azure equivalents
-- **[Host Types](../hosts/index.md)** - All deployment options 
+- **[Host Types](../advanced/hosts/index.md)** - All deployment options
