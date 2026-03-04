@@ -4,8 +4,6 @@
 # Usage: .\uis.ps1 <command> [args]
 # Run .\uis.ps1 help for available commands
 
-$ErrorActionPreference = "Stop"
-
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ContainerName = "uis-provision-host"
 $Image = if ($env:UIS_IMAGE) { $env:UIS_IMAGE } else { "ghcr.io/terchris/uis-provision-host:latest" }

@@ -13,8 +13,6 @@ param(
     [string[]]$Arguments
 )
 
-$ErrorActionPreference = "Stop"
-
 $ContainerName = "uis-provision-host"
 $Image = if ($env:UIS_IMAGE) { $env:UIS_IMAGE } else { "ghcr.io/terchris/uis-provision-host:latest" }
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
