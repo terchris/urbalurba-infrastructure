@@ -538,7 +538,9 @@
           kubernetes.core.k8s:
             state: present
             kubeconfig: "{{ merged_kubeconf_file }}"
-            definition:
+            definition: "{{ ingressroute_def | from_yaml }}"
+          vars:
+            ingressroute_def: |
               apiVersion: traefik.io/v1alpha1
               kind: IngressRoute
               metadata:
@@ -552,11 +554,11 @@
                 entryPoints:
                   - web
                 routes:
-                  - match: "HostRegexp(`{{ app_name }}\\..+`)"
+                  - match: "HostRegexp(`^{{ app_name }}\\..+$`)"
                     kind: Rule
                     services:
                       - name: "{{ service_name }}"
-                        port: "{{ service_port | int }}"
+                        port: {{ service_port | int }}
           when: service_info.resources | length > 0
 
         - name: "28. Get standard Ingress resources"

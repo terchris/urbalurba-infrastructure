@@ -4,13 +4,13 @@
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Active
+## Status: Completed
 
 **Goal**: Redesign `uis argocd register` to accept two required parameters (`<name>` and `<repo-url>`) instead of a single bare repo name, eliminating the GitHub username secrets dependency and preventing invalid namespace names.
 
 **Last Updated**: 2026-03-03
 
-**Parent**: [INVESTIGATE-argocd-register-url-parsing.md](./INVESTIGATE-argocd-register-url-parsing.md)
+**Parent**: [INVESTIGATE-argocd-register-url-parsing.md](INVESTIGATE-argocd-register-url-parsing.md)
 
 ---
 
@@ -137,6 +137,81 @@ Tested by UIS-USER1 in Round 3. Full register → list → verify → duplicate-
 
 ---
 
+## Phase 6: Platform-Managed IngressRoute — ✅ DONE
+
+When a user registers `hello-world` pointing at repo `urb-dev-typescript-hello-world`, the repo's own `ingress.yaml` routes `urb-dev-typescript-hello-world.localhost` (the repo name), not `hello-world.localhost` (the app name). The user expects `http://hello-world.localhost` but gets the catch-all page.
+
+### Solution
+
+Added task 27b to the register playbook: after detecting the app's Service (task 27), the playbook creates a platform-managed Traefik IngressRoute using `HostRegexp(`<app_name>\..+`)`. This matches any domain routed to Traefik (`hello-world.localhost`, `hello-world.skryter.no`, `hello-world.urbalurba.no`, etc.).
+
+### Tasks
+
+- [x] 6.1 Add task 27b to create IngressRoute with `HostRegexp` matching the app name ✓
+- [x] 6.2 Use `from_yaml` filter pattern to ensure port is integer (Ansible Jinja2 without `jinja2_native=true` renders `{{ var | int }}` as string `"80"`, which Traefik interprets as a named port) ✓
+- [x] 6.3 IngressRoute created in app namespace — auto-deleted when namespace is removed (no changes to remove playbook) ✓
+- [x] 6.4 Only created when a Service exists (`when: service_info.resources | length > 0`) ✓
+- [x] 6.5 Labels with `managed-by: urbalurba-platform` for identification ✓
+- [x] 6.6 Idempotent via `state: present` — safe on re-runs ✓
+
+### Design decisions
+
+- **ArgoCD won't prune it** — ArgoCD only prunes resources it created from repo manifests. The platform IngressRoute is created by the playbook, outside ArgoCD's management scope.
+- **No explicit priority needed** — `HostRegexp` is more specific than the catch-all's `PathPrefix(/)` at priority 1.
+- **Backward-compatible** — if a repo still has its own `ingress.yaml`, both routes coexist without conflict. Phase 2/3 (removing `ingress.yaml` from templates and repos) can be done later.
+- **Follows existing patterns** — same approach used by `grafana\..+`, `whoami-public\..+`, `argocd\..+` IngressRoutes.
+
+### Key technical finding: Ansible integer types in k8s definitions
+
+Ansible's Jinja2 (without `jinja2_native=true`) always renders template expressions as strings. So `port: "{{ service_port | int }}"` produces `port: "80"` (string) in the Kubernetes object. Traefik interprets string ports as **named ports**, not port numbers — so the route silently fails.
+
+**Fix:** Use the `from_yaml` filter pattern:
+```yaml
+definition: "{{ ingressroute_def | from_yaml }}"
+vars:
+  ingressroute_def: |
+    ...
+    port: {{ service_port | int }}
+```
+
+The YAML template string renders `port: 80` (unquoted), and `from_yaml` parses it into a Python dict with a true integer value.
+
+### Validation — ✅ PASS
+
+Tested by UIS-USER1 in Rounds 4, 5, and 6:
+
+- **Round 4**: Identified routing issue — `hello-world.localhost` hit catch-all. Root cause: `port: "80"` (string).
+- **Round 5**: Platform IngressRoute created correctly but port still string. Same routing failure.
+- **Round 6**: Port type fix applied (`from_yaml` pattern). All 5 tests PASS:
+  - Port is integer (`port: 80`)
+  - `hello-world.localhost` returns app response
+  - `urb-dev-typescript-hello-world.localhost` also works (repo's own route)
+  - Cleanup removes IngressRoute with namespace
+  - Idempotent on re-registration
+
+---
+
+## Follow-up Work (Separate Repos)
+
+### Phase 7: Remove `ingress.yaml` from dev templates
+
+**Repo:** `urbalurba-dev-templates` (7 templates)
+
+For each template in `templates/*/manifests/`:
+- Delete `ingress.yaml`
+- Edit `kustomization.yaml` — remove `- ingress.yaml` from `resources:`
+
+This is backward-compatible — Phase 6's platform IngressRoute handles routing. The repo's `ingress.yaml` is no longer needed.
+
+### Phase 8: Remove `ingress.yaml` from hello-world repo
+
+**Repo:** `urb-dev-typescript-hello-world`
+
+- Delete `manifests/ingress.yaml`
+- Edit `manifests/kustomization.yaml` — remove `- ingress.yaml` from resources
+
+---
+
 ## Acceptance Criteria
 
 - [x] `uis argocd register` requires exactly two arguments: `<name>` and `<repo-url>` ✓
@@ -145,18 +220,22 @@ Tested by UIS-USER1 in Round 3. Full register → list → verify → duplicate-
 - [x] Public repos work without any secrets configured ✓
 - [ ] Private repos work when a GitHub PAT is configured in secrets (not tested — requires private repo)
 - [x] `uis argocd remove <name>` removes the application by name ✓
-- [x] ArgoCD pre-flight check fails fast if ArgoCD is not deployed ✓ (code verified, not runtime tested — ArgoCD was already deployed)
+- [x] ArgoCD pre-flight check fails fast if ArgoCD is not deployed ✓ (tested in Round 4 Step 2)
 - [ ] Pod failure diagnostics show specific error messages (ImagePullBackOff, CrashLoopBackOff, Pending) (not tested — requires broken repo)
 - [ ] Sync failure diagnostics show the actual ArgoCD sync error (not tested — requires broken manifests)
 - [x] Help text and examples reflect the new two-parameter syntax ✓
 - [x] No dependency on `GITHUB_USERNAME` in secrets for registration ✓
+- [x] `http://<app-name>.localhost` routes to the application (platform-managed IngressRoute) ✓
+- [x] IngressRoute auto-deleted when app is removed (namespace deletion) ✓
+- [x] IngressRoute port is integer (not string) — Traefik routes correctly ✓
 
 ---
 
-## Files to Modify
+## Files Modified
 
 | File | Change |
 |------|--------|
-| `ansible/playbooks/argocd-register-app.yml` | Accept `app_name`/`repo_url`, parse URL in playbook, add ArgoCD pre-flight check, improve error diagnostics |
+| `ansible/playbooks/argocd-register-app.yml` | Accept `app_name`/`repo_url`, parse URL, ArgoCD pre-flight check, error diagnostics, platform IngressRoute (task 27b) with `from_yaml` for integer port |
 | `ansible/playbooks/argocd-remove-app.yml` | Rename `repo_name` to `app_name` |
+| `ansible/playbooks/argocd-list-apps.yml` | Update hint text to new two-parameter syntax |
 | `provision-host/uis/manage/uis-cli.sh` | Rewrite `cmd_argocd_register()` for two-param syntax with validation, update `cmd_argocd_remove()`, update help text and examples |
