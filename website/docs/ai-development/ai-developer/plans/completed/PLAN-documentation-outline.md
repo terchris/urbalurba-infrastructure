@@ -4,13 +4,13 @@
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Active
+## Status: Complete
 
 **Goal**: Add a "Developing and Deploying" section to the documentation site with 5 new pages covering the developer workflow from template to deployment, and restructure the sidebar to group infrastructure topics under "Advanced".
 
 **Last Updated**: 2026-03-04
 
-**Investigation**: [INVESTIGATE-documentation-outline](../backlog/INVESTIGATE-documentation-outline.md)
+**Investigation**: [INVESTIGATE-documentation-outline](INVESTIGATE-documentation-outline.md)
 
 ---
 
@@ -69,15 +69,15 @@ Docusaurus build succeeds with no broken link warnings. User confirms sidebar st
 
 ---
 
-## Phase 3: Verify and commit
+## Phase 3: Verify and commit — ✅ DONE
 
 ### Tasks
 
-- [ ] 3.1 Verify all 5 new pages render correctly in the sidebar
-- [ ] 3.2 Verify "Advanced" section contains Hosts & Platforms and Provision Host
-- [ ] 3.3 Verify "Reference" section includes Factory Reset
-- [ ] 3.4 Verify no broken links in the build output
-- [ ] 3.5 Commit and push
+- [x] 3.1 Verify all 5 new pages render correctly in the sidebar
+- [x] 3.2 Verify "Advanced" section contains Hosts & Platforms and Provision Host
+- [x] 3.3 Verify "Reference" section includes Factory Reset
+- [x] 3.4 Verify no broken links in the build output
+- [x] 3.5 Commit and push
 
 ### Validation
 
@@ -87,14 +87,14 @@ User confirms the site looks correct.
 
 ## Acceptance Criteria
 
-- [ ] 5 new pages exist in `website/docs/developing/`
-- [ ] "Developing and Deploying" section appears in sidebar after "Packages"
-- [ ] "Hosts & Platforms" and "Provision Host" appear under "Advanced"
-- [ ] "Factory Reset" appears in the "Reference" section
-- [ ] `npm run build` succeeds with no broken link errors
-- [ ] ArgoCD pipeline page has a Mermaid diagram showing the full CI/CD flow
-- [ ] Template catalog lists all 7 current templates with links to the repo
-- [ ] No cross-link breakage — all relative links updated
+- [x] 5 new pages exist in `website/docs/developing/`
+- [x] "Developing and Deploying" section appears in sidebar after "Packages"
+- [x] "Hosts & Platforms" and "Provision Host" appear under "Advanced"
+- [x] "Factory Reset" appears in the "Reference" section
+- [x] `npm run build` succeeds with no broken link errors
+- [x] ArgoCD pipeline page has a Mermaid diagram showing the full CI/CD flow
+- [x] Template catalog lists all 7 current templates with links to the repo
+- [x] No cross-link breakage — all relative links updated
 
 ---
 

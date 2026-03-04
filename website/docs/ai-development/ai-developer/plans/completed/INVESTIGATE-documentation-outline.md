@@ -1,9 +1,10 @@
 # INVESTIGATE: Documentation Site Restructure — Add "Developing and Deploying" Section
 
-**Status:** Investigation Complete — Ready for PLAN
+**Status:** Investigation Complete — PLAN implemented and verified
 **Created:** 2026-03-04
 **Last Updated:** 2026-03-04
 **Related to:** [PLAN-dev-template-ingress-cleanup](../completed/PLAN-dev-template-ingress-cleanup.md) (completed)
+**Plan:** [PLAN-documentation-outline](../completed/PLAN-documentation-outline.md)
 **Depends on:** None
 
 ---
@@ -257,4 +258,4 @@ Start with the pages that have the most immediate value:
 ## Next Step
 
 - [x] Get user input on the proposed structure — all 4 decisions made
-- [ ] Create PLAN with implementation tasks for the 5 pages, sidebar restructure, and Reference section cleanup (add `factory-reset` to sidebar)
+- [x] Create PLAN with implementation tasks for the 5 pages, sidebar restructure, and Reference section cleanup (add `factory-reset` to sidebar)
