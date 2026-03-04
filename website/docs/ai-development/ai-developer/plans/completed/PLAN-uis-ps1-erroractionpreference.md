@@ -4,7 +4,7 @@
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Active
+## Status: Complete
 
 **Goal**: Fix PowerShell scripts so they don't crash when Docker writes to stderr on first run.
 
@@ -48,7 +48,7 @@ Verify no other code in these files depends on `$ErrorActionPreference = "Stop"`
 - [x] 2.1 Verify `uis.ps1` (root) has `$LASTEXITCODE` checks after critical Docker commands (`docker pull`, `docker run`)
 - [x] 2.2 Verify `website/static/uis.ps1` has `$LASTEXITCODE` checks after critical Docker commands
 - [x] 2.3 Verify `website/static/install.ps1` has `$LASTEXITCODE` checks after `docker pull`
-- [ ] 2.4 Commit, push, and close issue #62
+- [x] 2.4 Commit, push, and close issue #62
 
 ### Validation
 
@@ -62,7 +62,7 @@ Verify no other code in these files depends on `$ErrorActionPreference = "Stop"`
 - [x] `docker image inspect` failure on first run doesn't crash the script
 - [x] `docker rm -f` on nonexistent container doesn't crash the script
 - [x] Critical Docker failures (pull fails, run fails) still produce error messages and exit
-- [ ] Issue #62 closed
+- [x] Issue #62 closed
 
 ---
 
