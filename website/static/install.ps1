@@ -11,8 +11,6 @@
 # 2. Pulls the UIS container image
 # 3. Creates the wrapper scripts in the current directory
 
-$ErrorActionPreference = "Stop"
-
 # Banner
 Write-Host ""
 Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
