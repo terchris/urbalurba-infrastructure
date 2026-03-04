@@ -117,7 +117,6 @@ const sidebars: SidebarsConfig = {
             'packages/management/redisinsight',
             'packages/management/nginx',
             'packages/management/whoami',
-            'packages/management/templates',
           ],
         },
         {

@@ -110,7 +110,7 @@ Welcome to the complete documentation for **Urbalurba Infrastructure** — a zer
 | [RedisInsight](../packages/management/redisinsight.md) | Redis administration UI |
 | [Nginx](../packages/management/nginx.md) | Web server |
 | [Whoami](../packages/management/whoami.md) | Test/debug service |
-| [Dev and Test Templates](../packages/management/templates.md) | Development and testing tools |
+| [Dev Templates](../developing/dev-templates.md) | Development templates and project setup |
 
 ### Packages — Integration
 
