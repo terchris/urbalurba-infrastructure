@@ -61,15 +61,17 @@ plans/
 
 ### When creating new manifests or services:
 
-1. Follow the manifest numbering conventions (see `manifests/` folder)
-2. Use appropriate namespace for the service category
-3. **Validate before committing**: `kubectl apply --dry-run=client -f manifests/xxx-new-service.yaml`
-4. Test deployment: `kubectl rollout status deployment/xxx -n namespace`
+1. **Read the [Adding a Service Guide](../../contributors/guides/adding-a-service.md)** — complete step-by-step walkthrough covering service definitions, playbooks, manifests, secrets, and testing
+2. Follow the manifest numbering conventions (see `manifests/` folder)
+3. Use appropriate namespace for the service category
+4. **Validate before committing**: `kubectl apply --dry-run=client -f manifests/xxx-new-service.yaml`
+5. Test deployment: `kubectl rollout status deployment/xxx -n namespace`
 
 ---
 
 ## Related Documentation
 
 - [CLAUDE.md](https://github.com/terchris/urbalurba-infrastructure/blob/main/CLAUDE.md) - Project-specific Claude Code instructions (in repo root)
+- [Adding a Service Guide](../../contributors/guides/adding-a-service.md) - Complete walkthrough for adding a new service to UIS
 - [Packages documentation](../../packages/ai/index.md) - Service documentation
 - [Hosts documentation](../../advanced/hosts/index.md) - Infrastructure host setup
