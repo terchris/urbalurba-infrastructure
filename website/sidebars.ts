@@ -242,6 +242,17 @@ const sidebars: SidebarsConfig = {
       items: [
         {
           type: 'category',
+          label: 'Guides',
+          link: {
+            type: 'doc',
+            id: 'contributors/guides/index',
+          },
+          items: [
+            'contributors/guides/adding-a-service',
+          ],
+        },
+        {
+          type: 'category',
           label: 'Rules & Standards',
           link: {
             type: 'doc',

@@ -298,38 +298,7 @@ The `sync` command scans the cluster for running services and adds them to the e
 
 ## Adding a New Service
 
-To add a new service to UIS:
-
-1. **Create a metadata file** in the appropriate category directory:
-   ```
-   provision-host/uis/services/<category>/service-<name>.sh
-   ```
-   Include at minimum: `SCRIPT_ID`, `SCRIPT_NAME`, `SCRIPT_DESCRIPTION`, `SCRIPT_CATEGORY`
-
-2. **Create an Ansible playbook** in `ansible/playbooks/`:
-   ```
-   ansible/playbooks/NNN-setup-<name>.yml
-   ```
-   Follow the patterns in [Rules for Provisioning](./provisioning.md)
-
-3. **Create a removal playbook** (if using Ansible deployment):
-   ```
-   ansible/playbooks/NNN-remove-<name>.yml
-   ```
-
-4. **Create manifest configs** in `manifests/` (if needed):
-   ```
-   manifests/NNN-<name>-config.yaml
-   ```
-
-5. **Set deployment fields** in the metadata file:
-   - `SCRIPT_PLAYBOOK` or `SCRIPT_MANIFEST`
-   - `SCRIPT_REMOVE_PLAYBOOK`
-   - `SCRIPT_CHECK_COMMAND` (health check)
-   - `SCRIPT_REQUIRES` (dependencies)
-   - `SCRIPT_PRIORITY` (deploy order)
-
-6. **Test**: `./uis deploy <name>` then `./uis status`
+For a complete step-by-step walkthrough, see the **[Adding a Service Guide](../guides/adding-a-service.md)**.
 
 ## Legacy System
 

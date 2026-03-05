@@ -6,7 +6,7 @@ Welcome! UIS is an open-source project and we appreciate contributions of all ki
 
 | Contribution | Description | Good first step |
 |-------------|-------------|-----------------|
-| **Add a service** | Package a new open-source service for UIS | Read [Provisioning Rules](./rules/provisioning.md) |
+| **Add a service** | Package a new open-source service for UIS | Read the [Adding a Service Guide](./guides/adding-a-service.md) |
 | **Fix bugs** | Fix deployment issues, broken configs, or edge cases | Check [GitHub Issues](https://github.com/terchris/urbalurba-infrastructure/issues) |
 | **Improve docs** | Fix errors, add examples, clarify instructions | Read [Documentation Standards](./rules/documentation.md) |
 | **File issues** | Report bugs or suggest features | Open an issue on GitHub |
