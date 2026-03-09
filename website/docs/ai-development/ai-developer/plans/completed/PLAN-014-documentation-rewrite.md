@@ -4,7 +4,7 @@
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-**Related**: [INVESTIGATE-documentation-rewrite](../backlog/INVESTIGATE-documentation-rewrite.md)
+**Related**: [INVESTIGATE-documentation-rewrite](INVESTIGATE-documentation-rewrite.md)
 **Created**: 2026-02-27
 **Status**: Complete
 

@@ -12,7 +12,7 @@
 
 **GitHub Issue**: [#62](https://github.com/terchris/urbalurba-infrastructure/issues/62)
 
-**Investigation**: [INVESTIGATE-uis-ps1-erroractionpreference](../backlog/INVESTIGATE-uis-ps1-erroractionpreference.md)
+**Investigation**: [INVESTIGATE-uis-ps1-erroractionpreference](INVESTIGATE-uis-ps1-erroractionpreference.md)
 
 ---
 

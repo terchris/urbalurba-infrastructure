@@ -10,7 +10,7 @@
 
 **Last Updated**: 2026-03-04
 
-**Investigation**: [INVESTIGATE-dev-template-ingress-cleanup](../backlog/INVESTIGATE-dev-template-ingress-cleanup.md)
+**Investigation**: [INVESTIGATE-dev-template-ingress-cleanup](INVESTIGATE-dev-template-ingress-cleanup.md)
 
 ---
 
