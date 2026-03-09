@@ -30,7 +30,7 @@ Everything works today, but 18 of 21 Helm charts and several container images ha
 | **postgresql** | `bitnami/postgresql` | — | UNPINNED |
 | **redis** | `bitnami/redis` | — | UNPINNED |
 | **rabbitmq** | `bitnami/rabbitmq` | — | UNPINNED |
-| **elasticsearch** | `elastic/elasticsearch` | — | UNPINNED |
+| **elasticsearch** | `elastic/elasticsearch` | `9.3.0` | PINNED |
 | **qdrant** | `qdrant/qdrant` | — | UNPINNED |
 | **tika** | `tika/tika` | — | UNPINNED |
 | **open-webui** | `open-webui/open-webui` | — | UNPINNED |
@@ -41,7 +41,7 @@ Everything works today, but 18 of 21 Helm charts and several container images ha
 | **redisinsight** | `redisinsight/redisinsight` | — | UNPINNED |
 | **mysql** | (manifest, no helm) | — | N/A |
 
-**Summary: 3 pinned, 18 unpinned out of 21 Helm charts.**
+**Summary: 4 pinned, 17 unpinned out of 21 Helm charts.**
 
 ### Container Images — Version Pinning Status
 
@@ -53,6 +53,7 @@ Images explicitly set in manifests or config files:
 | **mongodb** | `mongo` | `8.0.5` | PINNED |
 | **rabbitmq** | `bitnamilegacy/rabbitmq` | `3.13.7-debian-12-r5` | PINNED |
 | **tika** | `apache/tika` | `3.0.0.0` | PINNED |
+| **elasticsearch** | `docker.elastic.co/elasticsearch/elasticsearch` | `9.3.0` | PINNED |
 | **redis** | `redis` | `7.4` | FLOATING (minor) |
 | **mysql** | `mysql` | `8.0` | FLOATING (minor) |
 | **postgresql** | `ghcr.io/terchris/urbalurba-postgresql` | `latest` | UNPINNED |
@@ -61,7 +62,7 @@ Images explicitly set in manifests or config files:
 | **pgadmin init** | `busybox` | `latest` | UNPINNED |
 
 Images controlled by Helm chart (not explicitly set in our config — chart decides):
-- prometheus, grafana, tempo, loki, otel-collector, elasticsearch, qdrant, open-webui, litellm, spark, jupyterhub, pgadmin, redisinsight, authentik, argocd
+- prometheus, grafana, tempo, loki, otel-collector, qdrant, open-webui, litellm, spark, jupyterhub, pgadmin, redisinsight, authentik, argocd
 
 ---
 
