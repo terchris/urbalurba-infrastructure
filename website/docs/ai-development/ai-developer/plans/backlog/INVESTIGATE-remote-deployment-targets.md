@@ -4,7 +4,7 @@
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-**Related**: [INVESTIGATE-topsecret-cleanup](../completed/INVESTIGATE-topsecret-cleanup.md), [STATUS-service-migration](STATUS-service-migration.md)
+**Related**: [INVESTIGATE-topsecret-cleanup](../completed/INVESTIGATE-topsecret-cleanup.md), [STATUS-service-migration](../completed/STATUS-service-migration.md)
 **Created**: 2026-02-22 (merged with PLAN-006-target-host-management on 2026-02-26)
 **Status**: INVESTIGATION COMPLETE
 
