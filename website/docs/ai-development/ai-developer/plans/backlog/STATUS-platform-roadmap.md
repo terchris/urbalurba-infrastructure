@@ -18,8 +18,9 @@ These items reduce risk, fix broken services, and unblock new service deployment
 
 | # | Investigation | Status | Blocks | Summary |
 |---|--------------|--------|--------|---------|
-| 1 | [Elasticsearch upgrade](INVESTIGATE-elasticsearch-upgrade.md) | Ready for PLAN | OpenMetadata | Upgrade ES 8.5.1 → 9.3.0. One-line change. Only Gravitee depends on ES, and it supports 9.x. |
+| 1 | [Elasticsearch upgrade](INVESTIGATE-elasticsearch-upgrade.md) | Complete | OpenMetadata | Upgrade ES 8.5.1 → 9.3.0. Pinned `imageTag: "9.3.0"`. Verified by tester. |
 | 2 | [Version pinning](INVESTIGATE-version-pinning.md) | Backlog | — | 18 of 21 Helm charts unpinned. Should happen alongside ES upgrade. |
+| 2b | [Service version metadata](INVESTIGATE-service-version-metadata.md) | Backlog | — | Decide how service scripts expose version info for docs generation. Docs generator hardcodes "(unpinned)" even for pinned services. |
 | 3 | [Gravitee fix](INVESTIGATE-gravitee-fix.md) | Backlog | — | Only unverified service. Hardcoded credentials, no remove playbook, wrong namespace, `Host()` instead of `HostRegexp()`. |
 
 ---
@@ -69,6 +70,7 @@ Investigations where the work has been implemented. The INVESTIGATE files have b
 | Documentation generation | 2026-03-02 | [PLAN-015](../completed/PLAN-015-documentation-generation.md) |
 | Dev template ingress cleanup | 2026-03-04 | [PLAN-dev-template-ingress-cleanup](../completed/PLAN-dev-template-ingress-cleanup.md) |
 | PowerShell ErrorActionPreference | 2026-03-04 | [PLAN-uis-ps1-erroractionpreference](../completed/PLAN-uis-ps1-erroractionpreference.md) |
+| Elasticsearch upgrade | 2026-03-09 | [PLAN-elasticsearch-upgrade](../completed/PLAN-elasticsearch-upgrade.md) |
 
 ---
 

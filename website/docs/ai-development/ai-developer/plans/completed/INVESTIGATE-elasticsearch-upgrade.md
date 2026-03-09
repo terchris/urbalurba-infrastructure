@@ -126,5 +126,5 @@ This is a low-risk change: only one service (Gravitee) depends on ES, and Gravit
 
 ## Next Steps
 
-- [ ] Create PLAN to upgrade and pin Elasticsearch version
-- [ ] After upgrade: update `INVESTIGATE-version-pinning.md` — change Elasticsearch row from UNPINNED to PINNED with version `9.3.0`
+- [x] Create PLAN to upgrade and pin Elasticsearch version ✓
+- [x] After upgrade: update `INVESTIGATE-version-pinning.md` — change Elasticsearch row from UNPINNED to PINNED with version `9.3.0` ✓

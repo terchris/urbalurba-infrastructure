@@ -14,7 +14,7 @@ Distributed search and analytics engine for full-text search and log analysis.
 | **Undeploy** | `./uis undeploy elasticsearch` |
 | **Depends on** | None |
 | **Required by** | None |
-| **Helm chart** | `elastic/elasticsearch` (unpinned) |
+| **Helm chart** | `elastic/elasticsearch` (pinned: 9.3.0) |
 | **Default namespace** | `default` |
 
 ## What It Does
