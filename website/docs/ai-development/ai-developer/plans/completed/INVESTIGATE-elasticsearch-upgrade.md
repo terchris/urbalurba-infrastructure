@@ -12,7 +12,7 @@
 
 **Related**:
 - [INVESTIGATE-openmetadata-deployment.md](INVESTIGATE-openmetadata-deployment.md) — OpenMetadata requires ES 9.x
-- [INVESTIGATE-version-pinning.md](INVESTIGATE-version-pinning.md) — Elasticsearch is listed as unpinned. This upgrade also pins the version. Update that investigation after this work is complete.
+- [INVESTIGATE-version-pinning.md](../backlog/INVESTIGATE-version-pinning.md) — Elasticsearch is listed as unpinned. This upgrade also pins the version. Update that investigation after this work is complete.
 
 ---
 

@@ -1,0 +1,180 @@
+# 085-enonic-statefulset.yaml
+#
+# Description:
+# Kubernetes deployment manifests for Enonic XP CMS platform.
+# Uses StatefulSet pattern for stable storage identity.
+# Enonic XP has embedded Elasticsearch and NoSQL storage — no external database dependencies.
+#
+# Usage:
+#   kubectl apply -f 085-enonic-statefulset.yaml
+#
+# Prerequisites:
+# - enonic namespace created
+# - urbalurba-secrets applied to enonic namespace
+# - 085-enonic-config.yaml applied
+#
+# Ports:
+# - 8080: Web server (Content Studio, admin console, headless APIs)
+# - 4848: Management API (admin operations, app install, repo management)
+# - 2609: Statistics/monitoring (health checks, metrics — no auth needed)
+#
+# Storage:
+# - Single PVC for $XP_HOME covers: blobstore, index, config, deploy, snapshots
+
+---
+# Service Account for Enonic XP
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: enonic-xp
+  namespace: enonic
+  labels:
+    app: enonic-xp
+
+---
+# PersistentVolumeClaim for Enonic XP home directory
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: enonic-xp-home-pvc
+  namespace: enonic
+  labels:
+    app: enonic-xp
+    component: storage
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: local-path
+
+---
+# StatefulSet for Enonic XP
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: enonic-xp
+  namespace: enonic
+  labels:
+    app: enonic-xp
+spec:
+  replicas: 1
+  serviceName: enonic-xp
+  selector:
+    matchLabels:
+      app: enonic-xp
+  template:
+    metadata:
+      labels:
+        app: enonic-xp
+    spec:
+      serviceAccountName: enonic-xp
+      containers:
+        - name: enonic-xp
+          image: enonic/xp:7.16.2-ubuntu
+          imagePullPolicy: IfNotPresent
+          # Override entrypoint to inject su password into system.properties before XP starts.
+          # xp.suPassword overrides the su user's password at runtime (Enonic ignores XP_SU_PASSWORD env var).
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              CONFIG_DIR="/enonic-xp/home/config"
+              PROPS_FILE="$CONFIG_DIR/system.properties"
+              mkdir -p "$CONFIG_DIR"
+              if [ -f "$PROPS_FILE" ] && grep -q "xp.suPassword" "$PROPS_FILE"; then
+                sed -i "s|^xp.suPassword.*|xp.suPassword = ${XP_SU_PASSWORD}|" "$PROPS_FILE"
+              else
+                echo "xp.suPassword = ${XP_SU_PASSWORD}" >> "$PROPS_FILE"
+              fi
+              exec /usr/local/bin/docker-entrypoint.sh server.sh
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+            - name: management
+              containerPort: 4848
+              protocol: TCP
+            - name: statistics
+              containerPort: 2609
+              protocol: TCP
+          env:
+            # JVM options from ConfigMap
+            - name: XP_OPTS
+              valueFrom:
+                configMapKeyRef:
+                  name: enonic-xp-config
+                  key: XP_OPTS
+            # Superuser password from secrets
+            - name: XP_SU_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: urbalurba-secrets
+                  key: ENONIC_ADMIN_PASSWORD
+          resources:
+            requests:
+              memory: 1Gi
+              cpu: 500m
+            limits:
+              memory: 2Gi
+              cpu: 1000m
+          volumeMounts:
+            - name: xp-home
+              mountPath: /enonic-xp/home
+          # Startup probe — generous timeout for first boot (creates indexes, may take 2-3 min)
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 2609
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 18  # 3 minutes total
+          # Readiness probe — all services operational
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 2609
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          # Liveness probe — essential data services available
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 2609
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+      volumes:
+        - name: xp-home
+          persistentVolumeClaim:
+            claimName: enonic-xp-home-pvc
+      restartPolicy: Always
+
+---
+# Service for Enonic XP
+apiVersion: v1
+kind: Service
+metadata:
+  name: enonic-xp
+  namespace: enonic
+  labels:
+    app: enonic-xp
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+      protocol: TCP
+    - name: management
+      port: 4848
+      targetPort: 4848
+      protocol: TCP
+    - name: statistics
+      port: 2609
+      targetPort: 2609
+      protocol: TCP
+  selector:
+    app: enonic-xp

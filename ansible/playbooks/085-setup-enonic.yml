@@ -1,0 +1,172 @@
+---
+# file: ansible/playbooks/085-setup-enonic.yml
+# Description:
+# Set up Enonic XP CMS platform on Kubernetes.
+# Deploys using direct manifests (StatefulSet pattern).
+# Enonic XP has embedded Elasticsearch and NoSQL storage — no external database dependencies.
+#
+# Prerequisites:
+# - Kubernetes cluster running
+# - kubectl configured for target cluster
+# - urbalurba-secrets applied to enonic namespace
+# - Required manifests: 085-enonic-config.yaml, 085-enonic-statefulset.yaml, 085-enonic-ingressroute.yaml
+#
+# Usage:
+# ansible-playbook playbooks/085-setup-enonic.yml -e kube_context="rancher-desktop"
+
+- name: Set up Enonic XP CMS on Kubernetes
+  hosts: localhost
+  gather_facts: false
+  vars:
+    manifests_folder: "/mnt/urbalurbadisk/manifests"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
+    enonic_namespace: "enonic"
+    pod_readiness_timeout: 300  # 5 minutes — first boot creates indexes
+
+    # Config files
+    enonic_config_file: "{{ manifests_folder }}/085-enonic-config.yaml"
+    enonic_statefulset_file: "{{ manifests_folder }}/085-enonic-statefulset.yaml"
+    enonic_ingress_file: "{{ manifests_folder }}/085-enonic-ingressroute.yaml"
+
+  tasks:
+
+    - name: 1. Print playbook description
+      ansible.builtin.debug:
+        msg: |
+          Setting up Enonic XP CMS
+          Namespace: {{ enonic_namespace }}
+          Image: enonic/xp:7.16.2-ubuntu
+          Pattern: StatefulSet (direct manifests, no Helm)
+          Storage: Embedded (no external database dependencies)
+
+    # ============= PHASE 1: PREREQUISITES =============
+
+    - name: 2. Create enonic namespace
+      kubernetes.core.k8s:
+        name: "{{ enonic_namespace }}"
+        api_version: v1
+        kind: Namespace
+        state: present
+        kubeconfig: "{{ merged_kubeconf_file }}"
+
+    - name: 3. Check if urbalurba-secrets exists in enonic namespace
+      ansible.builtin.shell: >-
+        kubectl get secret urbalurba-secrets -n {{ enonic_namespace }}
+        -o jsonpath='{.data.ENONIC_ADMIN_PASSWORD}' 2>/dev/null | base64 -d || echo "NOT_FOUND"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: enonic_secret_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: 4. Display secret status
+      ansible.builtin.debug:
+        msg: "Enonic secrets: {{ 'Found' if enonic_secret_check.stdout != 'NOT_FOUND' else 'NOT FOUND — run ./uis secrets generate && ./uis secrets apply' }}"
+
+    # ============= PHASE 2: DEPLOY =============
+
+    - name: 5. Apply Enonic XP ConfigMap
+      kubernetes.core.k8s:
+        src: "{{ enonic_config_file }}"
+        state: present
+        kubeconfig: "{{ merged_kubeconf_file }}"
+
+    - name: 6. Apply Enonic XP StatefulSet, Service, PVC, and ServiceAccount
+      kubernetes.core.k8s:
+        src: "{{ enonic_statefulset_file }}"
+        state: present
+        kubeconfig: "{{ merged_kubeconf_file }}"
+
+    - name: 7. Wait for Enonic XP pod to be ready
+      ansible.builtin.shell: >-
+        kubectl wait --for=condition=ready pod
+        -l app=enonic-xp
+        -n {{ enonic_namespace }} --timeout={{ pod_readiness_timeout }}s
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: enonic_wait_result
+      changed_when: false
+      ignore_errors: true
+
+    - name: 8. Display pod readiness status
+      ansible.builtin.debug:
+        msg: "Enonic XP pod: {{ 'Ready' if enonic_wait_result.rc == 0 else 'Not ready — check logs with: kubectl logs -n enonic -l app=enonic-xp' }}"
+
+    - name: 9. Fail if pod is not ready
+      ansible.builtin.fail:
+        msg: |
+          Enonic XP pod failed to become ready within {{ pod_readiness_timeout }} seconds.
+          Check pod status: kubectl get pods -n {{ enonic_namespace }}
+          Check pod logs: kubectl logs -n {{ enonic_namespace }} -l app=enonic-xp --tail=50
+          Check events: kubectl describe pod -n {{ enonic_namespace }} -l app=enonic-xp
+      when: enonic_wait_result.rc != 0
+
+    # ============= PHASE 3: INGRESS =============
+
+    - name: 10. Apply Enonic XP IngressRoute
+      kubernetes.core.k8s:
+        src: "{{ enonic_ingress_file }}"
+        state: present
+        kubeconfig: "{{ merged_kubeconf_file }}"
+
+    # ============= PHASE 4: HEALTH CHECK =============
+
+    - name: 11. Check Enonic XP web server responds
+      ansible.builtin.shell: |
+        kubectl run curl-enonic-health-{{ 99999 | random }} --image=curlimages/curl --rm -i --restart=Never -n {{ enonic_namespace }} -- \
+          curl -s -L http://enonic-xp.{{ enonic_namespace }}.svc:8080/
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: health_check
+      retries: 3
+      delay: 10
+      until: "'Enonic XP' in health_check.stdout"
+      failed_when: false
+      changed_when: false
+
+    - name: 12. Display health check result
+      ansible.builtin.debug:
+        msg: "Enonic XP web server: {{ 'Responding (login page loaded)' if 'Enonic XP' in health_check.stdout else 'Not responding — may still be starting' }}"
+
+    # ============= PHASE 5: STATUS =============
+
+    - name: 13. Get Enonic XP pods
+      ansible.builtin.shell: kubectl get pods -n {{ enonic_namespace }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: enonic_pods
+      changed_when: false
+
+    - name: 14. Get Enonic XP services
+      ansible.builtin.shell: kubectl get services -n {{ enonic_namespace }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: enonic_services
+      changed_when: false
+
+    - name: 15. Display deployment status
+      ansible.builtin.debug:
+        msg: |
+          ===============================================
+          Enonic XP CMS Deployment Status
+          ===============================================
+
+          Pods:
+          {{ enonic_pods.stdout }}
+
+          Services:
+          {{ enonic_services.stdout }}
+
+          Access:
+          - Web UI: http://enonic.localhost
+          - Admin: http://enonic.localhost/admin
+          - Login: Click "Log in as Guest" for Super User access
+            (the label is misleading — it grants full admin access, not guest access)
+          - Password: ./uis secrets show DEFAULT_ADMIN_PASSWORD
+
+          NOTE: On first visit, Enonic shows a welcome page with "Log in as Guest"
+          and "create an Admin User". Click "Log in as Guest" to access the admin
+          console as Super User. Do NOT click "create an Admin User" unless you
+          want to create an additional admin account.
+
+          ===============================================

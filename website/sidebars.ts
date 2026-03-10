@@ -153,6 +153,7 @@ const sidebars: SidebarsConfig = {
             id: 'packages/integration/index',
           },
           items: [
+            'packages/integration/enonic',
             'packages/integration/rabbitmq',
             'packages/integration/gravitee',
           ],

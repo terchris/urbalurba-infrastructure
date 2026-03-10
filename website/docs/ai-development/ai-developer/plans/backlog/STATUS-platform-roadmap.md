@@ -31,7 +31,7 @@ New platform services. Enonic and OpenMetadata have dependencies on Priority 1 i
 
 | # | Investigation | Status | Depends on | Summary |
 |---|--------------|--------|------------|---------|
-| 4 | [Enonic XP deployment](INVESTIGATE-enonic-xp-deployment.md) | Ready for PLAN | — | CMS platform. Plain Docker/StatefulSet, manifest 085. Reuses cluster storage. |
+| 4 | [Enonic XP deployment](../completed/INVESTIGATE-enonic-xp-deployment.md) | Complete | — | CMS platform. Plain Docker/StatefulSet, manifest 085. Reuses cluster storage. Deployed and verified (6 E2E tests pass). |
 | 5 | [Enonic app deployment pipeline](INVESTIGATE-enonic-app-deployment-pipeline.md) | Investigation complete | Enonic XP (#4) | Sidecar pulls JARs from GitHub Releases into `$XP_HOME/deploy`. UIS CLI commands. |
 | 6 | [OpenMetadata deployment](../completed/INVESTIGATE-openmetadata-deployment.md) | Complete | ES upgrade (#1) ✅ | Data governance platform v1.12.1, manifest 340. Reuses PostgreSQL + Elasticsearch 9.3.0. K8s native orchestrator (no Airflow). Deployed and verified (6 E2E tests pass). |
 | 7 | [Nextcloud + OnlyOffice](INVESTIGATE-nextcloud-deployment.md) | Ready for PLAN | — | Collaboration platform, manifest 620. Reuses PostgreSQL + Redis. OnlyOffice for document editing. |
@@ -72,6 +72,7 @@ Investigations where the work has been implemented. The INVESTIGATE files have b
 | PowerShell ErrorActionPreference | 2026-03-04 | [PLAN-uis-ps1-erroractionpreference](../completed/PLAN-uis-ps1-erroractionpreference.md) |
 | Elasticsearch upgrade | 2026-03-09 | [PLAN-elasticsearch-upgrade](../completed/PLAN-elasticsearch-upgrade.md) |
 | OpenMetadata deployment | 2026-03-10 | [PLAN-openmetadata-deployment](../completed/PLAN-openmetadata-deployment.md) |
+| Enonic XP deployment | 2026-03-10 | [PLAN-enonic-xp-deployment](../completed/PLAN-enonic-xp-deployment.md) |
 
 ---
 

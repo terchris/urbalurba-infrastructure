@@ -10,7 +10,7 @@
 
 **Completed**: 2026-02-18
 
-**Related to**: [INVESTIGATE-argocd-migration](./INVESTIGATE-argocd-migration.md), [STATUS-service-migration](../backlog/STATUS-service-migration.md)
+**Related to**: [INVESTIGATE-argocd-migration](./INVESTIGATE-argocd-migration.md), [STATUS-service-migration](STATUS-service-migration.md)
 
 ---
 
@@ -64,7 +64,7 @@ Tester reported PASS on all steps (1 skipped). Deploy and undeploy both work cor
 
 ### Tasks
 
-- [x] 3.1 Update [STATUS-service-migration.md](../backlog/STATUS-service-migration.md) — mark ArgoCD as fully migrated and verified ✓
+- [x] 3.1 Update [STATUS-service-migration.md](STATUS-service-migration.md) — mark ArgoCD as fully migrated and verified ✓
 - [x] 3.2 Check task 1.1 in Phase 1 of STATUS-service-migration.md ✓
 
 ### Validation

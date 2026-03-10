@@ -69,6 +69,7 @@ SCRIPT_REQUIRES=""
 SCRIPT_PRIORITY="50"
 
 # === Deployment Details (Optional) ===
+SCRIPT_IMAGE="vendor/image:tag"
 SCRIPT_HELM_CHART="repo/chart-name"
 SCRIPT_NAMESPACE="default"
 
@@ -95,6 +96,7 @@ SCRIPT_DOCS="/docs/packages/category/myservice"
 | `SCRIPT_REMOVE_PLAYBOOK` | No | Playbook for removal |
 | `SCRIPT_REQUIRES` | No | Space-separated service IDs this service depends on |
 | `SCRIPT_PRIORITY` | No | Deploy order — lower numbers deploy first (default: 50) |
+| `SCRIPT_IMAGE` | No | Container image reference (e.g., `enonic/xp:7.16.2-ubuntu`) |
 | `SCRIPT_HELM_CHART` | No | Helm chart reference |
 | `SCRIPT_NAMESPACE` | No | Kubernetes namespace |
 
@@ -217,6 +219,120 @@ Create `ansible/playbooks/NNN-setup-myservice.yml`:
 - Use `no_log: true` on any task handling secrets
 
 See **[Provisioning Rules](../rules/provisioning.md)** for full playbook conventions.
+
+## Step 5b: Create the verify playbook (optional but recommended)
+
+If your service has an HTTP endpoint, create a verify playbook at `ansible/playbooks/NNN-test-<id>.yml`. This gives you automated E2E tests that run with `./uis verify myservice`.
+
+**Naming convention:** `NNN-test-<id>.yml` (same number prefix as your setup playbook).
+
+**Standard structure:**
+
+```yaml
+---
+# NNN-test-myservice.yml
+# E2E verification tests for My Service
+
+- name: Verify My Service
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    namespace: "myservice-namespace"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
+
+  tasks:
+    # --- Setup ---
+    - name: "0.1 Get myservice pod name"
+      # ... lookup pod for kubectl exec / curl tests
+
+    # --- Test A: Health endpoint ---
+    - name: "A1. Check health endpoint"
+      ansible.builtin.shell: >
+        kubectl run curl-test-a1 --image=curlimages/curl ...
+      register: test_a_result
+
+    - name: "A2. Assert health check passed"
+      ansible.builtin.assert:
+        that: "'UP' in test_a_result.stdout"
+
+    - name: "A3. Display health result"
+      ansible.builtin.debug:
+        msg: "{{ test_a_result.stdout }}"
+
+    # --- Test B, C, D ... follow same 3-task pattern ---
+
+    # --- Summary ---
+    - name: "SUMMARY - Display all test results"
+      ansible.builtin.debug:
+        msg:
+          - "A. Health check: PASS"
+          - "B. Auth check: PASS"
+          # ...
+```
+
+Each test group (A–F) follows a 3-task pattern: **run** the test, **assert** the result, **display** the output. Common test types:
+
+| Test | What it checks |
+|------|---------------|
+| Health endpoint | Service is running and responding |
+| Authentication | Correct credentials return 200, wrong credentials return 401 |
+| Data read-back | Service stores/returns data correctly |
+| Traefik routing | IngressRoute resolves to the service |
+| Management port | Metrics or management endpoint is reachable |
+
+**Registration — two files to update:**
+
+1. Add your service to `VERIFY_SERVICES` in `provision-host/uis/lib/integration-testing.sh`:
+
+```bash
+VERIFY_SERVICES="
+argocd:argocd verify
+enonic:enonic verify
+openmetadata:openmetadata verify
+myservice:myservice verify
+"
+```
+
+2. Add a dispatch case in `cmd_verify()` in `provision-host/uis/manage/uis-cli.sh`:
+
+```bash
+myservice)
+    cmd_myservice_verify
+    ;;
+```
+
+And implement `cmd_myservice_verify()` that calls `ansible-playbook NNN-test-myservice.yml`.
+
+**Existing verify playbooks to reference:** ArgoCD (`025-test-argocd.yml`), Enonic XP (`085-test-enonic.yml`), OpenMetadata (`300-test-openmetadata.yml`).
+
+## Step 5c: Alternative — StatefulSet pattern (no Helm)
+
+Not every service needs Helm. If the service has no official Helm chart, uses embedded storage, or is simpler to deploy directly, use a **StatefulSet manifest** instead.
+
+Create a single manifest file `manifests/NNN-<id>-statefulset.yaml` containing:
+
+- **PersistentVolumeClaim** — for data that survives pod restarts
+- **StatefulSet** — the workload definition with volume mounts
+- **Service (ClusterIP)** — exposes all ports needed (web, management, metrics)
+
+The setup playbook then uses `kubectl apply` instead of Helm:
+
+```yaml
+- name: "2. Deploy StatefulSet + Service + PVC"
+  kubernetes.core.k8s:
+    state: present
+    src: "{{ statefulset_file }}"
+    kubeconfig: "{{ merged_kubeconf_file }}"
+```
+
+**When to use this pattern:**
+- No official or maintained Helm chart exists
+- Service has embedded storage (e.g., an application server with its own database)
+- Helm adds complexity without benefit for simple deployments
+
+**Reference:** Enonic XP (`manifests/085-enonic-statefulset.yaml`) — StatefulSet with PVC, 3-port Service, and a command override to inject configuration at startup.
 
 ## Step 6: Create the remove playbook
 
@@ -368,6 +484,9 @@ Deploy, remove, and verify:
 # Check it's running
 ./uis status
 
+# Run E2E verify tests (if you created a verify playbook)
+./uis verify myservice
+
 # Test removal
 ./uis undeploy myservice
 
@@ -380,6 +499,8 @@ Deploy, remove, and verify:
 # Build the docs site to check for broken links
 cd website && npm run build
 ```
+
+If you created a verify playbook, make sure it is registered in both `integration-testing.sh` (VERIFY_SERVICES) and `uis-cli.sh` (cmd_verify) as described in Step 5b.
 
 ## Two deployment paths
 
@@ -421,3 +542,46 @@ ansible/playbooks/200-remove-open-webui.yml
 manifests/200-ai-persistent-storage.yaml
 manifests/208-openwebui-config.yaml
 ```
+
+### Complex (Helm + dependencies + verify): OpenMetadata
+
+Helm-based with PostgreSQL and Elasticsearch dependencies, post-deploy password change via API, and 6 E2E tests.
+
+```
+provision-host/uis/services/analytics/service-openmetadata.sh
+ansible/playbooks/300-setup-openmetadata.yml
+ansible/playbooks/300-remove-openmetadata.yml
+ansible/playbooks/300-test-openmetadata.yml
+manifests/300-openmetadata-config.yaml
+manifests/300-openmetadata-ingressroute.yaml
+```
+
+### Complex (StatefulSet + no Helm + verify): Enonic XP
+
+Direct manifests (no Helm), entrypoint command override for config injection, 3-port Service, and 6 E2E tests.
+
+```
+provision-host/uis/services/integration/service-enonic.sh
+ansible/playbooks/085-setup-enonic.yml
+ansible/playbooks/085-remove-enonic.yml
+ansible/playbooks/085-test-enonic.yml
+manifests/085-enonic-statefulset.yaml
+manifests/085-enonic-config.yaml
+manifests/085-enonic-ingressroute.yaml
+```
+
+## Lessons learned
+
+Practical pitfalls discovered during real deployments:
+
+- **Verify image tags exist before committing.** Always `docker pull` or check the registry. Vendors use different tag conventions (`-ubuntu`, `-jdk21`, `-alpine`) and not all tags exist for all architectures.
+
+- **Expose all ports needed for testing.** If your verify tests need health or management ports, add them to the Service definition — not just the main web port.
+
+- **Don't assume env vars work for auth.** Check the actual docs. Some services use config files (`system.properties`), post-deploy APIs, or different env var names than expected.
+
+- **Test response content, not just HTTP status.** Services may redirect (307) or return 401 with valid page content. Check the response body for expected strings.
+
+- **First boot may be slow.** Services with embedded databases (Enonic XP, OpenMetadata) create indexes on first boot. Use generous startup probe timeouts (3–5 minutes).
+
+- **Delete PVC data between test rounds.** When debugging auth or config issues, old PVC data from failed attempts can cause confusing behavior. Clean start: `./uis undeploy myservice`, then `kubectl delete pvc -n <namespace> --all`, then `kubectl delete namespace <namespace>`.

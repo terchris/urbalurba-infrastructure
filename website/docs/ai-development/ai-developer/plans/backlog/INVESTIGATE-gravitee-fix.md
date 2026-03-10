@@ -12,7 +12,7 @@
 
 **Related**:
 - [STATUS-service-migration.md](../completed/STATUS-service-migration.md) — Gravitee is the only unverified service (Phase 4)
-- [INVESTIGATE-elasticsearch-upgrade.md](INVESTIGATE-elasticsearch-upgrade.md) — Gravitee supports ES 9.x (9.2.x+)
+- [INVESTIGATE-elasticsearch-upgrade.md](../completed/INVESTIGATE-elasticsearch-upgrade.md) — Gravitee supports ES 9.x (9.2.x+)
 
 ---
 

@@ -1,0 +1,79 @@
+---
+# file: ansible/playbooks/085-remove-enonic.yml
+# Description: Remove Enonic XP CMS from Kubernetes
+#
+# Usage:
+# ansible-playbook playbooks/085-remove-enonic.yml -e kube_context="rancher-desktop"
+
+- name: Remove Enonic XP CMS from Kubernetes
+  hosts: localhost
+  gather_facts: false
+  vars:
+    manifests_folder: "/mnt/urbalurbadisk/manifests"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
+    enonic_namespace: "enonic"
+
+  tasks:
+    - name: 1. Print playbook description
+      ansible.builtin.debug:
+        msg: |
+          Removing Enonic XP CMS from Kubernetes
+          Namespace: {{ enonic_namespace }}
+
+    - name: 2. Delete Enonic XP IngressRoute
+      kubernetes.core.k8s:
+        src: "{{ manifests_folder }}/085-enonic-ingressroute.yaml"
+        state: absent
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      ignore_errors: true
+
+    - name: 3. Delete Enonic XP StatefulSet, Service, PVC, and ServiceAccount
+      kubernetes.core.k8s:
+        src: "{{ manifests_folder }}/085-enonic-statefulset.yaml"
+        state: absent
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      ignore_errors: true
+
+    - name: 4. Delete Enonic XP ConfigMap
+      kubernetes.core.k8s:
+        src: "{{ manifests_folder }}/085-enonic-config.yaml"
+        state: absent
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      ignore_errors: true
+
+    - name: 5. Wait for pods to terminate
+      ansible.builtin.shell: |
+        kubectl wait --for=delete pod -l app=enonic-xp -n {{ enonic_namespace }} --timeout=60s 2>/dev/null || true
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      changed_when: false
+
+    - name: 6. Delete PVCs in enonic namespace
+      ansible.builtin.shell: |
+        kubectl delete pvc -n {{ enonic_namespace }} --all --ignore-not-found
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      changed_when: false
+      ignore_errors: true
+
+    - name: 7. Delete enonic namespace
+      kubernetes.core.k8s:
+        name: "{{ enonic_namespace }}"
+        api_version: v1
+        kind: Namespace
+        state: absent
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      ignore_errors: true
+
+    - name: 8. Display removal status
+      ansible.builtin.debug:
+        msg: |
+          ===============================================
+          Enonic XP CMS Removal Status
+          ===============================================
+
+          Enonic XP resources removed.
+
+          Note: PVC data (content, indexes, blobstore) has been deleted.
+
+          ===============================================
