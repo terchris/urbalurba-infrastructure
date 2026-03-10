@@ -267,6 +267,26 @@
 ,
   {
     "@type": "SoftwareApplication",
+    "id": "enonic",
+    "name": "Enonic XP",
+    "description": "Headless CMS platform for content management and delivery",
+    "category": "INTEGRATION",
+    "tags": ["cms", "headless-cms", "content-management", "content-studio", "graphql", "enonic-xp"],
+    "abstract": "Headless CMS platform with embedded storage, Content Studio, and 100+ integrations",
+    "logo": "enonic-logo.webp",
+    "website": "https://enonic.com"
+    ,"summary": "Enonic XP is a Java/GraalVM-based headless CMS platform with embedded Elasticsearch and NoSQL storage. It provides Content Studio for editorial work, headless APIs (GraphQL/REST), and a composable architecture for building content-driven applications."
+    ,"docs": "/docs/packages/integration/enonic"
+    ,"playbook": "085-setup-enonic.yml"
+    ,"priority": 85
+    ,"checkCommand": "kubectl get pods -n enonic -l app=enonic-xp --no-headers 2>/dev/null | grep -q Running"
+    ,"removePlaybook": "085-remove-enonic.yml"
+    ,"namespace": "enonic"
+    ,"image": "enonic/xp:7.16.2-ubuntu"
+  }
+,
+  {
+    "@type": "SoftwareApplication",
     "id": "gravitee",
     "name": "Gravitee",
     "description": "API management and gateway platform",
@@ -417,7 +437,7 @@
     "logo": "cloudflare-logo.webp",
     "website": "https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/"
     ,"summary": "Cloudflare Tunnel creates a secure, outbound-only connection between your origin and Cloudflares edge. No need to open public inbound ports - traffic is routed through Cloudflares network."
-    ,"docs": "/docs/packages/networking/cloudflare-tunnel"
+    ,"docs": "/docs/packages/networking/cloudflare"
     ,"playbook": "820-deploy-network-cloudflare-tunnel.yml"
     ,"priority": 101
     ,"checkCommand": "kubectl get pods -n default -l app=cloudflared --no-headers 2>/dev/null | grep -q Running"
@@ -438,7 +458,7 @@
     "logo": "tailscale-logo.webp",
     "website": "https://tailscale.com"
     ,"summary": "Tailscale creates a secure, private network between your servers, computers, and cloud instances using WireGuard encryption. It provides zero-config networking with built-in NAT traversal."
-    ,"docs": "/docs/packages/networking/tailscale-tunnel"
+    ,"docs": "/docs/packages/networking/tailscale"
     ,"playbook": "802-deploy-network-tailscale-tunnel.yml"
     ,"priority": 100
     ,"checkCommand": "kubectl get pods -n tailscale -l app=operator --no-headers 2>/dev/null | grep -q Running"
