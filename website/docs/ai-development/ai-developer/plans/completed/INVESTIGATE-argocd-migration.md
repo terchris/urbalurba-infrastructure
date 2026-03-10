@@ -3,7 +3,7 @@
 **Status:** Completed
 **Created:** 2026-01-31
 **Completed:** 2026-02-18
-**Related to:** [STATUS-service-migration](../backlog/STATUS-service-migration.md)
+**Related to:** [STATUS-service-migration](STATUS-service-migration.md)
 **Implementation:** [PLAN-argocd-migration](PLAN-argocd-migration.md)
 
 ---

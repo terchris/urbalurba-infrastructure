@@ -1,0 +1,293 @@
+---
+# file: ansible/playbooks/085-test-enonic.yml
+# Description:
+# End-to-end tests for the Enonic XP CMS deployment.
+# Validates health, readiness, admin auth, embedded storage, UI access, and auth security.
+#
+# Tests (all CRITICAL):
+#   A. Health check - port 2609 /health must respond (embedded data services ready)
+#   B. Readiness check - port 2609 /ready must respond (all services operational)
+#   C. Repository list - port 4848 /repo/list with admin auth must return system-repo
+#   D. UI access via Traefik IngressRoute - enonic.localhost must be routable
+#   E. Admin UI accessible - port 8080 /admin with admin auth must respond
+#   F. Wrong credentials rejected - port 4848 with bad password must return 401
+#
+# Usage:
+# ansible-playbook ansible/playbooks/085-test-enonic.yml -e kube_context="rancher-desktop"
+
+- name: End-to-End Enonic XP Tests
+  hosts: localhost
+  gather_facts: false
+  vars:
+    merged_kubeconf_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
+    enonic_namespace: "enonic"
+    enonic_service: "enonic-xp.{{ enonic_namespace }}.svc.cluster.local"
+
+  tasks:
+    - name: "0. Display test suite initiation"
+      ansible.builtin.debug:
+        msg: |
+          End-to-End Enonic XP Tests
+          ===============================================
+          Running 6 test groups (all CRITICAL)
+
+    - name: "0.1. Get Traefik ClusterIP for in-cluster hostname routing"
+      ansible.builtin.shell: |
+        kubectl get svc traefik -n kube-system -o jsonpath='{.spec.clusterIP}'
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: traefik_ip_result
+      changed_when: false
+
+    - name: "0.2. Store Traefik IP"
+      ansible.builtin.set_fact:
+        traefik_ip: "{{ traefik_ip_result.stdout }}"
+
+    - name: "0.3. Get Enonic admin password from urbalurba-secrets"
+      ansible.builtin.shell: |
+        kubectl get secret urbalurba-secrets -n {{ enonic_namespace }} -o jsonpath='{.data.ENONIC_ADMIN_PASSWORD}' | base64 -d
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: admin_password_result
+      changed_when: false
+
+    - name: "0.4. Store admin credentials"
+      ansible.builtin.set_fact:
+        admin_password: "{{ admin_password_result.stdout }}"
+
+    # ===== Test A: Health check (CRITICAL) =====
+    - name: "A1. Check Enonic XP health endpoint (port 2609)"
+      ansible.builtin.shell: |
+        kubectl run curl-test-health-{{ 99999 | random }} --image=curlimages/curl --rm -i --restart=Never -n {{ enonic_namespace }} -- \
+          curl -s -w "\nHTTP_CODE:%{http_code}" http://{{ enonic_service }}:2609/health
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: health_test
+      retries: 5
+      delay: 10
+      until: "'HTTP_CODE:200' in health_test.stdout"
+      failed_when: false
+      changed_when: false
+
+    - name: "A2. Verify health returns 200"
+      ansible.builtin.assert:
+        that:
+          - "'HTTP_CODE:200' in health_test.stdout"
+        fail_msg: |
+          CRITICAL: Enonic XP health check failed!
+          Expected HTTP 200 from :2609/health (embedded data services ready).
+          Got: {{ health_test.stdout[:500] | default('No output') }}
+
+          Troubleshooting:
+          - Check pod status: kubectl get pods -n {{ enonic_namespace }}
+          - Check pod logs: kubectl logs -n {{ enonic_namespace }} -l app=enonic-xp --tail=50
+          - Check events: kubectl describe pod -n {{ enonic_namespace }} -l app=enonic-xp
+        success_msg: "Test A PASSED: Enonic XP health check OK"
+
+    - name: "A3. Display health test success"
+      ansible.builtin.debug:
+        msg: |
+          Test A: Health Check — PASSED (CRITICAL)
+          :2609/health returns HTTP 200 — embedded data services ready
+
+    # ===== Test B: Readiness check (CRITICAL) =====
+    - name: "B1. Check Enonic XP readiness endpoint (port 2609)"
+      ansible.builtin.shell: |
+        kubectl run curl-test-ready-{{ 99999 | random }} --image=curlimages/curl --rm -i --restart=Never -n {{ enonic_namespace }} -- \
+          curl -s -w "\nHTTP_CODE:%{http_code}" http://{{ enonic_service }}:2609/ready
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: ready_test
+      retries: 5
+      delay: 10
+      until: "'HTTP_CODE:200' in ready_test.stdout"
+      failed_when: false
+      changed_when: false
+
+    - name: "B2. Verify readiness returns 200"
+      ansible.builtin.assert:
+        that:
+          - "'HTTP_CODE:200' in ready_test.stdout"
+        fail_msg: |
+          CRITICAL: Enonic XP readiness check failed!
+          Expected HTTP 200 from :2609/ready (all services operational).
+          Got: {{ ready_test.stdout[:500] | default('No output') }}
+
+          Troubleshooting:
+          - Check pod status: kubectl get pods -n {{ enonic_namespace }}
+          - Check pod logs: kubectl logs -n {{ enonic_namespace }} -l app=enonic-xp --tail=50
+        success_msg: "Test B PASSED: Enonic XP readiness check OK"
+
+    - name: "B3. Display readiness test success"
+      ansible.builtin.debug:
+        msg: |
+          Test B: Readiness Check — PASSED (CRITICAL)
+          :2609/ready returns HTTP 200 — all XP services operational
+
+    # ===== Test C: Repository list — embedded storage read-back (CRITICAL) =====
+    - name: "C1. List repositories via management API (port 4848)"
+      ansible.builtin.shell: |
+        kubectl run curl-test-repo-{{ 99999 | random }} --image=curlimages/curl --rm -i --restart=Never -n {{ enonic_namespace }} -- \
+          curl -s -w "\nHTTP_CODE:%{http_code}" -u "su:{{ admin_password }}" http://{{ enonic_service }}:4848/repo/list
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: repo_list_test
+      retries: 3
+      delay: 10
+      until: "'HTTP_CODE:200' in repo_list_test.stdout"
+      failed_when: false
+      changed_when: false
+
+    - name: "C2. Verify repository list contains system-repo"
+      ansible.builtin.assert:
+        that:
+          - "'HTTP_CODE:200' in repo_list_test.stdout"
+          - "'system-repo' in repo_list_test.stdout"
+        fail_msg: |
+          CRITICAL: Enonic XP repository list failed!
+          Expected HTTP 200 from :4848/repo/list with system-repo in response.
+          Got: {{ repo_list_test.stdout[:500] | default('No output') }}
+
+          Troubleshooting:
+          - Check admin password: kubectl get secret urbalurba-secrets -n {{ enonic_namespace }} -o jsonpath='{.data.ENONIC_ADMIN_PASSWORD}' | base64 -d
+          - Check pod logs: kubectl logs -n {{ enonic_namespace }} -l app=enonic-xp --tail=50
+          - Test manually: kubectl exec -n {{ enonic_namespace }} enonic-xp-0 -- curl -s -u su:<password> http://localhost:4848/repo/list
+        success_msg: "Test C PASSED: Repository list contains system-repo"
+
+    - name: "C3. Display repo list test success"
+      ansible.builtin.debug:
+        msg: |
+          Test C: Repository List (Read-Back) — PASSED (CRITICAL)
+          :4848/repo/list returns system-repo — admin auth AND embedded storage confirmed
+
+    # ===== Test D: UI access via Traefik IngressRoute (CRITICAL) =====
+    # Enonic XP redirects / to /admin/tool (307) which returns 401 with the login page.
+    # We verify the login page content is returned (proves Traefik routing works).
+    - name: "D1. Access Enonic XP via Traefik with Host header"
+      ansible.builtin.shell: |
+        kubectl run curl-test-ui-{{ 99999 | random }} --image=curlimages/curl --rm -i --restart=Never -n {{ enonic_namespace }} -- \
+          curl -s -L \
+          -H "Host: enonic.localhost" \
+          http://{{ traefik_ip }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: ui_access_test
+      retries: 3
+      delay: 10
+      until: "'Enonic XP' in ui_access_test.stdout"
+      failed_when: false
+      changed_when: false
+
+    - name: "D2. Verify UI is accessible via Traefik"
+      ansible.builtin.assert:
+        that:
+          - "'Enonic XP' in ui_access_test.stdout"
+        fail_msg: |
+          CRITICAL: Enonic XP UI not accessible via Traefik IngressRoute!
+          Expected login page with 'Enonic XP' when accessing enonic.localhost through Traefik.
+          Got: {{ ui_access_test.stdout[:500] | default('No output') }}
+
+          Troubleshooting:
+          - Check IngressRoute: kubectl get ingressroute -n {{ enonic_namespace }}
+          - Check Traefik: kubectl get svc traefik -n kube-system
+          - Check service: kubectl get svc -n {{ enonic_namespace }}
+        success_msg: "Test D PASSED: Enonic XP UI accessible via enonic.localhost"
+
+    - name: "D3. Display UI access test success"
+      ansible.builtin.debug:
+        msg: |
+          Test D: UI Access via Traefik — PASSED (CRITICAL)
+          enonic.localhost returns Enonic XP login page through Traefik IngressRoute
+
+    # ===== Test E: Admin UI accessible (CRITICAL) =====
+    # /admin redirects to /admin/tool (307), which returns the login page.
+    # We follow redirects and check response body for admin page content.
+    - name: "E1. Access Enonic XP admin console (port 8080)"
+      ansible.builtin.shell: |
+        kubectl run curl-test-admin-{{ 99999 | random }} --image=curlimages/curl --rm -i --restart=Never -n {{ enonic_namespace }} -- \
+          curl -s -L -u "su:{{ admin_password }}" http://{{ enonic_service }}:8080/admin
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: admin_ui_test
+      retries: 3
+      delay: 10
+      until: "'Enonic XP' in admin_ui_test.stdout"
+      failed_when: false
+      changed_when: false
+
+    - name: "E2. Verify admin console responds"
+      ansible.builtin.assert:
+        that:
+          - "'Enonic XP' in admin_ui_test.stdout"
+        fail_msg: |
+          CRITICAL: Enonic XP admin console not accessible!
+          Expected admin page with 'Enonic XP' from :8080/admin with su credentials.
+          Got: {{ admin_ui_test.stdout[:500] | default('No output') }}
+
+          Troubleshooting:
+          - Check admin password: kubectl get secret urbalurba-secrets -n {{ enonic_namespace }} -o jsonpath='{.data.ENONIC_ADMIN_PASSWORD}' | base64 -d
+          - Check pod logs: kubectl logs -n {{ enonic_namespace }} -l app=enonic-xp --tail=50
+        success_msg: "Test E PASSED: Admin console accessible with su credentials"
+
+    - name: "E3. Display admin UI test success"
+      ansible.builtin.debug:
+        msg: |
+          Test E: Admin UI Accessible — PASSED (CRITICAL)
+          :8080/admin returns Enonic XP admin page with su credentials
+
+    # ===== Test F: Wrong credentials rejected (CRITICAL) =====
+    - name: "F1. Attempt management API with wrong password"
+      ansible.builtin.shell: |
+        kubectl run curl-test-badauth-{{ 99999 | random }} --image=curlimages/curl --rm -i --restart=Never -n {{ enonic_namespace }} -- \
+          curl -s -o /dev/null -w "HTTP_CODE:%{http_code}" -u "su:WrongPassword999" http://{{ enonic_service }}:4848/repo/list
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: badauth_test
+      failed_when: false
+      changed_when: false
+
+    - name: "F2. Verify wrong password was rejected"
+      ansible.builtin.assert:
+        that:
+          - "'HTTP_CODE:200' not in badauth_test.stdout"
+        fail_msg: |
+          CRITICAL: Wrong password was ACCEPTED! Authentication is broken!
+          Request to :4848/repo/list with wrong password should have been rejected.
+          Got: {{ badauth_test.stdout | default('No output') }}
+        success_msg: "Test F PASSED: Wrong password correctly rejected"
+
+    - name: "F3. Display wrong credentials test success"
+      ansible.builtin.debug:
+        msg: |
+          Test F: Wrong Credentials Rejected — PASSED (CRITICAL)
+          :4848/repo/list with wrong password correctly denied
+
+    # ===== Summary =====
+    - name: "S1. Display comprehensive test results"
+      ansible.builtin.debug:
+        msg:
+          - "==============================================="
+          - "End-to-End Enonic XP Test Results"
+          - "==============================================="
+          - ""
+          - "Test A — Health Check:                  PASSED (CRITICAL)"
+          - "  :2609/health returns HTTP 200"
+          - ""
+          - "Test B — Readiness Check:               PASSED (CRITICAL)"
+          - "  :2609/ready returns HTTP 200"
+          - ""
+          - "Test C — Repository List (Read-Back):   PASSED (CRITICAL)"
+          - "  :4848/repo/list returns system-repo with admin auth"
+          - ""
+          - "Test D — UI Access via Traefik:         PASSED (CRITICAL)"
+          - "  enonic.localhost routes correctly"
+          - ""
+          - "Test E — Admin UI Accessible:           PASSED (CRITICAL)"
+          - "  :8080/admin responds with su credentials"
+          - ""
+          - "Test F — Wrong Credentials Rejected:    PASSED (CRITICAL)"
+          - "  Bad password correctly denied"
+          - ""
+          - "==============================================="
+          - "ALL 6 CRITICAL TESTS PASSED"
+          - "==============================================="

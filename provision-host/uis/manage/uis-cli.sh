@@ -106,6 +106,9 @@ ArgoCD:
   argocd list                   List registered ArgoCD applications
   argocd verify                 Run E2E health checks on ArgoCD server
 
+Enonic XP:
+  enonic verify                  Run E2E health checks on Enonic XP
+
 OpenMetadata:
   openmetadata verify            Run E2E health checks on OpenMetadata
 
@@ -1043,6 +1046,7 @@ cmd_verify() {
         echo "  tailscale       Check Tailscale secrets, API, devices, and operator"
         echo "  cloudflare      Check Cloudflare secrets, network, and pod status"
         echo "  argocd          Run E2E health checks on ArgoCD server"
+        echo "  enonic          Run E2E health checks on Enonic XP"
         echo "  openmetadata    Run E2E health checks on OpenMetadata"
         exit "$EXIT_GENERAL_ERROR"
     fi
@@ -1057,6 +1061,9 @@ cmd_verify() {
         argocd)
             cmd_argocd_verify
             ;;
+        enonic)
+            cmd_enonic_verify
+            ;;
         openmetadata)
             cmd_openmetadata_verify
             ;;
@@ -1067,6 +1074,7 @@ cmd_verify() {
             echo "  tailscale       Check Tailscale secrets, API, devices, and operator"
             echo "  cloudflare      Check Cloudflare secrets, network, and pod status"
             echo "  argocd          Run E2E health checks on ArgoCD server"
+            echo "  enonic          Run E2E health checks on Enonic XP"
             echo "  openmetadata    Run E2E health checks on OpenMetadata"
             exit "$EXIT_GENERAL_ERROR"
             ;;
@@ -1336,6 +1344,15 @@ cmd_argocd_verify() {
 }
 
 # ============================================================
+# Enonic XP Commands
+# ============================================================
+
+cmd_enonic_verify() {
+    print_section "Verifying Enonic XP Deployment"
+    ansible-playbook "$ANSIBLE_DIR/085-test-enonic.yml"
+}
+
+# ============================================================
 # OpenMetadata Commands
 # ============================================================
 
@@ -1599,6 +1616,22 @@ main() {
             ;;
         argocd)
             cmd_argocd "$@"
+            ;;
+        enonic)
+            local subcmd="${1:-}"
+            shift 2>/dev/null || true
+            case "$subcmd" in
+                verify)
+                    cmd_enonic_verify
+                    ;;
+                *)
+                    log_error "Unknown enonic command: $subcmd"
+                    echo ""
+                    echo "Commands:"
+                    echo "  enonic verify    Run E2E health checks on Enonic XP"
+                    exit "$EXIT_GENERAL_ERROR"
+                    ;;
+            esac
             ;;
         openmetadata)
             local subcmd="${1:-}"

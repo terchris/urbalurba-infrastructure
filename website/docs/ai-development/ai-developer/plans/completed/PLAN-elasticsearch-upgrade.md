@@ -16,7 +16,7 @@
 
 **Blocks**: [OpenMetadata deployment](INVESTIGATE-openmetadata-deployment.md) (requires ES 9.x)
 
-**Related**: [INVESTIGATE-elasticsearch-upgrade.md](INVESTIGATE-elasticsearch-upgrade.md), [INVESTIGATE-version-pinning.md](INVESTIGATE-version-pinning.md)
+**Related**: [INVESTIGATE-elasticsearch-upgrade.md](INVESTIGATE-elasticsearch-upgrade.md), [INVESTIGATE-version-pinning.md](../backlog/INVESTIGATE-version-pinning.md)
 
 ---
 

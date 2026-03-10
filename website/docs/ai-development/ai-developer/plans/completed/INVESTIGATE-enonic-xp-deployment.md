@@ -8,7 +8,7 @@
 
 **Goal**: Determine the best approach for deploying Enonic XP as a UIS platform service
 
-**Last Updated**: 2026-03-06
+**Last Updated**: 2026-03-10
 
 ---
 
@@ -51,6 +51,44 @@ Enonic XP is a Java/GraalVM-based headless CMS platform. It's used by major Norw
 - **Ports**: 8080 (server), 4848 (management), 2609 (metrics), 5701 (Hazelcast), 9200/9300 (Elasticsearch)
 - **Environment**: `XP_OPTS` for JVM params, heap should be ~30% of container memory
 - **Persistent volumes needed**: A single PVC for `$XP_HOME` covers all data (config, blobstore, index, deploy, snapshots). Standard cluster storage via PVC, same as all other UIS services.
+
+### Ports and REST APIs
+
+Enonic XP exposes multiple ports. Three are relevant for UIS deployment:
+
+| Port | Purpose | Auth required | Key endpoints |
+|------|---------|---------------|---------------|
+| **8080** | Web server — Content Studio, admin console, headless APIs | Varies by endpoint | `/` (welcome), `/admin` (admin console, requires login) |
+| **4848** | Management API — administrative operations | Yes (basic auth or JWT, Administrator role) | See below |
+| **2609** | Statistics/monitoring — health checks, metrics | No | See below |
+
+Ports 5701 (Hazelcast) and 9200/9300 (embedded Elasticsearch) are internal to the pod and not used by UIS.
+
+**Port 2609 — Statistics endpoint** (no auth, ideal for K8s probes):
+
+| Endpoint | Since | What it does |
+|----------|-------|-------------|
+| `GET /health` | XP 7.13.0 | Returns HTTP 200 if essential data services (embedded ES, blobstore) are available. Returns 503 with errors if not. |
+| `GET /ready` | XP 7.13.0 | Returns HTTP 200 if **all** services needed for full operation are available. Returns 503 with details if not. |
+| `GET /` | — | Lists all available status reporters |
+| `GET /<reporter>` | — | Individual reporter: `cluster.elasticsearch`, `jvm.memory`, `jvm.gc`, `http.threadpool`, `index`, etc. |
+
+**Port 4848 — Management endpoint** (requires Administrator role via basic auth or JWT):
+
+| Endpoint | Method | What it does |
+|----------|--------|-------------|
+| `repo/list` | GET | Lists all repositories — proves embedded storage engine works |
+| `content/projects/list` | GET | Lists CMS projects and sites (XP 7.13.0+) |
+| `app/install` | POST | Install apps from file or URL |
+| `app/start`, `app/stop` | POST | Control app lifecycle |
+| `repo/snapshot` | POST | Create repository snapshots |
+| `repo/export`, `repo/import` | POST | Export/import content |
+| `system/vacuum` | POST | Clean unused blobs |
+| `repo/index/reindex` | POST | Rebuild search indices |
+
+**Key insight for verification**: `GET :4848/repo/list` with basic auth returns the list of repositories including the built-in `system-repo`. This provides a simple read-back test that proves: (1) admin authentication works, (2) the embedded storage engine is operational, and (3) the management API is accessible.
+
+**Key insight for K8s probes**: Use port 2609 `/health` for liveness/startup probes and `/ready` for readiness probes — no auth needed, purpose-built for this.
 
 ### Kubernetes Deployment Options
 
@@ -164,13 +202,13 @@ Enonic has two separate things that need to be deployed: **apps** (code) and **c
 
 ### App deployment (code)
 
-App deployment is covered in a separate investigation: **[INVESTIGATE-enonic-app-deployment-pipeline.md](INVESTIGATE-enonic-app-deployment-pipeline.md)**
+App deployment is covered in a separate investigation: **[INVESTIGATE-enonic-app-deployment-pipeline.md](../backlog/INVESTIGATE-enonic-app-deployment-pipeline.md)**
 
 Summary of the chosen approach: a sidecar container in the Enonic pod monitors GitHub Releases. When a developer merges to main, GitHub Actions builds the JAR and publishes it as a GitHub Release. The sidecar polls for new releases, downloads the JAR, and places it in `$XP_HOME/deploy`. Enonic hot-installs the app without restart. UIS CLI commands (`./uis enonic deploy-app`, `remove-app`, `list-apps`) manage which repos the sidecar monitors.
 
 ### Content deployment (data)
 
-Content deployment is covered in a separate investigation: **[INVESTIGATE-enonic-content-deployment.md](INVESTIGATE-enonic-content-deployment.md)**
+Content deployment is covered in a separate investigation: **[INVESTIGATE-enonic-content-deployment.md](../backlog/INVESTIGATE-enonic-content-deployment.md)**
 
 Key finding: content depends on apps. The app (with its content type definitions) must be deployed **before** content can be imported. Content items store a type reference namespaced to the app (e.g. `com.example.myapp:article`), so without the app installed, content is non-functional.
 
@@ -187,8 +225,8 @@ Key finding: content depends on apps. The app (with its content type definitions
 | What | Format | Deploy method (production) | Deploy method (local UIS) |
 |---|---|---|---|
 | **XP platform** | Docker image `enonic/xp` | K8s deployment (Helm/manifests) | Same — Ansible playbook deploys to k3s |
-| **Apps (code)** | JAR file | CI/CD agent on same network → management API (port 4848) | Sidecar pull pipeline — see [INVESTIGATE-enonic-app-deployment-pipeline.md](INVESTIGATE-enonic-app-deployment-pipeline.md) |
-| **Content (data)** | XP internal repository | Data Toolbox export/import or `enonic dump`/`enonic load` | See [INVESTIGATE-enonic-content-deployment.md](INVESTIGATE-enonic-content-deployment.md) |
+| **Apps (code)** | JAR file | CI/CD agent on same network → management API (port 4848) | Sidecar pull pipeline — see [INVESTIGATE-enonic-app-deployment-pipeline.md](../backlog/INVESTIGATE-enonic-app-deployment-pipeline.md) |
+| **Content (data)** | XP internal repository | Data Toolbox export/import or `enonic dump`/`enonic load` | See [INVESTIGATE-enonic-content-deployment.md](../backlog/INVESTIGATE-enonic-content-deployment.md) |
 
 ---
 
@@ -208,7 +246,7 @@ Key finding: content depends on apps. The app (with its content type definitions
 - **Ingress**: `HostRegexp(`enonic\..+`)` — works across localhost, Tailscale, and Cloudflare domains like all other services
 - **Storage**: Standard PVC via cluster storage class
 - **Access**: `http://enonic.localhost` (port 8080) — Content Studio, admin console, headless APIs
-- **App deployment**: Sidecar pull pipeline — see [INVESTIGATE-enonic-app-deployment-pipeline.md](INVESTIGATE-enonic-app-deployment-pipeline.md). Port 4848 not exposed.
+- **App deployment**: Sidecar pull pipeline — see [INVESTIGATE-enonic-app-deployment-pipeline.md](../backlog/INVESTIGATE-enonic-app-deployment-pipeline.md). Port 4848 not exposed.
 
 ### Proposed Files
 
@@ -222,7 +260,7 @@ Key finding: content depends on apps. The app (with its content type definitions
 | IngressRoute | `manifests/085-enonic-ingressroute.yaml` |
 | Documentation | `website/docs/packages/integration/enonic.md` |
 
-App deployment CLI files are listed in [INVESTIGATE-enonic-app-deployment-pipeline.md](INVESTIGATE-enonic-app-deployment-pipeline.md).
+App deployment CLI files are listed in [INVESTIGATE-enonic-app-deployment-pipeline.md](../backlog/INVESTIGATE-enonic-app-deployment-pipeline.md).
 
 ---
 
@@ -236,6 +274,6 @@ App deployment CLI files are listed in [INVESTIGATE-enonic-app-deployment-pipeli
 - [x] Figure out content and app deployment workflow → **See "Content and App Deployment Workflow" section**
 - [x] Understand CI/CD and management API security → **Port 4848 stays on private network, JWT auth, never exposed publicly**
 - [x] Investigate CI/CD reachability problem → **Same issue for enterprise Azure and local UIS — pipeline can't reach port 4848 without self-hosted agent or alternative approach**
-- [x] Design app deployment pipeline → **Moved to separate investigation: [INVESTIGATE-enonic-app-deployment-pipeline.md](INVESTIGATE-enonic-app-deployment-pipeline.md)**
-- [ ] Create PLAN-enonic-xp-deployment.md with implementation phases (base platform only)
+- [x] Design app deployment pipeline → **Moved to separate investigation: [INVESTIGATE-enonic-app-deployment-pipeline.md](../backlog/INVESTIGATE-enonic-app-deployment-pipeline.md)**
+- [x] Create PLAN-enonic-xp-deployment.md with implementation phases (base platform only) → **Done. Deployed and verified (6 E2E tests pass, 6 rounds of testing).**
 

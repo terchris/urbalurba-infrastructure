@@ -1,0 +1,27 @@
+# 085-enonic-config.yaml
+#
+# Description:
+# ConfigMap for Enonic XP CMS platform configuration.
+# Contains JVM settings and XP configuration properties.
+#
+# Usage:
+#   kubectl apply -f 085-enonic-config.yaml
+#
+# Notes:
+# - XP_OPTS sets JVM heap; recommended ~30% of container memory limit
+# - Dev settings: 512m min, 1g max heap (container limit 2Gi)
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: enonic-xp-config
+  namespace: enonic
+  labels:
+    app: enonic-xp
+    component: config
+data:
+  # JVM options for Enonic XP
+  # -Xms512m: initial heap size
+  # -Xmx1g: maximum heap size (~30% of 2Gi container memory limit)
+  XP_OPTS: "-Xms512m -Xmx1g"

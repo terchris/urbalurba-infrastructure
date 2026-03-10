@@ -10,7 +10,7 @@
 
 **Last Updated**: 2026-03-06
 
-**Related**: [INVESTIGATE-enonic-xp-deployment.md](INVESTIGATE-enonic-xp-deployment.md) — covers the base Enonic XP platform deployment
+**Related**: [INVESTIGATE-enonic-xp-deployment.md](../completed/INVESTIGATE-enonic-xp-deployment.md) — covers the base Enonic XP platform deployment
 
 ---
 

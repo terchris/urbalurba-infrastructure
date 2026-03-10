@@ -11,7 +11,7 @@
 **Last Updated**: 2026-03-09
 
 **Related**:
-- [INVESTIGATE-enonic-xp-deployment.md](INVESTIGATE-enonic-xp-deployment.md) — base Enonic XP platform deployment
+- [INVESTIGATE-enonic-xp-deployment.md](../completed/INVESTIGATE-enonic-xp-deployment.md) — base Enonic XP platform deployment
 - [INVESTIGATE-enonic-app-deployment-pipeline.md](INVESTIGATE-enonic-app-deployment-pipeline.md) — app (code) deployment pipeline
 
 ---
