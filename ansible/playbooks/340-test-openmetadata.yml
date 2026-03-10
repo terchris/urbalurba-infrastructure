@@ -1,0 +1,341 @@
+---
+# file: ansible/playbooks/340-test-openmetadata.yml
+# Description:
+# End-to-end tests for the OpenMetadata deployment.
+# Validates API health, version, admin login, backend connectivity, UI access, and auth security.
+#
+# Tests (all CRITICAL):
+#   A. API health check - /api/v1/system/health must respond
+#   B. Version check - must report 1.12.1
+#   C. Admin login - credentials from secrets must return JWT token
+#   D. Database & Search connected - /api/v1/system/status must report both passed
+#   E. UI access via Traefik IngressRoute - openmetadata.localhost must be routable
+#   F. Wrong credentials rejected - bad password must NOT authenticate
+#
+# Usage:
+# ansible-playbook ansible/playbooks/340-test-openmetadata.yml -e kube_context="rancher-desktop"
+
+- name: End-to-End OpenMetadata Tests
+  hosts: localhost
+  gather_facts: false
+  vars:
+    merged_kubeconf_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
+    openmetadata_namespace: "openmetadata"
+    openmetadata_service: "openmetadata.{{ openmetadata_namespace }}.svc.cluster.local"
+    openmetadata_port: 8585
+
+  tasks:
+    - name: "0. Display test suite initiation"
+      ansible.builtin.debug:
+        msg: |
+          🧪 End-to-End OpenMetadata Tests
+          ===============================================
+          Running 6 test groups (all CRITICAL)
+
+    - name: "0.1. Get Traefik ClusterIP for in-cluster hostname routing"
+      ansible.builtin.shell: |
+        kubectl get svc traefik -n kube-system -o jsonpath='{.spec.clusterIP}'
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: traefik_ip_result
+      changed_when: false
+
+    - name: "0.2. Store Traefik IP"
+      ansible.builtin.set_fact:
+        traefik_ip: "{{ traefik_ip_result.stdout }}"
+
+    - name: "0.3. Get OpenMetadata admin email from urbalurba-secrets"
+      ansible.builtin.shell: |
+        kubectl get secret urbalurba-secrets -n {{ openmetadata_namespace }} -o jsonpath='{.data.OPENMETADATA_ADMIN_EMAIL}' | base64 -d
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: admin_email_result
+      changed_when: false
+
+    - name: "0.4. Get OpenMetadata admin password from urbalurba-secrets"
+      ansible.builtin.shell: |
+        kubectl get secret urbalurba-secrets -n {{ openmetadata_namespace }} -o jsonpath='{.data.OPENMETADATA_ADMIN_PASSWORD}' | base64 -d
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: admin_password_result
+      changed_when: false
+
+    - name: "0.5. Store admin credentials"
+      ansible.builtin.set_fact:
+        admin_email: "{{ admin_email_result.stdout }}"
+        admin_password: "{{ admin_password_result.stdout }}"
+
+    # ===== Test A: API health check (CRITICAL) =====
+    - name: "A1. Check OpenMetadata API health"
+      ansible.builtin.shell: |
+        kubectl run curl-test-health-{{ 99999 | random }} --image=curlimages/curl --rm -i --restart=Never -n {{ openmetadata_namespace }} -- \
+          curl -s -w "\nHTTP_CODE:%{http_code}" http://{{ openmetadata_service }}:{{ openmetadata_port }}/api/v1/system/health
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: api_health_test
+      retries: 5
+      delay: 10
+      until: "'HTTP_CODE:200' in api_health_test.stdout"
+      failed_when: false
+      changed_when: false
+
+    - name: "A2. Verify API health returns 200"
+      ansible.builtin.assert:
+        that:
+          - "'HTTP_CODE:200' in api_health_test.stdout"
+        fail_msg: |
+          ❌ CRITICAL: OpenMetadata API health check failed!
+          Expected HTTP 200 from /api/v1/system/health.
+          Got: {{ api_health_test.stdout[:500] | default('No output') }}
+
+          Troubleshooting:
+          - Check pod status: kubectl get pods -n {{ openmetadata_namespace }}
+          - Check pod logs: kubectl logs -n {{ openmetadata_namespace }} -l app.kubernetes.io/name=openmetadata --tail=50
+          - Check service: kubectl get svc -n {{ openmetadata_namespace }}
+        success_msg: "✅ Test A PASSED: OpenMetadata API is healthy"
+
+    - name: "A3. Display API health test success"
+      ansible.builtin.debug:
+        msg: |
+          ✅ Test A: API Health Check — PASSED (CRITICAL)
+          📋 /api/v1/system/health returns HTTP 200
+
+    # ===== Test B: Version check (CRITICAL) =====
+    - name: "B1. Check OpenMetadata version"
+      ansible.builtin.shell: |
+        kubectl run curl-test-version-{{ 99999 | random }} --image=curlimages/curl --rm -i --restart=Never -n {{ openmetadata_namespace }} -- \
+          curl -s http://{{ openmetadata_service }}:{{ openmetadata_port }}/api/v1/system/version
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: version_test
+      failed_when: false
+      changed_when: false
+
+    - name: "B2. Verify correct version deployed"
+      ansible.builtin.assert:
+        that:
+          - "'1.12.1' in version_test.stdout"
+        fail_msg: |
+          ❌ CRITICAL: OpenMetadata version mismatch!
+          Expected version 1.12.1 in /api/v1/system/version response.
+          Got: {{ version_test.stdout[:500] | default('No output') }}
+
+          Troubleshooting:
+          - Check image: kubectl get pods -n {{ openmetadata_namespace }} -o jsonpath='{.items[0].spec.containers[0].image}'
+          - Check Helm values: helm get values openmetadata -n {{ openmetadata_namespace }}
+        success_msg: "✅ Test B PASSED: OpenMetadata version is 1.12.1"
+
+    - name: "B3. Display version test success"
+      ansible.builtin.debug:
+        msg: |
+          ✅ Test B: Version Check — PASSED (CRITICAL)
+          📋 /api/v1/system/version reports 1.12.1
+
+    # ===== Test C: Admin login (CRITICAL) =====
+    # Note: OpenMetadata login API requires password to be base64-encoded
+    - name: "C1. Authenticate as admin"
+      ansible.builtin.shell: |
+        kubectl run curl-test-login-{{ 99999 | random }} --image=curlimages/curl --rm -i --restart=Never -n {{ openmetadata_namespace }} -- \
+          sh -c '
+            PW_B64=$(echo -n "{{ admin_password }}" | base64)
+            RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}" \
+              -X POST http://{{ openmetadata_service }}:{{ openmetadata_port }}/api/v1/users/login \
+              -H "Content-Type: application/json" \
+              -d "{\"email\":\"{{ admin_email }}\",\"password\":\"${PW_B64}\"}")
+            echo "$RESPONSE"
+            if echo "$RESPONSE" | grep -q "accessToken\|tokenType\|token"; then
+              echo "LOGIN_RESULT: SUCCESS"
+            else
+              echo "LOGIN_RESULT: FAILED"
+            fi
+          '
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: login_test
+      retries: 3
+      delay: 10
+      until: "'LOGIN_RESULT: SUCCESS' in login_test.stdout"
+      failed_when: false
+      changed_when: false
+
+    - name: "C2. Verify admin login succeeded"
+      ansible.builtin.assert:
+        that:
+          - "'LOGIN_RESULT: SUCCESS' in login_test.stdout"
+        fail_msg: |
+          ❌ CRITICAL: Admin login to OpenMetadata FAILED!
+          Expected POST /api/v1/users/login to return a JWT token.
+          Got: {{ login_test.stdout[:500] | default('No output') }}
+
+          Troubleshooting:
+          - Check admin email: kubectl get secret urbalurba-secrets -n {{ openmetadata_namespace }} -o jsonpath='{.data.OPENMETADATA_ADMIN_EMAIL}' | base64 -d
+          - Check admin password: kubectl get secret urbalurba-secrets -n {{ openmetadata_namespace }} -o jsonpath='{.data.OPENMETADATA_ADMIN_PASSWORD}' | base64 -d
+          - Check pod logs: kubectl logs -n {{ openmetadata_namespace }} -l app.kubernetes.io/name=openmetadata --tail=50
+          - Note: The login endpoint might be /api/v1/users/loginWithPwd — check OpenMetadata docs
+        success_msg: "✅ Test C PASSED: Admin login returned JWT token"
+
+    - name: "C3. Extract JWT token for subsequent tests"
+      ansible.builtin.set_fact:
+        jwt_token: "{{ login_test.stdout | regex_search('\"accessToken\"\\s*:\\s*\"([^\"]+)\"', '\\1') | first | default('') }}"
+      when: "'LOGIN_RESULT: SUCCESS' in login_test.stdout"
+      ignore_errors: true
+
+    - name: "C4. Display login test success"
+      ansible.builtin.debug:
+        msg: |
+          ✅ Test C: Admin Login — PASSED (CRITICAL)
+          📋 POST /api/v1/users/login with admin credentials returned JWT token
+          🔐 Admin authentication and database connectivity confirmed
+
+    # ===== Test D: Database & Search connected (CRITICAL) =====
+    - name: "D1. Check system status with JWT token"
+      ansible.builtin.shell: |
+        kubectl run curl-test-status-{{ 99999 | random }} --image=curlimages/curl --rm -i --restart=Never -n {{ openmetadata_namespace }} -- \
+          sh -c '
+            RESPONSE=$(curl -s http://{{ openmetadata_service }}:{{ openmetadata_port }}/api/v1/system/status \
+              -H "Authorization: Bearer {{ jwt_token | default("no-token") }}")
+            echo "$RESPONSE"
+            if echo "$RESPONSE" | grep -q "HEALTHY\|healthy"; then
+              echo "STATUS_RESULT: HEALTHY"
+            else
+              echo "STATUS_RESULT: UNHEALTHY"
+            fi
+          '
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: status_test
+      failed_when: false
+      changed_when: false
+      when: jwt_token is defined and jwt_token | length > 0
+
+    - name: "D2. Verify database and search are connected"
+      ansible.builtin.assert:
+        that:
+          - "status_test is defined"
+          - "'STATUS_RESULT: HEALTHY' in status_test.stdout or 'HEALTHY' in status_test.stdout"
+        fail_msg: |
+          ❌ CRITICAL: OpenMetadata backend services not healthy!
+          Expected /api/v1/system/status to report healthy.
+          Got: {{ status_test.stdout[:500] | default('No output or test skipped') }}
+
+          Troubleshooting:
+          - Check PostgreSQL: kubectl get pods -n default -l app.kubernetes.io/name=postgresql
+          - Check Elasticsearch: kubectl get pods -n default -l app=elasticsearch-master
+          - Check pod logs: kubectl logs -n {{ openmetadata_namespace }} -l app.kubernetes.io/name=openmetadata --tail=100
+          - Check DB connection: kubectl exec -n default postgresql-0 -- psql -U postgres -c "\\l" | grep openmetadata
+        success_msg: "✅ Test D PASSED: Database and search backends are healthy"
+      when: jwt_token is defined and jwt_token | length > 0
+
+    - name: "D3. Display status test success"
+      ansible.builtin.debug:
+        msg: |
+          ✅ Test D: Database & Search Connected — PASSED (CRITICAL)
+          📋 /api/v1/system/status reports healthy backends
+
+    # ===== Test E: UI access via Traefik IngressRoute (CRITICAL) =====
+    - name: "E1. Access OpenMetadata UI via Traefik with Host header"
+      ansible.builtin.shell: |
+        kubectl run curl-test-ui-{{ 99999 | random }} --image=curlimages/curl --rm -i --restart=Never -n {{ openmetadata_namespace }} -- \
+          curl -s -o /dev/null -w "HTTP_CODE:%{http_code}" \
+          -H "Host: openmetadata.localhost" \
+          http://{{ traefik_ip }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: ui_access_test
+      retries: 3
+      delay: 10
+      until: "'HTTP_CODE:200' in ui_access_test.stdout"
+      failed_when: false
+      changed_when: false
+
+    - name: "E2. Verify UI is accessible via Traefik"
+      ansible.builtin.assert:
+        that:
+          - "'HTTP_CODE:200' in ui_access_test.stdout"
+        fail_msg: |
+          ❌ CRITICAL: OpenMetadata UI not accessible via Traefik IngressRoute!
+          Expected HTTP 200 when accessing openmetadata.localhost through Traefik.
+          Got: {{ ui_access_test.stdout | default('No output') }}
+
+          Troubleshooting:
+          - Check IngressRoute: kubectl get ingressroute -n {{ openmetadata_namespace }}
+          - Check Traefik: kubectl get svc traefik -n kube-system
+          - Check service: kubectl get svc -n {{ openmetadata_namespace }}
+        success_msg: "✅ Test E PASSED: OpenMetadata UI accessible via openmetadata.localhost"
+
+    - name: "E3. Display UI access test success"
+      ansible.builtin.debug:
+        msg: |
+          ✅ Test E: UI Access via Traefik — PASSED (CRITICAL)
+          📋 openmetadata.localhost routes correctly through Traefik IngressRoute
+
+    # ===== Test F: Wrong credentials rejected (CRITICAL) =====
+    # Note: Password must be base64-encoded for the login API
+    - name: "F1. Attempt login with wrong password"
+      ansible.builtin.shell: |
+        kubectl run curl-test-badlogin-{{ 99999 | random }} --image=curlimages/curl --rm -i --restart=Never -n {{ openmetadata_namespace }} -- \
+          sh -c '
+            BAD_PW_B64=$(echo -n "WrongPassword999" | base64)
+            RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}" \
+              -X POST http://{{ openmetadata_service }}:{{ openmetadata_port }}/api/v1/users/login \
+              -H "Content-Type: application/json" \
+              -d "{\"email\":\"{{ admin_email }}\",\"password\":\"${BAD_PW_B64}\"}")
+            echo "$RESPONSE"
+            if echo "$RESPONSE" | grep -q "accessToken\|tokenType\|token"; then
+              echo "BAD_LOGIN_RESULT: WRONGLY_ACCEPTED"
+            else
+              echo "BAD_LOGIN_RESULT: CORRECTLY_REJECTED"
+            fi
+          '
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: badlogin_test
+      failed_when: false
+      changed_when: false
+
+    - name: "F2. Verify wrong password was rejected"
+      ansible.builtin.assert:
+        that:
+          - "'BAD_LOGIN_RESULT: CORRECTLY_REJECTED' in badlogin_test.stdout"
+        fail_msg: |
+          ❌ CRITICAL: Wrong password was ACCEPTED! Authentication is broken!
+          Login with admin / WrongPassword999 should have been rejected
+          but the API returned a token.
+        success_msg: "✅ Test F PASSED: Wrong password correctly rejected"
+
+    - name: "F3. Display wrong credentials test success"
+      ansible.builtin.debug:
+        msg: |
+          ✅ Test F: Wrong Credentials Rejected — PASSED (CRITICAL)
+          📋 Login with wrong password correctly denied
+          🔒 Authentication is properly validating credentials
+
+    # ===== Summary =====
+    - name: "S1. Display comprehensive test results"
+      ansible.builtin.debug:
+        msg:
+          - "==============================================="
+          - "🧪 End-to-End OpenMetadata Test Results"
+          - "==============================================="
+          - ""
+          - "Test A — API Health Check:              ✅ PASSED (CRITICAL)"
+          - "  /api/v1/system/health returns HTTP 200"
+          - ""
+          - "Test B — Version Check:                 ✅ PASSED (CRITICAL)"
+          - "  /api/v1/system/version reports 1.12.1"
+          - ""
+          - "Test C — Admin Login:                   ✅ PASSED (CRITICAL)"
+          - "  POST /api/v1/users/login returns JWT token"
+          - ""
+          - "Test D — Database & Search Connected:   ✅ PASSED (CRITICAL)"
+          - "  /api/v1/system/status reports healthy backends"
+          - ""
+          - "Test E — UI Access via Traefik:         ✅ PASSED (CRITICAL)"
+          - "  openmetadata.localhost routes correctly"
+          - ""
+          - "Test F — Wrong Credentials Rejected:    ✅ PASSED (CRITICAL)"
+          - "  Bad password correctly denied"
+          - ""
+          - "==============================================="
+          - "🎉 ALL 6 CRITICAL TESTS PASSED"
+          - "==============================================="

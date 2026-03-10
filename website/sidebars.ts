@@ -67,6 +67,7 @@ const sidebars: SidebarsConfig = {
           },
           items: [
             'packages/analytics/jupyterhub',
+            'packages/analytics/openmetadata',
             'packages/analytics/spark',
             'packages/analytics/unitycatalog',
           ],

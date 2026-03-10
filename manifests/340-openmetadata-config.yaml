@@ -1,0 +1,75 @@
+# 340-openmetadata-config.yaml
+# OpenMetadata deployment using the official Helm chart
+#
+# Repository: https://open-metadata.github.io/openmetadata-helm-charts/
+# Chart: open-metadata/openmetadata
+# Version: 1.12.1
+#
+# This configuration deploys OpenMetadata server reusing existing
+# UIS PostgreSQL and Elasticsearch services. Uses K8s Jobs executor
+# instead of Airflow for ingestion pipelines.
+#
+# Installation:
+# helm repo add open-metadata https://open-metadata.github.io/openmetadata-helm-charts/
+# helm install openmetadata open-metadata/openmetadata --version 1.12.1 -f 340-openmetadata-config.yaml -n openmetadata --create-namespace
+#
+# Uninstall:
+# helm uninstall openmetadata -n openmetadata
+
+# Pin image version explicitly
+image:
+  repository: docker.getcollate.io/openmetadata/server
+  tag: "1.12.1"
+  pullPolicy: IfNotPresent
+
+openmetadata:
+  config:
+    # PostgreSQL database (existing UIS instance)
+    database:
+      enabled: true
+      host: postgresql.default.svc.cluster.local
+      port: 5432
+      driverClass: org.postgresql.Driver
+      dbScheme: postgresql
+      databaseName: openmetadata_db
+      auth:
+        username: postgres
+        password:
+          secretRef: urbalurba-secrets
+          secretKey: OPENMETADATA_DATABASE_PASSWORD
+
+    # Elasticsearch (existing UIS instance, security disabled)
+    elasticsearch:
+      enabled: true
+      host: elasticsearch-master.default.svc.cluster.local
+      port: 9200
+      scheme: http
+      searchType: elasticsearch
+
+    # K8s Jobs executor (no Airflow)
+    pipelineServiceClientConfig:
+      enabled: true
+      type: "k8s"
+      metadataApiEndpoint: http://openmetadata.openmetadata.svc.cluster.local:8585/api
+
+    # Initial admin user
+    authorizer:
+      initialAdmins:
+      - "admin"
+
+# Resource limits for dev environment
+resources:
+  requests:
+    cpu: "500m"
+    memory: "1.5Gi"
+  limits:
+    cpu: "1000m"
+    memory: "1.5Gi"
+
+# Extra environment variables for admin credentials
+extraEnvs:
+  - name: OPENMETADATA_ADMIN_DEFAULT_EMAIL
+    valueFrom:
+      secretKeyRef:
+        name: urbalurba-secrets
+        key: OPENMETADATA_ADMIN_EMAIL
