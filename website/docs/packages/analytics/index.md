@@ -1,7 +1,7 @@
 ---
 title: Analytics
 sidebar_label: Analytics
-description: Data science with Spark, JupyterHub, and Unity Catalog
+description: Data science with Spark, JupyterHub, Unity Catalog, and OpenMetadata
 ---
 
 # Analytics
@@ -13,6 +13,7 @@ The analytics package provides data science and analytics platforms for interact
 | Service | Description | Deploy |
 |---------|-------------|--------|
 | [JupyterHub](./jupyterhub.md) | Multi-user Jupyter notebooks with PySpark | `./uis deploy jupyterhub` |
+| [OpenMetadata](./openmetadata.md) | Data discovery, governance, and metadata platform | `./uis deploy openmetadata` |
 | [Apache Spark](./spark.md) | Kubernetes-native distributed processing | `./uis deploy spark` |
 | [Unity Catalog](./unitycatalog.md) | Data catalog and governance | `./uis deploy unity-catalog` |
 
@@ -22,13 +23,12 @@ The analytics package provides data science and analytics platforms for interact
 ./uis stack install analytics
 ```
 
-Or deploy individually:
+This installs Spark, JupyterHub, and Unity Catalog. OpenMetadata is deployed separately:
 
 ```bash
-./uis deploy postgresql    # Required by Unity Catalog
-./uis deploy spark
-./uis deploy jupyterhub
-./uis deploy unity-catalog
+./uis deploy postgresql      # Required by OpenMetadata
+./uis deploy elasticsearch   # Required by OpenMetadata
+./uis deploy openmetadata
 ```
 
 ## How It Works
@@ -36,3 +36,4 @@ Or deploy individually:
 - **JupyterHub** gives users interactive notebooks with PySpark pre-configured
 - **Spark Operator** runs batch jobs as Kubernetes-native SparkApplication resources
 - **Unity Catalog** provides a three-level namespace (catalog.schema.table) for governed data access
+- **OpenMetadata** provides data discovery, lineage tracking, and governance across all data assets

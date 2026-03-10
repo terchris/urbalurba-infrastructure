@@ -39,9 +39,10 @@ Everything works today, but 18 of 21 Helm charts and several container images ha
 | **jupyterhub** | `jupyterhub/jupyterhub` | — | UNPINNED |
 | **pgadmin** | `runix/pgadmin4` | — | UNPINNED |
 | **redisinsight** | `redisinsight/redisinsight` | — | UNPINNED |
+| **openmetadata** | `open-metadata/openmetadata` | `1.12.1` | PINNED |
 | **mysql** | (manifest, no helm) | — | N/A |
 
-**Summary: 4 pinned, 17 unpinned out of 21 Helm charts.**
+**Summary: 5 pinned, 17 unpinned out of 22 Helm charts.**
 
 ### Container Images — Version Pinning Status
 
@@ -54,6 +55,7 @@ Images explicitly set in manifests or config files:
 | **rabbitmq** | `bitnamilegacy/rabbitmq` | `3.13.7-debian-12-r5` | PINNED |
 | **tika** | `apache/tika` | `3.0.0.0` | PINNED |
 | **elasticsearch** | `docker.elastic.co/elasticsearch/elasticsearch` | `9.3.0` | PINNED |
+| **openmetadata** | `docker.getcollate.io/openmetadata/server` | `1.12.1` | PINNED |
 | **redis** | `redis` | `7.4` | FLOATING (minor) |
 | **mysql** | `mysql` | `8.0` | FLOATING (minor) |
 | **postgresql** | `ghcr.io/terchris/urbalurba-postgresql` | `latest` | UNPINNED |
@@ -117,6 +119,7 @@ Bitnami changed their distribution model (Aug 2025). RabbitMQ already uses `bitn
 | authentik | `https://charts.goauthentik.io` | `070-setup-authentik.yml` |
 | redisinsight | `https://mrnim94.github.io/redisinsight/` | `651-adm-redisinsight.yml` |
 | spark-kubernetes-operator | `https://apache.github.io/spark-kubernetes-operator` | `330-setup-spark.yml` |
+| open-metadata | `https://open-metadata.github.io/openmetadata-helm-charts/` | `340-setup-openmetadata.yml` |
 
 ---
 
