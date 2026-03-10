@@ -1,0 +1,46 @@
+# 341-openmetadata-ingressroute.yaml
+#
+# Description:
+# IngressRoute for OpenMetadata data governance platform.
+# Provides web access to the OpenMetadata UI and API.
+# Automatically handles both internal (.localhost) and external domains.
+#
+# HostRegexp Routing:
+# Uses HostRegexp('openmetadata\..+') to automatically handle:
+# - openmetadata.localhost (internal development access)
+# - Any future external domains (future-proof routing)
+#
+# Usage:
+# kubectl apply -f 341-openmetadata-ingressroute.yaml
+#
+# Dependencies:
+# - OpenMetadata server service must exist (deployed via Helm)
+# - OpenMetadata namespace must exist
+#
+# Testing:
+# curl http://openmetadata.localhost
+#
+# Service Port:
+# - OpenMetadata server listens on port 8585 (API + UI)
+
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: openmetadata-server
+  namespace: openmetadata
+  labels:
+    app: openmetadata
+    component: server
+    type: development
+    routing: unified
+    protection: public
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: HostRegexp(`openmetadata\..+`)
+      kind: Rule
+      services:
+        - name: openmetadata
+          port: 8585

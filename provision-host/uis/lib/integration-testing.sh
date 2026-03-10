@@ -82,6 +82,7 @@ _build_skip_list() {
 # Services with a verify step (one per line, format: service_id:cli_args)
 VERIFY_SERVICES="
 argocd:argocd verify
+openmetadata:openmetadata verify
 "
 
 # ============================================================

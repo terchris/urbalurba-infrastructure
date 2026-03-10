@@ -1,0 +1,82 @@
+---
+# file: ansible/playbooks/340-remove-openmetadata.yml
+# Description: Remove OpenMetadata from Kubernetes
+#
+# Usage:
+# ansible-playbook playbooks/340-remove-openmetadata.yml -e kube_context="rancher-desktop"
+
+- name: Remove OpenMetadata from Kubernetes
+  hosts: localhost
+  gather_facts: false
+  vars:
+    manifests_folder: "/mnt/urbalurbadisk/manifests"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
+    openmetadata_namespace: "openmetadata"
+
+  tasks:
+    - name: 1. Print playbook description
+      ansible.builtin.debug:
+        msg: |
+          Removing OpenMetadata from Kubernetes
+          Namespace: {{ openmetadata_namespace }}
+
+    - name: 2. Delete OpenMetadata IngressRoute
+      kubernetes.core.k8s:
+        src: "{{ manifests_folder }}/341-openmetadata-ingressroute.yaml"
+        state: absent
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      ignore_errors: true
+
+    - name: 3. Check for OpenMetadata Helm release
+      ansible.builtin.shell: helm list -n {{ openmetadata_namespace }} | grep -w openmetadata
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: helm_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: 4. Remove OpenMetadata Helm release
+      ansible.builtin.command: helm uninstall openmetadata -n {{ openmetadata_namespace }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      when: helm_check.rc == 0
+      changed_when: true
+      ignore_errors: true
+
+    - name: 5. Wait for pods to terminate
+      ansible.builtin.shell: |
+        kubectl wait --for=delete pod -l app.kubernetes.io/name=openmetadata -n {{ openmetadata_namespace }} --timeout=60s 2>/dev/null || true
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      changed_when: false
+
+    - name: 6. Delete PVCs in openmetadata namespace
+      ansible.builtin.shell: kubectl delete pvc -n {{ openmetadata_namespace }} --all --ignore-not-found
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      changed_when: true
+      ignore_errors: true
+
+    - name: 7. Delete openmetadata namespace
+      kubernetes.core.k8s:
+        name: "{{ openmetadata_namespace }}"
+        api_version: v1
+        kind: Namespace
+        state: absent
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      ignore_errors: true
+
+    - name: 8. Display removal status
+      ansible.builtin.debug:
+        msg: |
+          ===============================================
+          OpenMetadata Removal Status
+          ===============================================
+
+          ✅ OpenMetadata resources removed
+
+          Note: The PostgreSQL database 'openmetadata_db' was NOT deleted.
+          To remove the database manually:
+            kubectl exec -n default postgresql-0 -- psql -U postgres -c "DROP DATABASE openmetadata_db;"
+
+          ===============================================

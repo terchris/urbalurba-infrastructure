@@ -63,6 +63,28 @@
 ,
   {
     "@type": "SoftwareApplication",
+    "id": "openmetadata",
+    "name": "OpenMetadata",
+    "description": "Open-source data governance and metadata platform",
+    "category": "ANALYTICS",
+    "tags": ["data-governance", "metadata", "data-discovery", "data-lineage", "data-quality", "data-catalog"],
+    "abstract": "Open-source metadata platform for data discovery, governance, and observability",
+    "logo": "openmetadata-logo.webp",
+    "website": "https://open-metadata.org"
+    ,"summary": "OpenMetadata is an open-source metadata platform for data discovery, data observability, and data governance. It provides unified metadata management with 100+ connectors, column-level lineage, data quality checks, and collaboration features."
+    ,"docs": "/docs/packages/analytics/openmetadata"
+    ,"playbook": "340-setup-openmetadata.yml"
+    ,"priority": 93
+    ,"checkCommand": "kubectl get pods -n openmetadata -l app.kubernetes.io/name=openmetadata --no-headers 2>/dev/null | grep -q Running"
+    ,"removePlaybook": "340-remove-openmetadata.yml"
+    ,"requires": ["postgresql", "elasticsearch"]
+    ,"helmChart": "open-metadata/openmetadata"
+    ,"namespace": "openmetadata"
+    ,"image": "docker.getcollate.io/openmetadata/server:1.12.1"
+  }
+,
+  {
+    "@type": "SoftwareApplication",
     "id": "spark",
     "name": "Apache Spark",
     "description": "Unified analytics engine for big data",
@@ -395,7 +417,7 @@
     "logo": "cloudflare-logo.webp",
     "website": "https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/"
     ,"summary": "Cloudflare Tunnel creates a secure, outbound-only connection between your origin and Cloudflares edge. No need to open public inbound ports - traffic is routed through Cloudflares network."
-    ,"docs": "/docs/packages/networking/cloudflare-tunnel"
+    ,"docs": "/docs/packages/networking/cloudflare"
     ,"playbook": "820-deploy-network-cloudflare-tunnel.yml"
     ,"priority": 101
     ,"checkCommand": "kubectl get pods -n default -l app=cloudflared --no-headers 2>/dev/null | grep -q Running"
@@ -416,7 +438,7 @@
     "logo": "tailscale-logo.webp",
     "website": "https://tailscale.com"
     ,"summary": "Tailscale creates a secure, private network between your servers, computers, and cloud instances using WireGuard encryption. It provides zero-config networking with built-in NAT traversal."
-    ,"docs": "/docs/packages/networking/tailscale-tunnel"
+    ,"docs": "/docs/packages/networking/tailscale"
     ,"playbook": "802-deploy-network-tailscale-tunnel.yml"
     ,"priority": 100
     ,"checkCommand": "kubectl get pods -n tailscale -l app=operator --no-headers 2>/dev/null | grep -q Running"

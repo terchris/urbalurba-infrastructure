@@ -1,0 +1,394 @@
+---
+# file: ansible/playbooks/340-setup-openmetadata.yml
+# Description:
+# Set up OpenMetadata data governance platform on Kubernetes.
+# Uses the official Helm chart with existing UIS PostgreSQL and Elasticsearch.
+# K8s native orchestrator for ingestion (no Airflow).
+#
+# Prerequisites:
+# - Kubernetes cluster is set up and accessible
+# - PostgreSQL deployed (manifest 042)
+# - Elasticsearch deployed (manifest 060)
+# - urbalurba-secrets applied to openmetadata namespace
+# - Helm 3.x installed
+#
+# Usage:
+# ansible-playbook playbooks/340-setup-openmetadata.yml -e kube_context="rancher-desktop"
+
+- name: Set up OpenMetadata on Kubernetes
+  hosts: localhost
+  gather_facts: false
+  vars:
+    manifests_folder: "/mnt/urbalurbadisk/manifests"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
+    openmetadata_namespace: "openmetadata"
+    openmetadata_config_file: "{{ manifests_folder }}/340-openmetadata-config.yaml"
+    openmetadata_ingress_file: "{{ manifests_folder }}/341-openmetadata-ingressroute.yaml"
+    openmetadata_helm_repo_url: "https://open-metadata.github.io/openmetadata-helm-charts/"
+    openmetadata_helm_chart: "open-metadata/openmetadata"
+    openmetadata_helm_version: "1.12.1"
+    installation_timeout: 600
+    pod_readiness_timeout: 300
+
+  tasks:
+    - name: 1. Print playbook description
+      ansible.builtin.debug:
+        msg: |
+          Setting up OpenMetadata on Kubernetes
+          Version: {{ openmetadata_helm_version }}
+          Namespace: {{ openmetadata_namespace }}
+          Database: PostgreSQL (existing UIS instance)
+          Search: Elasticsearch (existing UIS instance)
+          Orchestrator: K8s Jobs (no Airflow)
+
+    # ============= PHASE 1: PREREQUISITES VERIFICATION =============
+
+    - name: 2. Create openmetadata namespace
+      kubernetes.core.k8s:
+        name: "{{ openmetadata_namespace }}"
+        api_version: v1
+        kind: Namespace
+        state: present
+        kubeconfig: "{{ merged_kubeconf_file }}"
+
+    - name: 3. Check if PostgreSQL is available
+      ansible.builtin.shell: >-
+        kubectl get service postgresql -n default --no-headers 2>/dev/null | wc -l
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: postgres_check
+      changed_when: false
+
+    - name: 4. Fail if PostgreSQL is not available
+      ansible.builtin.fail:
+        msg: "PostgreSQL is required for OpenMetadata. Deploy it first: ./uis deploy postgresql"
+      when: postgres_check.stdout | int == 0
+
+    - name: 5. Check if Elasticsearch is available
+      ansible.builtin.shell: >-
+        kubectl get service elasticsearch-master -n default --no-headers 2>/dev/null | wc -l
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: elasticsearch_check
+      changed_when: false
+
+    - name: 6. Fail if Elasticsearch is not available
+      ansible.builtin.fail:
+        msg: "Elasticsearch is required for OpenMetadata. Deploy it first: ./uis deploy elasticsearch"
+      when: elasticsearch_check.stdout | int == 0
+
+    - name: 7. Check if urbalurba-secrets exists in openmetadata namespace
+      ansible.builtin.shell: >-
+        kubectl get secret urbalurba-secrets -n {{ openmetadata_namespace }} --no-headers 2>/dev/null | wc -l
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: secrets_check
+      changed_when: false
+
+    - name: 8. Display prerequisites status
+      ansible.builtin.debug:
+        msg: |
+          Prerequisites:
+          - PostgreSQL: Available ✅
+          - Elasticsearch: Available ✅
+          - Secrets: {{ 'Configured ✅' if (secrets_check.stdout | int) > 0 else 'Not found ⚠️ — run ./uis secrets generate && ./uis secrets apply' }}
+
+    # ============= PHASE 2: DATABASE SETUP =============
+
+    - name: 9. Get PostgreSQL pod name
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ merged_kubeconf_file }}"
+        kind: Pod
+        namespace: default
+        label_selectors:
+          - app.kubernetes.io/name=postgresql
+      register: postgres_pods
+
+    - name: 10. Set PostgreSQL pod name
+      ansible.builtin.set_fact:
+        postgres_pod_name: "{{ postgres_pods.resources[0].metadata.name }}"
+      when: postgres_pods.resources | length > 0
+
+    - name: 11. Get PostgreSQL password from urbalurba-secrets
+      ansible.builtin.shell: >-
+        kubectl get secret urbalurba-secrets -n default
+        -o jsonpath='{.data.PGPASSWORD}' | base64 -d
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: postgres_password
+      changed_when: false
+
+    - name: 12. Create openmetadata_db database in PostgreSQL
+      ansible.builtin.shell: >-
+        kubectl exec -n default {{ postgres_pod_name }} --
+        bash -c "PGPASSWORD='{{ postgres_password.stdout }}' createdb -h postgresql.default -U postgres openmetadata_db || echo 'Database may already exist'"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: create_db_result
+      changed_when: "'Database may already exist' not in create_db_result.stdout"
+      ignore_errors: true
+
+    - name: 13. Display database creation result
+      ansible.builtin.debug:
+        msg: "OpenMetadata database: {{ 'Created successfully ✅' if create_db_result.changed else 'Already exists ✅' }}"
+
+    # ============= PHASE 3: HELM DEPLOYMENT =============
+
+    - name: 14. Check existing Helm repositories
+      ansible.builtin.command: helm repo list
+      register: helm_repo_list
+      changed_when: false
+      ignore_errors: true
+
+    - name: 15. Add OpenMetadata Helm repository if missing
+      kubernetes.core.helm_repository:
+        name: "open-metadata"
+        repo_url: "{{ openmetadata_helm_repo_url }}"
+      when: "'open-metadata' not in helm_repo_list.stdout"
+
+    - name: 16. Update Helm repositories
+      ansible.builtin.command: helm repo update
+      changed_when: false
+
+    - name: 17. Deploy OpenMetadata using official Helm chart
+      ansible.builtin.command: >
+        helm upgrade --install openmetadata {{ openmetadata_helm_chart }}
+        --version {{ openmetadata_helm_version }}
+        -f {{ openmetadata_config_file }}
+        --namespace {{ openmetadata_namespace }}
+        --timeout {{ installation_timeout }}s
+        --wait
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: openmetadata_install
+      changed_when: true
+
+    - name: 18. Display Helm install output
+      ansible.builtin.debug:
+        msg: "{{ openmetadata_install.stdout_lines }}"
+      when: openmetadata_install.stdout_lines is defined
+
+    # ============= PHASE 4: WAIT FOR READINESS =============
+
+    - name: 19. Wait for OpenMetadata pod to be running
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: "{{ openmetadata_namespace }}"
+        label_selectors:
+          - "app.kubernetes.io/name=openmetadata"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: openmetadata_pods
+      until: >
+        openmetadata_pods.resources | length > 0 and
+        openmetadata_pods.resources[0].status.phase == "Running"
+      retries: 30
+      delay: 15
+
+    - name: 20. Wait for OpenMetadata pod to be ready (1/1)
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: "{{ openmetadata_namespace }}"
+        label_selectors:
+          - "app.kubernetes.io/name=openmetadata"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: openmetadata_pods_ready
+      until: >
+        openmetadata_pods_ready.resources | length > 0 and
+        openmetadata_pods_ready.resources[0].status.containerStatuses is defined and
+        openmetadata_pods_ready.resources[0].status.containerStatuses | length > 0 and
+        openmetadata_pods_ready.resources[0].status.containerStatuses[0].ready == true
+      retries: 30
+      delay: 10
+
+    # ============= PHASE 5: INGRESS =============
+
+    - name: 21. Apply OpenMetadata IngressRoute
+      kubernetes.core.k8s:
+        src: "{{ openmetadata_ingress_file }}"
+        state: present
+        kubeconfig: "{{ merged_kubeconf_file }}"
+
+    # ============= PHASE 6: HEALTH CHECK =============
+
+    - name: 22. Check OpenMetadata API health
+      ansible.builtin.shell: |
+        kubectl run curl-health-check-{{ 99999 | random }} --image=curlimages/curl --rm -i --restart=Never -n {{ openmetadata_namespace }} -- \
+          curl -s -w "\nHTTP_CODE:%{http_code}" http://openmetadata.{{ openmetadata_namespace }}.svc.cluster.local:8585/api/v1/system/version
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: health_check
+      retries: 10
+      delay: 15
+      until: "'HTTP_CODE:200' in health_check.stdout"
+      failed_when: false
+      changed_when: false
+
+    - name: 23. Display health check result
+      ansible.builtin.debug:
+        msg: "API health: {{ '✅ Responding' if 'HTTP_CODE:200' in health_check.stdout else '⚠️ Not responding yet — may need more startup time' }}"
+
+    # ============= PHASE 7: ADMIN PASSWORD CHANGE =============
+    # OpenMetadata bootstraps with admin@open-metadata.org / admin.
+    # The Helm chart provides no mechanism to override this.
+    # We change the password post-deploy via the API.
+    # The login email is fixed at admin@open-metadata.org — cannot be changed.
+    #
+    # API quirks (OpenMetadata 1.12.1):
+    # - Login API: password must be BASE64-encoded in the JSON body
+    # - changePassword API: passwords must be RAW (not base64)
+    # - changePassword requires requestType: "USER" (not "SELF")
+    # - Password must meet complexity rules (8+ chars, upper, lower, digit, special char)
+    #
+    # Logic (idempotent):
+    # 1. Try default password (admin) — single attempt to avoid lockout
+    # 2. If default works → change password → done
+    # 3. If default fails → try target password (already changed on previous deploy)
+    # 4. If target works → already configured → done
+    # 5. If both fail → warn (account locked or unknown state)
+
+    - name: 24. Get desired admin password from urbalurba-secrets
+      ansible.builtin.shell: >-
+        kubectl get secret urbalurba-secrets -n {{ openmetadata_namespace }}
+        -o jsonpath='{.data.OPENMETADATA_ADMIN_PASSWORD}' | base64 -d
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: desired_admin_password
+      changed_when: false
+
+    - name: 25. Try login with default credentials (admin@open-metadata.org / admin)
+      ansible.builtin.shell: |
+        kubectl run curl-pw-check-{{ 99999 | random }} --image=curlimages/curl --rm -i --restart=Never -n {{ openmetadata_namespace }} -- \
+          sh -c '
+            DEFAULT_PW_B64=$(echo -n "admin" | base64)
+            RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}" \
+              -X POST http://openmetadata.{{ openmetadata_namespace }}.svc.cluster.local:8585/api/v1/users/login \
+              -H "Content-Type: application/json" \
+              -d "{\"email\":\"admin@open-metadata.org\",\"password\":\"${DEFAULT_PW_B64}\"}")
+            echo "$RESPONSE"
+            if echo "$RESPONSE" | grep -q "accessToken"; then
+              echo "DEFAULT_LOGIN: SUCCESS"
+            else
+              echo "DEFAULT_LOGIN: FAILED"
+            fi
+          '
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: default_login_result
+      failed_when: false
+      changed_when: false
+
+    - name: 26. Set default login status
+      ansible.builtin.set_fact:
+        default_login_ok: "{{ 'DEFAULT_LOGIN: SUCCESS' in (default_login_result.stdout | default('')) }}"
+
+    - name: 27. Extract JWT token from default login
+      ansible.builtin.set_fact:
+        default_jwt: "{{ default_login_result.stdout | regex_search('\"accessToken\"\\s*:\\s*\"([^\"]+)\"', '\\1') | first | default('') }}"
+      when: default_login_ok | bool
+      ignore_errors: true
+
+    - name: 28. Change admin password via API (if default login succeeded)
+      ansible.builtin.shell: |
+        kubectl run curl-pw-change-{{ 99999 | random }} --image=curlimages/curl --rm -i --restart=Never -n {{ openmetadata_namespace }} -- \
+          sh -c '
+            RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}" \
+              -X PUT http://openmetadata.{{ openmetadata_namespace }}.svc.cluster.local:8585/api/v1/users/changePassword \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer {{ default_jwt }}" \
+              -d "{\"username\":\"admin\",\"oldPassword\":\"admin\",\"newPassword\":\"{{ desired_admin_password.stdout }}\",\"confirmPassword\":\"{{ desired_admin_password.stdout }}\",\"requestType\":\"USER\"}")
+            echo "$RESPONSE"
+            if echo "$RESPONSE" | grep -q "HTTP_CODE:200"; then
+              echo "PASSWORD_CHANGE: SUCCESS"
+            else
+              echo "PASSWORD_CHANGE: FAILED"
+            fi
+          '
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: password_change_result
+      when: default_login_ok | bool and default_jwt is defined and default_jwt | length > 0
+      changed_when: "'PASSWORD_CHANGE: SUCCESS' in (password_change_result.stdout | default(''))"
+      failed_when: false
+
+    - name: 29. Try login with target password (if default login failed — password may already be changed)
+      ansible.builtin.shell: |
+        kubectl run curl-pw-target-{{ 99999 | random }} --image=curlimages/curl --rm -i --restart=Never -n {{ openmetadata_namespace }} -- \
+          sh -c '
+            TARGET_PW_B64=$(echo -n "{{ desired_admin_password.stdout }}" | base64)
+            RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}" \
+              -X POST http://openmetadata.{{ openmetadata_namespace }}.svc.cluster.local:8585/api/v1/users/login \
+              -H "Content-Type: application/json" \
+              -d "{\"email\":\"admin@open-metadata.org\",\"password\":\"${TARGET_PW_B64}\"}")
+            echo "$RESPONSE"
+            if echo "$RESPONSE" | grep -q "accessToken"; then
+              echo "TARGET_LOGIN: SUCCESS"
+            else
+              echo "TARGET_LOGIN: FAILED"
+            fi
+          '
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: target_login_result
+      when: not (default_login_ok | bool)
+      failed_when: false
+      changed_when: false
+
+    - name: 30. Display password configuration result
+      ansible.builtin.debug:
+        msg: >-
+          Admin password: {{
+            '✅ Changed to configured password'
+            if (password_change_result is defined and password_change_result is not skipped and 'PASSWORD_CHANGE: SUCCESS' in (password_change_result.stdout | default('')))
+            else (
+              '✅ Already configured (previous deploy)'
+              if (target_login_result is defined and target_login_result is not skipped and 'TARGET_LOGIN: SUCCESS' in (target_login_result.stdout | default('')))
+              else '⚠️ Could not configure — run: ./uis undeploy openmetadata, drop the database, then redeploy'
+            )
+          }}
+
+    # ============= PHASE 8: STATUS =============
+
+    - name: 31. Get OpenMetadata pods
+      ansible.builtin.shell: kubectl get pods -n {{ openmetadata_namespace }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: openmetadata_pod_status
+      changed_when: false
+
+    - name: 32. Get OpenMetadata services
+      ansible.builtin.shell: kubectl get services -n {{ openmetadata_namespace }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: openmetadata_svc_status
+      changed_when: false
+
+    - name: 33. Display final status
+      ansible.builtin.debug:
+        msg: |
+          ===============================================
+          OpenMetadata Deployment Status
+          ===============================================
+
+          {{ '✅ SUCCESS - OpenMetadata deployed and ready' if 'HTTP_CODE:200' in health_check.stdout else '⚠️ DEPLOYED - API may still be starting up' }}
+
+          📊 Deployment Details:
+          • Chart: {{ openmetadata_helm_chart }} (version {{ openmetadata_helm_version }})
+          • Namespace: {{ openmetadata_namespace }}
+          • Database: openmetadata_db on PostgreSQL
+          • Search: Elasticsearch (existing)
+          • Orchestrator: K8s Jobs (no Airflow)
+
+          📦 Pods:
+          {{ openmetadata_pod_status.stdout }}
+
+          🌐 Services:
+          {{ openmetadata_svc_status.stdout }}
+
+          🌐 Access:
+          • UI: http://openmetadata.localhost
+          • API: http://openmetadata.localhost/api/v1/system/health
+
+          🔧 Verify deployment:
+          • ./uis verify openmetadata
+
+          ===============================================

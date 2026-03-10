@@ -8,7 +8,7 @@
 
 **Goal**: Track prioritized investigations and planned work for the UIS platform
 
-**Last Updated**: 2026-03-09
+**Last Updated**: 2026-03-10
 
 ---
 
@@ -18,7 +18,7 @@ These items reduce risk, fix broken services, and unblock new service deployment
 
 | # | Investigation | Status | Blocks | Summary |
 |---|--------------|--------|--------|---------|
-| 1 | [Elasticsearch upgrade](INVESTIGATE-elasticsearch-upgrade.md) | Complete | OpenMetadata | Upgrade ES 8.5.1 → 9.3.0. Pinned `imageTag: "9.3.0"`. Verified by tester. |
+| 1 | [Elasticsearch upgrade](../completed/INVESTIGATE-elasticsearch-upgrade.md) | Complete | OpenMetadata | Upgrade ES 8.5.1 → 9.3.0. Pinned `imageTag: "9.3.0"`. Verified by tester. |
 | 2 | [Version pinning](INVESTIGATE-version-pinning.md) | Backlog | — | 18 of 21 Helm charts unpinned. Should happen alongside ES upgrade. |
 | 2b | [Service version metadata](INVESTIGATE-service-version-metadata.md) | Backlog | — | Decide how service scripts expose version info for docs generation. Docs generator hardcodes "(unpinned)" even for pinned services. |
 | 3 | [Gravitee fix](INVESTIGATE-gravitee-fix.md) | Backlog | — | Only unverified service. Hardcoded credentials, no remove playbook, wrong namespace, `Host()` instead of `HostRegexp()`. |
@@ -33,7 +33,7 @@ New platform services. Enonic and OpenMetadata have dependencies on Priority 1 i
 |---|--------------|--------|------------|---------|
 | 4 | [Enonic XP deployment](INVESTIGATE-enonic-xp-deployment.md) | Ready for PLAN | — | CMS platform. Plain Docker/StatefulSet, manifest 085. Reuses cluster storage. |
 | 5 | [Enonic app deployment pipeline](INVESTIGATE-enonic-app-deployment-pipeline.md) | Investigation complete | Enonic XP (#4) | Sidecar pulls JARs from GitHub Releases into `$XP_HOME/deploy`. UIS CLI commands. |
-| 6 | [OpenMetadata deployment](INVESTIGATE-openmetadata-deployment.md) | Ready for PLAN | ES upgrade (#1) | Data governance platform, manifest 340. Reuses PostgreSQL + Elasticsearch. K8s Jobs executor. |
+| 6 | [OpenMetadata deployment](../completed/INVESTIGATE-openmetadata-deployment.md) | Complete | ES upgrade (#1) ✅ | Data governance platform v1.12.1, manifest 340. Reuses PostgreSQL + Elasticsearch 9.3.0. K8s native orchestrator (no Airflow). Deployed and verified (6 E2E tests pass). |
 | 7 | [Nextcloud + OnlyOffice](INVESTIGATE-nextcloud-deployment.md) | Ready for PLAN | — | Collaboration platform, manifest 620. Reuses PostgreSQL + Redis. OnlyOffice for document editing. |
 | 8 | [Enonic content deployment](INVESTIGATE-enonic-content-deployment.md) | Backlog | Enonic XP (#4) | Content migration between environments. Manual workflow works initially — automate later. |
 
@@ -71,6 +71,7 @@ Investigations where the work has been implemented. The INVESTIGATE files have b
 | Dev template ingress cleanup | 2026-03-04 | [PLAN-dev-template-ingress-cleanup](../completed/PLAN-dev-template-ingress-cleanup.md) |
 | PowerShell ErrorActionPreference | 2026-03-04 | [PLAN-uis-ps1-erroractionpreference](../completed/PLAN-uis-ps1-erroractionpreference.md) |
 | Elasticsearch upgrade | 2026-03-09 | [PLAN-elasticsearch-upgrade](../completed/PLAN-elasticsearch-upgrade.md) |
+| OpenMetadata deployment | 2026-03-10 | [PLAN-openmetadata-deployment](../completed/PLAN-openmetadata-deployment.md) |
 
 ---
 

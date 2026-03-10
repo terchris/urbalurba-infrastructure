@@ -106,6 +106,9 @@ ArgoCD:
   argocd list                   List registered ArgoCD applications
   argocd verify                 Run E2E health checks on ArgoCD server
 
+OpenMetadata:
+  openmetadata verify            Run E2E health checks on OpenMetadata
+
 Testing:
   test-all                       Run full integration test (deploy+undeploy all services)
   test-all --dry-run             Show test plan without executing
@@ -1037,9 +1040,10 @@ cmd_verify() {
         log_error "Usage: uis verify <service>"
         echo ""
         echo "Available verifications:"
-        echo "  tailscale    Check Tailscale secrets, API, devices, and operator"
-        echo "  cloudflare   Check Cloudflare secrets, network, and pod status"
-        echo "  argocd       Run E2E health checks on ArgoCD server"
+        echo "  tailscale       Check Tailscale secrets, API, devices, and operator"
+        echo "  cloudflare      Check Cloudflare secrets, network, and pod status"
+        echo "  argocd          Run E2E health checks on ArgoCD server"
+        echo "  openmetadata    Run E2E health checks on OpenMetadata"
         exit "$EXIT_GENERAL_ERROR"
     fi
 
@@ -1053,13 +1057,17 @@ cmd_verify() {
         argocd)
             cmd_argocd_verify
             ;;
+        openmetadata)
+            cmd_openmetadata_verify
+            ;;
         *)
             log_error "Unknown verify target: $target"
             echo ""
             echo "Available verifications:"
-            echo "  tailscale    Check Tailscale secrets, API, devices, and operator"
-            echo "  cloudflare   Check Cloudflare secrets, network, and pod status"
-            echo "  argocd       Run E2E health checks on ArgoCD server"
+            echo "  tailscale       Check Tailscale secrets, API, devices, and operator"
+            echo "  cloudflare      Check Cloudflare secrets, network, and pod status"
+            echo "  argocd          Run E2E health checks on ArgoCD server"
+            echo "  openmetadata    Run E2E health checks on OpenMetadata"
             exit "$EXIT_GENERAL_ERROR"
             ;;
     esac
@@ -1328,6 +1336,15 @@ cmd_argocd_verify() {
 }
 
 # ============================================================
+# OpenMetadata Commands
+# ============================================================
+
+cmd_openmetadata_verify() {
+    print_section "Verifying OpenMetadata Deployment"
+    ansible-playbook "$ANSIBLE_DIR/340-test-openmetadata.yml"
+}
+
+# ============================================================
 # Docs Commands
 # ============================================================
 
@@ -1582,6 +1599,22 @@ main() {
             ;;
         argocd)
             cmd_argocd "$@"
+            ;;
+        openmetadata)
+            local subcmd="${1:-}"
+            shift 2>/dev/null || true
+            case "$subcmd" in
+                verify)
+                    cmd_openmetadata_verify
+                    ;;
+                *)
+                    log_error "Unknown openmetadata command: $subcmd"
+                    echo ""
+                    echo "Commands:"
+                    echo "  openmetadata verify    Run E2E health checks on OpenMetadata"
+                    exit "$EXIT_GENERAL_ERROR"
+                    ;;
+            esac
             ;;
         test-all)
             cmd_test_all "$@"

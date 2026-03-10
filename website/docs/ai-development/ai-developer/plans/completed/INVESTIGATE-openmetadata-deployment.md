@@ -4,11 +4,11 @@
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Backlog
+## Status: Complete
 
 **Goal**: Determine the best approach for deploying OpenMetadata as a UIS platform service
 
-**Last Updated**: 2026-03-09
+**Last Updated**: 2026-03-10
 
 ---
 
@@ -60,22 +60,41 @@ No Redis, Kafka, Neo4j, or message queues required.
 | `docker.getcollate.io/openmetadata/ingestion` | Airflow-based ingestion (if using Airflow) | 8080 |
 | `docker.getcollate.io/openmetadata/ingestion-base` | Base image for K8s ingestion jobs | — |
 
+### Version Selection
+
+**Selected version: OpenMetadata 1.12.1** (Feb 24, 2025 — marked "Latest" on GitHub)
+
+| Component | Version | Notes |
+|---|---|---|
+| OpenMetadata Server | 1.12.1 | Docker image: `docker.getcollate.io/openmetadata/server:1.12.1` |
+| Helm chart (`openmetadata`) | 1.12.1 | Pin with `--version 1.12.1` in playbook |
+| Elasticsearch | 9.3.0 | Already deployed in UIS (manifest 060) |
+| PostgreSQL | 12+ | Already deployed in UIS (manifest 042) |
+| Kubernetes | >= 1.24 | UIS meets this requirement |
+
+**Why 1.12.1:**
+- Latest stable release, marked "Latest" on GitHub
+- Requires ES 9.3.0 — exactly what UIS now has deployed
+- Introduces Kubernetes native orchestrator as the recommended ingestion approach (no Airflow needed)
+- The 1.11.x line (latest: 1.11.13) still uses ES 8.x — would not benefit from our ES upgrade
+
 ### Official Helm Charts
 
 Repository: https://github.com/open-metadata/openmetadata-helm-charts
 
 Two charts:
 
-**1. `openmetadata`** (main application)
+**1. `openmetadata`** (main application) — **this is the one we deploy**
 - Deploys only the OpenMetadata server
 - Expects database and search engine to already exist (external)
 - No sub-chart dependencies
 - Kubernetes 1.24+
 
-**2. `openmetadata-dependencies`** (backing services)
+**2. `openmetadata-dependencies`** (backing services) — **not needed**
 - Conditionally deploys MySQL, OpenSearch, and Airflow
 - Each can be individually disabled via `mysql.enabled`, `opensearch.enabled`, `airflow.enabled`
 - Sub-charts: Bitnami MySQL 14.0.2, Apache Airflow 1.18.0, OpenSearch 3.3.2
+- We skip this entirely — UIS already provides PostgreSQL and Elasticsearch, and we use K8s Jobs instead of Airflow
 
 ### Resource Requirements
 
@@ -101,7 +120,7 @@ Development/minimal (from Helm defaults):
 | OpenMetadata needs | UIS already has | Reusable? |
 |---|---|---|
 | **Database: MySQL 8.0+ or PostgreSQL 12+** | Both MySQL (manifest 043) and PostgreSQL (manifest 042) in `default` namespace | Yes — **PostgreSQL preferred** (UIS standard). Create `openmetadata_db` database on existing instance. |
-| **Elasticsearch 7.x/8.x** | Elasticsearch in `default` namespace (manifest 060) | Likely — needs version compatibility check |
+| **Elasticsearch 9.x (minimum 9.0.0)** | Elasticsearch 9.3.0 in `default` namespace (manifest 060, pinned) | Yes — version matches. ES 9.3.0 deployed and verified. |
 | **Airflow** | Not deployed | Not available — but can use K8s Jobs executor instead |
 
 ### PostgreSQL reuse (preferred)
@@ -118,30 +137,39 @@ database:
   databaseName: openmetadata_db
 ```
 
-### Elasticsearch — version mismatch
+### Elasticsearch reuse — RESOLVED
 
-The existing UIS Elasticsearch uses the official Elastic Helm chart (`elastic/elasticsearch`), which deploys **ES 8.5.1** (the chart is archived at this version). OpenMetadata latest (1.12.x) requires **ES 9.x** (minimum 9.0.0). The ES 9.x client is not backwards-compatible with 8.x servers.
+UIS Elasticsearch has been upgraded to **9.3.0** (pinned via `imageTag: "9.3.0"` in `060-elasticsearch-config.yaml`). This matches OpenMetadata 1.12.1's requirement of ES 9.x (minimum 9.0.0).
 
-The ES config (`xpack.security.enabled: false`, HTTP protocol, port 9200) is otherwise exactly what OpenMetadata needs.
+The ES config (`xpack.security.enabled: false`, HTTP protocol, port 9200) is exactly what OpenMetadata needs. No changes required.
 
-**Options to resolve the version mismatch:**
+```yaml
+elasticsearch:
+  host: elasticsearch-master.default.svc.cluster.local
+  port: 9200
+  scheme: http
+  searchType: elasticsearch
+```
 
-| Option | What | Impact on other UIS services |
+### Airflow — not needed (K8s orchestrator is recommended)
+
+Starting with OpenMetadata 1.12, the **Kubernetes native orchestrator is the recommended approach**, eliminating the need for Apache Airflow. No functionality is lost — the K8s orchestrator supports all ingestion features (scheduled, on-demand, all 100+ connectors).
+
+| Capability | Airflow | K8s Orchestrator |
 |---|---|---|
-| **Upgrade UIS Elasticsearch to 9.x** | Add `imageTag: "9.3.0"` to `060-elasticsearch-config.yaml` | Must verify all other services using ES still work with 9.x |
-| **Deploy separate OpenSearch for OpenMetadata** | OpenMetadata's Helm chart defaults to OpenSearch. Deploy a dedicated instance. | No impact — separate service. Adds resource usage. |
-| **Use older OpenMetadata** | Pre-1.12 versions support ES 8.x | Misses latest features and security fixes. |
+| Run ingestion pipelines | Yes | Yes |
+| Scheduled ingestion (CronJobs) | Yes | Yes |
+| On-demand ingestion | Yes | Yes |
+| 100+ connectors | Yes | Yes |
+| Pipeline monitoring from UI | Yes | Yes |
+| **Infrastructure complexity** | High (ReadWriteMany PVCs, deps chart) | Low (native K8s Jobs) |
 
-This needs a decision before implementation.
+The K8s orchestrator has an optional **OMJob Operator** (uses CRDs) for production. If cluster policies restrict CRDs, set `useOMJobOperator: false` to fall back to plain K8s Jobs.
 
-### Airflow — skip it
-
-Airflow is the heaviest dependency and is not deployed in UIS. OpenMetadata supports running ingestion as **Kubernetes Jobs** instead of Airflow DAGs. For a dev environment, the K8s Jobs executor is the right choice:
-
-- No Airflow deployment needed
-- Ingestion runs as short-lived K8s Jobs
-- Uses `docker.getcollate.io/openmetadata/ingestion-base` image
-- Configured with `pipelineServiceClientConfig.type: "k8s"` in the Helm values
+Configuration:
+- `pipelineServiceClientConfig.type: "k8s"` in Helm values
+- Ingestion runs as short-lived K8s Jobs using `docker.getcollate.io/openmetadata/ingestion-base` image
+- No Airflow deployment, no ReadWriteMany volumes, no additional infrastructure
 
 ---
 
@@ -359,20 +387,41 @@ OpenMetadata follows the same pattern — depends on PostgreSQL + Elasticsearch,
 | IngressRoute | `manifests/341-openmetadata-ingressroute.yaml` |
 | Secrets variables | Add to `provision-host/uis/templates/secrets-templates/00-common-values.env.template` |
 | Secrets manifest | Add `openmetadata` namespace block to `provision-host/uis/templates/secrets-templates/00-master-secrets.yml.template` |
+| Enabled services | Add `openmetadata` to `provision-host/uis/config/enabled-services.conf` |
 | Documentation | `website/docs/packages/analytics/openmetadata.md` |
+| Sidebar entry | Add `openmetadata` to `website/sidebars.ts` under the analytics category |
 
 ---
 
 ## Helm Repository
 
-The OpenMetadata Helm repo (`https://open-metadata.github.io/openmetadata-helm-charts/`) is not currently registered in UIS. It needs to be added to `ansible/playbooks/05-install-helm-repos.yml` or added dynamically in the setup playbook (like Elasticsearch does).
+The OpenMetadata Helm repo (`https://open-metadata.github.io/openmetadata-helm-charts/`) is not currently registered in UIS. Following the UIS convention, the setup playbook adds its own Helm repo (each playbook is responsible for its own Helm repo). The playbook will add the repo before installing the chart:
+
+```yaml
+- name: Add OpenMetadata Helm repository
+  kubernetes.core.helm_repository:
+    name: open-metadata
+    repo_url: https://open-metadata.github.io/openmetadata-helm-charts/
+```
+
+---
+
+## RBAC for K8s Jobs Executor
+
+The K8s orchestrator creates Jobs and CronJobs in the cluster. The OpenMetadata server pod needs RBAC permissions to manage these resources. The Helm chart may handle this automatically, but this needs verification during implementation. If not, the setup playbook must create:
+
+- A ServiceAccount for OpenMetadata
+- A Role/ClusterRole with permissions for Jobs, CronJobs, Pods, and Pod logs
+- A RoleBinding/ClusterRoleBinding
 
 ---
 
 ## Next Steps
 
-- [x] Verify Elasticsearch version compatibility with OpenMetadata → **Version mismatch: UIS has ES 8.5.1, OpenMetadata 1.12.x requires ES 9.x. Three options identified.**
-- [x] Decide how to resolve ES version mismatch → **Upgrade UIS ES to 9.3.0. Only Gravitee depends on ES, and it supports 9.2.x+. See [INVESTIGATE-elasticsearch-upgrade.md](INVESTIGATE-elasticsearch-upgrade.md)**
-- [ ] Test minimal resource settings on a dev laptop
+- [x] Verify Elasticsearch version compatibility with OpenMetadata → **ES 9.3.0 deployed and verified. Matches OpenMetadata 1.12.1 requirement.**
+- [x] Decide how to resolve ES version mismatch → **Upgrade UIS ES to 9.3.0. Completed — see [PLAN-elasticsearch-upgrade.md](../completed/PLAN-elasticsearch-upgrade.md)**
 - [x] Determine if OpenMetadata needs Authentik SSO integration → **No — skip Authentik for initial setup. Keep it simple.**
-- [ ] Create PLAN-openmetadata-deployment.md with implementation phases
+- [x] Select OpenMetadata version → **1.12.1 (latest stable, requires ES 9.3.0, supports K8s orchestrator)**
+- [x] Confirm no functionality lost without Airflow → **K8s orchestrator is the recommended approach in 1.12. All ingestion features supported.**
+- [x] Test minimal resource settings on a dev laptop → **Verified: 500m CPU, 1.5Gi memory works on dev laptop**
+- [x] Create PLAN-openmetadata-deployment.md with implementation phases → **Done: [PLAN-openmetadata-deployment.md](PLAN-openmetadata-deployment.md)**
