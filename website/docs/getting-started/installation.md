@@ -11,8 +11,12 @@
 Rancher Desktop provides Kubernetes and Docker for your local environment.
 
 1. Download from [rancherdesktop.io](https://rancherdesktop.io/)
-2. Install and launch — Kubernetes starts automatically
-3. Allocate at least **8GB RAM** and **4 CPU cores** in settings
+2. Install and launch
+3. Enable Kubernetes: open **Preferences** > **Kubernetes** and check **Enable Kubernetes**. Click **Apply**.
+4. Wait until the status bar at the bottom shows **Kubernetes:1.34.4** (or similar version) — this means Kubernetes is ready.
+5. Allocate at least **8GB RAM** and **4 CPU cores** in **Preferences** > **Virtual Machine**
+
+![Enable Kubernetes in Rancher Desktop Preferences](/img/enable-kubernetes.png)
 
 :::note
 If you have Docker Desktop installed, uninstall it first as it conflicts with Rancher Desktop.
