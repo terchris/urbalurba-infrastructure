@@ -154,6 +154,25 @@ start_container() {
     fi
 }
 
+# Pull latest container image and restart
+pull_container() {
+    log_info "Pulling latest UIS container image..."
+    if docker pull "$IMAGE"; then
+        log_info "Image updated successfully"
+        if docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
+            log_info "Restarting container with new image..."
+            stop_container
+            start_container
+            log_info "Container restarted with new image"
+        else
+            log_info "Container is not running. Start it with: ./uis start"
+        fi
+    else
+        log_error "Failed to pull image"
+        exit 1
+    fi
+}
+
 # Stop container
 stop_container() {
     if docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
@@ -239,6 +258,9 @@ case "${1:-help}" in
     logs)
         docker logs "$CONTAINER_NAME" ${2:---tail 50}
         ;;
+    pull)
+        pull_container
+        ;;
     build)
         log_info "Building UIS container image..."
         docker build -f "$SCRIPT_DIR/Dockerfile.uis-provision-host" -t uis-provision-host:local "$SCRIPT_DIR"
@@ -291,6 +313,7 @@ case "${1:-help}" in
         echo "  container   Show container status"
         echo "  shell       Open a shell in the container"
         echo "  logs        Show container logs"
+        echo "  pull        Pull latest container image and restart"
         echo "  build       Build the container image locally"
         echo "  test        Run container validation tests"
         ;;

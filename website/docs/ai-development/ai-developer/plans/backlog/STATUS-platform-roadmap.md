@@ -47,7 +47,7 @@ Feature improvements that are not blocking anything.
 |---|--------------|--------|---------|
 | 9 | [Authentik user config](INVESTIGATE-authentik-user-config.md) | Investigation complete | Move user-configurable Authentik data from `manifests/` to `.uis.extend/`. |
 | 12 | [Docs markdown update logic](INVESTIGATE-docs-markdown-update-logic.md) | Backlog | `uis-docs-markdown.sh` can only skip or overwrite pages — no merge/update mode. Metadata changes in service scripts are never reflected in existing docs pages. |
-
+| 13 | [Container pull command](INVESTIGATE-container-pull-command.md) | Backlog | No `./uis pull` command in repo-root wrapper. Users can't update the container image without manual docker commands. |
 ---
 
 ## Priority 4: Future Work
