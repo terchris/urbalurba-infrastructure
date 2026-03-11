@@ -48,9 +48,17 @@
     }
 ,
     {
+      "id": "APPLICATIONS",
+      "name": "Applications",
+      "order": 6,
+      "description": "End-user applications and collaboration platforms",
+      "icon": "briefcase"
+    }
+,
+    {
       "id": "NETWORKING",
       "name": "Networking",
-      "order": 6,
+      "order": 7,
       "description": "VPN tunnels and network access",
       "icon": "globe"
     }
@@ -58,7 +66,7 @@
     {
       "id": "STORAGE",
       "name": "Storage",
-      "order": 7,
+      "order": 8,
       "description": "Platform storage infrastructure",
       "icon": "hard-drive"
     }
@@ -66,7 +74,7 @@
     {
       "id": "INTEGRATION",
       "name": "Integration",
-      "order": 8,
+      "order": 9,
       "description": "Messaging, API gateways, and event streams",
       "icon": "inbox"
     }

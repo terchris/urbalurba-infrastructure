@@ -346,6 +346,28 @@
 ,
   {
     "@type": "SoftwareApplication",
+    "id": "nextcloud",
+    "name": "Nextcloud",
+    "description": "Self-hosted collaboration platform with file sync and document editing",
+    "category": "APPLICATIONS",
+    "tags": ["collaboration", "file-sync", "document-editing", "calendar", "contacts", "onlyoffice"],
+    "abstract": "Self-hosted collaboration platform — file sync, document editing, calendar, and contacts",
+    "logo": "nextcloud-logo.webp",
+    "website": "https://nextcloud.com"
+    ,"summary": "Nextcloud is a self-hosted content collaboration platform providing file sync and sharing, browser-based document editing via OnlyOffice, calendar, contacts, and more. Deployed with the official Helm chart, reusing existing UIS PostgreSQL and Redis services."
+    ,"docs": "/docs/packages/applications/nextcloud"
+    ,"playbook": "620-setup-nextcloud.yml"
+    ,"priority": 620
+    ,"checkCommand": "kubectl get pods -n nextcloud -l app.kubernetes.io/name=nextcloud --no-headers 2>/dev/null | grep -q Running"
+    ,"removePlaybook": "620-remove-nextcloud.yml"
+    ,"requires": ["postgresql", "redis"]
+    ,"helmChart": "nextcloud/nextcloud"
+    ,"namespace": "nextcloud"
+    ,"image": "nextcloud:33-apache"
+  }
+,
+  {
+    "@type": "SoftwareApplication",
     "id": "nginx",
     "name": "Nginx",
     "description": "Web server and reverse proxy",
@@ -424,28 +446,6 @@
     ,"removePlaybook": "025-setup-whoami-testpod.yml -e operation=delete"
     ,"namespace": "default"
     ,"image": "traefik/whoami:v1.10.2"
-  }
-,
-  {
-    "@type": "SoftwareApplication",
-    "id": "nextcloud",
-    "name": "Nextcloud",
-    "description": "Self-hosted collaboration platform with file sync and document editing",
-    "category": "APPLICATIONS",
-    "tags": ["collaboration", "file-sync", "document-editing", "calendar", "contacts", "onlyoffice"],
-    "abstract": "Self-hosted collaboration platform — file sync, document editing, calendar, and contacts",
-    "logo": "nextcloud-logo.webp",
-    "website": "https://nextcloud.com"
-    ,"summary": "Nextcloud is a self-hosted content collaboration platform providing file sync and sharing, browser-based document editing via OnlyOffice, calendar, contacts, and more. Deployed with the official Helm chart, reusing existing UIS PostgreSQL and Redis services."
-    ,"docs": "/docs/packages/applications/nextcloud"
-    ,"playbook": "620-setup-nextcloud.yml"
-    ,"priority": 620
-    ,"checkCommand": "kubectl get pods -n nextcloud -l app.kubernetes.io/name=nextcloud --no-headers 2>/dev/null | grep -q Running"
-    ,"removePlaybook": "620-remove-nextcloud.yml"
-    ,"requires": ["postgresql", "redis"]
-    ,"helmChart": "nextcloud/nextcloud"
-    ,"namespace": "nextcloud"
-    ,"image": "nextcloud:33-apache"
   }
 ,
   {
