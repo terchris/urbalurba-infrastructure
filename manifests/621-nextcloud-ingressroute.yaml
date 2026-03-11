@@ -1,0 +1,44 @@
+# 621-nextcloud-ingressroute.yaml
+#
+# Description:
+# IngressRoute for Nextcloud collaboration platform.
+# Provides web access to file management, document editing, and admin UI.
+# Automatically handles both internal (.localhost) and external domains.
+#
+# HostRegexp Routing:
+# Uses HostRegexp('nextcloud\..+') to automatically handle:
+# - nextcloud.localhost (internal development access)
+# - Any future external domains (future-proof routing)
+#
+# Usage:
+#   kubectl apply -f 621-nextcloud-ingressroute.yaml
+#
+# Dependencies:
+# - Nextcloud Helm release must exist in nextcloud namespace
+#
+# Testing:
+#   curl http://nextcloud.localhost
+#
+# Service Port:
+# - Nextcloud Service port 80 (set via Helm values, container listens on 80)
+
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: nextcloud
+  namespace: nextcloud
+  labels:
+    app: nextcloud
+    type: development
+    routing: unified
+    protection: public
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: HostRegexp(`nextcloud\..+`)
+      kind: Rule
+      services:
+        - name: nextcloud
+          port: 80

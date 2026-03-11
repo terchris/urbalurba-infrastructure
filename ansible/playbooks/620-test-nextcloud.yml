@@ -1,0 +1,449 @@
+---
+# file: ansible/playbooks/620-test-nextcloud.yml
+# Description:
+# End-to-end tests for the Nextcloud + OnlyOffice deployment.
+# Validates health, WebDAV auth, Traefik routing, OnlyOffice health, and auth security.
+#
+# Tests (all CRITICAL):
+#   A. Health endpoint - /status.php must report installed:true
+#   B. Admin login via WebDAV - correct credentials must return 207 multistatus
+#   C. Wrong credentials rejected - bad password must return 401
+#   D. UI access via Traefik IngressRoute - nextcloud.localhost must be routable
+#   E. OnlyOffice health - /healthcheck must return true
+#   F. OnlyOffice JWT enforcement - unsigned request must be rejected
+#   G. OnlyOffice editor endpoint - editor must render for .docx files
+#   H. OnlyOffice config clean - no settings_error in config
+#
+# Usage:
+# ansible-playbook ansible/playbooks/620-test-nextcloud.yml -e kube_context="rancher-desktop"
+
+- name: End-to-End Nextcloud + OnlyOffice Tests
+  hosts: localhost
+  gather_facts: false
+  vars:
+    merged_kubeconf_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
+    nextcloud_namespace: "nextcloud"
+    nextcloud_service: "nextcloud.{{ nextcloud_namespace }}.svc.cluster.local"
+    onlyoffice_service: "onlyoffice-svc.{{ nextcloud_namespace }}.svc.cluster.local"
+
+  tasks:
+    - name: "0. Display test suite initiation"
+      ansible.builtin.debug:
+        msg: |
+          🧪 End-to-End Nextcloud + OnlyOffice Tests
+          ===============================================
+          Running 8 test groups (all CRITICAL)
+
+    - name: "0.1. Get Traefik ClusterIP for in-cluster hostname routing"
+      ansible.builtin.shell: |
+        kubectl get svc traefik -n kube-system -o jsonpath='{.spec.clusterIP}'
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: traefik_ip_result
+      changed_when: false
+
+    - name: "0.2. Store Traefik IP"
+      ansible.builtin.set_fact:
+        traefik_ip: "{{ traefik_ip_result.stdout }}"
+
+    - name: "0.3. Get Nextcloud admin user from urbalurba-secrets"
+      ansible.builtin.shell: |
+        kubectl get secret urbalurba-secrets -n {{ nextcloud_namespace }} -o jsonpath='{.data.NEXTCLOUD_ADMIN_USER}' | base64 -d
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: admin_user_result
+      changed_when: false
+
+    - name: "0.4. Get Nextcloud admin password from urbalurba-secrets"
+      ansible.builtin.shell: |
+        kubectl get secret urbalurba-secrets -n {{ nextcloud_namespace }} -o jsonpath='{.data.NEXTCLOUD_ADMIN_PASSWORD}' | base64 -d
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: admin_password_result
+      changed_when: false
+
+    - name: "0.5. Store admin credentials"
+      ansible.builtin.set_fact:
+        admin_user: "{{ admin_user_result.stdout }}"
+        admin_password: "{{ admin_password_result.stdout }}"
+
+    # ===== Test A: Health endpoint (CRITICAL) =====
+    - name: "A1. Check Nextcloud health via /status.php"
+      ansible.builtin.shell: |
+        kubectl run curl-test-health-{{ 99999 | random }} --image=curlimages/curl --rm -i --restart=Never -n {{ nextcloud_namespace }} -- \
+          curl -s -H "Host: nextcloud.localhost" http://{{ nextcloud_service }}/status.php
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: health_test
+      retries: 5
+      delay: 10
+      until: "'\"installed\":true' in health_test.stdout"
+      failed_when: false
+      changed_when: false
+
+    - name: "A2. Verify Nextcloud is installed and not in maintenance"
+      ansible.builtin.assert:
+        that:
+          - "'\"installed\":true' in health_test.stdout"
+          - "'\"maintenance\":false' in health_test.stdout"
+        fail_msg: |
+          ❌ CRITICAL: Nextcloud health check failed!
+          Expected /status.php to report installed:true and maintenance:false.
+          Got: {{ health_test.stdout[:500] | default('No output') }}
+
+          Troubleshooting:
+          - Check pod status: kubectl get pods -n {{ nextcloud_namespace }}
+          - Check pod logs: kubectl logs -n {{ nextcloud_namespace }} -l app.kubernetes.io/name=nextcloud --tail=50
+          - Check service: kubectl get svc -n {{ nextcloud_namespace }}
+        success_msg: "✅ Test A PASSED: Nextcloud is installed and running"
+
+    - name: "A3. Display health test success"
+      ansible.builtin.debug:
+        msg: |
+          ✅ Test A: Health Endpoint — PASSED (CRITICAL)
+          📋 /status.php reports installed:true, maintenance:false
+
+    # ===== Test B: Admin login via WebDAV (CRITICAL) =====
+    - name: "B1. Authenticate via WebDAV with admin credentials"
+      ansible.builtin.shell: |
+        kubectl run curl-test-webdav-{{ 99999 | random }} --image=curlimages/curl --rm -i --restart=Never -n {{ nextcloud_namespace }} -- \
+          sh -c '
+            RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}" \
+              -X PROPFIND \
+              -u "{{ admin_user }}:{{ admin_password }}" \
+              -H "Host: nextcloud.localhost" \
+              http://{{ nextcloud_service }}/remote.php/dav)
+            echo "$RESPONSE"
+            if echo "$RESPONSE" | grep -q "HTTP_CODE:207\|multistatus"; then
+              echo "WEBDAV_LOGIN: SUCCESS"
+            else
+              echo "WEBDAV_LOGIN: FAILED"
+            fi
+          '
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: webdav_test
+      retries: 3
+      delay: 10
+      until: "'WEBDAV_LOGIN: SUCCESS' in webdav_test.stdout"
+      failed_when: false
+      changed_when: false
+
+    - name: "B2. Verify admin WebDAV login succeeded"
+      ansible.builtin.assert:
+        that:
+          - "'WEBDAV_LOGIN: SUCCESS' in webdav_test.stdout"
+        fail_msg: |
+          ❌ CRITICAL: Admin WebDAV login to Nextcloud FAILED!
+          Expected GET /remote.php/dav with basic auth to return HTTP 207.
+          Got: {{ webdav_test.stdout[:500] | default('No output') }}
+
+          Troubleshooting:
+          - Check admin user: kubectl get secret urbalurba-secrets -n {{ nextcloud_namespace }} -o jsonpath='{.data.NEXTCLOUD_ADMIN_USER}' | base64 -d
+          - Check admin password: kubectl get secret urbalurba-secrets -n {{ nextcloud_namespace }} -o jsonpath='{.data.NEXTCLOUD_ADMIN_PASSWORD}' | base64 -d
+          - Check pod logs: kubectl logs -n {{ nextcloud_namespace }} -l app.kubernetes.io/name=nextcloud --tail=50
+        success_msg: "✅ Test B PASSED: Admin WebDAV login returned 207 multistatus"
+
+    - name: "B3. Display WebDAV test success"
+      ansible.builtin.debug:
+        msg: |
+          ✅ Test B: Admin Login via WebDAV — PASSED (CRITICAL)
+          📋 GET /remote.php/dav with admin credentials returned 207
+          🔐 Admin authentication and database connectivity confirmed
+
+    # ===== Test C: Wrong credentials rejected (CRITICAL) =====
+    - name: "C1. Attempt WebDAV access with wrong password"
+      ansible.builtin.shell: |
+        kubectl run curl-test-badauth-{{ 99999 | random }} --image=curlimages/curl --rm -i --restart=Never -n {{ nextcloud_namespace }} -- \
+          sh -c '
+            RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}" \
+              -X PROPFIND \
+              -u "{{ admin_user }}:WrongPassword999" \
+              -H "Host: nextcloud.localhost" \
+              http://{{ nextcloud_service }}/remote.php/dav)
+            echo "$RESPONSE"
+            if echo "$RESPONSE" | grep -q "HTTP_CODE:401"; then
+              echo "BAD_AUTH: CORRECTLY_REJECTED"
+            else
+              echo "BAD_AUTH: WRONGLY_ACCEPTED"
+            fi
+          '
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: badauth_test
+      failed_when: false
+      changed_when: false
+
+    - name: "C2. Verify wrong password was rejected"
+      ansible.builtin.assert:
+        that:
+          - "'BAD_AUTH: CORRECTLY_REJECTED' in badauth_test.stdout"
+        fail_msg: |
+          ❌ CRITICAL: Wrong password was ACCEPTED! Authentication is broken!
+          Login with admin / WrongPassword999 should have been rejected.
+        success_msg: "✅ Test C PASSED: Wrong password correctly rejected"
+
+    - name: "C3. Display wrong credentials test success"
+      ansible.builtin.debug:
+        msg: |
+          ✅ Test C: Wrong Credentials Rejected — PASSED (CRITICAL)
+          📋 WebDAV with wrong password correctly returned HTTP 401
+          🔒 Authentication is properly validating credentials
+
+    # ===== Test D: UI access via Traefik IngressRoute (CRITICAL) =====
+    - name: "D1. Access Nextcloud UI via Traefik with Host header"
+      ansible.builtin.shell: |
+        kubectl run curl-test-ui-{{ 99999 | random }} --image=curlimages/curl --rm -i --restart=Never -n {{ nextcloud_namespace }} -- \
+          sh -c '
+            RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}" \
+              -H "Host: nextcloud.localhost" \
+              http://{{ traefik_ip }})
+            echo "$RESPONSE"
+            if echo "$RESPONSE" | grep -q "HTTP_CODE:200\|HTTP_CODE:302\|Nextcloud"; then
+              echo "TRAEFIK_ROUTING: SUCCESS"
+            else
+              echo "TRAEFIK_ROUTING: FAILED"
+            fi
+          '
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: ui_access_test
+      retries: 3
+      delay: 10
+      until: "'TRAEFIK_ROUTING: SUCCESS' in ui_access_test.stdout"
+      failed_when: false
+      changed_when: false
+
+    - name: "D2. Verify UI is accessible via Traefik"
+      ansible.builtin.assert:
+        that:
+          - "'TRAEFIK_ROUTING: SUCCESS' in ui_access_test.stdout"
+        fail_msg: |
+          ❌ CRITICAL: Nextcloud UI not accessible via Traefik IngressRoute!
+          Expected response when accessing nextcloud.localhost through Traefik.
+          Got: {{ ui_access_test.stdout[:500] | default('No output') }}
+
+          Troubleshooting:
+          - Check IngressRoute: kubectl get ingressroute -n {{ nextcloud_namespace }}
+          - Check Traefik: kubectl get svc traefik -n kube-system
+          - Check service: kubectl get svc -n {{ nextcloud_namespace }}
+        success_msg: "✅ Test D PASSED: Nextcloud UI accessible via nextcloud.localhost"
+
+    - name: "D3. Display UI access test success"
+      ansible.builtin.debug:
+        msg: |
+          ✅ Test D: UI Access via Traefik — PASSED (CRITICAL)
+          📋 nextcloud.localhost routes correctly through Traefik IngressRoute
+
+    # ===== Test E: OnlyOffice health (CRITICAL) =====
+    - name: "E1. Check OnlyOffice healthcheck endpoint"
+      ansible.builtin.shell: |
+        kubectl run curl-test-oo-health-{{ 99999 | random }} --image=curlimages/curl --rm -i --restart=Never -n {{ nextcloud_namespace }} -- \
+          sh -c '
+            RESPONSE=$(curl -s http://{{ onlyoffice_service }}/healthcheck)
+            echo "HEALTHCHECK_RESPONSE: $RESPONSE"
+            if echo "$RESPONSE" | grep -q "true"; then
+              echo "ONLYOFFICE_HEALTH: PASSED"
+            else
+              echo "ONLYOFFICE_HEALTH: FAILED"
+            fi
+          '
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: oo_health_test
+      retries: 5
+      delay: 10
+      until: "'ONLYOFFICE_HEALTH: PASSED' in oo_health_test.stdout"
+      failed_when: false
+      changed_when: false
+
+    - name: "E2. Verify OnlyOffice is healthy"
+      ansible.builtin.assert:
+        that:
+          - "'ONLYOFFICE_HEALTH: PASSED' in oo_health_test.stdout"
+        fail_msg: |
+          ❌ CRITICAL: OnlyOffice Document Server health check failed!
+          Expected /healthcheck to return 'true'.
+          Got: {{ oo_health_test.stdout[:500] | default('No output') }}
+
+          Troubleshooting:
+          - Check pod status: kubectl get pods -n {{ nextcloud_namespace }} -l app=onlyoffice
+          - Check pod logs: kubectl logs -n {{ nextcloud_namespace }} -l app=onlyoffice --tail=50
+          - Note: OnlyOffice image is ~1.5 GB and takes 30-60s to start
+        success_msg: "✅ Test E PASSED: OnlyOffice Document Server is healthy"
+
+    - name: "E3. Display OnlyOffice health test success"
+      ansible.builtin.debug:
+        msg: |
+          ✅ Test E: OnlyOffice Health — PASSED (CRITICAL)
+          📋 /healthcheck returns true
+
+    # ===== Test F: OnlyOffice JWT enforcement (CRITICAL) =====
+    - name: "F1. Send unsigned request to OnlyOffice command endpoint"
+      ansible.builtin.shell: |
+        kubectl run curl-test-oo-jwt-{{ 99999 | random }} --image=curlimages/curl --rm -i --restart=Never -n {{ nextcloud_namespace }} -- \
+          sh -c '
+            RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}" \
+              -X POST http://{{ onlyoffice_service }}/coauthoring/CommandService.ashx \
+              -H "Content-Type: application/json" \
+              -d "{\"c\":\"version\"}")
+            echo "$RESPONSE"
+            if echo "$RESPONSE" | grep -q "HTTP_CODE:401\|HTTP_CODE:403\|\"error\":6\|\"error\":7\|token"; then
+              echo "JWT_ENFORCEMENT: PASSED"
+            else
+              echo "JWT_ENFORCEMENT: FAILED"
+            fi
+          '
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: oo_jwt_test
+      failed_when: false
+      changed_when: false
+
+    - name: "F2. Verify unsigned request was rejected"
+      ansible.builtin.assert:
+        that:
+          - "'JWT_ENFORCEMENT: PASSED' in oo_jwt_test.stdout"
+        fail_msg: |
+          ❌ CRITICAL: OnlyOffice accepted unsigned request! JWT enforcement is broken!
+          Expected an unsigned POST to /coauthoring/CommandService.ashx to be rejected.
+          Got: {{ oo_jwt_test.stdout[:500] | default('No output') }}
+
+          Troubleshooting:
+          - Check JWT_SECRET env: kubectl exec -n {{ nextcloud_namespace }} deploy/onlyoffice -- printenv JWT_SECRET
+          - Check JWT_ENABLED env: kubectl exec -n {{ nextcloud_namespace }} deploy/onlyoffice -- printenv JWT_ENABLED
+        success_msg: "✅ Test F PASSED: Unsigned request correctly rejected"
+
+    - name: "F3. Display JWT enforcement test success"
+      ansible.builtin.debug:
+        msg: |
+          ✅ Test F: OnlyOffice JWT Enforcement — PASSED (CRITICAL)
+          📋 Unsigned request to CommandService.ashx correctly rejected
+          🔒 JWT authentication is properly enforced
+
+    # ===== Test G: OnlyOffice editor endpoint (CRITICAL) =====
+    - name: "G1. Check OnlyOffice editor renders for .docx file"
+      ansible.builtin.shell: |
+        kubectl run curl-test-editor-{{ 99999 | random }} --image=curlimages/curl --rm -i --restart=Never -n {{ nextcloud_namespace }} -- \
+          sh -c '
+            FILEID=$(curl -s -X PROPFIND \
+              -u "{{ admin_user }}:{{ admin_password }}" \
+              -H "Host: nextcloud.localhost" \
+              -H "Depth: 0" \
+              -d "<?xml version=\"1.0\"?><d:propfind xmlns:d=\"DAV:\" xmlns:oc=\"http://owncloud.org/ns\"><d:prop><oc:fileid/></d:prop></d:propfind>" \
+              http://{{ nextcloud_service }}/remote.php/dav/files/{{ admin_user }}/Documents/Welcome%20to%20Nextcloud%20Hub.docx \
+              | grep -o "<oc:fileid>[0-9]*</oc:fileid>" | grep -o "[0-9]*" | head -1)
+            if [ -z "$FILEID" ]; then
+              echo "FILEID: NOT_FOUND"
+              echo "EDITOR_ENDPOINT: FAILED"
+              exit 0
+            fi
+            echo "FILEID: $FILEID"
+            EDITOR_RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}" \
+              -u "{{ admin_user }}:{{ admin_password }}" \
+              -H "Host: nextcloud.localhost" \
+              http://{{ nextcloud_service }}/apps/onlyoffice/$FILEID)
+            HTTP_CODE=$(echo "$EDITOR_RESPONSE" | grep "HTTP_CODE:" | tail -1)
+            if echo "$HTTP_CODE" | grep -q "HTTP_CODE:200" && echo "$EDITOR_RESPONSE" | grep -q "iframeEditor"; then
+              echo "EDITOR_ENDPOINT: PASSED"
+            else
+              echo "EDITOR_HTTP: $HTTP_CODE"
+              echo "EDITOR_ENDPOINT: FAILED"
+            fi
+          '
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: editor_test
+      retries: 3
+      delay: 10
+      until: "'EDITOR_ENDPOINT: PASSED' in editor_test.stdout"
+      failed_when: false
+      changed_when: false
+
+    - name: "G2. Verify OnlyOffice editor renders for .docx"
+      ansible.builtin.assert:
+        that:
+          - "'EDITOR_ENDPOINT: PASSED' in editor_test.stdout"
+        fail_msg: |
+          ❌ CRITICAL: OnlyOffice editor endpoint did not render for .docx file!
+          File handlers may not be registered. This means .docx files will download
+          instead of opening in the OnlyOffice editor.
+          Got: {{ editor_test.stdout[:500] | default('No output') }}
+
+          Troubleshooting:
+          - Check OnlyOffice config: kubectl exec -n {{ nextcloud_namespace }} deploy/nextcloud -c nextcloud -- su -s /bin/bash www-data -c "php occ config:list onlyoffice"
+          - Re-run deploy to trigger settings save
+          - Manual fix: visit http://nextcloud.localhost/settings/admin/onlyoffice and click Save
+        success_msg: "✅ Test G PASSED: OnlyOffice editor renders for .docx files"
+
+    - name: "G3. Display editor endpoint test success"
+      ansible.builtin.debug:
+        msg: |
+          ✅ Test G: OnlyOffice Editor Endpoint — PASSED (CRITICAL)
+          📋 /apps/onlyoffice/{fileid} returns 200 with iframeEditor
+          📝 File handlers are registered — .docx opens in OnlyOffice
+
+    # ===== Test H: OnlyOffice config clean (CRITICAL) =====
+    - name: "H1. Check OnlyOffice config for settings_error"
+      ansible.builtin.shell: |
+        kubectl exec -n {{ nextcloud_namespace }} deploy/nextcloud -c nextcloud -- \
+          su -s /bin/bash www-data -c "php occ config:list onlyoffice"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: oo_config_check
+      changed_when: false
+
+    - name: "H2. Verify no settings_error in OnlyOffice config"
+      ansible.builtin.assert:
+        that:
+          - "'settings_error' not in oo_config_check.stdout"
+        fail_msg: |
+          ❌ CRITICAL: OnlyOffice config contains settings_error!
+          Config: {{ oo_config_check.stdout[:500] | default('No output') }}
+
+          Troubleshooting:
+          - Clear error: kubectl exec -n {{ nextcloud_namespace }} deploy/nextcloud -c nextcloud -- su -s /bin/bash www-data -c "php occ config:app:delete onlyoffice settings_error"
+          - This may be a race condition in the deploy playbook — re-run deploy
+        success_msg: "✅ Test H PASSED: No settings_error in OnlyOffice config"
+
+    - name: "H3. Display config clean test success"
+      ansible.builtin.debug:
+        msg: |
+          ✅ Test H: OnlyOffice Config Clean — PASSED (CRITICAL)
+          📋 No settings_error present in OnlyOffice configuration
+
+    # ===== Summary =====
+    - name: "S1. Display comprehensive test results"
+      ansible.builtin.debug:
+        msg:
+          - "==============================================="
+          - "🧪 End-to-End Nextcloud + OnlyOffice Test Results"
+          - "==============================================="
+          - ""
+          - "Test A — Health Endpoint:                ✅ PASSED (CRITICAL)"
+          - "  /status.php reports installed:true"
+          - ""
+          - "Test B — Admin Login via WebDAV:         ✅ PASSED (CRITICAL)"
+          - "  GET /remote.php/dav returns 207 multistatus"
+          - ""
+          - "Test C — Wrong Credentials Rejected:     ✅ PASSED (CRITICAL)"
+          - "  Bad password correctly denied with HTTP 401"
+          - ""
+          - "Test D — UI Access via Traefik:          ✅ PASSED (CRITICAL)"
+          - "  nextcloud.localhost routes correctly"
+          - ""
+          - "Test E — OnlyOffice Health:              ✅ PASSED (CRITICAL)"
+          - "  /healthcheck returns true"
+          - ""
+          - "Test F — OnlyOffice JWT Enforcement:     ✅ PASSED (CRITICAL)"
+          - "  Unsigned request correctly rejected"
+          - ""
+          - "Test G — OnlyOffice Editor Endpoint:     ✅ PASSED (CRITICAL)"
+          - "  .docx opens in OnlyOffice editor (file handlers registered)"
+          - ""
+          - "Test H — OnlyOffice Config Clean:        ✅ PASSED (CRITICAL)"
+          - "  No settings_error in configuration"
+          - ""
+          - "==============================================="
+          - "🎉 ALL 8 CRITICAL TESTS PASSED"
+          - "==============================================="

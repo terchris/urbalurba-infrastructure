@@ -122,6 +122,17 @@ const sidebars: SidebarsConfig = {
         },
         {
           type: 'category',
+          label: 'Applications',
+          link: {
+            type: 'doc',
+            id: 'packages/applications/index',
+          },
+          items: [
+            'packages/applications/nextcloud',
+          ],
+        },
+        {
+          type: 'category',
           label: 'Networking',
           link: {
             type: 'generated-index',

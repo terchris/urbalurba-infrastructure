@@ -33,13 +33,14 @@ _CATEGORY_DATA=(
     "IDENTITY|Identity|Identity and access management|identity,auth,sso|shield"
     "DATABASES|Databases|Data storage and caching services|database,storage|database"
     "MANAGEMENT|Management|Admin tools, GitOps, and test services|admin,management|cog"
+    "APPLICATIONS|Applications|End-user applications and collaboration platforms|applications,collaboration|briefcase"
     "NETWORKING|Networking|VPN tunnels and network access|network,vpn|globe"
     "STORAGE|Storage|Platform storage infrastructure|storage,persistent|hard-drive"
     "INTEGRATION|Integration|Messaging, API gateways, and event streams|integration,messaging|inbox"
 )
 
 # Category display order (just the IDs)
-CATEGORY_ORDER=(OBSERVABILITY AI ANALYTICS IDENTITY DATABASES MANAGEMENT NETWORKING STORAGE INTEGRATION)
+CATEGORY_ORDER=(OBSERVABILITY AI ANALYTICS IDENTITY DATABASES MANAGEMENT APPLICATIONS NETWORKING STORAGE INTEGRATION)
 
 # Internal: Find category data by ID
 # Usage: _find_category_data "OBSERVABILITY"

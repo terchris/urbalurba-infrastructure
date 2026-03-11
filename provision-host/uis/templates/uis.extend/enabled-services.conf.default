@@ -19,3 +19,6 @@ nginx
 # === Databases ===
 # postgresql
 # redis
+
+# === Applications ===
+# nextcloud

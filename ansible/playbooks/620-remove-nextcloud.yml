@@ -1,0 +1,98 @@
+---
+# file: ansible/playbooks/620-remove-nextcloud.yml
+# Description: Remove Nextcloud and OnlyOffice from Kubernetes
+#
+# Usage:
+# ansible-playbook playbooks/620-remove-nextcloud.yml -e kube_context="rancher-desktop"
+
+- name: Remove Nextcloud + OnlyOffice from Kubernetes
+  hosts: localhost
+  gather_facts: false
+  vars:
+    manifests_folder: "/mnt/urbalurbadisk/manifests"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
+    nextcloud_namespace: "nextcloud"
+    helm_release_name: "nextcloud"
+
+  tasks:
+    - name: 1. Print playbook description
+      ansible.builtin.debug:
+        msg: |
+          Removing Nextcloud + OnlyOffice from Kubernetes
+          Namespace: {{ nextcloud_namespace }}
+
+    - name: 2. Delete OnlyOffice IngressRoute
+      kubernetes.core.k8s:
+        src: "{{ manifests_folder }}/623-onlyoffice-ingressroute.yaml"
+        state: absent
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      ignore_errors: true
+
+    - name: 3. Delete OnlyOffice Deployment and Service
+      kubernetes.core.k8s:
+        src: "{{ manifests_folder }}/622-onlyoffice-config.yaml"
+        state: absent
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      ignore_errors: true
+
+    - name: 4. Delete Nextcloud IngressRoute
+      kubernetes.core.k8s:
+        src: "{{ manifests_folder }}/621-nextcloud-ingressroute.yaml"
+        state: absent
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      ignore_errors: true
+
+    - name: 5. Check for Nextcloud Helm release
+      ansible.builtin.shell: helm list -n {{ nextcloud_namespace }} | grep -w {{ helm_release_name }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: helm_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: 6. Remove Nextcloud Helm release
+      ansible.builtin.command: helm uninstall {{ helm_release_name }} -n {{ nextcloud_namespace }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      when: helm_check.rc == 0
+      changed_when: true
+      ignore_errors: true
+
+    - name: 7. Wait for pods to terminate
+      ansible.builtin.shell: |
+        kubectl wait --for=delete pod -l app.kubernetes.io/name=nextcloud -n {{ nextcloud_namespace }} --timeout=60s 2>/dev/null || true
+        kubectl wait --for=delete pod -l app=onlyoffice -n {{ nextcloud_namespace }} --timeout=60s 2>/dev/null || true
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      changed_when: false
+
+    - name: 8. Delete PVCs in nextcloud namespace
+      ansible.builtin.shell: kubectl delete pvc -n {{ nextcloud_namespace }} --all --ignore-not-found
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      changed_when: true
+      ignore_errors: true
+
+    - name: 9. Delete nextcloud namespace
+      kubernetes.core.k8s:
+        name: "{{ nextcloud_namespace }}"
+        api_version: v1
+        kind: Namespace
+        state: absent
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      ignore_errors: true
+
+    - name: 10. Display removal status
+      ansible.builtin.debug:
+        msg: |
+          ===============================================
+          Nextcloud + OnlyOffice Removal Status
+          ===============================================
+
+          ✅ Nextcloud and OnlyOffice resources removed
+
+          Note: The PostgreSQL database 'nextcloud' was NOT deleted.
+          To remove the database manually:
+            kubectl exec -n default postgresql-0 -- psql -U postgres -c "DROP DATABASE nextcloud;"
+
+          ===============================================

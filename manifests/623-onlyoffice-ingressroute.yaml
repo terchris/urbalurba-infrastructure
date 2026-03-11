@@ -1,0 +1,42 @@
+# 623-onlyoffice-ingressroute.yaml
+#
+# Description:
+# IngressRoute for OnlyOffice Document Server.
+# Provides browser access to the document editing interface.
+# Nextcloud connects to OnlyOffice internally via K8s Service name,
+# but the browser needs direct access for the editor iframe.
+#
+# HostRegexp Routing:
+# Uses HostRegexp('onlyoffice\..+') to automatically handle:
+# - onlyoffice.localhost (internal development access)
+# - Any future external domains (future-proof routing)
+#
+# Usage:
+#   kubectl apply -f 623-onlyoffice-ingressroute.yaml
+#
+# Dependencies:
+# - OnlyOffice Deployment and Service must exist in nextcloud namespace
+#
+# Testing:
+#   curl http://onlyoffice.localhost/healthcheck
+
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: onlyoffice
+  namespace: nextcloud
+  labels:
+    app: onlyoffice
+    type: development
+    routing: unified
+    protection: public
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: HostRegexp(`onlyoffice\..+`)
+      kind: Rule
+      services:
+        - name: onlyoffice-svc
+          port: 80
