@@ -82,6 +82,33 @@ my-project/
 
 Everything else — Ansible playbooks, Helm charts, Kubernetes manifests, and CLI tools — lives inside the container image.
 
+## Updating UIS
+
+To update the container image to the latest version:
+
+```bash
+./uis pull
+```
+
+This pulls the latest image and restarts the container.
+
+If you need new CLI commands that were added after your initial install, update the wrapper script first by re-running the download from Step 2:
+
+**macOS / Linux:**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/terchris/urbalurba-infrastructure/main/uis -o uis
+chmod +x uis
+```
+
+**Windows (PowerShell):**
+
+```powershell
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/terchris/urbalurba-infrastructure/main/uis.ps1" -OutFile "uis.ps1"
+```
+
+Then run `./uis pull` to update the container.
+
 ## Next Steps
 
 - **[Getting Started](./overview.md)** — Deploy your first service

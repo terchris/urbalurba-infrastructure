@@ -169,8 +169,8 @@ function Show-Status {
     }
 }
 
-# Update container
-function Update-UISContainer {
+# Pull latest container image and restart
+function Pull-UISContainer {
     Write-Info "Pulling latest UIS container image..."
     docker pull $Image
     if ($LASTEXITCODE -eq 0) {
@@ -212,7 +212,7 @@ function Show-Help {
     Write-Host "  status      Show container status"
     Write-Host "  shell       Open a shell in the container"
     Write-Host "  logs        Show container logs"
-    Write-Host "  update      Pull latest container image"
+    Write-Host "  pull        Pull latest container image"
     Write-Host ""
     Write-Host "UIS Commands (after container is running):"
     Write-Host "  setup       Interactive configuration menu"
@@ -263,8 +263,8 @@ switch ($Command) {
         $tail = if ($Arguments.Count -gt 0) { $Arguments[0] } else { "50" }
         docker logs $ContainerName --tail $tail
     }
-    "update" {
-        Update-UISContainer
+    "pull" {
+        Pull-UISContainer
     }
     { $_ -eq "" -or $_ -eq $null } {
         Show-Help

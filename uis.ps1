@@ -111,6 +111,25 @@ function Start-UISContainer {
     }
 }
 
+function Pull-UISContainer {
+    Log-Info "Pulling latest UIS container image..."
+    docker pull $Image
+    if ($LASTEXITCODE -ne 0) {
+        Log-Error "Failed to pull image"
+        exit 1
+    }
+    Log-Info "Image updated successfully"
+    $running = docker ps --format '{{.Names}}' 2>$null | Where-Object { $_ -eq $ContainerName }
+    if ($running) {
+        Log-Info "Restarting container with new image..."
+        Stop-UISContainer
+        Start-UISContainer
+        Log-Info "Container restarted with new image"
+    } else {
+        Log-Info "Container is not running. Start it with: .\uis.ps1 start"
+    }
+}
+
 function Stop-UISContainer {
     $running = docker ps --format '{{.Names}}' 2>$null | Where-Object { $_ -eq $ContainerName }
     if ($running) {
@@ -169,6 +188,9 @@ switch ($command) {
         $tail = if ($remaining.Count -gt 0) { $remaining[0] } else { "--tail 50" }
         docker logs $ContainerName $tail
     }
+    "pull" {
+        Pull-UISContainer
+    }
     "build" {
         Log-Info "Building UIS container image..."
         docker build -f (Join-Path $ScriptDir "Dockerfile.uis-provision-host") -t uis-provision-host:local $ScriptDir
@@ -213,6 +235,7 @@ switch ($command) {
         Write-Host "  container   Show container status"
         Write-Host "  shell       Open a shell in the container"
         Write-Host "  logs        Show container logs"
+        Write-Host "  pull        Pull latest container image and restart"
         Write-Host "  build       Build the container image locally"
         Write-Host "  test        Run container validation tests"
     }
