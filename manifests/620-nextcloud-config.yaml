@@ -1,0 +1,99 @@
+# 620-nextcloud-config.yaml
+#
+# Description:
+# Helm values for Nextcloud deployment.
+# Disables bundled sub-charts and points to existing UIS PostgreSQL and Redis.
+#
+# Usage:
+#   Referenced by ansible/playbooks/620-setup-nextcloud.yml
+#
+# Dependencies:
+# - PostgreSQL must be running in default namespace (manifest 042)
+# - Redis must be running in default namespace (manifest 050)
+# - urbalurba-secrets must exist in nextcloud namespace
+
+# Disable bundled sub-charts — use existing UIS services
+internalDatabase:
+  enabled: false
+postgresql:
+  enabled: false
+mariadb:
+  enabled: false
+redis:
+  enabled: false
+
+# Point to existing PostgreSQL
+externalDatabase:
+  enabled: true
+  type: postgresql
+  host: postgresql.default.svc.cluster.local
+  database: nextcloud
+  existingSecret:
+    enabled: true
+    secretName: urbalurba-secrets
+    usernameKey: NEXTCLOUD_DATABASE_USER
+    passwordKey: NEXTCLOUD_DATABASE_PASSWORD
+
+# Point to existing Redis
+externalRedis:
+  enabled: true
+  host: redis-master.default.svc.cluster.local
+  port: "6379"
+  existingSecret:
+    enabled: true
+    secretName: urbalurba-secrets
+    passwordKey: REDIS_PASSWORD
+
+# Persistence — local-path storage class (UIS standard)
+persistence:
+  enabled: true
+  size: 10Gi
+  storageClass: local-path
+
+# Nextcloud configuration
+nextcloud:
+  host: nextcloud.localhost
+  existingSecret:
+    enabled: true
+    secretName: urbalurba-secrets
+    usernameKey: NEXTCLOUD_ADMIN_USER
+    passwordKey: NEXTCLOUD_ADMIN_PASSWORD
+  trustedDomains:
+    - nextcloud.localhost
+    - "nextcloud.*"
+  # PHP tuning — default upload limit is 2MB, increase it
+  phpConfigs:
+    upload.ini: |
+      upload_max_filesize = 512M
+      post_max_size = 512M
+      memory_limit = 512M
+
+# Cron — sidecar runs /cron.sh alongside the main container
+cronjob:
+  enabled: true
+  type: sidecar
+
+# Service — override Helm chart default (8080) to use standard HTTP port
+# Required because OnlyOffice connector has a bug constructing callback URLs with non-standard ports
+service:
+  port: 80
+
+# Probes — generous startup for first boot (DB migrations, file copy, 1-5 min)
+startupProbe:
+  enabled: true
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 30
+livenessProbe:
+  enabled: true
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+readinessProbe:
+  enabled: true
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3

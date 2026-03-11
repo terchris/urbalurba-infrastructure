@@ -1,0 +1,464 @@
+---
+# file: ansible/playbooks/620-setup-nextcloud.yml
+# Description:
+# Set up Nextcloud collaboration platform with OnlyOffice Document Server on Kubernetes.
+# Uses the official Helm chart with existing UIS PostgreSQL and Redis.
+# OnlyOffice is deployed as a separate Deployment in the same namespace.
+#
+# Prerequisites:
+# - Kubernetes cluster is set up and accessible
+# - PostgreSQL deployed (manifest 042)
+# - Redis deployed (manifest 050)
+# - urbalurba-secrets applied to nextcloud namespace
+# - Helm 3.x installed
+#
+# Usage:
+# ansible-playbook playbooks/620-setup-nextcloud.yml -e kube_context="rancher-desktop"
+
+- name: Set up Nextcloud + OnlyOffice on Kubernetes
+  hosts: localhost
+  gather_facts: false
+  vars:
+    manifests_folder: "/mnt/urbalurbadisk/manifests"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
+    nextcloud_namespace: "nextcloud"
+    nextcloud_config_file: "{{ manifests_folder }}/620-nextcloud-config.yaml"
+    nextcloud_ingress_file: "{{ manifests_folder }}/621-nextcloud-ingressroute.yaml"
+    onlyoffice_config_file: "{{ manifests_folder }}/622-onlyoffice-config.yaml"
+    onlyoffice_ingress_file: "{{ manifests_folder }}/623-onlyoffice-ingressroute.yaml"
+    nextcloud_helm_repo_url: "https://nextcloud.github.io/helm/"
+    nextcloud_helm_chart: "nextcloud/nextcloud"
+    nextcloud_helm_version: "9.0.3"
+    helm_release_name: "nextcloud"
+    installation_timeout: 600
+
+  tasks:
+    - name: 1. Print playbook description
+      ansible.builtin.debug:
+        msg: |
+          Setting up Nextcloud + OnlyOffice on Kubernetes
+          Helm chart: {{ nextcloud_helm_chart }} v{{ nextcloud_helm_version }}
+          Namespace: {{ nextcloud_namespace }}
+          Database: PostgreSQL (existing UIS instance)
+          Cache: Redis (existing UIS instance)
+          Document editing: OnlyOffice Document Server 9.3.1
+
+    # ============= PHASE 1: PREREQUISITES VERIFICATION =============
+
+    - name: 2. Create nextcloud namespace
+      kubernetes.core.k8s:
+        name: "{{ nextcloud_namespace }}"
+        api_version: v1
+        kind: Namespace
+        state: present
+        kubeconfig: "{{ merged_kubeconf_file }}"
+
+    - name: 3. Check if PostgreSQL is available
+      ansible.builtin.shell: >-
+        kubectl get service postgresql -n default --no-headers 2>/dev/null | wc -l
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: postgres_check
+      changed_when: false
+
+    - name: 4. Fail if PostgreSQL is not available
+      ansible.builtin.fail:
+        msg: "PostgreSQL is required for Nextcloud. Deploy it first: ./uis deploy postgresql"
+      when: postgres_check.stdout | int == 0
+
+    - name: 5. Check if Redis is available
+      ansible.builtin.shell: >-
+        kubectl get service redis-master -n default --no-headers 2>/dev/null | wc -l
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: redis_check
+      changed_when: false
+
+    - name: 6. Fail if Redis is not available
+      ansible.builtin.fail:
+        msg: "Redis is required for Nextcloud. Deploy it first: ./uis deploy redis"
+      when: redis_check.stdout | int == 0
+
+    - name: 7. Check if urbalurba-secrets exists in nextcloud namespace
+      ansible.builtin.shell: >-
+        kubectl get secret urbalurba-secrets -n {{ nextcloud_namespace }} --no-headers 2>/dev/null | wc -l
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: secrets_check
+      changed_when: false
+
+    - name: 8. Display prerequisites status
+      ansible.builtin.debug:
+        msg: |
+          Prerequisites:
+          - PostgreSQL: Available ✅
+          - Redis: Available ✅
+          - Secrets: {{ 'Configured ✅' if (secrets_check.stdout | int) > 0 else 'Not found ⚠️ — run ./uis secrets generate && ./uis secrets apply' }}
+
+    # ============= PHASE 2: DATABASE SETUP =============
+
+    - name: 9. Get PostgreSQL pod name
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ merged_kubeconf_file }}"
+        kind: Pod
+        namespace: default
+        label_selectors:
+          - app.kubernetes.io/name=postgresql
+      register: postgres_pods
+
+    - name: 10. Set PostgreSQL pod name
+      ansible.builtin.set_fact:
+        postgres_pod_name: "{{ postgres_pods.resources[0].metadata.name }}"
+      when: postgres_pods.resources | length > 0
+
+    - name: 11. Get PostgreSQL password from urbalurba-secrets
+      ansible.builtin.shell: >-
+        kubectl get secret urbalurba-secrets -n default
+        -o jsonpath='{.data.PGPASSWORD}' | base64 -d
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: postgres_password
+      changed_when: false
+
+    - name: 12. Check if nextcloud database exists
+      ansible.builtin.shell: >-
+        kubectl exec -n default {{ postgres_pod_name }} --
+        bash -c "PGPASSWORD='{{ postgres_password.stdout }}' psql -h postgresql.default -U postgres -tAc \"SELECT 1 FROM pg_database WHERE datname='nextcloud'\""
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: db_exists_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: 13. Drop stale nextcloud database if it exists (avoids permission errors on redeploy)
+      ansible.builtin.shell: >-
+        kubectl exec -n default {{ postgres_pod_name }} --
+        bash -c "PGPASSWORD='{{ postgres_password.stdout }}' psql -h postgresql.default -U postgres -c 'DROP DATABASE IF EXISTS nextcloud;'"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      when: db_exists_check.stdout | trim == "1"
+      changed_when: true
+      ignore_errors: true
+
+    - name: 14. Create fresh nextcloud database in PostgreSQL
+      ansible.builtin.shell: >-
+        kubectl exec -n default {{ postgres_pod_name }} --
+        bash -c "PGPASSWORD='{{ postgres_password.stdout }}' createdb -h postgresql.default -U postgres nextcloud"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: create_db_result
+      changed_when: true
+
+    - name: 15. Display database creation result
+      ansible.builtin.debug:
+        msg: "Nextcloud database: {{ 'Recreated (dropped stale) ✅' if (db_exists_check.stdout | trim == '1') else 'Created fresh ✅' }}"
+
+    # ============= PHASE 3: HELM DEPLOYMENT =============
+
+    - name: 16. Check existing Helm repositories
+      ansible.builtin.command: helm repo list
+      register: helm_repo_list
+      changed_when: false
+      ignore_errors: true
+
+    - name: 17. Add Nextcloud Helm repository if missing
+      kubernetes.core.helm_repository:
+        name: "nextcloud"
+        repo_url: "{{ nextcloud_helm_repo_url }}"
+      when: "'nextcloud' not in helm_repo_list.stdout"
+
+    - name: 18. Update Helm repositories
+      ansible.builtin.command: helm repo update
+      changed_when: false
+
+    - name: 19. Deploy Nextcloud using official Helm chart
+      ansible.builtin.command: >
+        helm upgrade --install {{ helm_release_name }} {{ nextcloud_helm_chart }}
+        --version {{ nextcloud_helm_version }}
+        -f {{ nextcloud_config_file }}
+        --namespace {{ nextcloud_namespace }}
+        --timeout {{ installation_timeout }}s
+        --wait
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: nextcloud_install
+      changed_when: true
+
+    - name: 20. Display Helm install output
+      ansible.builtin.debug:
+        msg: "{{ nextcloud_install.stdout_lines }}"
+      when: nextcloud_install.stdout_lines is defined
+
+    # ============= PHASE 4: WAIT FOR NEXTCLOUD READINESS =============
+
+    - name: 21. Wait for Nextcloud pod to be running
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: "{{ nextcloud_namespace }}"
+        label_selectors:
+          - "app.kubernetes.io/name=nextcloud"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: nextcloud_pods
+      until: >
+        nextcloud_pods.resources | length > 0 and
+        nextcloud_pods.resources[0].status.phase == "Running"
+      retries: 30
+      delay: 15
+
+    - name: 22. Wait for Nextcloud pod to be ready (1/1)
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: "{{ nextcloud_namespace }}"
+        label_selectors:
+          - "app.kubernetes.io/name=nextcloud"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: nextcloud_pods_ready
+      until: >
+        nextcloud_pods_ready.resources | length > 0 and
+        nextcloud_pods_ready.resources[0].status.containerStatuses is defined and
+        nextcloud_pods_ready.resources[0].status.containerStatuses | length > 0 and
+        nextcloud_pods_ready.resources[0].status.containerStatuses[0].ready == true
+      retries: 30
+      delay: 10
+
+    # ============= PHASE 5: INGRESS =============
+
+    - name: 23. Apply Nextcloud IngressRoute
+      kubernetes.core.k8s:
+        src: "{{ nextcloud_ingress_file }}"
+        state: present
+        kubeconfig: "{{ merged_kubeconf_file }}"
+
+    # ============= PHASE 6: NEXTCLOUD HEALTH CHECK =============
+
+    - name: 24. Check Nextcloud health via /status.php
+      ansible.builtin.shell: |
+        kubectl run curl-health-{{ 99999 | random }} --image=curlimages/curl --rm -i --restart=Never -n {{ nextcloud_namespace }} -- \
+          curl -s -H "Host: nextcloud.localhost" http://{{ helm_release_name }}.{{ nextcloud_namespace }}.svc.cluster.local/status.php
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: health_check
+      retries: 10
+      delay: 15
+      until: "'\"installed\":true' in health_check.stdout"
+      failed_when: false
+      changed_when: false
+
+    - name: 25. Display health check result
+      ansible.builtin.debug:
+        msg: "Nextcloud health: {{ '✅ Installed and running' if '\"installed\":true' in health_check.stdout else '⚠️ Not ready yet — may need more startup time' }}"
+
+    # ============= PHASE 7: ONLYOFFICE DEPLOYMENT =============
+
+    - name: 26. Deploy OnlyOffice Document Server (image ~1.5 GB — first pull may take several minutes)
+      kubernetes.core.k8s:
+        src: "{{ onlyoffice_config_file }}"
+        state: present
+        kubeconfig: "{{ merged_kubeconf_file }}"
+
+    - name: 27. Apply OnlyOffice IngressRoute
+      kubernetes.core.k8s:
+        src: "{{ onlyoffice_ingress_file }}"
+        state: present
+        kubeconfig: "{{ merged_kubeconf_file }}"
+
+    - name: 28. Wait for OnlyOffice pod to be ready
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: "{{ nextcloud_namespace }}"
+        label_selectors:
+          - "app=onlyoffice"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: onlyoffice_pods
+      until: >
+        onlyoffice_pods.resources | length > 0 and
+        onlyoffice_pods.resources[0].status.phase == "Running" and
+        onlyoffice_pods.resources[0].status.containerStatuses is defined and
+        onlyoffice_pods.resources[0].status.containerStatuses | length > 0 and
+        onlyoffice_pods.resources[0].status.containerStatuses[0].ready == true
+      retries: 40
+      delay: 15
+
+    # ============= PHASE 8: ONLYOFFICE INTEGRATION VIA OCC =============
+
+    - name: 29. Get Nextcloud pod name
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: "{{ nextcloud_namespace }}"
+        label_selectors:
+          - "app.kubernetes.io/name=nextcloud"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: nc_pods
+
+    - name: 30. Set Nextcloud pod name
+      ansible.builtin.set_fact:
+        nextcloud_pod_name: "{{ nc_pods.resources[0].metadata.name }}"
+
+    - name: 31. Get OnlyOffice JWT secret from urbalurba-secrets
+      ansible.builtin.shell: >-
+        kubectl get secret urbalurba-secrets -n {{ nextcloud_namespace }}
+        -o jsonpath='{.data.ONLYOFFICE_JWT_SECRET}' | base64 -d
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: onlyoffice_jwt_secret
+      changed_when: false
+
+    - name: 32. Install OnlyOffice connector app (downloads from Nextcloud App Store — needs internet)
+      ansible.builtin.shell: >-
+        kubectl exec -n {{ nextcloud_namespace }} {{ nextcloud_pod_name }} --
+        su -s /bin/bash www-data -c "php occ app:install onlyoffice || echo 'App may already be installed'"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: occ_install
+      changed_when: "'App may already be installed' not in occ_install.stdout"
+      ignore_errors: true
+
+    - name: 33. Configure OnlyOffice Document Server URL (public)
+      ansible.builtin.shell: >-
+        kubectl exec -n {{ nextcloud_namespace }} {{ nextcloud_pod_name }} --
+        su -s /bin/bash www-data -c "php occ config:app:set onlyoffice DocumentServerUrl --value='http://onlyoffice.localhost'"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      changed_when: true
+
+    - name: 34. Configure OnlyOffice internal server-to-server URL
+      ansible.builtin.shell: >-
+        kubectl exec -n {{ nextcloud_namespace }} {{ nextcloud_pod_name }} --
+        su -s /bin/bash www-data -c "php occ config:app:set onlyoffice DocumentServerInternalUrl --value='http://onlyoffice-svc.{{ nextcloud_namespace }}.svc.cluster.local:80'"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      changed_when: true
+
+    - name: 35. Configure OnlyOffice storage callback URL
+      ansible.builtin.shell: >-
+        kubectl exec -n {{ nextcloud_namespace }} {{ nextcloud_pod_name }} --
+        su -s /bin/bash www-data -c "php occ config:app:set onlyoffice StorageUrl --value='http://{{ helm_release_name }}.{{ nextcloud_namespace }}.svc.cluster.local/'"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      changed_when: true
+
+    - name: 36. Configure OnlyOffice JWT shared secret
+      ansible.builtin.shell: >-
+        kubectl exec -n {{ nextcloud_namespace }} {{ nextcloud_pod_name }} --
+        su -s /bin/bash www-data -c "php occ config:app:set onlyoffice jwt_secret --value='{{ onlyoffice_jwt_secret.stdout }}'"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      changed_when: true
+      no_log: true
+
+    - name: 37. Get admin credentials for OnlyOffice settings API call
+      ansible.builtin.shell: |
+        USER=$(kubectl get secret urbalurba-secrets -n {{ nextcloud_namespace }} -o jsonpath='{.data.NEXTCLOUD_ADMIN_USER}' | base64 -d)
+        PASS=$(kubectl get secret urbalurba-secrets -n {{ nextcloud_namespace }} -o jsonpath='{.data.NEXTCLOUD_ADMIN_PASSWORD}' | base64 -d)
+        echo "${USER}:${PASS}"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: admin_creds
+      changed_when: false
+      no_log: true
+
+    - name: 38. Trigger OnlyOffice settings save with internal URL (registers file handlers)
+      ansible.builtin.shell: |
+        kubectl exec -n {{ nextcloud_namespace }} {{ nextcloud_pod_name }} -- \
+          su -s /bin/bash www-data -c "
+            curl -s -X PUT \
+              -u '{{ admin_creds.stdout }}' \
+              -H 'Content-Type: application/json' \
+              -H 'OCS-APIRequest: true' \
+              -H 'Host: nextcloud.localhost' \
+              http://localhost/index.php/apps/onlyoffice/ajax/settings \
+              -d '{
+                \"documentserver\": \"http://onlyoffice-svc.{{ nextcloud_namespace }}.svc.cluster.local:80/\",
+                \"documentserverInternal\": \"http://onlyoffice-svc.{{ nextcloud_namespace }}.svc.cluster.local:80/\",
+                \"storageUrl\": \"http://{{ helm_release_name }}.{{ nextcloud_namespace }}.svc.cluster.local/\",
+                \"secret\": \"{{ onlyoffice_jwt_secret.stdout }}\",
+                \"demo\": false
+              }'
+          "
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: settings_save_result
+      changed_when: true
+      no_log: true
+
+    - name: 39. Set DocumentServerUrl to public URL for browser access
+      ansible.builtin.shell: >-
+        kubectl exec -n {{ nextcloud_namespace }} {{ nextcloud_pod_name }} --
+        su -s /bin/bash www-data -c "php occ config:app:set onlyoffice DocumentServerUrl --value='http://onlyoffice.localhost/'"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      changed_when: true
+
+    - name: "39b. Wait for OnlyOffice connector to process settings change"
+      ansible.builtin.pause:
+        seconds: 5
+
+    - name: 40. Clear any settings error from validation
+      ansible.builtin.shell: >-
+        kubectl exec -n {{ nextcloud_namespace }} {{ nextcloud_pod_name }} --
+        su -s /bin/bash www-data -c "php occ config:app:delete onlyoffice settings_error"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      changed_when: true
+      ignore_errors: true
+
+    - name: 41. Display OnlyOffice settings save result
+      ansible.builtin.debug:
+        msg: "OnlyOffice settings save: {{ '✅ File handlers registered' if settings_save_result.rc == 0 else '⚠️ Check logs — file handlers may need manual registration via admin UI' }}"
+
+    - name: 42. Display OnlyOffice integration result
+      ansible.builtin.debug:
+        msg: |
+          OnlyOffice integration:
+          - App installed: {{ '✅' if occ_install.rc == 0 else '⚠️ Check logs' }}
+          - DocumentServerUrl: http://onlyoffice.localhost
+          - DocumentServerInternalUrl: http://onlyoffice-svc.{{ nextcloud_namespace }}.svc.cluster.local:80
+          - StorageUrl: http://{{ helm_release_name }}.{{ nextcloud_namespace }}.svc.cluster.local/
+          - JWT secret: configured ✅
+
+    # ============= PHASE 9: STATUS =============
+
+    - name: 43. Get all pods in nextcloud namespace
+      ansible.builtin.shell: kubectl get pods -n {{ nextcloud_namespace }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: nextcloud_pod_status
+      changed_when: false
+
+    - name: 44. Get all services in nextcloud namespace
+      ansible.builtin.shell: kubectl get services -n {{ nextcloud_namespace }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: nextcloud_svc_status
+      changed_when: false
+
+    - name: 45. Display final status
+      ansible.builtin.debug:
+        msg: |
+          ===============================================
+          Nextcloud + OnlyOffice Deployment Status
+          ===============================================
+
+          {{ '✅ SUCCESS - Nextcloud deployed and ready' if '\"installed\":true' in health_check.stdout else '⚠️ DEPLOYED - Nextcloud may still be starting up' }}
+
+          📊 Deployment Details:
+          • Chart: {{ nextcloud_helm_chart }} v{{ nextcloud_helm_version }}
+          • Namespace: {{ nextcloud_namespace }}
+          • Database: nextcloud on PostgreSQL (existing UIS)
+          • Cache: Redis (existing UIS)
+          • Document editing: OnlyOffice Document Server 9.3.1
+
+          📦 Pods:
+          {{ nextcloud_pod_status.stdout }}
+
+          🌐 Services:
+          {{ nextcloud_svc_status.stdout }}
+
+          🌐 Access:
+          • Nextcloud: http://nextcloud.localhost
+          • OnlyOffice: http://onlyoffice.localhost
+
+          🔧 Verify deployment:
+          • ./uis verify nextcloud
+
+          ===============================================

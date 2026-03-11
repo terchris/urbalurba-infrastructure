@@ -1047,6 +1047,7 @@ cmd_verify() {
         echo "  cloudflare      Check Cloudflare secrets, network, and pod status"
         echo "  argocd          Run E2E health checks on ArgoCD server"
         echo "  enonic          Run E2E health checks on Enonic XP"
+        echo "  nextcloud       Run E2E health checks on Nextcloud + OnlyOffice"
         echo "  openmetadata    Run E2E health checks on OpenMetadata"
         exit "$EXIT_GENERAL_ERROR"
     fi
@@ -1064,6 +1065,9 @@ cmd_verify() {
         enonic)
             cmd_enonic_verify
             ;;
+        nextcloud)
+            cmd_nextcloud_verify
+            ;;
         openmetadata)
             cmd_openmetadata_verify
             ;;
@@ -1075,6 +1079,7 @@ cmd_verify() {
             echo "  cloudflare      Check Cloudflare secrets, network, and pod status"
             echo "  argocd          Run E2E health checks on ArgoCD server"
             echo "  enonic          Run E2E health checks on Enonic XP"
+            echo "  nextcloud       Run E2E health checks on Nextcloud + OnlyOffice"
             echo "  openmetadata    Run E2E health checks on OpenMetadata"
             exit "$EXIT_GENERAL_ERROR"
             ;;
@@ -1350,6 +1355,15 @@ cmd_argocd_verify() {
 cmd_enonic_verify() {
     print_section "Verifying Enonic XP Deployment"
     ansible-playbook "$ANSIBLE_DIR/085-test-enonic.yml"
+}
+
+# ============================================================
+# Nextcloud Commands
+# ============================================================
+
+cmd_nextcloud_verify() {
+    print_section "Verifying Nextcloud + OnlyOffice Deployment"
+    ansible-playbook "$ANSIBLE_DIR/620-test-nextcloud.yml"
 }
 
 # ============================================================
@@ -1629,6 +1643,22 @@ main() {
                     echo ""
                     echo "Commands:"
                     echo "  enonic verify    Run E2E health checks on Enonic XP"
+                    exit "$EXIT_GENERAL_ERROR"
+                    ;;
+            esac
+            ;;
+        nextcloud)
+            local subcmd="${1:-}"
+            shift 2>/dev/null || true
+            case "$subcmd" in
+                verify)
+                    cmd_nextcloud_verify
+                    ;;
+                *)
+                    log_error "Unknown nextcloud command: $subcmd"
+                    echo ""
+                    echo "Commands:"
+                    echo "  nextcloud verify    Run E2E health checks on Nextcloud + OnlyOffice"
                     exit "$EXIT_GENERAL_ERROR"
                     ;;
             esac

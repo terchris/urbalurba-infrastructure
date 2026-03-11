@@ -83,6 +83,7 @@ _build_skip_list() {
 VERIFY_SERVICES="
 argocd:argocd verify
 enonic:enonic verify
+nextcloud:nextcloud verify
 openmetadata:openmetadata verify
 "
 

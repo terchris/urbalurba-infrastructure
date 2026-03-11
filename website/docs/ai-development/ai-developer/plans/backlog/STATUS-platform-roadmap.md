@@ -34,7 +34,7 @@ New platform services. Enonic and OpenMetadata have dependencies on Priority 1 i
 | 4 | [Enonic XP deployment](../completed/INVESTIGATE-enonic-xp-deployment.md) | Complete | — | CMS platform. Plain Docker/StatefulSet, manifest 085. Reuses cluster storage. Deployed and verified (6 E2E tests pass). |
 | 5 | [Enonic app deployment pipeline](INVESTIGATE-enonic-app-deployment-pipeline.md) | Investigation complete | Enonic XP (#4) | Sidecar pulls JARs from GitHub Releases into `$XP_HOME/deploy`. UIS CLI commands. |
 | 6 | [OpenMetadata deployment](../completed/INVESTIGATE-openmetadata-deployment.md) | Complete | ES upgrade (#1) ✅ | Data governance platform v1.12.1, manifest 340. Reuses PostgreSQL + Elasticsearch 9.3.0. K8s native orchestrator (no Airflow). Deployed and verified (6 E2E tests pass). |
-| 7 | [Nextcloud + OnlyOffice](INVESTIGATE-nextcloud-deployment.md) | Ready for PLAN | — | Collaboration platform, manifest 620. Reuses PostgreSQL + Redis. OnlyOffice for document editing. |
+| 7 | [Nextcloud + OnlyOffice](../completed/INVESTIGATE-nextcloud-deployment.md) | Complete | — | Collaboration platform, manifest 620. Reuses PostgreSQL + Redis. OnlyOffice for document editing. Deployed and verified (8 E2E tests pass). |
 | 8 | [Enonic content deployment](INVESTIGATE-enonic-content-deployment.md) | Backlog | Enonic XP (#4) | Content migration between environments. Manual workflow works initially — automate later. |
 
 ---
@@ -46,6 +46,7 @@ Feature improvements that are not blocking anything.
 | # | Investigation | Status | Summary |
 |---|--------------|--------|---------|
 | 9 | [Authentik user config](INVESTIGATE-authentik-user-config.md) | Investigation complete | Move user-configurable Authentik data from `manifests/` to `.uis.extend/`. |
+| 12 | [Docs markdown update logic](INVESTIGATE-docs-markdown-update-logic.md) | Backlog | `uis-docs-markdown.sh` can only skip or overwrite pages — no merge/update mode. Metadata changes in service scripts are never reflected in existing docs pages. |
 
 ---
 
@@ -73,6 +74,7 @@ Investigations where the work has been implemented. The INVESTIGATE files have b
 | Elasticsearch upgrade | 2026-03-09 | [PLAN-elasticsearch-upgrade](../completed/PLAN-elasticsearch-upgrade.md) |
 | OpenMetadata deployment | 2026-03-10 | [PLAN-openmetadata-deployment](../completed/PLAN-openmetadata-deployment.md) |
 | Enonic XP deployment | 2026-03-10 | [PLAN-enonic-xp-deployment](../completed/PLAN-enonic-xp-deployment.md) |
+| Nextcloud + OnlyOffice deployment | 2026-03-11 | [PLAN-nextcloud-deployment](../completed/PLAN-nextcloud-deployment.md) |
 
 ---
 
