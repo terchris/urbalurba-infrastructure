@@ -22,6 +22,11 @@ SCRIPT_PRIORITY="10"
 SCRIPT_HELM_CHART="prometheus-community/prometheus"
 SCRIPT_NAMESPACE="monitoring"
 
+# === Extended Metadata (Optional) ===
+SCRIPT_KIND="Component"        # Component | Resource
+SCRIPT_TYPE="service"          # service | tool | library | database | cache | message-broker
+SCRIPT_OWNER="platform-team"   # platform-team | app-team
+
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Time-series database for metrics collection, storage, and alerting"
 SCRIPT_LOGO="prometheus-logo.webp"

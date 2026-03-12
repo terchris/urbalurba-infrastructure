@@ -73,6 +73,11 @@ SCRIPT_IMAGE="vendor/image:tag"
 SCRIPT_HELM_CHART="repo/chart-name"
 SCRIPT_NAMESPACE="default"
 
+# === Extended Metadata (Optional) ===
+SCRIPT_KIND="Component"        # Component | Resource
+SCRIPT_TYPE="service"          # service | tool | library | database | cache | message-broker
+SCRIPT_OWNER="platform-team"   # platform-team | app-team
+
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Brief abstract for documentation"
 SCRIPT_SUMMARY="Extended description for the documentation page"
@@ -99,6 +104,9 @@ SCRIPT_DOCS="/docs/packages/category/myservice"
 | `SCRIPT_IMAGE` | No | Container image reference (e.g., `enonic/xp:7.16.2-ubuntu`) |
 | `SCRIPT_HELM_CHART` | No | Helm chart reference |
 | `SCRIPT_NAMESPACE` | No | Kubernetes namespace |
+| `SCRIPT_KIND` | No | `Component` (software) or `Resource` (infrastructure like databases). Default: `Component` |
+| `SCRIPT_TYPE` | No | What kind of component/resource: `service`, `tool`, `library`, `database`, `cache`, `message-broker`. Default: `service` |
+| `SCRIPT_OWNER` | No | Owning team: `platform-team` or `app-team`. Default: `platform-team` |
 
 Website metadata fields (`SCRIPT_ABSTRACT`, `SCRIPT_TAGS`, etc.) are consumed by `uis-docs.sh` to generate JSON for the documentation website. Fill them in.
 

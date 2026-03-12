@@ -1,0 +1,17 @@
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: redis
+  description: "In-memory key-value store and cache. Used by authentik and redisinsight"
+  annotations:
+    backstage.io/techdocs-ref: url:https://uis.sovereignsky.no/docs/packages/databases/redis
+    uis.sovereignsky.no/docs-url: "https://uis.sovereignsky.no/docs/packages/databases/redis"
+    uis.sovereignsky.no/business-owner: "business-owners"
+  links:
+    - url: https://uis.sovereignsky.no/docs/packages/databases/redis
+      title: "redis Docs"
+      icon: docs
+spec:
+  type: cache
+  owner: platform-team
+  system: databases

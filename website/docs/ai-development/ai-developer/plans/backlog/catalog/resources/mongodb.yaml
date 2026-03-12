@@ -1,0 +1,17 @@
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: mongodb
+  description: "Document-oriented NoSQL database, available for user workloads"
+  annotations:
+    backstage.io/techdocs-ref: url:https://uis.sovereignsky.no/docs/packages/databases/mongodb
+    uis.sovereignsky.no/docs-url: "https://uis.sovereignsky.no/docs/packages/databases/mongodb"
+    uis.sovereignsky.no/business-owner: "business-owners"
+  links:
+    - url: https://uis.sovereignsky.no/docs/packages/databases/mongodb
+      title: "mongodb Docs"
+      icon: docs
+spec:
+  type: database
+  owner: platform-team
+  system: databases

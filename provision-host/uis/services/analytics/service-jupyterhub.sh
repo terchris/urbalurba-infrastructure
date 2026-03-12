@@ -21,6 +21,11 @@ SCRIPT_PRIORITY="92"
 SCRIPT_HELM_CHART="jupyterhub/jupyterhub"
 SCRIPT_NAMESPACE="jupyterhub"
 
+# === Extended Metadata (Optional) ===
+SCRIPT_KIND="Component"        # Component | Resource
+SCRIPT_TYPE="service"          # service | tool | library | database | cache | message-broker
+SCRIPT_OWNER="app-team"   # platform-team | app-team
+
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Multi-user server for Jupyter notebooks enabling collaborative data science"
 SCRIPT_LOGO="jupyterhub-logo.webp"

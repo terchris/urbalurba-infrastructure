@@ -33,3 +33,6 @@ CLAUDE.md
 
 # Temp folder for container JSON generation testing
 .temp/
+
+# Generated output (Backstage catalog, etc.)
+generated/

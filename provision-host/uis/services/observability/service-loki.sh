@@ -22,6 +22,11 @@ SCRIPT_PRIORITY="11"
 SCRIPT_HELM_CHART="grafana/loki"
 SCRIPT_NAMESPACE="monitoring"
 
+# === Extended Metadata (Optional) ===
+SCRIPT_KIND="Component"        # Component | Resource
+SCRIPT_TYPE="service"          # service | tool | library | database | cache | message-broker
+SCRIPT_OWNER="platform-team"   # platform-team | app-team
+
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Horizontally-scalable log aggregation system"
 SCRIPT_LOGO="loki-logo.webp"

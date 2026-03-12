@@ -1,0 +1,15 @@
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: ai
+  description: "AI & Machine Learning system within the UIS platform"
+  annotations:
+    backstage.io/techdocs-ref: url:https://uis.sovereignsky.no/docs/packages/ai
+    uis.sovereignsky.no/docs-url: "https://uis.sovereignsky.no/docs/packages/ai"
+  links:
+    - url: https://uis.sovereignsky.no/docs/packages/ai
+      title: "AI & Machine Learning Docs"
+      icon: docs
+spec:
+  owner: app-team
+  domain: uis-infrastructure

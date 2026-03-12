@@ -21,6 +21,11 @@ SCRIPT_PRIORITY="40"
 SCRIPT_HELM_CHART="bitnami/authentik"
 SCRIPT_NAMESPACE="authentik"
 
+# === Extended Metadata (Optional) ===
+SCRIPT_KIND="Component"        # Component | Resource
+SCRIPT_TYPE="service"          # service | tool | library | database | cache | message-broker
+SCRIPT_OWNER="platform-team"   # platform-team | app-team
+
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Open-source identity provider with SSO, MFA, and user management"
 SCRIPT_LOGO="authentik-logo.webp"

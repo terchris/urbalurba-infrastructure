@@ -21,6 +21,11 @@ SCRIPT_PRIORITY="32"
 SCRIPT_HELM_CHART="bitnami/redis"
 SCRIPT_NAMESPACE="default"
 
+# === Extended Metadata (Optional) ===
+SCRIPT_KIND="Resource"        # Component | Resource
+SCRIPT_TYPE="cache"          # service | tool | library | database | cache | message-broker
+SCRIPT_OWNER="platform-team"   # platform-team | app-team
+
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="In-memory data structure store for caching and messaging"
 SCRIPT_LOGO="redis-logo.webp"

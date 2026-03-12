@@ -1,0 +1,17 @@
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: postgresql
+  description: "Primary relational database. Used by authentik, openwebui, litellm, unity-catalog, pgadmin"
+  annotations:
+    backstage.io/techdocs-ref: url:https://uis.sovereignsky.no/docs/packages/databases/postgresql
+    uis.sovereignsky.no/docs-url: "https://uis.sovereignsky.no/docs/packages/databases/postgresql"
+    uis.sovereignsky.no/business-owner: "business-owners"
+  links:
+    - url: https://uis.sovereignsky.no/docs/packages/databases/postgresql
+      title: "postgresql Docs"
+      icon: docs
+spec:
+  type: database
+  owner: platform-team
+  system: databases

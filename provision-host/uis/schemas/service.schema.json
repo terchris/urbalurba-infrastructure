@@ -87,6 +87,24 @@
         "type": "string",
         "pattern": "^[a-z0-9-]+$"
       }
+    },
+    "kind": {
+      "type": "string",
+      "description": "Whether this is a software component or infrastructure resource",
+      "enum": ["Component", "Resource"],
+      "default": "Component"
+    },
+    "type": {
+      "type": "string",
+      "description": "What kind of component or resource",
+      "enum": ["service", "tool", "library", "database", "cache", "message-broker"],
+      "default": "service"
+    },
+    "owner": {
+      "type": "string",
+      "description": "Which team owns this service",
+      "enum": ["platform-team", "app-team"],
+      "default": "platform-team"
     }
   }
 }

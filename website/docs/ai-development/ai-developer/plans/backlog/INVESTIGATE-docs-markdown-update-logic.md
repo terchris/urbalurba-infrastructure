@@ -12,6 +12,7 @@
 
 **Related**:
 - [INVESTIGATE-service-version-metadata.md](INVESTIGATE-service-version-metadata.md) — Version field is also missing from generator
+- [INVESTIGATE-backstage.md](INVESTIGATE-backstage.md) — Adding new metadata fields (`SCRIPT_KIND`, `SCRIPT_TYPE`, `SCRIPT_OWNER`) to all service definitions. The docs generator should consume these too (e.g., display service type badge, ownership info).
 - [PLAN-015-documentation-generation](../completed/PLAN-015-documentation-generation.md) — Original docs generator implementation
 
 ---

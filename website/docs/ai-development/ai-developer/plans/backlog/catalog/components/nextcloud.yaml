@@ -1,0 +1,23 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: nextcloud
+  description: "File collaboration and document editing platform with OnlyOffice integration"
+  annotations:
+    backstage.io/techdocs-ref: url:https://uis.sovereignsky.no/docs/packages/applications/nextcloud
+    backstage.io/kubernetes-id: nextcloud
+    backstage.io/kubernetes-namespace: nextcloud
+    uis.sovereignsky.no/docs-url: "https://uis.sovereignsky.no/docs/packages/applications/nextcloud"
+    uis.sovereignsky.no/business-owner: "business-owners"
+  links:
+    - url: https://uis.sovereignsky.no/docs/packages/applications/nextcloud
+      title: "nextcloud Docs"
+      icon: docs
+spec:
+  type: service
+  lifecycle: production
+  owner: app-team
+  system: applications
+  dependsOn:
+    - resource:postgresql
+    - resource:redis

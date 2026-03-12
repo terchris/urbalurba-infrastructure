@@ -21,6 +21,11 @@ SCRIPT_PRIORITY="90"
 SCRIPT_HELM_CHART="redisinsight/redisinsight"
 SCRIPT_NAMESPACE="default"
 
+# === Extended Metadata (Optional) ===
+SCRIPT_KIND="Component"        # Component | Resource
+SCRIPT_TYPE="tool"          # service | tool | library | database | cache | message-broker
+SCRIPT_OWNER="platform-team"   # platform-team | app-team
+
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Visual management interface for Redis"
 SCRIPT_LOGO="redisinsight-logo.webp"

@@ -21,6 +21,11 @@ SCRIPT_PRIORITY="91"
 SCRIPT_HELM_CHART="spark-kubernetes-operator/spark-kubernetes-operator"
 SCRIPT_NAMESPACE="spark-operator"
 
+# === Extended Metadata (Optional) ===
+SCRIPT_KIND="Component"        # Component | Resource
+SCRIPT_TYPE="service"          # service | tool | library | database | cache | message-broker
+SCRIPT_OWNER="app-team"   # platform-team | app-team
+
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Fast and general-purpose cluster computing system for big data processing"
 SCRIPT_LOGO="spark-logo.webp"

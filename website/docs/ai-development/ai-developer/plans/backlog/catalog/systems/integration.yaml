@@ -1,0 +1,15 @@
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: integration
+  description: "Integration system within the UIS platform"
+  annotations:
+    backstage.io/techdocs-ref: url:https://uis.sovereignsky.no/docs/packages/integration
+    uis.sovereignsky.no/docs-url: "https://uis.sovereignsky.no/docs/packages/integration"
+  links:
+    - url: https://uis.sovereignsky.no/docs/packages/integration
+      title: "Integration Docs"
+      icon: docs
+spec:
+  owner: app-team
+  domain: uis-infrastructure

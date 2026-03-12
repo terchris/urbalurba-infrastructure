@@ -21,6 +21,11 @@ SCRIPT_PRIORITY="2"
 SCRIPT_IMAGE="traefik/whoami:v1.10.2"
 SCRIPT_NAMESPACE="default"
 
+# === Extended Metadata (Optional) ===
+SCRIPT_KIND="Component"        # Component | Resource
+SCRIPT_TYPE="tool"          # service | tool | library | database | cache | message-broker
+SCRIPT_OWNER="platform-team"   # platform-team | app-team
+
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Lightweight test container for debugging ingress and authentication"
 SCRIPT_LOGO=""

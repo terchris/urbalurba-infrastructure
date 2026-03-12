@@ -21,6 +21,11 @@ SCRIPT_PRIORITY="50"
 SCRIPT_HELM_CHART="open-webui/open-webui"
 SCRIPT_NAMESPACE="ai"
 
+# === Extended Metadata (Optional) ===
+SCRIPT_KIND="Component"        # Component | Resource
+SCRIPT_TYPE="service"          # service | tool | library | database | cache | message-broker
+SCRIPT_OWNER="app-team"   # platform-team | app-team
+
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Self-hosted AI interface supporting multiple model providers"
 SCRIPT_LOGO="openwebui-logo.webp"

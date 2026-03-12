@@ -1,0 +1,10 @@
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  name: business-owners
+  description: "Business ownership group - referenced as business owner on all UIS services"
+  annotations:
+    uis.sovereignsky.no/docs-url: "https://uis.sovereignsky.no/docs"
+spec:
+  type: business-unit
+  children: []

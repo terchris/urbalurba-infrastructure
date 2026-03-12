@@ -1,0 +1,20 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: tempo
+  description: "Distributed tracing backend"
+  annotations:
+    backstage.io/techdocs-ref: url:https://uis.sovereignsky.no/docs/packages/observability/tempo
+    backstage.io/kubernetes-id: tempo
+    backstage.io/kubernetes-namespace: monitoring
+    uis.sovereignsky.no/docs-url: "https://uis.sovereignsky.no/docs/packages/observability/tempo"
+    uis.sovereignsky.no/business-owner: "business-owners"
+  links:
+    - url: https://uis.sovereignsky.no/docs/packages/observability/tempo
+      title: "tempo Docs"
+      icon: docs
+spec:
+  type: tool
+  lifecycle: production
+  owner: platform-team
+  system: observability

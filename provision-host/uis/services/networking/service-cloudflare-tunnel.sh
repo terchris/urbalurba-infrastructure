@@ -21,6 +21,11 @@ SCRIPT_PRIORITY="101"
 SCRIPT_IMAGE="cloudflare/cloudflared:latest"
 SCRIPT_NAMESPACE="default"
 
+# === Extended Metadata (Optional) ===
+SCRIPT_KIND="Component"        # Component | Resource
+SCRIPT_TYPE="service"          # service | tool | library | database | cache | message-broker
+SCRIPT_OWNER="platform-team"   # platform-team | app-team
+
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Secure outbound-only tunnel to expose services via Cloudflare"
 SCRIPT_LOGO="cloudflare-logo.webp"

@@ -21,6 +21,11 @@ SCRIPT_PRIORITY="51"
 SCRIPT_HELM_CHART="oci://ghcr.io/berriai/litellm-helm"
 SCRIPT_NAMESPACE="ai"
 
+# === Extended Metadata (Optional) ===
+SCRIPT_KIND="Component"        # Component | Resource
+SCRIPT_TYPE="service"          # service | tool | library | database | cache | message-broker
+SCRIPT_OWNER="app-team"   # platform-team | app-team
+
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Call 100+ LLM APIs using OpenAI format"
 SCRIPT_LOGO="litellm-logo.webp"

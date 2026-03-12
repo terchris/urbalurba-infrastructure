@@ -1,0 +1,17 @@
+apiVersion: backstage.io/v1alpha1
+kind: Domain
+metadata:
+  name: uis-infrastructure
+  description: "The Urbalurba Infrastructure Stack (UIS) - a complete, sovereign self-hosted platform"
+  annotations:
+    backstage.io/techdocs-ref: url:https://uis.sovereignsky.no/docs
+    uis.sovereignsky.no/docs-url: "https://uis.sovereignsky.no/docs"
+  links:
+    - url: https://uis.sovereignsky.no/docs
+      title: UIS Documentation
+      icon: docs
+    - url: https://github.com/terchris/urbalurba-infrastructure
+      title: GitHub Repository
+      icon: github
+spec:
+  owner: platform-team

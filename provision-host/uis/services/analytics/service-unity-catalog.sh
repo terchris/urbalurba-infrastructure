@@ -21,6 +21,11 @@ SCRIPT_PRIORITY="90"
 SCRIPT_IMAGE="unitycatalog/unitycatalog:latest"
 SCRIPT_NAMESPACE="unity-catalog"
 
+# === Extended Metadata (Optional) ===
+SCRIPT_KIND="Component"        # Component | Resource
+SCRIPT_TYPE="service"          # service | tool | library | database | cache | message-broker
+SCRIPT_OWNER="app-team"   # platform-team | app-team
+
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Open-source data catalog for unified governance across data and AI assets"
 SCRIPT_LOGO="unity-catalog-logo.webp"
