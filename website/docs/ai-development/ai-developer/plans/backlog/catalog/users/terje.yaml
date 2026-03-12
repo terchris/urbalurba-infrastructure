@@ -1,0 +1,11 @@
+apiVersion: backstage.io/v1alpha1
+kind: User
+metadata:
+  name: terje
+  description: "UIS team member"
+spec:
+  profile:
+    displayName: "Terje Christensen"
+    email: "terje@sovereignsky.no"
+  memberOf:
+    - platform-team

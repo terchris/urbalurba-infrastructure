@@ -1,0 +1,17 @@
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: rabbitmq
+  description: "Message broker for async communication and pub/sub between services"
+  annotations:
+    backstage.io/techdocs-ref: url:https://uis.sovereignsky.no/docs/packages/integration/rabbitmq
+    uis.sovereignsky.no/docs-url: "https://uis.sovereignsky.no/docs/packages/integration/rabbitmq"
+    uis.sovereignsky.no/business-owner: "business-owners"
+  links:
+    - url: https://uis.sovereignsky.no/docs/packages/integration/rabbitmq
+      title: "rabbitmq Docs"
+      icon: docs
+spec:
+  type: message-broker
+  owner: app-team
+  system: integration

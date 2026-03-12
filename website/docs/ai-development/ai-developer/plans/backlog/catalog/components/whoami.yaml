@@ -1,0 +1,20 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: whoami
+  description: "HTTP request test service for diagnosing ingress and authentication"
+  annotations:
+    backstage.io/techdocs-ref: url:https://uis.sovereignsky.no/docs/packages/management/whoami
+    backstage.io/kubernetes-id: whoami
+    backstage.io/kubernetes-namespace: default
+    uis.sovereignsky.no/docs-url: "https://uis.sovereignsky.no/docs/packages/management/whoami"
+    uis.sovereignsky.no/business-owner: "business-owners"
+  links:
+    - url: https://uis.sovereignsky.no/docs/packages/management/whoami
+      title: "whoami Docs"
+      icon: docs
+spec:
+  type: tool
+  lifecycle: experimental
+  owner: platform-team
+  system: management

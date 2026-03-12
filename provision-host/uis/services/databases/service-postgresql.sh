@@ -21,6 +21,11 @@ SCRIPT_PRIORITY="30"
 SCRIPT_HELM_CHART="bitnami/postgresql"
 SCRIPT_NAMESPACE="default"
 
+# === Extended Metadata (Optional) ===
+SCRIPT_KIND="Resource"        # Component | Resource
+SCRIPT_TYPE="database"          # service | tool | library | database | cache | message-broker
+SCRIPT_OWNER="platform-team"   # platform-team | app-team
+
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="World's most advanced open-source relational database"
 SCRIPT_LOGO="postgresql-logo.webp"

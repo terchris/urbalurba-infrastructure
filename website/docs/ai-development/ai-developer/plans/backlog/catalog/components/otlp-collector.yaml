@@ -1,0 +1,24 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: otlp-collector
+  description: "OpenTelemetry collector - telemetry pipeline routing metrics to Prometheus, logs to Loki, traces to Tempo"
+  annotations:
+    backstage.io/techdocs-ref: url:https://uis.sovereignsky.no/docs/packages/observability/otel
+    backstage.io/kubernetes-id: otlp-collector
+    backstage.io/kubernetes-namespace: monitoring
+    uis.sovereignsky.no/docs-url: "https://uis.sovereignsky.no/docs/packages/observability/otel"
+    uis.sovereignsky.no/business-owner: "business-owners"
+  links:
+    - url: https://uis.sovereignsky.no/docs/packages/observability/otel
+      title: "otlp-collector Docs"
+      icon: docs
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-team
+  system: observability
+  dependsOn:
+    - component:prometheus
+    - component:loki
+    - component:tempo

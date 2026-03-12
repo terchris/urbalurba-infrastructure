@@ -21,6 +21,11 @@ SCRIPT_PRIORITY="81"
 SCRIPT_HELM_CHART="graviteeio/apim"
 SCRIPT_NAMESPACE="default"
 
+# === Extended Metadata (Optional) ===
+SCRIPT_KIND="Component"        # Component | Resource
+SCRIPT_TYPE="service"          # service | tool | library | database | cache | message-broker
+SCRIPT_OWNER="app-team"   # platform-team | app-team
+
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Open-source API management platform for designing, deploying, and managing APIs"
 SCRIPT_LOGO="gravitee-logo.webp"

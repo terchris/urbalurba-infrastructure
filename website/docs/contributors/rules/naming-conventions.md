@@ -146,7 +146,20 @@ SCRIPT_REMOVE_PLAYBOOK="NNN-remove-name.yml"
 SCRIPT_CHECK_COMMAND="kubectl get pods ..."
 SCRIPT_REQUIRES=""                      # Space-separated service IDs
 SCRIPT_PRIORITY="50"                    # Deploy order (lower = earlier)
+
+# === Extended Metadata (Optional) ===
+SCRIPT_KIND="Component"                 # Component | Resource
+SCRIPT_TYPE="service"                   # service | tool | library | database | cache | message-broker
+SCRIPT_OWNER="platform-team"            # platform-team | app-team
 ```
+
+**Extended Metadata allowed values:**
+
+| Field | Allowed Values | Description |
+|-------|---------------|-------------|
+| `SCRIPT_KIND` | `Component`, `Resource` | `Component` for software services and tools; `Resource` for infrastructure (databases, caches, message brokers) |
+| `SCRIPT_TYPE` | `service`, `tool`, `library`, `database`, `cache`, `message-broker` | What the component or resource provides |
+| `SCRIPT_OWNER` | `platform-team`, `app-team` | `platform-team` for core infrastructure; `app-team` for user-facing applications |
 
 ---
 

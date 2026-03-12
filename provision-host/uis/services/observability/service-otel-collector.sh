@@ -22,6 +22,11 @@ SCRIPT_PRIORITY="13"
 SCRIPT_HELM_CHART="open-telemetry/opentelemetry-collector"
 SCRIPT_NAMESPACE="monitoring"
 
+# === Extended Metadata (Optional) ===
+SCRIPT_KIND="Component"        # Component | Resource
+SCRIPT_TYPE="service"          # service | tool | library | database | cache | message-broker
+SCRIPT_OWNER="platform-team"   # platform-team | app-team
+
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Vendor-agnostic telemetry collection and processing"
 SCRIPT_LOGO="opentelemetry-logo.webp"

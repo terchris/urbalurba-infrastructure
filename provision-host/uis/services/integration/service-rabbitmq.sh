@@ -21,6 +21,11 @@ SCRIPT_PRIORITY="60"
 SCRIPT_HELM_CHART="bitnami/rabbitmq"
 SCRIPT_NAMESPACE="default"
 
+# === Extended Metadata (Optional) ===
+SCRIPT_KIND="Resource"        # Component | Resource
+SCRIPT_TYPE="message-broker"          # service | tool | library | database | cache | message-broker
+SCRIPT_OWNER="platform-team"   # platform-team | app-team
+
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Reliable message broker supporting multiple messaging protocols"
 SCRIPT_LOGO="rabbitmq-logo.webp"

@@ -22,6 +22,11 @@ SCRIPT_PRIORITY="12"
 SCRIPT_HELM_CHART="grafana/tempo"
 SCRIPT_NAMESPACE="monitoring"
 
+# === Extended Metadata (Optional) ===
+SCRIPT_KIND="Component"        # Component | Resource
+SCRIPT_TYPE="service"          # service | tool | library | database | cache | message-broker
+SCRIPT_OWNER="platform-team"   # platform-team | app-team
+
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Open source distributed tracing backend"
 SCRIPT_LOGO="tempo-logo.webp"

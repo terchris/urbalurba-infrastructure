@@ -1,0 +1,23 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: gravitee
+  description: "API management and gateway platform with rate limiting, authentication and developer portal"
+  annotations:
+    backstage.io/techdocs-ref: url:https://uis.sovereignsky.no/docs/packages/integration/gravitee
+    backstage.io/kubernetes-id: gravitee
+    backstage.io/kubernetes-namespace: default
+    uis.sovereignsky.no/docs-url: "https://uis.sovereignsky.no/docs/packages/integration/gravitee"
+    uis.sovereignsky.no/business-owner: "business-owners"
+  links:
+    - url: https://uis.sovereignsky.no/docs/packages/integration/gravitee
+      title: "gravitee Docs"
+      icon: docs
+spec:
+  type: service
+  lifecycle: production
+  owner: app-team
+  system: integration
+  dependsOn:
+    - resource:mongodb
+    - resource:elasticsearch

@@ -1,0 +1,15 @@
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: networking
+  description: "Networking system within the UIS platform"
+  annotations:
+    backstage.io/techdocs-ref: url:https://uis.sovereignsky.no/docs/packages/category/networking
+    uis.sovereignsky.no/docs-url: "https://uis.sovereignsky.no/docs/packages/category/networking"
+  links:
+    - url: https://uis.sovereignsky.no/docs/packages/category/networking
+      title: "Networking Docs"
+      icon: docs
+spec:
+  owner: platform-team
+  domain: uis-infrastructure

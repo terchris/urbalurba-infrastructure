@@ -1,0 +1,22 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: onlyoffice
+  description: "Document editor for Nextcloud (DOCX, XLSX, PPTX editing in browser)"
+  annotations:
+    backstage.io/techdocs-ref: url:https://uis.sovereignsky.no/docs/packages/applications/onlyoffice
+    backstage.io/kubernetes-id: onlyoffice
+    backstage.io/kubernetes-namespace: nextcloud
+    uis.sovereignsky.no/docs-url: "https://uis.sovereignsky.no/docs/packages/applications/onlyoffice"
+    uis.sovereignsky.no/business-owner: "business-owners"
+  links:
+    - url: https://uis.sovereignsky.no/docs/packages/applications/onlyoffice
+      title: "onlyoffice Docs"
+      icon: docs
+spec:
+  type: service
+  lifecycle: production
+  owner: app-team
+  system: applications
+  dependsOn:
+    - component:nextcloud

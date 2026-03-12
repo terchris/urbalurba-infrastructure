@@ -1,0 +1,20 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: tailscale-tunnel
+  description: "Secure mesh VPN tunnel for exposing UIS services via Tailscale Funnel"
+  annotations:
+    backstage.io/techdocs-ref: url:https://uis.sovereignsky.no/docs/packages/networking/tailscale-tunnel
+    backstage.io/kubernetes-id: tailscale-tunnel
+    backstage.io/kubernetes-namespace: default
+    uis.sovereignsky.no/docs-url: "https://uis.sovereignsky.no/docs/packages/networking/tailscale-tunnel"
+    uis.sovereignsky.no/business-owner: "business-owners"
+  links:
+    - url: https://uis.sovereignsky.no/docs/packages/networking/tailscale-tunnel
+      title: "tailscale-tunnel Docs"
+      icon: docs
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-team
+  system: networking

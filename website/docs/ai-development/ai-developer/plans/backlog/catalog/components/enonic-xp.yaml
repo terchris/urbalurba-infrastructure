@@ -1,0 +1,22 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: enonic-xp
+  description: "Headless CMS platform with Content Studio and headless APIs"
+  annotations:
+    backstage.io/techdocs-ref: url:https://uis.sovereignsky.no/docs/packages/integration/enonic
+    backstage.io/kubernetes-id: enonic-xp
+    backstage.io/kubernetes-namespace: enonic
+    uis.sovereignsky.no/docs-url: "https://uis.sovereignsky.no/docs/packages/integration/enonic"
+    uis.sovereignsky.no/business-owner: "business-owners"
+  links:
+    - url: https://uis.sovereignsky.no/docs/packages/integration/enonic
+      title: "enonic-xp Docs"
+      icon: docs
+spec:
+  type: service
+  lifecycle: production
+  owner: app-team
+  system: integration
+  dependsOn: []
+  # No runtime dependencies on shared UIS resources (uses embedded storage)

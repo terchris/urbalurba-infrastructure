@@ -21,6 +21,11 @@ SCRIPT_PRIORITY="31"
 SCRIPT_IMAGE="mysql:8.0"
 SCRIPT_NAMESPACE="default"
 
+# === Extended Metadata (Optional) ===
+SCRIPT_KIND="Resource"        # Component | Resource
+SCRIPT_TYPE="database"          # service | tool | library | database | cache | message-broker
+SCRIPT_OWNER="platform-team"   # platform-team | app-team
+
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Popular open-source relational database for web applications"
 SCRIPT_LOGO="mysql-logo.webp"

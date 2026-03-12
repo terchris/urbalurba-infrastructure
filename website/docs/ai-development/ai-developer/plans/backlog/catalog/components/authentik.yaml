@@ -1,0 +1,23 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: authentik
+  description: "Identity provider with SSO, MFA, and proxy authentication for all UIS services"
+  annotations:
+    backstage.io/techdocs-ref: url:https://uis.sovereignsky.no/docs/packages/identity/authentik
+    backstage.io/kubernetes-id: authentik
+    backstage.io/kubernetes-namespace: authentik
+    uis.sovereignsky.no/docs-url: "https://uis.sovereignsky.no/docs/packages/identity/authentik"
+    uis.sovereignsky.no/business-owner: "business-owners"
+  links:
+    - url: https://uis.sovereignsky.no/docs/packages/identity/authentik
+      title: "authentik Docs"
+      icon: docs
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-team
+  system: identity
+  dependsOn:
+    - resource:postgresql
+    - resource:redis

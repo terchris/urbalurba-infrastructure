@@ -162,6 +162,11 @@ SCRIPT_PRIORITY="30"                      # Deploy order (lower = earlier, defau
 SCRIPT_HELM_CHART="bitnami/postgresql"
 SCRIPT_NAMESPACE="default"
 
+# === Extended Metadata (Optional) ===
+SCRIPT_KIND="Resource"            # Component | Resource
+SCRIPT_TYPE="database"            # service | tool | library | database | cache | message-broker
+SCRIPT_OWNER="platform-team"     # platform-team | app-team
+
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="World's most advanced open-source relational database"
 SCRIPT_LOGO="postgresql-logo.webp"
@@ -177,6 +182,7 @@ SCRIPT_DOCS="/docs/packages/databases/postgresql"
 |-------|--------|---------|
 | Required | `SCRIPT_ID`, `SCRIPT_NAME`, `SCRIPT_DESCRIPTION`, `SCRIPT_CATEGORY` | Service identity and discovery |
 | Deployment | `SCRIPT_PLAYBOOK`, `SCRIPT_MANIFEST`, `SCRIPT_CHECK_COMMAND`, `SCRIPT_REMOVE_PLAYBOOK`, `SCRIPT_REQUIRES`, `SCRIPT_PRIORITY`, `SCRIPT_NAMESPACE` | How to deploy, verify, and remove |
+| Extended | `SCRIPT_KIND`, `SCRIPT_TYPE`, `SCRIPT_OWNER` | Backstage catalog generation |
 | Website | `SCRIPT_ABSTRACT`, `SCRIPT_LOGO`, `SCRIPT_WEBSITE`, `SCRIPT_TAGS`, `SCRIPT_SUMMARY`, `SCRIPT_DOCS` | Documentation generation |
 
 **Important constraints:**

@@ -75,6 +75,43 @@ PLAN-004-alerting-rules.md             # Depends on 003
 - Plans can be executed in any order
 - Single plan from an investigation
 
+### Splitting Investigations into Multiple Plans
+
+When an investigation covers a large initiative (e.g., deploying a new platform service with multiple phases), split it into separate ordered plans rather than one monolithic plan. Each plan should be independently completable and deliverable.
+
+**How to split:**
+
+1. **Group by dependency and risk** — phases that need different prerequisites (e.g., "no cluster needed" vs "requires running cluster") should be separate plans
+2. **Group by completeness** — each plan should deliver something useful on its own, even if later plans aren't started yet
+3. **Keep optional/deferred work separate** — don't mix required work with nice-to-haves in the same plan
+
+**Example: Deploying a new service with catalog generation**
+
+```
+INVESTIGATE-backstage.md                    ← Research and decisions
+  ↓ produces:
+PLAN-001-backstage-metadata-and-generator.md  ← No cluster needed, low risk
+PLAN-002-backstage-deployment.md              ← Cluster needed, medium risk
+PLAN-003-backstage-auth-and-plugins.md        ← Optional, after deployment works
+```
+
+- **PLAN-001** adds metadata fields and builds the generator — pure code, no cluster, can be tested locally
+- **PLAN-002** deploys Backstage following the adding-a-service guide — requires a running cluster
+- **PLAN-003** adds Authentik SSO and extra plugins — optional, only if Authentik is deployed
+
+Each plan references the investigation and the previous plan in its header:
+
+```markdown
+**Investigation**: [INVESTIGATE-backstage.md](../backlog/INVESTIGATE-backstage.md)
+**Prerequisites**: PLAN-001 must be complete first
+```
+
+**Benefits:**
+- Earlier plans can be completed and merged while later plans are still being refined
+- Risk is isolated — a deployment failure in PLAN-002 doesn't block the metadata/generator work in PLAN-001
+- Optional work (auth, plugins) can stay in backlog indefinitely without blocking core functionality
+- Each plan is small enough to review and validate in one session
+
 ### INVESTIGATE-*.md
 
 For work that **needs research first**. The problem exists but the solution is unclear.

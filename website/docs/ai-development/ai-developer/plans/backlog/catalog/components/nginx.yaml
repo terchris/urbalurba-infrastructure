@@ -1,0 +1,20 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: nginx
+  description: "Catch-all web server and default backend for unmatched requests"
+  annotations:
+    backstage.io/techdocs-ref: url:https://uis.sovereignsky.no/docs/packages/management/nginx
+    backstage.io/kubernetes-id: nginx
+    backstage.io/kubernetes-namespace: default
+    uis.sovereignsky.no/docs-url: "https://uis.sovereignsky.no/docs/packages/management/nginx"
+    uis.sovereignsky.no/business-owner: "business-owners"
+  links:
+    - url: https://uis.sovereignsky.no/docs/packages/management/nginx
+      title: "nginx Docs"
+      icon: docs
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-team
+  system: management

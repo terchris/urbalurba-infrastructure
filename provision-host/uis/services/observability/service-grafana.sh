@@ -22,6 +22,11 @@ SCRIPT_PRIORITY="20"
 SCRIPT_HELM_CHART="grafana/grafana"
 SCRIPT_NAMESPACE="monitoring"
 
+# === Extended Metadata (Optional) ===
+SCRIPT_KIND="Component"        # Component | Resource
+SCRIPT_TYPE="service"          # service | tool | library | database | cache | message-broker
+SCRIPT_OWNER="platform-team"   # platform-team | app-team
+
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Observability platform for metrics, logs, and distributed tracing"
 SCRIPT_LOGO="grafana-logo.webp"

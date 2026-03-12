@@ -1,0 +1,20 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: tika
+  description: "Document text extraction service for AI pipelines (PDF, DOCX, etc.)"
+  annotations:
+    backstage.io/techdocs-ref: url:https://uis.sovereignsky.no/docs/packages/ai/tika
+    backstage.io/kubernetes-id: tika
+    backstage.io/kubernetes-namespace: ai
+    uis.sovereignsky.no/docs-url: "https://uis.sovereignsky.no/docs/packages/ai/tika"
+    uis.sovereignsky.no/business-owner: "business-owners"
+  links:
+    - url: https://uis.sovereignsky.no/docs/packages/ai/tika
+      title: "tika Docs"
+      icon: docs
+spec:
+  type: service
+  lifecycle: production
+  owner: app-team
+  system: ai

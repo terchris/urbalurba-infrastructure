@@ -23,6 +23,11 @@ SCRIPT_IMAGE="enonic/xp:7.16.2-ubuntu"
 SCRIPT_HELM_CHART=""
 SCRIPT_NAMESPACE="enonic"
 
+# === Extended Metadata (Optional) ===
+SCRIPT_KIND="Component"        # Component | Resource
+SCRIPT_TYPE="service"          # service | tool | library | database | cache | message-broker
+SCRIPT_OWNER="app-team"   # platform-team | app-team
+
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Headless CMS platform with embedded storage, Content Studio, and 100+ integrations"
 SCRIPT_LOGO="enonic-logo.webp"

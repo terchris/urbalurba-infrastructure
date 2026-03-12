@@ -22,6 +22,11 @@ SCRIPT_PRIORITY="1"
 SCRIPT_HELM_CHART="bitnami/nginx"
 SCRIPT_NAMESPACE="default"
 
+# === Extended Metadata (Optional) ===
+SCRIPT_KIND="Component"        # Component | Resource
+SCRIPT_TYPE="service"          # service | tool | library | database | cache | message-broker
+SCRIPT_OWNER="platform-team"   # platform-team | app-team
+
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="High-performance web server and reverse proxy"
 SCRIPT_LOGO="nginx-logo.webp"

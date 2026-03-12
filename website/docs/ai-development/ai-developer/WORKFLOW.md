@@ -70,6 +70,7 @@ Claude will:
 1. **Create plan file** in `website/docs/ai-development/ai-developer/plans/backlog/`:
    - `PLAN-*.md` if the solution is clear
    - `INVESTIGATE-*.md` if research is needed first
+   - For large initiatives, an investigation may produce **multiple ordered plans** (`PLAN-001-*`, `PLAN-002-*`, etc.) — see [Splitting Investigations into Multiple Plans](PLANS.md#splitting-investigations-into-multiple-plans)
 2. **Ask you to review** the plan
 
 See [PLANS.md](PLANS.md) for plan structure, templates, and what goes in each section.

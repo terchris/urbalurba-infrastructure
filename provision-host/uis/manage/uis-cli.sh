@@ -1403,6 +1403,29 @@ cmd_docs() {
     esac
 }
 
+cmd_catalog() {
+    local subcmd="${1:-generate}"
+    shift || true
+
+    case "$subcmd" in
+        generate|gen)
+            local catalog_script="$SCRIPT_DIR/uis-backstage-catalog.sh"
+
+            if [[ ! -f "$catalog_script" ]]; then
+                log_error "uis-backstage-catalog.sh not found"
+                exit "$EXIT_GENERAL_ERROR"
+            fi
+
+            "$catalog_script" "$@"
+            ;;
+        *)
+            log_error "Unknown catalog subcommand: $subcmd"
+            echo "Usage: uis catalog [generate [--output-dir DIR] [--dry-run]]"
+            exit "$EXIT_GENERAL_ERROR"
+            ;;
+    esac
+}
+
 # ============================================================
 # Host Commands
 # ============================================================
@@ -1582,6 +1605,9 @@ main() {
             ;;
         docs)
             cmd_docs "$@"
+            ;;
+        catalog)
+            cmd_catalog "$@"
             ;;
         list|ls)
             cmd_list "$@"

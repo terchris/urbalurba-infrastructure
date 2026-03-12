@@ -21,6 +21,11 @@ SCRIPT_PRIORITY="80"
 SCRIPT_HELM_CHART="argo/argo-cd"
 SCRIPT_NAMESPACE="argocd"
 
+# === Extended Metadata (Optional) ===
+SCRIPT_KIND="Component"        # Component | Resource
+SCRIPT_TYPE="tool"          # service | tool | library | database | cache | message-broker
+SCRIPT_OWNER="platform-team"   # platform-team | app-team
+
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Declarative GitOps CD for Kubernetes"
 SCRIPT_LOGO="argocd-logo.webp"

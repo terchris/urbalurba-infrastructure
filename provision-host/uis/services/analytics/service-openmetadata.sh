@@ -22,6 +22,11 @@ SCRIPT_IMAGE="docker.getcollate.io/openmetadata/server:1.12.1"
 SCRIPT_HELM_CHART="open-metadata/openmetadata"
 SCRIPT_NAMESPACE="openmetadata"
 
+# === Extended Metadata (Optional) ===
+SCRIPT_KIND="Component"        # Component | Resource
+SCRIPT_TYPE="service"          # service | tool | library | database | cache | message-broker
+SCRIPT_OWNER="app-team"   # platform-team | app-team
+
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Open-source metadata platform for data discovery, governance, and observability"
 SCRIPT_LOGO="openmetadata-logo.webp"

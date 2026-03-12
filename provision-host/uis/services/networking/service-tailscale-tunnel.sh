@@ -21,6 +21,11 @@ SCRIPT_PRIORITY="100"
 SCRIPT_HELM_CHART="tailscale/tailscale-operator"
 SCRIPT_NAMESPACE="tailscale"
 
+# === Extended Metadata (Optional) ===
+SCRIPT_KIND="Component"        # Component | Resource
+SCRIPT_TYPE="service"          # service | tool | library | database | cache | message-broker
+SCRIPT_OWNER="platform-team"   # platform-team | app-team
+
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Zero-config WireGuard-based mesh VPN for secure remote access"
 SCRIPT_LOGO="tailscale-logo.webp"
