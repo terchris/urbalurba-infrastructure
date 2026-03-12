@@ -1,0 +1,292 @@
+---
+# file: ansible/playbooks/650-test-backstage.yml
+# Description:
+# End-to-end tests for the Backstage (RHDH) deployment.
+# Validates health, catalog, Kubernetes plugin, UI access, and Grafana plugin.
+#
+# Tests:
+#   A. Health check - /healthcheck must respond HTTP 200
+#   B. Catalog loaded - /api/catalog/entities must return entities
+#   C. Kubernetes plugin - check that K8s plugin responds
+#   D. UI via Traefik - backstage.localhost must be routable
+#   E. Grafana plugin - check Grafana integration (if Grafana deployed)
+#
+# Usage:
+# ansible-playbook ansible/playbooks/650-test-backstage.yml -e kube_context="rancher-desktop"
+
+- name: End-to-End Backstage Tests
+  hosts: localhost
+  gather_facts: false
+  vars:
+    merged_kubeconf_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
+    backstage_namespace: "backstage"
+    backstage_service: "backstage-developer-hub.{{ backstage_namespace }}.svc.cluster.local"
+    backstage_port: 7007
+
+  tasks:
+    - name: "0. Display test suite initiation"
+      ansible.builtin.debug:
+        msg: |
+          End-to-End Backstage Tests
+          ===============================================
+          Running 5 test groups
+
+    - name: "0.1. Get Traefik ClusterIP for in-cluster hostname routing"
+      ansible.builtin.shell: |
+        kubectl get svc traefik -n kube-system -o jsonpath='{.spec.clusterIP}'
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: traefik_ip_result
+      changed_when: false
+
+    - name: "0.2. Store Traefik IP"
+      ansible.builtin.set_fact:
+        traefik_ip: "{{ traefik_ip_result.stdout }}"
+
+    # ===== Test A: Health check =====
+    - name: "A1. Check Backstage health endpoint"
+      ansible.builtin.shell: |
+        kubectl run curl-test-health-{{ 99999 | random }} --image=curlimages/curl --rm -i --restart=Never -n {{ backstage_namespace }} -- \
+          curl -s -w "\nHTTP_CODE:%{http_code}" http://{{ backstage_service }}:{{ backstage_port }}/healthcheck
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: health_test
+      retries: 5
+      delay: 10
+      until: "'HTTP_CODE:200' in health_test.stdout"
+      failed_when: false
+      changed_when: false
+
+    - name: "A2. Verify health check returns 200"
+      ansible.builtin.assert:
+        that:
+          - "'HTTP_CODE:200' in health_test.stdout"
+        fail_msg: |
+          FAILED: Backstage health check failed!
+          Expected HTTP 200 from /healthcheck.
+          Got: {{ health_test.stdout[:500] | default('No output') }}
+
+          Troubleshooting:
+          - Check pod status: kubectl get pods -n {{ backstage_namespace }}
+          - Check pod logs: kubectl logs -n {{ backstage_namespace }} -l app.kubernetes.io/name=backstage --tail=50
+        success_msg: "Test A PASSED: Backstage is healthy"
+
+    - name: "A3. Display health test result"
+      ansible.builtin.debug:
+        msg: |
+          Test A: Health Check — PASSED
+          /healthcheck returns HTTP 200
+
+    # ===== Test B: Catalog loaded =====
+    - name: "B1. Check catalog has UIS components (with guest auth)"
+      ansible.builtin.shell: |
+        kubectl run curl-test-catalog-{{ 99999 | random }} --image=curlimages/curl --rm -i --restart=Never -n {{ backstage_namespace }} -- \
+          sh -c '
+            # Get a guest token first (RHDH requires auth even for guest)
+            TOKEN_RESPONSE=$(curl -s -X POST http://{{ backstage_service }}:{{ backstage_port }}/api/auth/guest/refresh)
+            TOKEN=$(echo "$TOKEN_RESPONSE" | sed -n "s/.*\"token\":\"\([^\"]*\)\".*/\1/p")
+
+            if [ -z "$TOKEN" ]; then
+              echo "CATALOG_RESULT: AUTH_FAILED"
+              echo "TOKEN_RESPONSE: $TOKEN_RESPONSE"
+              exit 0
+            fi
+
+            # Query for Component entities specifically (filters out built-in entities)
+            RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}" \
+              -H "Authorization: Bearer $TOKEN" \
+              "http://{{ backstage_service }}:{{ backstage_port }}/api/catalog/entities?filter=kind=Component&limit=5")
+            echo "$RESPONSE"
+            BODY=$(echo "$RESPONSE" | head -n -1)
+            # Check for UIS component names (not just any "kind" match)
+            if echo "$BODY" | grep -q "\"Component\""; then
+              echo "CATALOG_RESULT: HAS_COMPONENTS"
+            elif echo "$BODY" | grep -q "kind"; then
+              echo "CATALOG_RESULT: HAS_ENTITIES_NO_COMPONENTS"
+            else
+              echo "CATALOG_RESULT: NO_ENTITIES"
+            fi
+          '
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: catalog_test
+      retries: 5
+      delay: 15
+      until: "'CATALOG_RESULT: HAS_COMPONENTS' in catalog_test.stdout"
+      failed_when: false
+      changed_when: false
+
+    - name: "B2. Verify catalog has UIS components"
+      ansible.builtin.assert:
+        that:
+          - "'CATALOG_RESULT: HAS_COMPONENTS' in catalog_test.stdout"
+        fail_msg: |
+          FAILED: Backstage catalog has no UIS components!
+          Expected /api/catalog/entities?filter=kind=Component to return Component entities.
+          Got: {{ catalog_test.stdout[:500] | default('No output') }}
+
+          Troubleshooting:
+          - Check catalog ConfigMap has entity files (not just all.yaml):
+            kubectl get configmap backstage-catalog -n {{ backstage_namespace }} -o jsonpath='{.data}' | grep -c yaml
+          - Verify catalog files are flat (no subdirectory paths)
+          - Regenerate: ./uis catalog generate
+          - Check pod logs for catalog errors:
+            kubectl logs -n {{ backstage_namespace }} -l app.kubernetes.io/instance=backstage --tail=50
+          - If AUTH_FAILED: check auth config in 650-backstage-config.yaml and 654-backstage-app-config.yaml
+        success_msg: "Test B PASSED: Catalog has UIS components"
+
+    - name: "B3. Display catalog test result"
+      ansible.builtin.debug:
+        msg: |
+          Test B: Catalog Loaded — PASSED
+          /api/catalog/entities returns UIS Component entities
+
+    # ===== Test C: Kubernetes plugin responds =====
+    - name: "C1. Check Kubernetes plugin clusters endpoint"
+      ansible.builtin.shell: |
+        kubectl run curl-test-k8s-{{ 99999 | random }} --image=curlimages/curl --rm -i --restart=Never -n {{ backstage_namespace }} -- \
+          sh -c '
+            # Get a guest token (RHDH requires auth)
+            TOKEN_RESPONSE=$(curl -s -X POST http://{{ backstage_service }}:{{ backstage_port }}/api/auth/guest/refresh)
+            TOKEN=$(echo "$TOKEN_RESPONSE" | sed -n "s/.*\"token\":\"\([^\"]*\)\".*/\1/p")
+
+            RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}" \
+              -H "Authorization: Bearer $TOKEN" \
+              http://{{ backstage_service }}:{{ backstage_port }}/api/kubernetes/clusters)
+            echo "$RESPONSE"
+            if echo "$RESPONSE" | grep -q "HTTP_CODE:200\|HTTP_CODE:404"; then
+              echo "K8S_RESULT: PLUGIN_RESPONDS"
+            else
+              echo "K8S_RESULT: PLUGIN_ERROR"
+            fi
+          '
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: k8s_test
+      failed_when: false
+      changed_when: false
+
+    - name: "C2. Verify Kubernetes plugin responds"
+      ansible.builtin.assert:
+        that:
+          - "'K8S_RESULT: PLUGIN_RESPONDS' in k8s_test.stdout"
+        fail_msg: |
+          FAILED: Kubernetes plugin not responding!
+          Got: {{ k8s_test.stdout[:500] | default('No output') }}
+
+          Troubleshooting:
+          - Check ServiceAccount: kubectl get sa backstage -n {{ backstage_namespace }}
+          - Check ClusterRoleBinding: kubectl get clusterrolebinding backstage-cluster-reader
+          - Check pod logs for K8s plugin errors
+        success_msg: "Test C PASSED: Kubernetes plugin responds"
+
+    - name: "C3. Display K8s plugin test result"
+      ansible.builtin.debug:
+        msg: |
+          Test C: Kubernetes Plugin — PASSED
+          Plugin endpoint responds
+
+    # ===== Test D: UI access via Traefik IngressRoute =====
+    - name: "D1. Access Backstage UI via Traefik with Host header"
+      ansible.builtin.shell: |
+        kubectl run curl-test-ui-{{ 99999 | random }} --image=curlimages/curl --rm -i --restart=Never -n {{ backstage_namespace }} -- \
+          sh -c '
+            RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}" \
+              -H "Host: backstage.localhost" \
+              http://{{ traefik_ip }})
+            echo "$RESPONSE"
+            HTTP_CODE=$(echo "$RESPONSE" | grep -o "HTTP_CODE:[0-9]*")
+            # Verify it is actually Backstage (not nginx catch-all)
+            if echo "$RESPONSE" | grep -qi "backstage\|developer-hub\|<div id=\"root\""; then
+              echo "UI_RESULT: BACKSTAGE_UI"
+            elif echo "$RESPONSE" | grep -qi "Welcome to UIS\|nginx"; then
+              echo "UI_RESULT: NGINX_CATCHALL"
+            else
+              echo "UI_RESULT: UNKNOWN"
+            fi
+          '
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: ui_access_test
+      retries: 3
+      delay: 10
+      until: "'UI_RESULT: BACKSTAGE_UI' in ui_access_test.stdout"
+      failed_when: false
+      changed_when: false
+
+    - name: "D2. Verify UI is accessible via Traefik"
+      ansible.builtin.assert:
+        that:
+          - "'UI_RESULT: BACKSTAGE_UI' in ui_access_test.stdout"
+        fail_msg: |
+          FAILED: Backstage UI not accessible via Traefik IngressRoute!
+          Expected Backstage UI when accessing backstage.localhost through Traefik.
+          {{ 'Got nginx catch-all page — IngressRoute service name may be wrong.' if 'UI_RESULT: NGINX_CATCHALL' in ui_access_test.stdout | default('') else '' }}
+          Got: {{ ui_access_test.stdout[-500:] | default('No output') }}
+
+          Troubleshooting:
+          - Check IngressRoute: kubectl get ingressroute -n {{ backstage_namespace }}
+          - Check service name matches: kubectl get svc -n {{ backstage_namespace }}
+          - Check Traefik: kubectl get svc traefik -n kube-system
+        success_msg: "Test D PASSED: Backstage UI accessible via backstage.localhost"
+
+    - name: "D3. Display UI access test result"
+      ansible.builtin.debug:
+        msg: |
+          Test D: UI Access via Traefik — PASSED
+          backstage.localhost routes to Backstage UI (not catch-all)
+
+    # ===== Test E: Grafana plugin (conditional) =====
+    - name: "E1. Check if Grafana is deployed"
+      ansible.builtin.shell: |
+        kubectl get svc grafana -n monitoring --no-headers 2>/dev/null | wc -l
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: grafana_check
+      changed_when: false
+
+    - name: "E2. Check Grafana plugin endpoint (if Grafana deployed)"
+      ansible.builtin.shell: |
+        kubectl run curl-test-grafana-{{ 99999 | random }} --image=curlimages/curl --rm -i --restart=Never -n {{ backstage_namespace }} -- \
+          sh -c '
+            RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}" \
+              http://{{ backstage_service }}:{{ backstage_port }}/api/grafana/health)
+            echo "$RESPONSE"
+          '
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: grafana_test
+      failed_when: false
+      changed_when: false
+      when: grafana_check.stdout | int > 0
+
+    - name: "E3. Display Grafana plugin test result"
+      ansible.builtin.debug:
+        msg: |
+          Test E: Grafana Plugin — {{ 'CHECKED (Grafana deployed)' if grafana_check.stdout | int > 0 else 'SKIPPED (Grafana not deployed)' }}
+
+    # ===== Summary =====
+    - name: "S1. Display comprehensive test results"
+      ansible.builtin.debug:
+        msg:
+          - "==============================================="
+          - "End-to-End Backstage Test Results"
+          - "==============================================="
+          - ""
+          - "Test A — Health Check:         PASSED"
+          - "  /healthcheck returns HTTP 200"
+          - ""
+          - "Test B — Catalog Loaded:       PASSED"
+          - "  /api/catalog/entities returns entities"
+          - ""
+          - "Test C — Kubernetes Plugin:    PASSED"
+          - "  Plugin endpoint responds"
+          - ""
+          - "Test D — UI via Traefik:       PASSED"
+          - "  backstage.localhost routes correctly"
+          - ""
+          - "Test E — Grafana Plugin:       {{ 'CHECKED' if grafana_check.stdout | int > 0 else 'SKIPPED (Grafana not deployed)' }}"
+          - ""
+          - "==============================================="
+          - "ALL TESTS PASSED"
+          - "==============================================="

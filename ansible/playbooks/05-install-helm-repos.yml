@@ -16,6 +16,7 @@
         - { name: 'bitnami', url: 'https://charts.bitnami.com/bitnami' }
         - { name: 'runix', url: 'https://helm.runix.net' }
         - { name: 'graviteeio', url: 'https://helm.gravitee.io' }
+        - { name: 'rhdh-chart', url: 'https://redhat-developer.github.io/rhdh-chart' }
       register: helm_repo_result
 
     - name: 01. Print playbook description

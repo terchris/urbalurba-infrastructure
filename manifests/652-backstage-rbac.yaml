@@ -1,0 +1,38 @@
+# 652-backstage-rbac.yaml
+#
+# Description:
+# RBAC resources for the Backstage Kubernetes plugin.
+# Creates a ServiceAccount and ClusterRoleBinding that grants
+# read-only cluster access so Backstage can display pod status.
+#
+# The Kubernetes plugin needs to list pods, deployments, services,
+# and other resources across all namespaces to show live status
+# in the software catalog.
+#
+# Usage:
+# kubectl apply -f 652-backstage-rbac.yaml
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: backstage
+  namespace: backstage
+  labels:
+    app: backstage
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: backstage-cluster-reader
+  labels:
+    app: backstage
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+subjects:
+  - kind: ServiceAccount
+    name: backstage
+    namespace: backstage

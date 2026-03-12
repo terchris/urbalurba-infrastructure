@@ -1,0 +1,216 @@
+---
+# ansible/playbooks/utility/u10-backstage-create-postgres.yml
+#
+# Description:
+#   Creates and manages the Backstage PostgreSQL database and user.
+#   Same pattern as u09-authentik-create-postgres.yml.
+#
+#   Fetches required credentials from Kubernetes secrets:
+#     - The Backstage database password from 'urbalurba-secrets' in the 'backstage' namespace.
+#     - The PostgreSQL admin password from 'urbalurba-secrets' in the 'default' namespace.
+#
+# Operations supported:
+#   CREATE MODE (default): Sets up Backstage database with full permissions
+#   DELETE MODE: Completely removes Backstage database and user
+#
+# Usage:
+#   ansible-playbook /mnt/urbalurbadisk/ansible/playbooks/utility/u10-backstage-create-postgres.yml
+#   ansible-playbook /mnt/urbalurbadisk/ansible/playbooks/utility/u10-backstage-create-postgres.yml -e operation=delete
+
+- hosts: localhost
+  gather_facts: false
+  vars:
+    merged_kubeconf_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
+
+  tasks:
+    - name: 1. Set operation default if not provided
+      set_fact:
+        current_operation: "{{ operation | default('create') }}"
+
+    - name: 2. Validate operation parameter
+      fail:
+        msg: "Invalid operation '{{ current_operation }}'. Must be 'create' or 'delete'"
+      when: current_operation not in ['create', 'delete']
+
+    - name: 3. Display operation mode
+      debug:
+        msg: |
+          Backstage PostgreSQL Management Playbook
+          Operation: {{ current_operation | upper }}
+
+    - name: 4. Get urbalurba-secrets from backstage namespace (create mode only)
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Secret
+        name: urbalurba-secrets
+        namespace: backstage
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: backstage_secret
+      when: current_operation == 'create'
+      ignore_errors: yes
+
+    - name: 4.1. Verify BACKSTAGE_DB_PASSWORD exists in backstage namespace
+      fail:
+        msg: |
+          Missing required secret for Backstage database setup!
+          Ensure 'urbalurba-secrets' exists in the 'backstage' namespace
+          with key 'BACKSTAGE_DB_PASSWORD'.
+          Run: ./uis secrets generate && ./uis secrets apply
+      when:
+        - current_operation == 'create'
+        - backstage_secret.resources | length == 0 or
+          'BACKSTAGE_DB_PASSWORD' not in (backstage_secret.resources[0].data | default({}))
+
+    - name: 5. Get urbalurba-secrets from default namespace
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Secret
+        name: urbalurba-secrets
+        namespace: default
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: default_secret
+
+    - name: 6. Set DB connection variables
+      set_fact:
+        pg_user: "backstage"
+        pg_password: "{{ backstage_secret.resources[0].data.BACKSTAGE_DB_PASSWORD | b64decode if current_operation == 'create' and backstage_secret.resources else 'N/A' }}"
+        pg_db: "backstage"
+        pg_host: "{{ default_secret.resources[0].data.PGHOST | b64decode }}"
+        pg_admin_user: "postgres"
+        pg_admin_password: "{{ default_secret.resources[0].data.PGPASSWORD | b64decode }}"
+
+    - name: 7. Display configuration (passwords masked)
+      debug:
+        msg: |
+          Backstage PostgreSQL {{ current_operation | upper }} Operation
+          Database: {{ pg_db }}
+          User: {{ pg_user }}
+          Host: {{ pg_host }}
+          Passwords: [MASKED]
+
+    - name: 8. Start port-forward to PostgreSQL in background
+      shell: |
+        kubectl port-forward svc/postgresql 5432:5432 -n default > /tmp/pg-portforward.log 2>&1 &
+        echo $! > /tmp/pg-portforward.pid
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      async: 10
+      poll: 0
+
+    - name: 9. Wait for PostgreSQL port-forward to be ready
+      wait_for:
+        host: localhost
+        port: 5432
+        delay: 2
+        timeout: 30
+
+    # DELETE OPERATION TASKS
+    - block:
+        - name: 10-DEL. Terminate active connections to backstage database
+          community.postgresql.postgresql_query:
+            login_host: "localhost"
+            login_user: "{{ pg_admin_user }}"
+            login_password: "{{ pg_admin_password }}"
+            port: "{{ pg_port | default(5432) }}"
+            db: postgres
+            query: |
+              SELECT pg_terminate_backend(pid)
+              FROM pg_stat_activity
+              WHERE datname = '{{ pg_db }}' AND pid <> pg_backend_pid();
+          ignore_errors: yes
+
+        - name: 11-DEL. Drop backstage database
+          community.postgresql.postgresql_db:
+            name: "{{ pg_db }}"
+            login_host: "localhost"
+            login_user: "{{ pg_admin_user }}"
+            login_password: "{{ pg_admin_password }}"
+            port: "{{ pg_port | default(5432) }}"
+            state: absent
+
+        - name: 12-DEL. Drop backstage user
+          community.postgresql.postgresql_user:
+            name: "{{ pg_user }}"
+            login_host: "localhost"
+            login_user: "{{ pg_admin_user }}"
+            login_password: "{{ pg_admin_password }}"
+            port: "{{ pg_port | default(5432) }}"
+            state: absent
+
+        - name: 13-DEL. Display cleanup results
+          debug:
+            msg: "Backstage database and user removed."
+
+      when: current_operation == 'delete'
+
+    # CREATE OPERATION TASKS
+    - block:
+        - name: 10-CREATE. Ensure PostgreSQL user exists with CREATEDB privilege
+          community.postgresql.postgresql_user:
+            name: "{{ pg_user }}"
+            password: "{{ pg_password }}"
+            login_host: "localhost"
+            login_user: "{{ pg_admin_user }}"
+            login_password: "{{ pg_admin_password }}"
+            port: "{{ pg_port | default(5432) }}"
+            role_attr_flags: CREATEDB,LOGIN
+            state: present
+
+        - name: 11-CREATE. Ensure PostgreSQL database exists
+          community.postgresql.postgresql_db:
+            name: "{{ pg_db }}"
+            owner: "{{ pg_user }}"
+            login_host: "localhost"
+            login_user: "{{ pg_admin_user }}"
+            login_password: "{{ pg_admin_password }}"
+            port: "{{ pg_port | default(5432) }}"
+            state: present
+
+        - name: 12-CREATE. Grant all database privileges to user
+          community.postgresql.postgresql_privs:
+            db: "{{ pg_db }}"
+            type: database
+            privs: ALL
+            objs: "{{ pg_db }}"
+            roles: "{{ pg_user }}"
+            login_host: "localhost"
+            login_user: "{{ pg_admin_user }}"
+            login_password: "{{ pg_admin_password }}"
+            port: "{{ pg_port | default(5432) }}"
+
+        - name: 13-CREATE. Grant schema privileges (PostgreSQL 15+ requirement)
+          community.postgresql.postgresql_privs:
+            db: "{{ pg_db }}"
+            type: schema
+            objs: public
+            privs: ALL
+            roles: "{{ pg_user }}"
+            login_host: "localhost"
+            login_user: "{{ pg_admin_user }}"
+            login_password: "{{ pg_admin_password }}"
+            port: "{{ pg_port | default(5432) }}"
+
+        - name: 14-CREATE. Test connection with backstage user
+          community.postgresql.postgresql_query:
+            db: "{{ pg_db }}"
+            login_host: "localhost"
+            login_user: "{{ pg_user }}"
+            login_password: "{{ pg_password }}"
+            port: "{{ pg_port | default(5432) }}"
+            query: "SELECT current_database(), current_user, version()"
+          register: connection_test
+
+        - name: 15-CREATE. Display connection test results
+          debug:
+            msg: |
+              Backstage PostgreSQL setup completed!
+              Database: {{ connection_test.query_result[0].current_database }}
+              User: {{ connection_test.query_result[0].current_user }}
+
+      when: current_operation == 'create'
+
+    - name: 99. Stop port-forward process
+      shell: |
+        kill $(cat /tmp/pg-portforward.pid) || true
+        rm -f /tmp/pg-portforward.pid
+      ignore_errors: yes

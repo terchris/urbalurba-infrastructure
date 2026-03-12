@@ -579,22 +579,34 @@ spec:
   targets:
     # --- Groups ---"
 
-    while IFS= read -r t; do [[ -n "$t" ]] && content+=$'\n'"$t"; done <<< "$groups_list"
+    # Helper: strip subdirectory from path for flat ConfigMap mount
+    # e.g., "    - ./components/nginx.yaml" → "    - ./nginx.yaml"
+    _flatten() {
+        local list="$1"
+        while IFS= read -r t; do
+            [[ -n "$t" ]] || continue
+            # Replace ./subdir/file.yaml with ./file.yaml
+            local flat="${t/\.\/*\//\.\/}"
+            content+=$'\n'"$flat"
+        done <<< "$list"
+    }
+
+    _flatten "$groups_list"
 
     content+=$'\n'"    # --- Users ---"
-    while IFS= read -r t; do [[ -n "$t" ]] && content+=$'\n'"$t"; done <<< "$users_list"
+    _flatten "$users_list"
 
     content+=$'\n'"    # --- Domain ---"
-    while IFS= read -r t; do [[ -n "$t" ]] && content+=$'\n'"$t"; done <<< "$domains_list"
+    _flatten "$domains_list"
 
     content+=$'\n'"    # --- Systems ---"
-    while IFS= read -r t; do [[ -n "$t" ]] && content+=$'\n'"$t"; done <<< "$systems_list"
+    _flatten "$systems_list"
 
     content+=$'\n'"    # --- Resources ---"
-    while IFS= read -r t; do [[ -n "$t" ]] && content+=$'\n'"$t"; done <<< "$resources_list"
+    _flatten "$resources_list"
 
     content+=$'\n'"    # --- Components ---"
-    while IFS= read -r t; do [[ -n "$t" ]] && content+=$'\n'"$t"; done <<< "$components_list"
+    _flatten "$components_list"
 
     write_file "$OUTPUT_DIR/all.yaml" "$content"
     log_success "Location: all.yaml"

@@ -1,0 +1,372 @@
+---
+# file: ansible/playbooks/650-setup-backstage.yml
+# Description:
+# Set up Backstage (RHDH) developer portal on Kubernetes.
+# Uses the RHDH Helm chart with existing UIS PostgreSQL.
+#
+# Prerequisites:
+# - Kubernetes cluster is set up and accessible
+# - PostgreSQL deployed (./uis deploy postgresql)
+# - urbalurba-secrets applied to backstage namespace
+# - Catalog generated (./uis catalog generate)
+# - Helm 3.x installed
+#
+# Usage:
+# ansible-playbook playbooks/650-setup-backstage.yml -e kube_context="rancher-desktop"
+
+- name: Set up Backstage (RHDH) on Kubernetes
+  hosts: localhost
+  gather_facts: false
+  vars:
+    manifests_folder: "/mnt/urbalurbadisk/manifests"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
+    catalog_folder: "/mnt/urbalurbadisk/generated/backstage/catalog"
+    catalog_script: "/mnt/urbalurbadisk/provision-host/uis/manage/uis-backstage-catalog.sh"
+    backstage_namespace: "backstage"
+    backstage_config_file: "{{ manifests_folder }}/650-backstage-config.yaml"
+    backstage_ingress_file: "{{ manifests_folder }}/651-backstage-ingressroute.yaml"
+    backstage_rbac_file: "{{ manifests_folder }}/652-backstage-rbac.yaml"
+    backstage_appconfig_file: "{{ manifests_folder }}/654-backstage-app-config.yaml"
+    backstage_helm_repo_url: "https://redhat-developer.github.io/rhdh-chart"
+    backstage_helm_chart: "rhdh-chart/backstage"
+    installation_timeout: 600
+    pod_readiness_timeout: 300
+
+  tasks:
+    - name: 1. Print playbook description
+      ansible.builtin.debug:
+        msg: |
+          Setting up Backstage (RHDH) on Kubernetes
+          Namespace: {{ backstage_namespace }}
+          Database: PostgreSQL (existing UIS instance)
+          Catalog: File-based from generated YAML
+
+    # ============= PHASE 1: PREREQUISITES VERIFICATION =============
+
+    - name: 2. Create backstage namespace
+      kubernetes.core.k8s:
+        name: "{{ backstage_namespace }}"
+        api_version: v1
+        kind: Namespace
+        state: present
+        kubeconfig: "{{ merged_kubeconf_file }}"
+
+    - name: 3. Apply Backstage IngressRoute (early — so routing works even if later steps timeout)
+      kubernetes.core.k8s:
+        src: "{{ backstage_ingress_file }}"
+        state: present
+        kubeconfig: "{{ merged_kubeconf_file }}"
+
+    - name: 4. Check if PostgreSQL is available
+      ansible.builtin.shell: >-
+        kubectl get service postgresql -n default --no-headers 2>/dev/null | wc -l
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: postgres_check
+      changed_when: false
+
+    - name: 5. Fail if PostgreSQL is not available
+      ansible.builtin.fail:
+        msg: "PostgreSQL is required for Backstage. Deploy it first: ./uis deploy postgresql"
+      when: postgres_check.stdout | int == 0
+
+    - name: 6. Check if urbalurba-secrets exists in backstage namespace
+      ansible.builtin.shell: >-
+        kubectl get secret urbalurba-secrets -n {{ backstage_namespace }} --no-headers 2>/dev/null | wc -l
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: secrets_check
+      changed_when: false
+
+    - name: 7. Copy urbalurba-secrets from default namespace if missing
+      ansible.builtin.shell: >-
+        kubectl get secret urbalurba-secrets -n default -o json |
+        sed 's/"namespace": "default"/"namespace": "{{ backstage_namespace }}"/' |
+        kubectl apply -n {{ backstage_namespace }} -f -
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      when: secrets_check.stdout | int == 0
+      changed_when: true
+
+    - name: 8. Display prerequisites status
+      ansible.builtin.debug:
+        msg: |
+          Prerequisites:
+          - PostgreSQL: Available
+          - Secrets: {{ 'Copied from default namespace' if (secrets_check.stdout | int) == 0 else 'Already configured' }}
+
+    # ============= PHASE 2: DATABASE SETUP =============
+
+    - name: 9. Get PostgreSQL pod name
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ merged_kubeconf_file }}"
+        kind: Pod
+        namespace: default
+        label_selectors:
+          - app.kubernetes.io/name=postgresql
+      register: postgres_pods
+
+    - name: 10. Set PostgreSQL pod name
+      ansible.builtin.set_fact:
+        postgres_pod_name: "{{ postgres_pods.resources[0].metadata.name }}"
+      when: postgres_pods.resources | length > 0
+
+    - name: 11. Get PostgreSQL password from urbalurba-secrets
+      ansible.builtin.shell: >-
+        kubectl get secret urbalurba-secrets -n default
+        -o jsonpath='{.data.PGPASSWORD}' | base64 -d
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: postgres_password
+      changed_when: false
+
+    - name: 12. Get Backstage DB password from urbalurba-secrets
+      ansible.builtin.shell: >-
+        kubectl get secret urbalurba-secrets -n {{ backstage_namespace }}
+        -o jsonpath='{.data.BACKSTAGE_DB_PASSWORD}' | base64 -d
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: backstage_db_password
+      changed_when: false
+
+    - name: 13. Check if backstage role exists
+      ansible.builtin.shell: >-
+        kubectl exec -n default {{ postgres_pod_name }} --
+        bash -c "PGPASSWORD='{{ postgres_password.stdout }}'
+        psql -h postgresql.default -U postgres -tAc
+        \"SELECT 1 FROM pg_roles WHERE rolname='backstage';\"" | grep -q 1
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: role_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: 14. Create backstage role if missing
+      ansible.builtin.shell: >-
+        kubectl exec -n default {{ postgres_pod_name }} --
+        bash -c "PGPASSWORD='{{ postgres_password.stdout }}'
+        psql -h postgresql.default -U postgres -c
+        \"CREATE ROLE backstage WITH LOGIN PASSWORD '{{ backstage_db_password.stdout }}' CREATEDB;\""
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      when: role_check.rc != 0
+      changed_when: true
+
+    - name: 15. Check if backstage database exists
+      ansible.builtin.shell: >-
+        kubectl exec -n default {{ postgres_pod_name }} --
+        bash -c "PGPASSWORD='{{ postgres_password.stdout }}'
+        psql -h postgresql.default -U postgres -lqt" | cut -d \| -f 1 | grep -qw backstage
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: db_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: 16. Create backstage database if missing
+      ansible.builtin.shell: >-
+        kubectl exec -n default {{ postgres_pod_name }} --
+        bash -c "PGPASSWORD='{{ postgres_password.stdout }}'
+        psql -h postgresql.default -U postgres -c
+        \"CREATE DATABASE backstage OWNER backstage;\""
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      when: db_check.rc != 0
+      changed_when: true
+
+    - name: 17. Grant privileges on backstage database and public schema
+      ansible.builtin.shell: >-
+        kubectl exec -n default {{ postgres_pod_name }} --
+        bash -c "PGPASSWORD='{{ postgres_password.stdout }}'
+        psql -h postgresql.default -U postgres -c
+        \"GRANT ALL PRIVILEGES ON DATABASE backstage TO backstage;\"
+        && PGPASSWORD='{{ postgres_password.stdout }}'
+        psql -h postgresql.default -U postgres -d backstage -c
+        \"GRANT ALL ON SCHEMA public TO backstage;\""
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      changed_when: true
+
+    - name: 18. Verify PostgreSQL is fully operational
+      ansible.builtin.shell: >-
+        ansible-playbook /mnt/urbalurbadisk/ansible/playbooks/utility/u02-verify-postgres.yml
+      register: postgres_verify
+      changed_when: false
+
+    - name: 19. Display PostgreSQL verification result
+      ansible.builtin.debug:
+        msg: "PostgreSQL verification: {{ 'PASSED' if postgres_verify.rc == 0 else 'FAILED — check output above' }}"
+
+    - name: 20. Create backstage-postgresql secret for RHDH Helm chart
+      kubernetes.core.k8s:
+        state: present
+        kubeconfig: "{{ merged_kubeconf_file }}"
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: backstage-postgresql
+            namespace: "{{ backstage_namespace }}"
+          type: Opaque
+          stringData:
+            postgres-password: "{{ backstage_db_password.stdout }}"
+
+    # ============= PHASE 3: RBAC AND CATALOG =============
+
+    - name: 21. Apply Backstage RBAC (ServiceAccount + ClusterRoleBinding)
+      kubernetes.core.k8s:
+        src: "{{ backstage_rbac_file }}"
+        state: present
+        kubeconfig: "{{ merged_kubeconf_file }}"
+
+    - name: 22. Generate Backstage catalog
+      ansible.builtin.shell: >-
+        bash {{ catalog_script }} --output-dir {{ catalog_folder }}
+      register: catalog_generate
+      changed_when: true
+
+    - name: 23. Display catalog generation result
+      ansible.builtin.debug:
+        msg: "{{ catalog_generate.stdout_lines | default(['Catalog generated']) }}"
+
+    - name: 24. Flatten catalog files for ConfigMap (subdirectories not supported)
+      ansible.builtin.shell: >-
+        find {{ catalog_folder }} -mindepth 2 -name '*.yaml' -exec cp {} {{ catalog_folder }}/ \;
+      changed_when: true
+
+    - name: 25. Create Backstage catalog ConfigMap from generated files
+      ansible.builtin.shell: >-
+        kubectl create configmap backstage-catalog
+        --from-file={{ catalog_folder }}/
+        -n {{ backstage_namespace }}
+        --dry-run=client -o yaml | kubectl apply -f -
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      changed_when: true
+
+    - name: 26. Apply Backstage app-config ConfigMap
+      kubernetes.core.k8s:
+        src: "{{ backstage_appconfig_file }}"
+        state: present
+        kubeconfig: "{{ merged_kubeconf_file }}"
+
+    # ============= PHASE 4: HELM DEPLOYMENT =============
+
+    - name: 27. Check existing Helm repositories
+      ansible.builtin.command: helm repo list
+      register: helm_repo_list
+      changed_when: false
+      ignore_errors: true
+
+    - name: 28. Add RHDH Helm repository if missing
+      kubernetes.core.helm_repository:
+        name: "rhdh-chart"
+        repo_url: "{{ backstage_helm_repo_url }}"
+      when: "'rhdh-chart' not in helm_repo_list.stdout"
+
+    - name: 29. Update Helm repositories
+      ansible.builtin.command: helm repo update
+      changed_when: false
+
+    - name: 30. Deploy Backstage using RHDH Helm chart
+      ansible.builtin.command: >
+        helm upgrade --install backstage {{ backstage_helm_chart }}
+        -f {{ backstage_config_file }}
+        --namespace {{ backstage_namespace }}
+        --timeout {{ installation_timeout }}s
+        --wait
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: backstage_install
+      changed_when: true
+
+    - name: 31. Display Helm install output
+      ansible.builtin.debug:
+        msg: "{{ backstage_install.stdout_lines }}"
+      when: backstage_install.stdout_lines is defined
+
+    # ============= PHASE 5: WAIT FOR READINESS =============
+
+    - name: 32. Wait for Backstage pod to be running
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: "{{ backstage_namespace }}"
+        label_selectors:
+          - "app.kubernetes.io/instance=backstage"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: backstage_pods
+      until: >
+        backstage_pods.resources | length > 0 and
+        backstage_pods.resources[0].status.phase == "Running"
+      retries: 60
+      delay: 15
+
+    - name: 33. Wait for Backstage pod to be ready (1/1)
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: "{{ backstage_namespace }}"
+        label_selectors:
+          - "app.kubernetes.io/instance=backstage"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: backstage_pods_ready
+      until: >
+        backstage_pods_ready.resources | length > 0 and
+        backstage_pods_ready.resources[0].status.containerStatuses is defined and
+        backstage_pods_ready.resources[0].status.containerStatuses | length > 0 and
+        backstage_pods_ready.resources[0].status.containerStatuses[0].ready == true
+      retries: 60
+      delay: 10
+
+    # ============= PHASE 6: HEALTH CHECK =============
+
+    - name: 34. Check Backstage health endpoint
+      ansible.builtin.shell: |
+        kubectl run curl-health-check-{{ 99999 | random }} --image=curlimages/curl --rm -i --restart=Never -n {{ backstage_namespace }} -- \
+          curl -s -w "\nHTTP_CODE:%{http_code}" http://backstage-developer-hub.{{ backstage_namespace }}.svc.cluster.local:7007/healthcheck
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: health_check
+      retries: 10
+      delay: 15
+      until: "'HTTP_CODE:200' in health_check.stdout"
+      failed_when: false
+      changed_when: false
+
+    - name: 35. Display health check result
+      ansible.builtin.debug:
+        msg: "Health check: {{ 'Responding' if 'HTTP_CODE:200' in health_check.stdout else 'Not responding yet — may need more startup time' }}"
+
+    # ============= PHASE 7: STATUS =============
+
+    - name: 36. Get Backstage pods
+      ansible.builtin.shell: kubectl get pods -n {{ backstage_namespace }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: backstage_pod_status
+      changed_when: false
+
+    - name: 37. Display final status
+      ansible.builtin.debug:
+        msg: |
+          ===============================================
+          Backstage (RHDH) Deployment Status
+          ===============================================
+
+          {{ 'SUCCESS - Backstage deployed and ready' if 'HTTP_CODE:200' in health_check.stdout else 'DEPLOYED - may still be starting up' }}
+
+          Deployment Details:
+          - Chart: {{ backstage_helm_chart }}
+          - Namespace: {{ backstage_namespace }}
+          - Database: backstage on PostgreSQL
+          - Catalog: File-based from generated YAML
+
+          Pods:
+          {{ backstage_pod_status.stdout }}
+
+          Access:
+          - UI: http://backstage.localhost
+
+          Verify deployment:
+          - ./uis verify backstage
+
+          ===============================================
