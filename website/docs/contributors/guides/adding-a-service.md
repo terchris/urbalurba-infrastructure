@@ -77,6 +77,8 @@ SCRIPT_NAMESPACE="default"
 SCRIPT_KIND="Component"        # Component | Resource
 SCRIPT_TYPE="service"          # service | tool | library | database | cache | message-broker
 SCRIPT_OWNER="platform-team"   # platform-team | app-team
+SCRIPT_PROVIDES_APIS=""        # API names this service provides (e.g., "myservice-api")
+SCRIPT_CONSUMES_APIS=""        # API names this service consumes (e.g., "litellm-api")
 
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Brief abstract for documentation"
@@ -107,6 +109,8 @@ SCRIPT_DOCS="/docs/packages/category/myservice"
 | `SCRIPT_KIND` | No | `Component` (software) or `Resource` (infrastructure like databases). Default: `Component` |
 | `SCRIPT_TYPE` | No | What kind of component/resource: `service`, `tool`, `library`, `database`, `cache`, `message-broker`. Default: `service` |
 | `SCRIPT_OWNER` | No | Owning team: `platform-team` or `app-team`. Default: `platform-team` |
+| `SCRIPT_PROVIDES_APIS` | No | Space-separated API names this service provides (generates `kind: API` entities in Backstage) |
+| `SCRIPT_CONSUMES_APIS` | No | Space-separated API names this service consumes (shown in Backstage "Consumed APIs" tab) |
 
 Website metadata fields (`SCRIPT_ABSTRACT`, `SCRIPT_TAGS`, etc.) are consumed by `uis-docs.sh` to generate JSON for the documentation website. Fill them in.
 

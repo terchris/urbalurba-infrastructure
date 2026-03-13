@@ -22,7 +22,11 @@ With Backstage (RHDH 1.9) deployed and the Kubernetes plugin working (PLAN-002 c
 
 ---
 
-## Enhancement 1: API Entities and Relationships
+## Enhancement 1: API Entities and Relationships — COMPLETE
+
+Implemented in [PLAN-004](../active/PLAN-004-backstage-api-entities.md). 7 API entities generated with text descriptions, K8s annotations inherited from parent services. `spec.type: description` used to avoid OpenAPI renderer errors.
+
+**Future enhancement**: Use `$text` references to in-cluster OpenAPI endpoints for interactive API documentation in Backstage (see tester suggestion in talk session).
 
 ### What
 Add `kind: API` entities to the Backstage catalog so that services show "Provided APIs" and "Consumed APIs" tabs. Link components to APIs via `providesApis` and `consumesApis` in the spec.
