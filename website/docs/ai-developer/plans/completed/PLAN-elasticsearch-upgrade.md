@@ -37,7 +37,7 @@ Only Gravitee depends on Elasticsearch, and it supports ES 9.2.x+. The upgrade i
 
 - [x] 1.1 Add `imageTag: "9.3.0"` to `manifests/060-elasticsearch-config.yaml` (after the `replicas: 1` line) ✓
 - [x] 1.2 Update `website/docs/packages/databases/elasticsearch.md` — change Helm chart row from `(unpinned)` to `(pinned: 9.3.0)` ✓
-- [x] 1.3 Update `website/docs/ai-development/ai-developer/plans/backlog/INVESTIGATE-version-pinning.md` ✓:
+- [x] 1.3 Update `website/docs/ai-developer/plans/backlog/INVESTIGATE-version-pinning.md` ✓:
   - Change the Elasticsearch row in the Helm Charts table from `UNPINNED` to `PINNED 9.3.0`
   - Remove `elasticsearch` from the "Images controlled by Helm chart" list
   - Add Elasticsearch to the Container Images table as `PINNED` with tag `9.3.0`
@@ -64,8 +64,8 @@ User confirms Elasticsearch 9.3.0 is running and healthy.
 
 ### Tasks
 
-- [x] 2.1 Update `website/docs/ai-development/ai-developer/plans/backlog/INVESTIGATE-elasticsearch-upgrade.md` — mark both Next Steps checkboxes as done ✓
-- [x] 2.2 Update `website/docs/ai-development/ai-developer/plans/backlog/STATUS-platform-roadmap.md` — change item #1 status from "Ready for PLAN" to "Complete" ✓
+- [x] 2.1 Update `website/docs/ai-developer/plans/backlog/INVESTIGATE-elasticsearch-upgrade.md` — mark both Next Steps checkboxes as done ✓
+- [x] 2.2 Update `website/docs/ai-developer/plans/backlog/STATUS-platform-roadmap.md` — change item #1 status from "Ready for PLAN" to "Complete" ✓
 
 ### Validation
 
@@ -99,6 +99,6 @@ User confirms the status updates are correct.
 |------|--------|
 | `manifests/060-elasticsearch-config.yaml` | Add `imageTag: "9.3.0"` |
 | `website/docs/packages/databases/elasticsearch.md` | Update Helm chart row to show pinned version |
-| `website/docs/ai-development/ai-developer/plans/backlog/INVESTIGATE-version-pinning.md` | Mark ES as PINNED 9.3.0 |
-| `website/docs/ai-development/ai-developer/plans/backlog/INVESTIGATE-elasticsearch-upgrade.md` | Mark next steps as done |
-| `website/docs/ai-development/ai-developer/plans/backlog/STATUS-platform-roadmap.md` | Mark #1 as complete |
+| `website/docs/ai-developer/plans/backlog/INVESTIGATE-version-pinning.md` | Mark ES as PINNED 9.3.0 |
+| `website/docs/ai-developer/plans/backlog/INVESTIGATE-elasticsearch-upgrade.md` | Mark next steps as done |
+| `website/docs/ai-developer/plans/backlog/STATUS-platform-roadmap.md` | Mark #1 as complete |

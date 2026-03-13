@@ -406,7 +406,7 @@ Added "Library Reuse Rules" section to `PLANS.md` requiring:
 - `provision-host/uis/tests/unit/test-phase6-secrets.sh` - Already tested secrets
 
 **Documentation:**
-- `website/docs/ai-development/ai-developer/PLANS.md` ✓ Updated (added Library Reuse Rules)
+- `website/docs/ai-developer/PLANS.md` ✓ Updated (added Library Reuse Rules)
 
 **Not Needed:**
 - `uis-secrets.sh` - functionality in secrets-management.sh

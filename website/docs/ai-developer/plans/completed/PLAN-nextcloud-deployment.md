@@ -420,5 +420,5 @@ User confirms all status updates are correct.
 | `website/sidebars.ts` | Add to Management items |
 | `website/docs/packages/management/index.md` | Add Nextcloud to services table |
 | `website/src/data/services.json` | Add Nextcloud entry |
-| `website/docs/ai-development/ai-developer/plans/backlog/INVESTIGATE-nextcloud-deployment.md` | Mark next step done |
-| `website/docs/ai-development/ai-developer/plans/backlog/STATUS-platform-roadmap.md` | Update #7 status |
+| `website/docs/ai-developer/plans/backlog/INVESTIGATE-nextcloud-deployment.md` | Mark next step done |
+| `website/docs/ai-developer/plans/backlog/STATUS-platform-roadmap.md` | Update #7 status |

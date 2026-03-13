@@ -12,7 +12,7 @@
 
 **Related**:
 - [INVESTIGATE-version-pinning.md](INVESTIGATE-version-pinning.md) — Tracks which services are pinned
-- [adding-a-service.md](../../../../contributors/guides/adding-a-service.md) — Service definition guide (must be updated with the decision)
+- [adding-a-service.md](../../../contributors/guides/adding-a-service.md) — Service definition guide (must be updated with the decision)
 
 ---
 

@@ -39,7 +39,7 @@ The documentation has been migrated from MkDocs to Docusaurus with the following
 
 ```
 website/docs/
-├── ai-development/     # AI-assisted development workflow
+├── ai-developer/     # AI-assisted development workflow
 ├── getting-started/    # Installation and overview
 ├── hosts/              # Infrastructure host setup
 ├── networking/         # Tailscale, Cloudflare configuration

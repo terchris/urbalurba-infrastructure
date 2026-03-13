@@ -10,7 +10,7 @@
 
 **Last Updated**: 2026-03-13
 
-**Context**: [backstage-notes-from-chat.md](backstage-notes-from-chat.md) — exploratory conversation about Backstage capabilities
+**Context**: Exploratory conversation about Backstage capabilities (notes captured in this document)
 
 **Depends on**: [INVESTIGATE-backstage.md](INVESTIGATE-backstage.md) (completed), PLAN-002 (completed)
 
@@ -24,7 +24,7 @@ With Backstage (RHDH 1.9) deployed and the Kubernetes plugin working (PLAN-002 c
 
 ## Enhancement 1: API Entities and Relationships — COMPLETE
 
-Implemented in [PLAN-004](../active/PLAN-004-backstage-api-entities.md). 7 API entities generated with text descriptions, K8s annotations inherited from parent services. `spec.type: description` used to avoid OpenAPI renderer errors.
+Implemented in [PLAN-004](../completed/PLAN-004-backstage-api-entities.md). 7 API entities generated with text descriptions, K8s annotations inherited from parent services. `spec.type: description` used to avoid OpenAPI renderer errors.
 
 **Future enhancement**: Use `$text` references to in-cluster OpenAPI endpoints for interactive API documentation in Backstage (see tester suggestion in talk session).
 
@@ -155,7 +155,7 @@ Large — this is a standalone project. Needs its own plan with multiple phases.
 
 ### Reference
 - [Red Hat curated template library](https://github.com/redhat-developer/red-hat-developer-hub-software-templates) — learning examples, not production-ready
-- Chat notes in [backstage-notes-from-chat.md](backstage-notes-from-chat.md) — contains detailed template.yaml examples
+- Chat notes (deleted, content captured in this investigation) — contained detailed template.yaml examples
 
 ---
 

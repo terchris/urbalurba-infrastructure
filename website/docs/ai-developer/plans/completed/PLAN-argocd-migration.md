@@ -146,7 +146,7 @@ Tester reports all 4 E2E tests pass in Round 9 of `talk/talk.md`. Deploy, login,
 | `topsecret/secrets-templates/00-master-secrets.yml.template` | Same `argocd-secret` removal as above (legacy copy) |
 | `Dockerfile.uis-provision-host` | Added `python3-bcrypt` to apt package list |
 | `provision-host/uis/templates/how-secrets-works.md` | Updated ArgoCD bcrypt flow documentation |
-| `website/docs/ai-development/ai-developer/plans/backlog/STATUS-service-migration.md` | Updated ArgoCD status to fully migrated |
+| `website/docs/ai-developer/plans/backlog/STATUS-service-migration.md` | Updated ArgoCD status to fully migrated |
 
 ## Files Created
 

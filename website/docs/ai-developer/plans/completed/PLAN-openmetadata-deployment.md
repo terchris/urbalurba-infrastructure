@@ -287,5 +287,5 @@ User confirms all status updates are correct.
 | `provision-host/uis/manage/uis-cli.sh` | Add `openmetadata` to `cmd_verify()` |
 | `.uis.extend/enabled-services.conf` | Add `openmetadata` |
 | `website/sidebars.ts` | Add to Analytics items |
-| `website/docs/ai-development/ai-developer/plans/backlog/INVESTIGATE-openmetadata-deployment.md` | Mark next steps done |
-| `website/docs/ai-development/ai-developer/plans/backlog/STATUS-platform-roadmap.md` | Update #6 status |
+| `website/docs/ai-developer/plans/backlog/INVESTIGATE-openmetadata-deployment.md` | Mark next steps done |
+| `website/docs/ai-developer/plans/backlog/STATUS-platform-roadmap.md` | Update #6 status |

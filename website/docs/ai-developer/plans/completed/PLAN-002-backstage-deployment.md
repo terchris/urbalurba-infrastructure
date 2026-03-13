@@ -11,7 +11,7 @@
 **Completed**: 2026-03-12
 **Last Updated**: 2026-03-12
 
-**Investigation**: [INVESTIGATE-backstage.md](INVESTIGATE-backstage.md)
+**Investigation**: [INVESTIGATE-backstage.md](../backlog/INVESTIGATE-backstage.md)
 
 **Prerequisites**: PLAN-001-backstage-metadata-and-generator must be complete (catalog YAML must exist in `generated/backstage/catalog/`)
 

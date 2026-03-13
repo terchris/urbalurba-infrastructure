@@ -747,7 +747,7 @@ Create configuration wizard for customizing the setup.
 
 - [ ] 6.3 Create `uis secrets` subcommands
   - **File**: `provision-host/uis/lib/secrets-management.sh`
-  - **Based on**: Existing [Secrets Management System](../../../../contributors/architecture/secrets.md)
+  - **Based on**: Existing [Secrets Management System](../../../contributors/architecture/secrets.md)
 
   **Commands:**
   ```bash
@@ -790,7 +790,7 @@ Create configuration wizard for customizing the setup.
   Users do NOT need to run `uis secrets init` to get started - the system works immediately.
 
   > **Note**: The `.template` suffix is kept in `secrets-config/` per the existing convention
-  > documented in [secrets-management.md](../../../../contributors/architecture/secrets.md).
+  > documented in [secrets-management.md](../../../contributors/architecture/secrets.md).
 
   **Key Variables in 00-common-values.env:**
 
@@ -1421,8 +1421,8 @@ All the heavy lifting (scanning services, deploying to Kubernetes, Ansible, kube
 ### Secrets Architecture
 
 > **Reference Documentation:**
-> - [Secrets Management Quick Start](../../../../contributors/architecture/secrets.md) - How-to guide
-> - [Secrets Management Rules](../../../../contributors/rules/secrets-management.md) - Detailed rules and patterns
+> - [Secrets Management Quick Start](../../../contributors/architecture/secrets.md) - How-to guide
+> - [Secrets Management Rules](../../../contributors/rules/secrets-management.md) - Detailed rules and patterns
 
 **Migration from `topsecret/` to `.uis.secrets/`**
 

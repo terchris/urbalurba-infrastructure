@@ -582,7 +582,7 @@ source "${SCRIPT_DIR}/../lib/json-utils.sh"
 
 # Output paths (relative to repo root)
 readonly KUBERNETES_DIR="${SCRIPT_DIR}/.."
-readonly WEBSITE_DIR="${SCRIPT_DIR}/../../../website"
+readonly WEBSITE_DIR="${SCRIPT_DI../../../website"
 readonly SERVICES_JSON="${WEBSITE_DIR}/src/data/services.json"
 
 # Options

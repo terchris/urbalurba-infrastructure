@@ -4,7 +4,7 @@
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-**Related**: [INVESTIGATE-topsecret-cleanup](../completed/INVESTIGATE-topsecret-cleanup.md), [STATUS-service-migration](../completed/STATUS-service-migration.md)
+**Related**: [INVESTIGATE-topsecret-cleanup](../completed/INVESTIGATE-topsecret-cleanup.md), [STATUS-service-migration](../completed/STATUS-service-migration.md), [INVESTIGATE-provision-host-tools-and-auth.md](INVESTIGATE-provision-host-tools-and-auth.md)
 **Created**: 2026-02-22 (merged with PLAN-006-target-host-management on 2026-02-26)
 **Updated**: 2026-03-12
 **Status**: INVESTIGATION COMPLETE
@@ -34,10 +34,13 @@ Without that definition, target management risks mixing two separate concerns:
 
 This investigation was extended on 2026-03-12 to cover:
 - A refined `target`-based UX for remote deployment destinations
-- How optional cloud tools are installed in UIS
 - How `.uis.extend/` and `.uis.secrets/` are used by the current `uis-provision-host` container
 - How secrets should be handled for `uis-provision-host` versus cluster-deployed workloads
 - Whether older helper scripts for the old `provision-host` container are still active
+
+Tool installation and provider authentication inside `uis-provision-host` are now split into:
+
+- [INVESTIGATE-provision-host-tools-and-auth.md](INVESTIGATE-provision-host-tools-and-auth.md)
 
 ---
 
@@ -101,7 +104,7 @@ Optional follow-up commands:
 5. **Validate target exists** before switching
 6. **Show target in commands** that deploy or interact with the cluster
 7. **Handle multiple kubeconfigs** in `.uis.secrets/generated/kubeconfig/`
-8. **Offer to install missing cloud tools automatically** during `target setup`
+8. **Use the provision-host tools/auth system** to satisfy target-specific tool and provider prerequisites during `target setup`
 9. **Do not silently switch targets**
 
 ### User Flow
@@ -121,7 +124,8 @@ $EDITOR .uis.extend/targets/managed/aks-dev.conf
 # Guided setup
 ./uis target setup aks-dev
 # Checks:
-# - azure-cli installed
+# - required target tools detected
+# - missing tools can be installed in uis-provision-host
 # - az login
 # - subscription selected
 # - kubeconfig fetched/refreshed
@@ -165,6 +169,7 @@ This avoids accidental switching and keeps failure modes easy to understand.
   - target config in `.uis.extend/`
   - credentials in `.uis.secrets/`
   - active target state in `.uis.extend/active-target`
+- Depends on [INVESTIGATE-provision-host-tools-and-auth.md](INVESTIGATE-provision-host-tools-and-auth.md) for provider-tool installation and authentication behavior
 
 ---
 
@@ -174,6 +179,12 @@ The current `uis-provision-host` container already uses the right folder split f
 
 - `.uis.extend/` = safe project configuration
 - `.uis.secrets/` = sensitive values and generated artifacts
+
+The canonical description of `.uis.secrets/` now lives in:
+
+- `website/docs/contributors/architecture/secrets.md`
+
+This investigation should therefore focus on the **target-management implications** of that secrets model rather than trying to redefine the full `.uis.secrets/` structure here.
 
 ### `.uis.extend/` should store
 
@@ -187,9 +198,12 @@ The current `uis-provision-host` container already uses the right folder split f
 - Cloud account credentials (`cloud-accounts/`)
 - Service keys like Tailscale / Cloudflare (`service-keys/`)
 - SSH keys for VM and edge provisioning (`ssh/`)
+- Local network credentials where relevant (`network/`)
 - Generated kubeconfigs (`generated/kubeconfig/`)
 - Generated cloud-init output (`generated/ubuntu-cloud-init/`)
 - Generated Kubernetes secrets (`generated/kubernetes/`)
+
+`api-keys/` exists in the current structure, but based on the architecture documentation it should be treated as legacy/unclear and not as the primary basis for new target-management design.
 
 ### Important current behavior
 
@@ -207,7 +221,7 @@ This means the target-management work should build on the existing `.uis.extend/
 
 ### Current UIS Secret Model
 
-UIS currently uses two different secret patterns:
+The architecture documentation now makes the current UIS split explicit:
 
 1. **Generated cluster/application secrets**
    - Source of truth: `.uis.secrets/secrets-config/00-common-values.env.template`
@@ -222,6 +236,18 @@ UIS currently uses two different secret patterns:
      - `.uis.secrets/service-keys/tailscale.env`
      - `.uis.secrets/ssh/id_rsa_ansible`
    - Intended for UIS itself rather than for direct Kubernetes secret generation
+
+The architecture doc also clarifies the operational rule:
+
+- edit `secrets-config/` for cluster-secret source values
+- never edit `generated/` directly
+- treat other folders under `.uis.secrets/` as dedicated runtime/provisioning inputs when that pattern is established
+
+For target-management work, that means the question is no longer "should `.uis.secrets/` contain both cluster and provision-host secrets?" The answer is yes. The real design question is which specific values belong in:
+
+- the cluster-secret pipeline under `secrets-config/`
+- dedicated runtime folders such as `cloud-accounts/`, `ssh/`, `service-keys/`, and `network/`
+- generated output folders such as `generated/kubeconfig/` and `generated/ubuntu-cloud-init/`
 
 ### Important Finding: Tailscale Secret Handling Is Currently Inconsistent
 
@@ -278,6 +304,8 @@ Recommended rule:
 
 For now, the investigation should treat `.uis.secrets/service-keys/tailscale.env` as **currently scaffolded but not clearly consumed**.
 
+This is consistent with the architecture documentation, which now documents `service-keys/` as active but inconsistent in places rather than fully authoritative for current Tailscale runtime behavior.
+
 ---
 
 ## Part 1c: Tailscale Requirement for VM Targets
@@ -312,7 +340,7 @@ These should be treated as separate UX and implementation concerns.
 
 For any `cloud-vm` or `physical` target, `./uis target setup <name>` should validate Tailscale prerequisites before proceeding:
 
-1. Tailscale auth key exists in `.uis.secrets/service-keys/tailscale.env`
+1. The required Tailscale bootstrap credentials exist in the chosen source of truth for that workflow
 2. The target config indicates whether Tailscale is required
 3. Tailscale is installed in `uis-provision-host`
 4. `uis-provision-host` is configured to participate in Tailscale for VM-target workflows
@@ -321,6 +349,11 @@ For any `cloud-vm` or `physical` target, `./uis target setup <name>` should vali
 **Note:** Before implementation, the source of truth for the VM-bootstrap Tailscale auth key must be clarified. Today the codebase contains both:
 - local file scaffolding in `.uis.secrets/service-keys/tailscale.env`
 - active use of `TAILSCALE_SECRET` via generated Kubernetes secrets
+
+If the secret is missing, `target setup` should tell the user exactly which file to inspect based on the chosen model. The current architecture docs already distinguish:
+
+- shipped defaults in `provision-host/uis/templates/default-secrets.env`
+- current machine-local active values in `.uis.secrets/secrets-config/00-common-values.env.template`
 
 ### Recommended New Commands
 
@@ -449,50 +482,23 @@ Implications:
 
 ---
 
-## Part 2b: Cloud Tool Installation Inventory
+## Part 2b: Provision-Host Tools and Provider Authentication
 
-### Pre-UIS Tooling
+The detailed investigation for:
 
-The older `provision-host/provision-host-01-cloudproviders.sh` script supported installing:
+- optional tool installation inside `uis-provision-host`
+- persistence via `.uis.extend/enabled-tools.conf`
+- provider credential files in `.uis.secrets/`
+- provider login/auth workflows
+- reuse of the `devcontainer-toolbox` pattern
 
-- Azure CLI
-- OCI CLI
-- AWS CLI
-- Google Cloud SDK
-- Terraform
-- `all` or `none`
+has been split into:
 
-### Current UIS Tooling
+- [INVESTIGATE-provision-host-tools-and-auth.md](INVESTIGATE-provision-host-tools-and-auth.md)
 
-The current UIS CLI exposes:
+For the target-management investigation, the main dependency is:
 
-- `./uis tools list`
-- `./uis tools install azure-cli`
-- `./uis tools install aws-cli`
-- `./uis tools install gcp-cli`
-
-### Gap Identified
-
-The new UIS tooling preserves only part of the old capability:
-
-| Tool | Old pre-UIS support | Current `uis tools` support |
-|------|---------------------|-----------------------------|
-| Azure CLI | Yes | Yes |
-| AWS CLI | Yes | Yes |
-| Google Cloud SDK | Yes | Yes |
-| OCI CLI | Yes | No |
-| Terraform | Yes | No |
-
-### UX Recommendation
-
-For remote targets, the CLI should not require users to know tool prerequisites in advance.
-
-Instead, `./uis target setup <name>` should:
-
-1. Detect the target type
-2. Check required tools
-3. Offer to install missing tools using `./uis tools install ...`
-4. Continue with login, kubeconfig, and validation
+- `./uis target setup <name>` should consume that system rather than redefining its own provider-tool installation and auth logic
 
 ---
 
@@ -647,10 +653,9 @@ Add a follow-up cleanup task to delete both files after:
 4. Should the dormant GCP and OCI cloud-init templates be removed?
 5. What testing infrastructure is available for validating changes to Azure scripts?
 6. Should target configs live under a new `.uis.extend/targets/` folder, or should existing `.uis.extend/hosts/` templates be reused internally and surfaced as `target` commands?
-7. Should OCI CLI and Terraform be ported into the new `uis tools` system before multi-cloud targets are expanded?
-8. Should `target bootstrap` be a first-class command, or should its behavior be folded into `target setup` for existing clusters?
-9. What is the cleanest implementation path for reinstating real `kubeconf-all` merge behavior in the primary UIS flow?
-10. How should `uis-provision-host` authenticate to Tailscale, verify connectivity, and report failures during VM-target setup?
+7. Should `target bootstrap` be a first-class command, or should its behavior be folded into `target setup` for existing clusters?
+8. What is the cleanest implementation path for reinstating real `kubeconf-all` merge behavior in the primary UIS flow?
+9. How should `uis-provision-host` authenticate to Tailscale, verify connectivity, and report failures during VM-target setup?
 
 ## Proposed Approach
 
@@ -659,13 +664,13 @@ This investigation documents the current state. A separate implementation plan s
 1. Implement `./uis target` commands using the target-based UX described above
 2. Store active target state in `.uis.extend/active-target`
 3. Reuse `.uis.extend/` for safe target config and `.uis.secrets/` for credentials and generated kubeconfig/cloud-init
-4. Make `target setup` responsible for guided tool checks, login, kubeconfig fetch, and validation
+4. Make `target setup` responsible for guided target validation and kubeconfig fetch, while depending on the separate provision-host tools/auth system for provider prerequisites
 5. Decide whether to add `target bootstrap` as a separate cluster-preparation step
 6. Remove `topsecret/` fallback paths — use `.uis.secrets/` only
 7. Ensure `paths.sh` is sourced in scripts that don't yet use it (Multipass, Raspberry Pi)
-8. Decide whether OCI CLI and Terraform should be restored in the new `uis tools` system
-9. Reinstate first-class kubeconfig merging in the primary UIS wrapper and `target` workflow
-10. Make `target setup` validate Tailscale readiness inside `uis-provision-host` for VM-based targets
-11. Mark `login-provision-host.sh` and `provision-host-rancher/provision-host-container-create.sh` as legacy and delete them in a cleanup follow-up
-12. Test the full deployment cycle on each target platform
+8. Reinstate first-class kubeconfig merging in the primary UIS wrapper and `target` workflow
+9. Make `target setup` validate Tailscale readiness inside `uis-provision-host` for VM-based targets
+10. Mark `login-provision-host.sh` and `provision-host-rancher/provision-host-container-create.sh` as legacy and delete them in a cleanup follow-up
+11. Test the full deployment cycle on each target platform
+12. Keep `website/docs/contributors/architecture/secrets.md` as the canonical `.uis.secrets/` reference and update target docs to point to it
 13. Update documentation in `website/docs/hosts/` and any remaining references to the old `provision-host` container workflow

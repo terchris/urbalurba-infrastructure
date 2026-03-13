@@ -1,6 +1,6 @@
 # Deploy Enonic XP CMS
 
-**Target file**: `website/docs/ai-development/ai-developer/plans/backlog/PLAN-enonic-xp-deployment.md`
+**Target file**: `website/docs/ai-developer/plans/backlog/PLAN-enonic-xp-deployment.md`
 
 > **IMPLEMENTATION RULES:** Before implementing this plan, read and follow:
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
@@ -302,5 +302,5 @@ User confirms all status updates are correct.
 | `.uis.extend/enabled-services.conf` | Add `enonic` |
 | `website/sidebars.ts` | Add to Integration items |
 | `website/docs/packages/integration/index.md` | Add Enonic to services table |
-| `website/docs/ai-development/ai-developer/plans/backlog/INVESTIGATE-enonic-xp-deployment.md` | Mark last next step done |
-| `website/docs/ai-development/ai-developer/plans/backlog/STATUS-platform-roadmap.md` | Update #4 status |
+| `website/docs/ai-developer/plans/backlog/INVESTIGATE-enonic-xp-deployment.md` | Mark last next step done |
+| `website/docs/ai-developer/plans/backlog/STATUS-platform-roadmap.md` | Update #4 status |

@@ -67,7 +67,7 @@ Tell Claude what you want to do:
 
 Claude will:
 
-1. **Create plan file** in `website/docs/ai-development/ai-developer/plans/backlog/`:
+1. **Create plan file** in `website/docs/ai-developer/plans/backlog/`:
    - `PLAN-*.md` if the solution is clear
    - `INVESTIGATE-*.md` if research is needed first
    - For large initiatives, an investigation may produce **multiple ordered plans** (`PLAN-001-*`, `PLAN-002-*`, etc.) — see [Splitting Investigations into Multiple Plans](PLANS.md#splitting-investigations-into-multiple-plans)
@@ -102,7 +102,7 @@ Claude will:
 
 1. **Move plan to active/**:
    ```bash
-   mv website/docs/ai-development/ai-developer/plans/backlog/PLAN-xyz.md website/docs/ai-development/ai-developer/plans/active/
+   mv website/docs/ai-developer/plans/backlog/PLAN-xyz.md website/docs/ai-developer/plans/active/
    ```
 
 2. **Ask about feature branch** (recommended):
@@ -187,7 +187,7 @@ Claude will:
 YOU: I want to add a Grafana dashboard for monitoring PostgreSQL
 
 CLAUDE: I'll create a plan for that.
-        Created website/docs/ai-development/ai-developer/plans/backlog/PLAN-grafana-postgres-dashboard.md
+        Created website/docs/ai-developer/plans/backlog/PLAN-grafana-postgres-dashboard.md
 
         Please review the plan and let me know if it looks good
         or needs changes.
