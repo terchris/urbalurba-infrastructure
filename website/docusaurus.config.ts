@@ -21,7 +21,6 @@ const config: Config = {
   trailingSlash: false,
 
   onBrokenLinks: 'warn',
-  onBrokenMarkdownLinks: 'warn',
   onBrokenAnchors: 'warn',
 
   i18n: {
@@ -32,6 +31,9 @@ const config: Config = {
   markdown: {
     mermaid: true,
     format: 'detect',
+    hooks: {
+      onBrokenMarkdownLinks: 'warn',
+    },
   },
 
   presets: [
@@ -85,6 +87,12 @@ const config: Config = {
           label: 'Docs',
         },
         { to: '/blog', label: 'Blog', position: 'left' },
+        {
+          type: 'doc',
+          docId: 'ai-developer/plans/backlog/STATUS-platform-roadmap',
+          position: 'left',
+          label: 'Roadmap',
+        },
         {
           href: `https://github.com/${GITHUB_ORG}/${GITHUB_REPO}`,
           label: 'GitHub',

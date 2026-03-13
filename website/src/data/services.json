@@ -480,7 +480,7 @@
     "logo": "cloudflare-logo.webp",
     "website": "https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/"
     ,"summary": "Cloudflare Tunnel creates a secure, outbound-only connection between your origin and Cloudflares edge. No need to open public inbound ports - traffic is routed through Cloudflares network."
-    ,"docs": "/docs/packages/networking/cloudflare"
+    ,"docs": "/docs/packages/networking/cloudflare-tunnel"
     ,"playbook": "820-deploy-network-cloudflare-tunnel.yml"
     ,"priority": 101
     ,"checkCommand": "kubectl get pods -n default -l app=cloudflared --no-headers 2>/dev/null | grep -q Running"
@@ -501,7 +501,7 @@
     "logo": "tailscale-logo.webp",
     "website": "https://tailscale.com"
     ,"summary": "Tailscale creates a secure, private network between your servers, computers, and cloud instances using WireGuard encryption. It provides zero-config networking with built-in NAT traversal."
-    ,"docs": "/docs/packages/networking/tailscale"
+    ,"docs": "/docs/packages/networking/tailscale-tunnel"
     ,"playbook": "802-deploy-network-tailscale-tunnel.yml"
     ,"priority": 100
     ,"checkCommand": "kubectl get pods -n tailscale -l app=operator --no-headers 2>/dev/null | grep -q Running"

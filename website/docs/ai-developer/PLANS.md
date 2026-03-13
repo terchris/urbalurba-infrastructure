@@ -1,5 +1,5 @@
 ---
-title: Plans
+title: Creating Plans
 sidebar_position: 3
 ---
 
@@ -233,10 +233,10 @@ Technical details, gotchas, code patterns to follow.
 
 | Status | Meaning | Location |
 |--------|---------|----------|
-| `Backlog` | Approved, waiting to start | `backlog/` |
-| `Active` | Currently being worked on | `active/` |
-| `Blocked` | Waiting on something else | `backlog/` or `active/` |
-| `Completed` | Done | `completed/` |
+| `Backlog` | Approved, waiting to start | `plans/backlog/` |
+| `Active` | Currently being worked on | `plans/active/` |
+| `Blocked` | Waiting on something else | `plans/backlog/` or `plans/active/` |
+| `Completed` | Done | `plans/completed/` |
 
 ---
 
