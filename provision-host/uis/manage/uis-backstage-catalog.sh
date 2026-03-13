@@ -147,7 +147,8 @@ extract_all_metadata() {
     # Reset variables
     _id="" _name="" _desc="" _category=""
     _namespace="" _requires="" _docs=""
-    _kind="" _type="" _owner=""
+    _kind="" _type="" _owner="" _check_command=""
+    _provides_apis="" _consumes_apis=""
 
     while IFS= read -r line; do
         case "$line" in
@@ -200,6 +201,18 @@ extract_all_metadata() {
                 _owner="${_owner%%#*}"
                 _owner="${_owner%% *}"
                 _owner="${_owner%	*}"
+                ;;
+            SCRIPT_CHECK_COMMAND=*)
+                _check_command="${line#SCRIPT_CHECK_COMMAND=}"
+                _check_command="${_check_command//\"/}"; _check_command="${_check_command//\'/}"
+                ;;
+            SCRIPT_PROVIDES_APIS=*)
+                _provides_apis="${line#SCRIPT_PROVIDES_APIS=}"
+                _provides_apis="${_provides_apis//\"/}"; _provides_apis="${_provides_apis//\'/}"
+                ;;
+            SCRIPT_CONSUMES_APIS=*)
+                _consumes_apis="${line#SCRIPT_CONSUMES_APIS=}"
+                _consumes_apis="${_consumes_apis//\"/}"; _consumes_apis="${_consumes_apis//\'/}"
                 ;;
         esac
     done < "$script_file"
@@ -396,7 +409,8 @@ spec:
 generate_service_entity() {
     local id="$1" name="$2" desc="$3" category="$4"
     local namespace="$5" requires="$6" docs="$7"
-    local kind="$8" type="$9" owner="${10}"
+    local kind="$8" type="$9" owner="${10}" check_command="${11}"
+    local provides_apis="${12}" consumes_apis="${13}"
 
     # Defaults
     kind="${kind:-Component}"
@@ -430,11 +444,24 @@ metadata:
   annotations:
     backstage.io/techdocs-ref: url:${docs_url}"
 
-    # Components get kubernetes annotations
-    if [[ "$kind" == "Component" ]]; then
+    # Components and Resources get kubernetes annotations
+    if [[ "$kind" == "Component" || "$kind" == "Resource" ]]; then
+        # Extract label selector from SCRIPT_CHECK_COMMAND (e.g., "-l app.kubernetes.io/name=nginx")
+        local label_selector=""
+        if [[ "$check_command" =~ -l[[:space:]]*([^[:space:]]+) ]]; then
+            label_selector="${BASH_REMATCH[1]}"
+        fi
+
         content+="
-    backstage.io/kubernetes-id: ${id}
     backstage.io/kubernetes-namespace: ${namespace}"
+        if [[ -n "$label_selector" ]]; then
+            content+="
+    backstage.io/kubernetes-label-selector: \"${label_selector}\""
+        else
+            # Fallback for services without SCRIPT_CHECK_COMMAND
+            content+="
+    backstage.io/kubernetes-id: ${id}"
+        fi
     fi
 
     content+="
@@ -456,6 +483,28 @@ spec:
   lifecycle: production
   owner: ${owner}
   system: ${system}"
+
+    # providesApis
+    if [[ -n "$provides_apis" ]]; then
+        content+="
+  providesApis:"
+        local api
+        for api in $provides_apis; do
+            content+="
+    - ${api}"
+        done
+    fi
+
+    # consumesApis
+    if [[ -n "$consumes_apis" ]]; then
+        content+="
+  consumesApis:"
+        local api
+        for api in $consumes_apis; do
+            content+="
+    - ${api}"
+        done
+    fi
 
     # dependsOn
     if [[ -n "$requires" ]]; then
@@ -479,6 +528,99 @@ spec:
     ALL_TARGETS+=("    - ./${subdir}/${id}.yaml")
 }
 
+# Collect API metadata from all service definitions for API entity generation
+# Stores: "|api_name|desc|owner|system|docs|namespace|check_command\n..."
+_API_REGISTRY=""
+
+_api_register() {
+    local api_name="$1" desc="$2" owner="$3" system="$4" docs="$5"
+    local namespace="$6" check_command="$7"
+    # Only register if not already present
+    case "$_API_REGISTRY" in
+        *"|${api_name}|"*) ;;
+        *) _API_REGISTRY="${_API_REGISTRY}|${api_name}|${desc}|${owner}|${system}|${docs}|${namespace}|${check_command}"$'\n' ;;
+    esac
+}
+
+# Register APIs from a service's SCRIPT_PROVIDES_APIS
+register_service_apis() {
+    local provides_apis="$1" desc="$2" owner="$3" system="$4" docs="$5"
+    local namespace="$6" check_command="$7"
+    [[ -z "$provides_apis" ]] && return
+    local api
+    for api in $provides_apis; do
+        _api_register "$api" "$desc" "$owner" "$system" "$docs" "$namespace" "$check_command"
+    done
+}
+
+# Generate all API entities from the registry
+generate_api_entities() {
+    [[ -z "$_API_REGISTRY" ]] && return
+
+    local line
+    while IFS= read -r line; do
+        [[ -z "$line" ]] && continue
+
+        # Parse: |api_name|desc|owner|system|docs|namespace|check_command
+        local api_name desc owner system docs namespace check_command
+        api_name=$(echo "$line" | cut -d'|' -f2)
+        desc=$(echo "$line" | cut -d'|' -f3)
+        owner=$(echo "$line" | cut -d'|' -f4)
+        system=$(echo "$line" | cut -d'|' -f5)
+        docs=$(echo "$line" | cut -d'|' -f6)
+        namespace=$(echo "$line" | cut -d'|' -f7)
+        check_command=$(echo "$line" | cut -d'|' -f8)
+
+        [[ -z "$api_name" ]] && continue
+
+        local docs_url="https://uis.sovereignsky.no${docs}"
+        local escaped_desc
+        escaped_desc="$(yaml_escape "$desc")"
+
+        local content
+        content="apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: ${api_name}
+  description: \"${escaped_desc}\"
+  annotations:
+    backstage.io/techdocs-ref: url:${docs_url}"
+
+        # Add K8s annotations from parent service
+        if [[ -n "$namespace" ]]; then
+            content+="
+    backstage.io/kubernetes-namespace: ${namespace}"
+        fi
+        if [[ -n "$check_command" ]]; then
+            local label_selector=""
+            if [[ "$check_command" =~ -l[[:space:]]*([^[:space:]]+) ]]; then
+                label_selector="${BASH_REMATCH[1]}"
+            fi
+            if [[ -n "$label_selector" ]]; then
+                content+="
+    backstage.io/kubernetes-label-selector: \"${label_selector}\""
+            fi
+        fi
+
+        content+="
+    uis.sovereignsky.no/docs-url: \"${docs_url}\"
+  links:
+    - url: ${docs_url}
+      title: \"${api_name} Docs\"
+      icon: docs
+spec:
+  type: description
+  lifecycle: production
+  owner: ${owner}
+  system: ${system}
+  definition: \"${escaped_desc}\""
+
+        write_file "$OUTPUT_DIR/apis/${api_name}.yaml" "$content"
+        log_success "API: ${api_name}"
+        ALL_TARGETS+=("    - ./apis/${api_name}.yaml")
+    done <<< "$_API_REGISTRY"
+}
+
 # Generate static component entries for bundled services without service definitions
 generate_static_components() {
     # Tika - bundled with AI stack, no service definition
@@ -490,7 +632,7 @@ metadata:
   description: \"Document text extraction service for AI pipelines (PDF, DOCX, etc.)\"
   annotations:
     backstage.io/techdocs-ref: url:https://uis.sovereignsky.no/docs/packages/ai/tika
-    backstage.io/kubernetes-id: tika
+    backstage.io/kubernetes-label-selector: \"app.kubernetes.io/instance=tika\"
     backstage.io/kubernetes-namespace: ai
     grafana/dashboard-selector: \"tag:tika\"
     uis.sovereignsky.no/docs-url: \"https://uis.sovereignsky.no/docs/packages/ai/tika\"
@@ -503,7 +645,9 @@ spec:
   type: service
   lifecycle: production
   owner: app-team
-  system: ai"
+  system: ai
+  providesApis:
+    - tika-api"
 
     write_file "$OUTPUT_DIR/components/tika.yaml" "$content"
     log_success "Component: tika (static)"
@@ -517,7 +661,7 @@ metadata:
   description: \"Document editor for Nextcloud (DOCX, XLSX, PPTX editing in browser)\"
   annotations:
     backstage.io/techdocs-ref: url:https://uis.sovereignsky.no/docs/packages/applications/onlyoffice
-    backstage.io/kubernetes-id: onlyoffice
+    backstage.io/kubernetes-label-selector: \"app=onlyoffice\"
     backstage.io/kubernetes-namespace: nextcloud
     grafana/dashboard-selector: \"tag:onlyoffice\"
     uis.sovereignsky.no/docs-url: \"https://uis.sovereignsky.no/docs/packages/applications/onlyoffice\"
@@ -546,7 +690,7 @@ generate_all_yaml() {
 
     # Group targets by type
     local groups_list="" users_list="" domains_list="" systems_list=""
-    local resources_list="" components_list=""
+    local resources_list="" components_list="" apis_list=""
 
     while IFS= read -r target; do
         [[ -z "$target" ]] && continue
@@ -557,6 +701,7 @@ generate_all_yaml() {
             *./systems/*) systems_list+="$target"$'\n' ;;
             *./resources/*) resources_list+="$target"$'\n' ;;
             *./components/*) components_list+="$target"$'\n' ;;
+            *./apis/*) apis_list+="$target"$'\n' ;;
         esac
     done <<< "$sorted_targets"
 
@@ -579,22 +724,37 @@ spec:
   targets:
     # --- Groups ---"
 
-    while IFS= read -r t; do [[ -n "$t" ]] && content+=$'\n'"$t"; done <<< "$groups_list"
+    # Helper: strip subdirectory from path for flat ConfigMap mount
+    # e.g., "    - ./components/nginx.yaml" → "    - ./nginx.yaml"
+    _flatten() {
+        local list="$1"
+        while IFS= read -r t; do
+            [[ -n "$t" ]] || continue
+            # Replace ./subdir/file.yaml with ./file.yaml
+            local flat="${t/\.\/*\//\.\/}"
+            content+=$'\n'"$flat"
+        done <<< "$list"
+    }
+
+    _flatten "$groups_list"
 
     content+=$'\n'"    # --- Users ---"
-    while IFS= read -r t; do [[ -n "$t" ]] && content+=$'\n'"$t"; done <<< "$users_list"
+    _flatten "$users_list"
 
     content+=$'\n'"    # --- Domain ---"
-    while IFS= read -r t; do [[ -n "$t" ]] && content+=$'\n'"$t"; done <<< "$domains_list"
+    _flatten "$domains_list"
 
     content+=$'\n'"    # --- Systems ---"
-    while IFS= read -r t; do [[ -n "$t" ]] && content+=$'\n'"$t"; done <<< "$systems_list"
+    _flatten "$systems_list"
 
     content+=$'\n'"    # --- Resources ---"
-    while IFS= read -r t; do [[ -n "$t" ]] && content+=$'\n'"$t"; done <<< "$resources_list"
+    _flatten "$resources_list"
 
     content+=$'\n'"    # --- Components ---"
-    while IFS= read -r t; do [[ -n "$t" ]] && content+=$'\n'"$t"; done <<< "$components_list"
+    _flatten "$components_list"
+
+    content+=$'\n'"    # --- APIs ---"
+    _flatten "$apis_list"
 
     write_file "$OUTPUT_DIR/all.yaml" "$content"
     log_success "Location: all.yaml"
@@ -676,7 +836,13 @@ main() {
         generate_service_entity \
             "$_id" "$_name" "$_desc" "$_category" \
             "$_namespace" "$_requires" "$_docs" \
-            "$_kind" "$_type" "$_owner"
+            "$_kind" "$_type" "$_owner" "$_check_command" \
+            "$_provides_apis" "$_consumes_apis"
+
+        # Register APIs for API entity generation
+        local system
+        system="$(category_to_system "$_category")"
+        register_service_apis "$_provides_apis" "$_desc" "${_owner:-platform-team}" "$system" "$_docs" "${_namespace:-default}" "$_check_command"
 
         service_count=$((service_count + 1))
     done < <(find "$SERVICES_DIR" -name "*.sh" -type f -print0 2>/dev/null | sort -z)
@@ -685,7 +851,14 @@ main() {
     print_subsection "Static Components"
     generate_static_components
 
-    # --- Phase 6: Generate all.yaml ---
+    # Register tika API (static component)
+    _api_register "tika-api" "Document text extraction service for AI pipelines" "app-team" "ai" "/docs/packages/ai/tika" "ai" "kubectl get pods -n ai -l app.kubernetes.io/instance=tika --no-headers"
+
+    # --- Phase 6: API entities ---
+    print_subsection "APIs"
+    generate_api_entities
+
+    # --- Phase 7: Generate all.yaml ---
     print_subsection "Location File"
     generate_all_yaml
 

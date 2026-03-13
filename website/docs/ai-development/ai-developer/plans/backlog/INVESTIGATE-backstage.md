@@ -4,11 +4,13 @@
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Backlog
+## Status: Completed
 
 **Goal**: Deploy Backstage as the developer portal for UIS, modeling all existing services in a software catalog
 
-**Last Updated**: 2026-03-11
+**Last Updated**: 2026-03-13
+
+**Implementation**: [PLAN-002-backstage-deployment.md](../completed/PLAN-002-backstage-deployment.md) — completed 2026-03-12. Backstage (RHDH 1.9) deployed with 25 catalog components + 7 resources, K8s plugin with live pod status, guest auth, full deploy/undeploy/verify cycle (6 tests including pod data verification).
 
 **Depends on:** PostgreSQL (042), Traefik ingress. Authentik (070-079) is optional — Backstage works without authentication.
 
@@ -206,38 +208,15 @@ Add to `provision-host/uis/templates/secrets-templates/00-common-values.env.temp
 
 ```bash
 # Backstage
-BACKSTAGE_OIDC_CLIENT_ID=backstage
-BACKSTAGE_OIDC_CLIENT_SECRET=generate-a-secret-here
 BACKSTAGE_SESSION_SECRET=generate-a-session-secret-here
 BACKSTAGE_DB_PASSWORD=${DEFAULT_DATABASE_PASSWORD}
 ```
 
 Add a Secret block to `00-master-secrets.yml.template` for the `backstage` namespace.
 
-### Authentication with Authentik
+### Authentication
 
-RHDH ships with a Keycloak/OIDC plugin that works with any OIDC-compliant provider, including Authentik. Configuration in `app-config.yaml`:
-
-```yaml
-# app-config.yaml snippet
-auth:
-  providers:
-    oidc:
-      development:
-        metadataUrl: http://authentik-server.authentik.svc.cluster.local/application/o/backstage/.well-known/openid-configuration
-        clientId: ${AUTH_OIDC_CLIENT_ID}
-        clientSecret: ${AUTH_OIDC_CLIENT_SECRET}
-        signIn:
-          resolvers:
-            - resolver: emailMatchingUserEntityProfileEmail
-```
-
-**Note:** RHDH's Keycloak plugin and the generic OIDC provider both work with Authentik since it is fully OIDC-compliant. The exact provider choice (keycloak vs generic oidc) should be verified during Phase 4 deployment.
-
-**Authentik setup required:**
-- Create an OAuth2/OpenID Provider and Application in Authentik
-- Set redirect URI to `http://backstage.localhost:7007/api/auth/oidc/handler/frame`
-- This follows the same pattern as the existing OpenWebUI OAuth setup (see `073-authentik-2-openwebui-blueprint.yaml`)
+Currently using guest access (no authentication required). OIDC authentication via Authentik is a separate investigation — see [INVESTIGATE-backstage-auth.md](INVESTIGATE-backstage-auth.md).
 
 ### PostgreSQL Database Setup
 
@@ -249,27 +228,130 @@ Backstage needs its own database within the shared PostgreSQL instance. This fol
 
 ### Kubernetes Plugin
 
-The Kubernetes plugin shows live pod status, deployments, and logs for catalog entities:
+The Kubernetes plugin shows live pod status, deployments, and logs for catalog entities. It is enabled as a RHDH dynamic plugin (both backend and frontend) in the Helm values.
+
+**Cluster connection** — configured in both `appConfig` (Helm values) and the extra ConfigMap. Uses in-cluster ServiceAccount auth with TLS trust via `NODE_EXTRA_CA_CERTS`:
 
 ```yaml
-# app-config.yaml snippet
+# In upstream.backstage.appConfig (650-backstage-config.yaml)
 kubernetes:
+  serviceLocatorMethod:
+    type: multiTenant
   clusterLocatorMethods:
     - type: config
       clusters:
         - url: https://kubernetes.default.svc
-          name: uis-local
+          name: local
           authProvider: serviceAccount
-          serviceAccountToken: ${K8S_SA_TOKEN}
+          skipTLSVerify: true
+          caFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+          skipMetricsLookup: true
 ```
 
-Entities link to K8s resources via annotations:
+**Important:** The kubernetes config must be in `upstream.backstage.appConfig` (not just the extra ConfigMap), because the chart-generated ConfigMap loads last and overrides the extra ConfigMap.
+
+**Entity annotations** — use `kubernetes-label-selector` (not `kubernetes-id`) for accurate pod matching, especially for Helm-installed services where you don't control pod labels:
 ```yaml
 metadata:
   annotations:
-    backstage.io/kubernetes-id: openwebui
-    backstage.io/kubernetes-namespace: ai
+    backstage.io/kubernetes-label-selector: "app.kubernetes.io/name=nginx"
+    backstage.io/kubernetes-namespace: default
 ```
+
+The label selector is extracted from `SCRIPT_CHECK_COMMAND` in each service definition (the `-l` flag). Services without a check command fall back to `kubernetes-id`.
+
+**Backend auth** — RHDH requires `backend.auth.externalAccess` when the K8s backend dynamic plugin is enabled:
+```yaml
+backend:
+  auth:
+    externalAccess:
+      - type: static
+        options:
+          token: ${BACKSTAGE_SESSION_SECRET}
+          subject: backstage-server
+```
+
+**TLS trust** — The K8s plugin doesn't fully honor `skipTLSVerify`. Set `NODE_EXTRA_CA_CERTS` as an env var to trust the cluster CA:
+```yaml
+extraEnvVars:
+  - name: NODE_EXTRA_CA_CERTS
+    value: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+```
+
+### API Entities
+
+Backstage supports `kind: API` entities that model the boundaries between services. Components link to APIs via `providesApis` and `consumesApis` in their spec, which fills the "Provided APIs" and "Consumed APIs" tabs on entity pages.
+
+**New service definition fields:**
+```bash
+# === Extended Metadata (Optional) ===
+SCRIPT_PROVIDES_APIS=""         # comma-separated API names: "litellm-api"
+SCRIPT_CONSUMES_APIS=""         # comma-separated API names: "litellm-api"
+```
+
+**Service definition field schema:** `provision-host/uis/schemas/service.schema.json` — single source of truth for all field definitions.
+
+**Note:** The same field definitions are currently duplicated in three docs files (`adding-a-service.md`, `naming-conventions.md`, `kubernetes-deployment.md`). These should reference the schema rather than repeat the definitions, but that cleanup is a separate task. When adding the new fields, update the schema first, then update the docs files to match.
+
+**UIS services that provide APIs:**
+
+| Service | API Name | API Type | Has OpenAPI spec endpoint? |
+|---------|----------|----------|---------------------------|
+| litellm | litellm-api | openapi | Yes — `/openapi.json` |
+| authentik | authentik-api | openapi | Yes — `/api/v3/schema/` |
+| tika | tika-api | openapi | Needs checking |
+| openwebui | openwebui-api | openapi | Needs checking |
+| openmetadata | openmetadata-api | openapi | Yes |
+| gravitee | gravitee-api | openapi | Yes |
+| grafana | grafana-api | openapi | Yes |
+| prometheus | prometheus-query-api | grpc | No standard OpenAPI |
+
+**UIS services that consume APIs:**
+
+| Service | Consumes |
+|---------|----------|
+| openwebui | litellm-api |
+| grafana | prometheus-query-api |
+
+**API definition approach (two-step):**
+- **Step 1 (now):** Text descriptions only (e.g., "OpenAI-compatible LLM proxy REST API"). Gives full relationship/dependency graph value with zero infrastructure dependency.
+- **Step 2 (later, when building own integrations):** Add `SCRIPT_API_SPEC_URL` field or repo convention (`openapi.yaml` in repo root). Enables interactive API explorer in Backstage and Gravitee integration. Decided after seeing how text-only API entities feel in practice.
+
+**Catalog generator changes needed:**
+1. Extract `SCRIPT_PROVIDES_APIS` and `SCRIPT_CONSUMES_APIS` in `extract_all_metadata()`
+2. Add `providesApis`/`consumesApis` to `generate_service_entity()` spec
+3. New `generate_api_entity()` function for `kind: API` entities
+4. Update `all.yaml` to include API entity files
+5. Update static entities (tika) with `providesApis` if applicable
+
+**Details:** See [INVESTIGATE-backstage-enhancements.md](INVESTIGATE-backstage-enhancements.md) Enhancement 1.
+
+### Grafana Plugin
+
+The Grafana plugin embeds dashboard panels and Loki log streams on entity pages.
+
+**Current state:**
+- `grafana` config block exists in `654-backstage-app-config.yaml` (pointing to `grafana.monitoring.svc.cluster.local:3000`)
+- `grafana/dashboard-selector: "tag:<id>"` annotation is already generated for all entities
+- The Grafana dynamic plugin is **not bundled in RHDH 1.9** — commented out in `650-backstage-config.yaml`
+
+**What's needed:**
+1. Determine if `@backstage-community/plugin-grafana` is available as a RHDH-compatible dynamic plugin
+2. Find the exact package path in RHDH dynamic plugins format
+3. Create a Grafana service account token with Viewer role
+4. Add proxy config for Grafana API in `654-backstage-app-config.yaml`
+5. Enable plugin in `650-backstage-config.yaml` `global.dynamic.plugins`
+6. Optionally add `grafana/loki-query` annotation generation to catalog script for live log embedding
+
+**Annotations already in place:**
+```yaml
+metadata:
+  annotations:
+    grafana/dashboard-selector: "tag:postgresql"    # Already generated
+    grafana/loki-query: '{service_name="postgresql"}'  # Future — needs adding
+```
+
+**Details:** See [INVESTIGATE-backstage-enhancements.md](INVESTIGATE-backstage-enhancements.md) Enhancement 2.
 
 ### Runtime Visibility: Deploy/Undeploy Awareness
 
@@ -277,7 +359,7 @@ UIS users start and stop services dynamically (`./uis deploy grafana`, `./uis un
 
 **Static catalog (all available services):** The generated catalog YAML lists every service that *can* be deployed in UIS. This doesn't change when services start/stop. A user browsing the catalog sees the full platform — what's available, how services relate, who owns what.
 
-**Dynamic runtime status (Kubernetes plugin):** For each catalog entity with `backstage.io/kubernetes-id` and `backstage.io/kubernetes-namespace` annotations, the K8s plugin queries the cluster in real-time and shows:
+**Dynamic runtime status (Kubernetes plugin):** For each catalog entity with `backstage.io/kubernetes-label-selector` (or `kubernetes-id`) and `backstage.io/kubernetes-namespace` annotations, the K8s plugin queries the cluster in real-time and shows:
 - Pod status (Running, Pending, CrashLoopBackOff)
 - Deployment health and replica counts
 - Events and container logs
@@ -314,7 +396,8 @@ metadata:
   name: openwebui
   description: "ChatGPT-like web interface for AI models"
   annotations:
-    backstage.io/kubernetes-id: openwebui
+    backstage.io/techdocs-ref: url:https://uis.sovereignsky.no/docs/packages/ai/openwebui
+    backstage.io/kubernetes-label-selector: "app.kubernetes.io/instance=openwebui"
     backstage.io/kubernetes-namespace: ai
     uis.sovereignsky.no/docs-url: "https://uis.sovereignsky.no/docs/packages/ai/openwebui"
     uis.sovereignsky.no/business-owner: "business-owners"
@@ -329,7 +412,6 @@ spec:
   system: ai
   dependsOn:
     - resource:postgresql
-    - resource:qdrant
     - component:litellm
 ```
 
@@ -339,15 +421,34 @@ See the draft [catalog/](catalog/) for the complete set of entities (domain, sys
 
 ## Plugin Configuration (No Custom Image Needed)
 
-RHDH ships with Kubernetes and Keycloak/OIDC plugins pre-installed. Additional plugins are added via `dynamic-plugins.yaml` — no image rebuild required:
+RHDH ships with plugins pre-installed but disabled by default in `dynamic-plugins.default.yaml`. Enable them via `global.dynamic.plugins` in the Helm values with `disabled: false`. Frontend plugins also need `mountPoints` configuration to render UI tabs:
 
 ```yaml
-# dynamic-plugins.yaml (mounted as ConfigMap or via Helm values)
-plugins:
-  - package: "@backstage/plugin-techdocs"
-    disabled: false
-  - package: "@backstage/plugin-catalog-backend-module-github"
-    disabled: false
+# 650-backstage-config.yaml (Helm values)
+global:
+  dynamic:
+    includes:
+      - dynamic-plugins.default.yaml
+    plugins:
+      - package: ./dynamic-plugins/dist/backstage-plugin-kubernetes-backend-dynamic
+        disabled: false
+      - package: ./dynamic-plugins/dist/backstage-plugin-kubernetes
+        disabled: false
+        pluginConfig:
+          dynamicPlugins:
+            frontend:
+              backstage.plugin-kubernetes:
+                mountPoints:
+                  - mountPoint: entity.page.kubernetes/cards
+                    importName: EntityKubernetesContent
+                    config:
+                      layout:
+                        gridColumn: 1 / -1
+                    if:
+                      anyOf:
+                        - hasAnnotation: backstage.io/kubernetes-label-selector
+                        - hasAnnotation: backstage.io/kubernetes-namespace
+                        - hasAnnotation: backstage.io/kubernetes-id
 ```
 
 ### Plugins needed for UIS
@@ -398,7 +499,7 @@ UIS already has a single source of truth for service metadata. The docs website 
 | `links` | `SCRIPT_WEBSITE`, `SCRIPT_DOCS` | Exists |
 | `spec.owner` | — | **Needs new field** |
 | `spec.type` | — | **Needs new field** |
-| `backstage.io/kubernetes-id` | — | Can default to `SCRIPT_ID` |
+| `backstage.io/kubernetes-label-selector` | `SCRIPT_CHECK_COMMAND` | Extracted from `-l` flag; falls back to `kubernetes-id` from `SCRIPT_ID` |
 | Backstage `kind` (Component vs Resource) | — | **Needs new field** |
 
 ### New service definition fields needed
@@ -418,15 +519,8 @@ SCRIPT_OWNER="platform-team"   # platform-team | app-team
 | `SCRIPT_TYPE` | What kind of component/resource (service, tool, database, etc.) | `spec.type` | Badge/label on service pages |
 | `SCRIPT_OWNER` | Which team owns this service | `spec.owner` | Ownership display on service pages |
 
-**Documentation to update when adding these fields:**
+**Service definition field schema:** `provision-host/uis/schemas/service.schema.json` — single source of truth for all field definitions. The docs files (`adding-a-service.md`, `naming-conventions.md`, `kubernetes-deployment.md`) also reference these fields and should be updated to match.
 
-| File | What to update |
-|------|---------------|
-| `website/docs/contributors/guides/adding-a-service.md` | Add new fields to the service definition example and field reference table (Step 2) |
-| `website/docs/contributors/rules/kubernetes-deployment.md` | Add new fields to the service metadata reference |
-| `website/docs/contributors/rules/naming-conventions.md` | Add naming conventions for the new fields |
-| `website/docs/contributors/rules/provisioning.md` | Mention new fields if relevant to playbook conventions |
-| `provision-host/uis/schemas/service.schema.json` | Add new fields to the JSON schema |
 These are optional — the generator can use sensible defaults:
 - `SCRIPT_KIND` defaults to `Component`; `DATABASES` category defaults to `Resource`
 - `SCRIPT_TYPE` defaults to `service`
@@ -541,14 +635,15 @@ Use these existing services as implementation models (per the adding-a-service g
 
 ---
 
-## Next Steps — Implementation Plans
+## Next Steps — Implementation Plans and Investigations
 
-This investigation produced three ordered plans:
+This investigation produced completed plans and ongoing investigations:
 
-| Plan | Scope | Cluster needed? | Status |
+| Item | Scope | Cluster needed? | Status |
 |------|-------|-----------------|--------|
 | [PLAN-001-backstage-metadata-and-generator.md](../completed/PLAN-001-backstage-metadata-and-generator.md) | Add metadata fields + build catalog generator | No | **Complete** |
-| [PLAN-002-backstage-deployment.md](PLAN-002-backstage-deployment.md) | Deploy RHDH following adding-a-service guide | Yes | Backlog |
-| [PLAN-003-backstage-auth-and-plugins.md](PLAN-003-backstage-auth-and-plugins.md) | Authentik OIDC + TechDocs (optional) | Yes | Backlog |
+| [PLAN-002-backstage-deployment.md](../completed/PLAN-002-backstage-deployment.md) | Deploy RHDH with K8s plugin, catalog, guest auth | Yes | **Complete** |
+| [INVESTIGATE-backstage-enhancements.md](INVESTIGATE-backstage-enhancements.md) | API entities, Grafana plugin, Scaffolder, TechDocs | Varies | Backlog |
+| [INVESTIGATE-backstage-auth.md](INVESTIGATE-backstage-auth.md) | Authentik OIDC (optional, was PLAN-003) | Yes | Backlog |
 
 Sub-component extraction (Tika/OnlyOffice into standalone services) remains a separate backlog item — high risk, requires playbook refactoring and testing.

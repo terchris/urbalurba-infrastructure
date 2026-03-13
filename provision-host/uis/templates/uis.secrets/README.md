@@ -14,13 +14,21 @@ UIS uses a **template-based secrets system**:
 
 On first run, UIS automatically sets development-friendly defaults:
 
-| Variable | Default Value | Used By |
-|----------|---------------|---------|
-| `DEFAULT_ADMIN_EMAIL` | `admin@example.com` | All admin accounts |
-| `DEFAULT_ADMIN_PASSWORD` | `LocalDev123` | All admin accounts |
-| `DEFAULT_DATABASE_PASSWORD` | `LocalDevDB456` | PostgreSQL, MySQL, MongoDB |
+These defaults let you deploy services immediately without configuration.
 
-**These defaults let you deploy services immediately without configuration.**
+To avoid drift, this README does not duplicate the literal default values.
+
+Check these files instead:
+
+- `provision-host/uis/templates/default-secrets.env` for the shipped built-in development defaults
+- `.uis.secrets/secrets-config/00-common-values.env.template` for the active values on the current machine after initialization
+
+If you have just started UIS and have not changed any secrets yet, you can use those development defaults to log in and explore the system.
+
+Important rule:
+
+- if you want to know what UIS ships with, check `default-secrets.env`
+- if you want to know what this machine is actually using, check `.uis.secrets/secrets-config/00-common-values.env.template`
 
 ## Changing Passwords
 
@@ -92,3 +100,11 @@ Services need to be restarted to pick up new secrets:
 - **Production**: Always change `DEFAULT_ADMIN_PASSWORD` and `DEFAULT_DATABASE_PASSWORD`
 - **Never commit** this directory to git (it's in `.gitignore`)
 - **Backup** your `secrets-config/` files before major changes
+
+## First Start Reminder
+
+If a user starts UIS and has not changed anything yet, they need an easy way to discover the login credentials:
+
+- start by checking `.uis.secrets/secrets-config/00-common-values.env.template`
+- if needed, compare with `provision-host/uis/templates/default-secrets.env`
+- if the files differ, the machine-local `.uis.secrets` file is the one that matters

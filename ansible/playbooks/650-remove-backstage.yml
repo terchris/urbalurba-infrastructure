@@ -1,0 +1,89 @@
+---
+# file: ansible/playbooks/650-remove-backstage.yml
+# Description: Remove Backstage (RHDH) from Kubernetes
+#
+# Usage:
+# ansible-playbook playbooks/650-remove-backstage.yml -e kube_context="rancher-desktop"
+
+- name: Remove Backstage (RHDH) from Kubernetes
+  hosts: localhost
+  gather_facts: false
+  vars:
+    manifests_folder: "/mnt/urbalurbadisk/manifests"
+    merged_kubeconf_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
+    backstage_namespace: "backstage"
+
+  tasks:
+    - name: 1. Print playbook description
+      ansible.builtin.debug:
+        msg: |
+          Removing Backstage (RHDH) from Kubernetes
+          Namespace: {{ backstage_namespace }}
+
+    - name: 2. Delete Backstage IngressRoute
+      kubernetes.core.k8s:
+        src: "{{ manifests_folder }}/651-backstage-ingressroute.yaml"
+        state: absent
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      ignore_errors: true
+
+    - name: 3. Check for Backstage Helm release
+      ansible.builtin.shell: helm list -n {{ backstage_namespace }} | grep -w backstage
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: helm_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: 4. Remove Backstage Helm release
+      ansible.builtin.command: helm uninstall backstage -n {{ backstage_namespace }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      when: helm_check.rc == 0
+      changed_when: true
+      ignore_errors: true
+
+    - name: 5. Wait for pods to terminate
+      ansible.builtin.shell: |
+        kubectl wait --for=delete pod -l app.kubernetes.io/name=backstage -n {{ backstage_namespace }} --timeout=60s 2>/dev/null || true
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      changed_when: false
+
+    - name: 6. Delete Backstage RBAC resources
+      kubernetes.core.k8s:
+        src: "{{ manifests_folder }}/652-backstage-rbac.yaml"
+        state: absent
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      ignore_errors: true
+
+    - name: 7. Delete PVCs in backstage namespace
+      ansible.builtin.shell: kubectl delete pvc -n {{ backstage_namespace }} --all --ignore-not-found
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      changed_when: true
+      ignore_errors: true
+
+    - name: 8. Delete backstage namespace
+      kubernetes.core.k8s:
+        name: "{{ backstage_namespace }}"
+        api_version: v1
+        kind: Namespace
+        state: absent
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      ignore_errors: true
+
+    - name: 9. Display removal status
+      ansible.builtin.debug:
+        msg: |
+          ===============================================
+          Backstage Removal Status
+          ===============================================
+
+          Backstage resources removed.
+
+          Note: The PostgreSQL database 'backstage' was NOT deleted.
+          To remove the database manually:
+            kubectl exec -n default postgresql-0 -- psql -U postgres -c "DROP DATABASE backstage;"
+
+          ===============================================

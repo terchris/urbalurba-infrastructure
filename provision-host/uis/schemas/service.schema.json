@@ -105,6 +105,22 @@
       "description": "Which team owns this service",
       "enum": ["platform-team", "app-team"],
       "default": "platform-team"
+    },
+    "providesApis": {
+      "type": "array",
+      "description": "API names this service provides (shown in Backstage 'Provided APIs' tab)",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9-]+$"
+      }
+    },
+    "consumesApis": {
+      "type": "array",
+      "description": "API names this service consumes (shown in Backstage 'Consumed APIs' tab)",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9-]+$"
+      }
     }
   }
 }

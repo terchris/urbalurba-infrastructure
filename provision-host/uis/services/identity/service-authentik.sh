@@ -25,6 +25,8 @@ SCRIPT_NAMESPACE="authentik"
 SCRIPT_KIND="Component"        # Component | Resource
 SCRIPT_TYPE="service"          # service | tool | library | database | cache | message-broker
 SCRIPT_OWNER="platform-team"   # platform-team | app-team
+SCRIPT_PROVIDES_APIS="authentik-api"
+SCRIPT_CONSUMES_APIS=""
 
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Open-source identity provider with SSO, MFA, and user management"

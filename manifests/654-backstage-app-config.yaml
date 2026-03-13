@@ -1,0 +1,92 @@
+# 654-backstage-uis-app-config.yaml
+#
+# Description:
+# ConfigMap containing the Backstage app-config overrides.
+# This is mounted by the RHDH Helm chart via extraAppConfig.
+#
+# The RHDH/Backstage Helm chart does not support inline appConfig
+# in values.yaml. Instead, app-config must be provided as a ConfigMap
+# and referenced via upstream.backstage.extraAppConfig.
+#
+# Usage:
+# kubectl apply -f 654-backstage-uis-app-config.yaml
+# Then reference in Helm values:
+#   upstream.backstage.extraAppConfig:
+#     - configMapRef: backstage-uis-app-config
+#       filename: app-config-rhdh.yaml
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backstage-uis-app-config
+  namespace: backstage
+  labels:
+    app: backstage
+    component: config
+data:
+  app-config-rhdh.yaml: |
+    app:
+      title: "UIS Developer Portal"
+      baseUrl: http://backstage.localhost
+
+    backend:
+      baseUrl: http://backstage.localhost
+      listen:
+        port: 7007
+      auth:
+        externalAccess:
+          - type: static
+            options:
+              token: ${BACKSTAGE_SESSION_SECRET}
+              subject: backstage-server
+      database:
+        client: pg
+        connection:
+          host: postgresql.default.svc.cluster.local
+          port: 5432
+          user: backstage
+          password: ${BACKSTAGE_DB_PASSWORD}
+          database: backstage
+          ssl: false
+
+    # Authentication: guest access only (PLAN-003 adds OIDC)
+    auth:
+      environment: development
+      providers:
+        guest: {}
+
+    # Catalog: file-based from ConfigMap mount
+    catalog:
+      rules:
+        - allow:
+            - Component
+            - System
+            - Domain
+            - Resource
+            - API
+            - Group
+            - User
+            - Location
+      locations:
+        - type: file
+          target: /opt/app-root/src/catalog/all.yaml
+
+    # Kubernetes plugin configuration
+    kubernetes:
+      serviceLocatorMethod:
+        type: multiTenant
+      clusterLocatorMethods:
+        - type: config
+          clusters:
+            - url: https://kubernetes.default.svc
+              name: local
+              authProvider: serviceAccount
+              skipTLSVerify: true
+              caFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+              skipMetricsLookup: true
+
+    # Grafana plugin configuration
+    grafana:
+      domain: http://grafana.monitoring.svc.cluster.local:3000
+      unifiedAlerting: true

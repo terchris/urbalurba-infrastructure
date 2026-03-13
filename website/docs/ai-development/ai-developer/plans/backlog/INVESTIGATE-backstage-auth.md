@@ -1,4 +1,4 @@
-# PLAN-003: Backstage Authentik Integration and TechDocs
+# Investigate: Backstage Authentik OIDC Authentication
 
 > **IMPLEMENTATION RULES:** Before implementing this plan, read and follow:
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
@@ -6,31 +6,69 @@
 
 ## Status: Backlog
 
-**Goal**: Add optional Authentik OIDC authentication and TechDocs plugin to Backstage
+**Goal**: Investigate adding Authentik OIDC authentication to Backstage (replacing guest access)
 
-**Last Updated**: 2026-03-12
+**Last Updated**: 2026-03-13
 
-**Investigation**: [INVESTIGATE-backstage.md](INVESTIGATE-backstage.md)
+**Parent investigation**: [INVESTIGATE-backstage.md](INVESTIGATE-backstage.md)
 
-**Prerequisites**: PLAN-002-backstage-deployment must be complete (Backstage must be running)
+**Prerequisites**: Backstage deployed (PLAN-002 complete), Authentik deployed
 
-**Priority**: Low — optional, Backstage works without auth
+**Priority**: Low — guest access works fine for local development. Auth becomes relevant when Backstage is exposed externally or per-user permissions are needed.
+
+**Previously**: This was PLAN-003. Downgraded to investigation because the scope is complex (Authentik blueprints, conditional activation, multi-domain considerations) and guest access is sufficient for current use.
 
 ---
 
 ## Overview
 
-This plan adds two optional enhancements to the Backstage deployment from PLAN-002:
+Add Authentik OIDC authentication to Backstage so users log in via SSO instead of guest access.
 
-1. **Authentik OIDC** — SSO login via the existing Authentik identity provider (if deployed)
-2. **TechDocs** — documentation rendering plugin (when developer-written docs become relevant)
-
-Both are optional. Backstage works without authentication on local clusters. The Grafana plugin is already included in PLAN-002 as a required plugin.
+Backstage currently works with guest access on local clusters. OIDC becomes relevant when:
+- Backstage is exposed externally (via Cloudflare/Tailscale tunnel)
+- Per-user permissions are needed (RBAC based on Authentik groups)
+- Audit logging of who accessed what is required
 
 ### Reference services
 
 - **OpenWebUI** (`200-*`) — reference for Authentik OIDC integration pattern
 - **Authentik blueprint** (`073-authentik-2-openwebui-blueprint.yaml`) — pattern for creating OAuth2 provider
+
+### Authentik OIDC Configuration
+
+RHDH ships with a Keycloak/OIDC plugin that works with any OIDC-compliant provider, including Authentik:
+
+```yaml
+# app-config.yaml snippet
+auth:
+  providers:
+    oidc:
+      development:
+        metadataUrl: http://authentik-server.authentik.svc.cluster.local/application/o/backstage/.well-known/openid-configuration
+        clientId: ${AUTH_OIDC_CLIENT_ID}
+        clientSecret: ${AUTH_OIDC_CLIENT_SECRET}
+        signIn:
+          resolvers:
+            - resolver: emailMatchingUserEntityProfileEmail
+```
+
+**Note:** RHDH's Keycloak plugin and the generic OIDC provider both work with Authentik since it is fully OIDC-compliant. The exact provider choice (keycloak vs generic oidc) should be verified during implementation.
+
+**Authentik setup required:**
+- Create an OAuth2/OpenID Provider and Application in Authentik
+- Set redirect URI to `http://backstage.localhost:7007/api/auth/oidc/handler/frame`
+- This follows the same pattern as the existing OpenWebUI OAuth setup (see `073-authentik-2-openwebui-blueprint.yaml`)
+
+**Secrets needed:**
+```bash
+# Add to 00-common-values.env.template
+BACKSTAGE_OIDC_CLIENT_ID=backstage
+BACKSTAGE_OIDC_CLIENT_SECRET=generate-a-secret-here
+```
+
+### Multi-domain considerations
+
+If Backstage is exposed on an external domain (e.g., `backstage.urbalurba.no`), the same challenges apply as with other protected services — see the CSP middleware solution in `076-authentik-csp-middleware.yaml` and the domain addition limitations documented in [INVESTIGATE-backstage.md](INVESTIGATE-backstage.md).
 
 ---
 
@@ -80,46 +118,12 @@ auth:
 
 ---
 
-## Phase 2: TechDocs (When Needed)
+## Questions to Answer
 
-Add TechDocs plugin for developer-written documentation alongside integration code.
-
-### Tasks
-
-- [ ] 2.1 Add TechDocs plugin to `dynamic-plugins.yaml` in the Helm values
-- [ ] 2.2 Test documentation rendering for at least one service
-
-### Implementation Details
-
-**Dynamic plugins** — RHDH adds plugins via config, no image rebuild:
-
-```yaml
-# In 650-backstage-config.yaml Helm values
-global:
-  dynamic:
-    plugins:
-      - package: "@backstage/plugin-techdocs"
-        disabled: false
-```
-
-### Validation
-
-- [ ] TechDocs page renders for at least one service
-- [ ] Plugin loads without errors in Backstage logs
-
----
-
-## Phase 3: Cleanup
-
-### Tasks
-
-- [ ] 3.1 Update `INVESTIGATE-backstage.md` — note PLAN-003 is complete
-- [ ] 3.2 Update documentation page `website/docs/packages/management/backstage.md` — add auth and TechDocs sections
-- [ ] 3.3 Move this plan to `completed/`
-
-### Validation
-
-User confirms status updates are correct.
+1. **Keycloak vs generic OIDC provider** — RHDH has both. Which works better with Authentik?
+2. **Conditional activation** — How to gracefully handle Backstage config when Authentik is not deployed? (Skip OIDC secrets, fall back to guest)
+3. **Group mapping** — Can Authentik groups be mapped to Backstage teams via OIDC group claims?
+4. **Multi-domain** — Does the OIDC redirect URI work for both `backstage.localhost` and external domains?
 
 ---
 
@@ -127,9 +131,7 @@ User confirms status updates are correct.
 
 - [ ] Authentik OIDC login works when Authentik is deployed
 - [ ] Backstage still works without Authentik (guest access)
-- [ ] TechDocs plugin is functional (when enabled)
 - [ ] No image rebuild was required (all via dynamic plugin config)
-- [ ] Documentation updated with auth and TechDocs details
 
 ---
 
@@ -143,8 +145,7 @@ User confirms status updates are correct.
 
 | File | Change |
 |------|--------|
-| `manifests/650-backstage-config.yaml` | Add OIDC provider config and TechDocs plugin |
+| `manifests/650-backstage-config.yaml` | Add OIDC provider config |
 | `provision-host/uis/templates/secrets-templates/00-common-values.env.template` | Add OIDC client ID/secret |
 | `ansible/playbooks/650-setup-backstage.yml` | Apply Authentik blueprint conditionally |
 | `ansible/playbooks/650-test-backstage.yml` | Add OIDC test |
-| `website/docs/packages/management/backstage.md` | Add auth and TechDocs sections |

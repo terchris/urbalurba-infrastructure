@@ -1,0 +1,46 @@
+# 651-backstage-ingressroute.yaml
+#
+# Description:
+# IngressRoute for Backstage (RHDH) developer portal.
+# Provides web access to the Backstage UI and API.
+# Automatically handles both internal (.localhost) and external domains.
+#
+# HostRegexp Routing:
+# Uses HostRegexp('backstage\..+') to automatically handle:
+# - backstage.localhost (internal development access)
+# - Any future external domains (future-proof routing)
+#
+# Usage:
+# kubectl apply -f 651-backstage-ingressroute.yaml
+#
+# Dependencies:
+# - Backstage server service must exist (deployed via Helm)
+# - backstage namespace must exist
+#
+# Testing:
+# curl http://backstage.localhost
+#
+# Service Port:
+# - Backstage (RHDH) listens on port 7007 (API + UI)
+
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: backstage
+  namespace: backstage
+  labels:
+    app: backstage
+    component: server
+    type: development
+    routing: unified
+    protection: public
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: HostRegexp(`backstage\..+`)
+      kind: Rule
+      services:
+        - name: backstage-developer-hub
+          port: 7007

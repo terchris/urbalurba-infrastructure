@@ -151,6 +151,8 @@ SCRIPT_PRIORITY="50"                    # Deploy order (lower = earlier)
 SCRIPT_KIND="Component"                 # Component | Resource
 SCRIPT_TYPE="service"                   # service | tool | library | database | cache | message-broker
 SCRIPT_OWNER="platform-team"            # platform-team | app-team
+SCRIPT_PROVIDES_APIS=""                 # API names this service provides
+SCRIPT_CONSUMES_APIS=""                 # API names this service consumes
 ```
 
 **Extended Metadata allowed values:**

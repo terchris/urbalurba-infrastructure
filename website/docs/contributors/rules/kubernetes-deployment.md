@@ -166,6 +166,8 @@ SCRIPT_NAMESPACE="default"
 SCRIPT_KIND="Resource"            # Component | Resource
 SCRIPT_TYPE="database"            # service | tool | library | database | cache | message-broker
 SCRIPT_OWNER="platform-team"     # platform-team | app-team
+SCRIPT_PROVIDES_APIS=""          # API names this service provides (e.g., "myservice-api")
+SCRIPT_CONSUMES_APIS=""          # API names this service consumes (e.g., "litellm-api")
 
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="World's most advanced open-source relational database"
@@ -182,7 +184,7 @@ SCRIPT_DOCS="/docs/packages/databases/postgresql"
 |-------|--------|---------|
 | Required | `SCRIPT_ID`, `SCRIPT_NAME`, `SCRIPT_DESCRIPTION`, `SCRIPT_CATEGORY` | Service identity and discovery |
 | Deployment | `SCRIPT_PLAYBOOK`, `SCRIPT_MANIFEST`, `SCRIPT_CHECK_COMMAND`, `SCRIPT_REMOVE_PLAYBOOK`, `SCRIPT_REQUIRES`, `SCRIPT_PRIORITY`, `SCRIPT_NAMESPACE` | How to deploy, verify, and remove |
-| Extended | `SCRIPT_KIND`, `SCRIPT_TYPE`, `SCRIPT_OWNER` | Backstage catalog generation |
+| Extended | `SCRIPT_KIND`, `SCRIPT_TYPE`, `SCRIPT_OWNER`, `SCRIPT_PROVIDES_APIS`, `SCRIPT_CONSUMES_APIS` | Backstage catalog generation |
 | Website | `SCRIPT_ABSTRACT`, `SCRIPT_LOGO`, `SCRIPT_WEBSITE`, `SCRIPT_TAGS`, `SCRIPT_SUMMARY`, `SCRIPT_DOCS` | Documentation generation |
 
 **Important constraints:**

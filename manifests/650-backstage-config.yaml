@@ -1,0 +1,206 @@
+# 650-backstage-config.yaml
+# Backstage (RHDH) deployment using the RHDH Helm chart
+#
+# Repository: https://redhat-developer.github.io/rhdh-chart
+# Chart: rhdh-chart/backstage
+#
+# This configuration deploys RHDH with:
+# - Existing UIS PostgreSQL (no embedded database)
+# - Kubernetes plugin for live pod status
+# - Grafana plugin for dashboard links
+# - File-based catalog from ConfigMap
+# - Guest access (no authentication — OIDC is PLAN-003)
+# - Tuned-down resources for laptop use
+#
+# App-config is provided via ConfigMap (654-backstage-app-config.yaml),
+# NOT inline in this file. The Backstage Helm chart requires
+# extraAppConfig to reference a ConfigMap.
+#
+# Installation:
+# helm repo add rhdh-chart https://redhat-developer.github.io/rhdh-chart
+# helm install backstage rhdh-chart/backstage -f 650-backstage-config.yaml -n backstage --create-namespace
+#
+# Uninstall:
+# helm uninstall backstage -n backstage
+
+# ============================================================
+# RHDH Helm chart uses 'upstream' key to pass values to the
+# embedded Backstage subchart. This is different from vanilla
+# Backstage chart which uses top-level keys.
+# ============================================================
+
+upstream:
+  # Service account for Kubernetes plugin RBAC
+  # Must be at upstream level, not under upstream.backstage
+  serviceAccount:
+    create: false
+    name: backstage
+
+  backstage:
+    image:
+      registry: quay.io
+      repository: rhdh-community/rhdh
+      tag: "1.9"
+      pullPolicy: IfNotPresent
+
+    # Resource limits tuned for laptop
+    # RHDH defaults: 1Gi request / 2.5Gi limit — too heavy
+    resources:
+      requests:
+        cpu: 250m
+        memory: 256Mi
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+
+    # Override the chart's default appConfig so the chart-generated ConfigMap
+    # (backstage-developer-hub-app-config) has correct database settings.
+    # Without this, the chart defaults to user:postgres, no host, and SSL enabled.
+    appConfig:
+      app:
+        baseUrl: http://backstage.localhost
+      backend:
+        baseUrl: http://backstage.localhost
+        auth:
+          externalAccess:
+            - type: static
+              options:
+                token: ${BACKSTAGE_SESSION_SECRET}
+                subject: backstage-server
+        database:
+          connection:
+            host: postgresql.default.svc.cluster.local
+            port: 5432
+            user: backstage
+            password: ${BACKSTAGE_DB_PASSWORD}
+            database: backstage
+            ssl: false
+      auth:
+        environment: development
+        providers:
+          guest:
+            dangerouslyAllowOutsideDevelopment: true
+      # Kubernetes plugin — must be in appConfig (chart ConfigMap loads last)
+      kubernetes:
+        serviceLocatorMethod:
+          type: multiTenant
+        clusterLocatorMethods:
+          - type: config
+            clusters:
+              - url: https://kubernetes.default.svc
+                name: local
+                authProvider: serviceAccount
+                skipTLSVerify: true
+                caFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+                skipMetricsLookup: true
+
+    # Extra environment variables
+    extraEnvVars:
+      # Trust the cluster CA cert so K8s plugin can talk to the API server
+      - name: NODE_EXTRA_CA_CERTS
+        value: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+
+    # Extra environment variables from secrets
+    extraEnvVarsSecrets:
+      - urbalurba-secrets
+
+    # App-config from ConfigMap (654-backstage-app-config.yaml)
+    # Name must not collide with the chart's default "backstage-app-config" volume
+    extraAppConfig:
+      - configMapRef: backstage-uis-app-config
+        filename: app-config-rhdh.yaml
+
+    # Volume mounts for the main backstage container.
+    # IMPORTANT: RHDH chart defines dynamic-plugins volumes as defaults in
+    # extraVolumes/extraVolumeMounts. Setting these keys REPLACES the defaults,
+    # so we must include all chart defaults plus our additions.
+    extraVolumeMounts:
+      # --- Chart defaults (required for dynamic plugins) ---
+      - name: dynamic-plugins-root
+        mountPath: /opt/app-root/src/dynamic-plugins-root
+      - name: extensions-catalog
+        mountPath: /extensions
+      - name: temp
+        mountPath: /tmp
+      # --- UIS addition: catalog files ---
+      - name: backstage-catalog
+        mountPath: /opt/app-root/src/catalog
+
+    extraVolumes:
+      # --- Chart defaults (required for dynamic plugins) ---
+      - name: dynamic-plugins-root
+        ephemeral:
+          volumeClaimTemplate:
+            spec:
+              accessModes:
+                - ReadWriteOnce
+              resources:
+                requests:
+                  storage: 2Gi
+      - name: dynamic-plugins
+        configMap:
+          defaultMode: 420
+          name: backstage-dynamic-plugins
+          optional: true
+      - name: dynamic-plugins-npmrc
+        secret:
+          defaultMode: 420
+          optional: true
+          secretName: backstage-dynamic-plugins-npmrc
+      - name: dynamic-plugins-registry-auth
+        secret:
+          defaultMode: 416
+          optional: true
+          secretName: backstage-dynamic-plugins-registry-auth
+      - name: npmcacache
+        emptyDir: {}
+      - name: extensions-catalog
+        emptyDir: {}
+      - name: temp
+        emptyDir: {}
+      # --- UIS addition: catalog files ---
+      - name: backstage-catalog
+        configMap:
+          name: backstage-catalog
+
+  # Disable the embedded PostgreSQL — we use the existing UIS PostgreSQL
+  postgresql:
+    enabled: false
+
+# Disable OpenShift Route — we use Traefik IngressRoute instead
+# This is a top-level key in the RHDH chart, not under upstream
+route:
+  enabled: false
+
+# Dynamic plugins configuration (RHDH feature)
+# Plugins in dynamic-plugins.default.yaml are disabled by default.
+# List them here with disabled: false to enable.
+global:
+  dynamic:
+    includes:
+      - dynamic-plugins.default.yaml
+    plugins:
+      # Kubernetes backend plugin — serves /api/kubernetes
+      - package: ./dynamic-plugins/dist/backstage-plugin-kubernetes-backend-dynamic
+        disabled: false
+      # Kubernetes frontend plugin — adds "Kubernetes" tab on entity pages
+      - package: ./dynamic-plugins/dist/backstage-plugin-kubernetes
+        disabled: false
+        pluginConfig:
+          dynamicPlugins:
+            frontend:
+              backstage.plugin-kubernetes:
+                mountPoints:
+                  - mountPoint: entity.page.kubernetes/cards
+                    importName: EntityKubernetesContent
+                    config:
+                      layout:
+                        gridColumn: 1 / -1
+                    if:
+                      anyOf:
+                        - hasAnnotation: backstage.io/kubernetes-label-selector
+                        - hasAnnotation: backstage.io/kubernetes-namespace
+                        - hasAnnotation: backstage.io/kubernetes-id
+      # Grafana plugin — not bundled in RHDH 1.9, enable when available via OCI
+      # - package: ./dynamic-plugins/dist/janus-idp-backstage-plugin-grafana
+      #   disabled: false

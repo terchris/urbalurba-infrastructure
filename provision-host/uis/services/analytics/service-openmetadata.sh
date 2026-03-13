@@ -26,6 +26,8 @@ SCRIPT_NAMESPACE="openmetadata"
 SCRIPT_KIND="Component"        # Component | Resource
 SCRIPT_TYPE="service"          # service | tool | library | database | cache | message-broker
 SCRIPT_OWNER="app-team"   # platform-team | app-team
+SCRIPT_PROVIDES_APIS="openmetadata-api"
+SCRIPT_CONSUMES_APIS=""
 
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Open-source metadata platform for data discovery, governance, and observability"

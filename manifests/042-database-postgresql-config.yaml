@@ -69,6 +69,17 @@ image:
   pullPolicy: Always
 
 primary:
+  # Disable resourcesPreset so our explicit resources take effect
+  resourcesPreset: ""
+
+  resources:
+    requests:
+      memory: 512Mi
+      cpu: 250m
+    limits:
+      memory: 1Gi
+      cpu: 500m
+
   persistence:
     enabled: true
     size: 8Gi  # Adjust size as needed
@@ -108,14 +119,6 @@ service:
 
 auth:
   postgresPassword: ""  # This will be set by the Helm command
-
-resources:
-  requests:
-    memory: 240Mi    # Enough to get out of red zone (185Mi ÷ 0.8 = 231Mi)
-    cpu: 250m
-  limits:
-    memory: 512Mi
-    cpu: 500m
 
 # Custom PostgreSQL container provides all extensions
 # No additional configuration needed - extensions are pre-built and ready to use

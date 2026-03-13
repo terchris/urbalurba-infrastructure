@@ -26,6 +26,8 @@ SCRIPT_NAMESPACE="monitoring"
 SCRIPT_KIND="Component"        # Component | Resource
 SCRIPT_TYPE="service"          # service | tool | library | database | cache | message-broker
 SCRIPT_OWNER="platform-team"   # platform-team | app-team
+SCRIPT_PROVIDES_APIS="grafana-api"
+SCRIPT_CONSUMES_APIS=""
 
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Observability platform for metrics, logs, and distributed tracing"

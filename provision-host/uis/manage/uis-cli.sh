@@ -1046,6 +1046,7 @@ cmd_verify() {
         echo "  tailscale       Check Tailscale secrets, API, devices, and operator"
         echo "  cloudflare      Check Cloudflare secrets, network, and pod status"
         echo "  argocd          Run E2E health checks on ArgoCD server"
+        echo "  backstage       Run E2E health checks on Backstage (RHDH)"
         echo "  enonic          Run E2E health checks on Enonic XP"
         echo "  nextcloud       Run E2E health checks on Nextcloud + OnlyOffice"
         echo "  openmetadata    Run E2E health checks on OpenMetadata"
@@ -1061,6 +1062,9 @@ cmd_verify() {
             ;;
         argocd)
             cmd_argocd_verify
+            ;;
+        backstage)
+            cmd_backstage_verify
             ;;
         enonic)
             cmd_enonic_verify
@@ -1078,6 +1082,7 @@ cmd_verify() {
             echo "  tailscale       Check Tailscale secrets, API, devices, and operator"
             echo "  cloudflare      Check Cloudflare secrets, network, and pod status"
             echo "  argocd          Run E2E health checks on ArgoCD server"
+            echo "  backstage       Run E2E health checks on Backstage (RHDH)"
             echo "  enonic          Run E2E health checks on Enonic XP"
             echo "  nextcloud       Run E2E health checks on Nextcloud + OnlyOffice"
             echo "  openmetadata    Run E2E health checks on OpenMetadata"
@@ -1364,6 +1369,15 @@ cmd_enonic_verify() {
 cmd_nextcloud_verify() {
     print_section "Verifying Nextcloud + OnlyOffice Deployment"
     ansible-playbook "$ANSIBLE_DIR/620-test-nextcloud.yml"
+}
+
+# ============================================================
+# Backstage Commands
+# ============================================================
+
+cmd_backstage_verify() {
+    print_section "Verifying Backstage (RHDH) Deployment"
+    ansible-playbook "$ANSIBLE_DIR/650-test-backstage.yml"
 }
 
 # ============================================================
@@ -1685,6 +1699,22 @@ main() {
                     echo ""
                     echo "Commands:"
                     echo "  nextcloud verify    Run E2E health checks on Nextcloud + OnlyOffice"
+                    exit "$EXIT_GENERAL_ERROR"
+                    ;;
+            esac
+            ;;
+        backstage)
+            local subcmd="${1:-}"
+            shift 2>/dev/null || true
+            case "$subcmd" in
+                verify)
+                    cmd_backstage_verify
+                    ;;
+                *)
+                    log_error "Unknown backstage command: $subcmd"
+                    echo ""
+                    echo "Commands:"
+                    echo "  backstage verify    Run E2E health checks on Backstage (RHDH)"
                     exit "$EXIT_GENERAL_ERROR"
                     ;;
             esac

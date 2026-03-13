@@ -114,6 +114,7 @@ const sidebars: SidebarsConfig = {
           },
           items: [
             'packages/management/argocd',
+            'packages/management/backstage',
             'packages/management/pgadmin',
             'packages/management/redisinsight',
             'packages/management/nginx',
