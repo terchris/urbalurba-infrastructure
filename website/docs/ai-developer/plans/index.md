@@ -18,11 +18,11 @@ Implementation plans and investigations for the UIS platform. Plans follow the w
 
 ## Folders
 
-| Folder | Purpose | Count |
-|--------|---------|-------|
-| [Active](active/index.md) | Currently being worked on (max 1-2 at a time) | 1 |
-| [Backlog](backlog/index.md) | Approved plans and investigations waiting for work | 17 |
-| [Completed](completed/index.md) | Done — kept for reference | 57 |
+| Folder | Purpose |
+|--------|---------|
+| [Active](active/index.md) | Currently being worked on (max 1-2 at a time) |
+| [Backlog](backlog/index.md) | Approved plans and investigations waiting for work |
+| [Completed](completed/index.md) | Done — kept for reference |
 
 ## Platform Roadmap
 

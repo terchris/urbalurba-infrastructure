@@ -14,7 +14,7 @@
 
 **Depends on:** PostgreSQL (042), Traefik ingress. Authentik (070-079) is optional — Backstage works without authentication.
 
-**Draft catalog:** [catalog/](catalog/) — 25 Backstage entity files (components, systems, domains, resources, groups) ready to load
+**Draft catalog:** `catalog/` (removed — generator now produces this output) — 25 Backstage entity files (components, systems, domains, resources, groups) ready to load
 
 ---
 
@@ -380,7 +380,7 @@ The catalog uses a simple hierarchy that maps directly to `SCRIPT_CATEGORY`, so 
 - **Components** — services and tools (`SCRIPT_KIND="Component"`)
 - **Resources** — databases, caches, message brokers (`SCRIPT_KIND="Resource"`)
 
-See the draft [catalog/](catalog/) for the complete entity definitions. The generator will produce this structure from service definitions.
+See the draft `catalog/` (removed — generator now produces this output) for the complete entity definitions. The generator will produce this structure from service definitions.
 
 ---
 
@@ -415,7 +415,7 @@ spec:
     - component:litellm
 ```
 
-See the draft [catalog/](catalog/) for the complete set of entities (domain, systems, resources, groups, components).
+See the draft `catalog/` (removed — generator now produces this output) for the complete set of entities (domain, systems, resources, groups, components).
 
 ---
 
@@ -595,7 +595,7 @@ generated/
 
 ### Draft catalog as validation reference
 
-The current [catalog/](catalog/) in this backlog folder serves as the reference to validate generator output against. Once the generator produces matching output, the draft catalog can be removed.
+The current `catalog/` (removed — generator now produces this output) in this backlog folder serves as the reference to validate generator output against. Once the generator produces matching output, the draft catalog can be removed.
 
 ---
 
@@ -620,7 +620,7 @@ Two deferred:
 | Phase | Work | Risk | Requires cluster |
 |-------|------|------|-------------------|
 | **Phase 1: Service definition enrichment** | Add `SCRIPT_KIND`, `SCRIPT_TYPE`, `SCRIPT_OWNER` fields to all 29 service definitions | None | No |
-| **Phase 2: Catalog generator** | Build `uis-backstage-catalog.sh` or extend `uis-docs.sh` to generate Backstage catalog YAML from service definitions. Include Tika and OnlyOffice as static entries. Validate output against draft [catalog/](catalog/). | None | No |
+| **Phase 2: Catalog generator** | Build `uis-backstage-catalog.sh` or extend `uis-docs.sh` to generate Backstage catalog YAML from service definitions. Include Tika and OnlyOffice as static entries. Validate output against draft `catalog/` (removed — generator now produces this output). | None | No |
 | **Phase 3: UIS service integration** | Create all files per [Adding a Service](../../../contributors/guides/adding-a-service.md): service definition, setup/remove/verify playbooks, Helm values (RHDH chart), IngressRoute, secrets, Helm repo registration, enabled-services.conf entry. No custom image — uses RHDH community image with dynamic plugins. | Medium | Yes |
 | **Phase 4: Authentik integration (optional)** | If Authentik is deployed: create OAuth2/OIDC provider, add Authentik blueprint for Backstage app. Backstage works without this. | Medium | Yes |
 | **Phase 5: Plugin enrichment** | Add TechDocs, Grafana plugins via `dynamic-plugins.yaml` config — just config changes, no rebuild | Low | Yes |

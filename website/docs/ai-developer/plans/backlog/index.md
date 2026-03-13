@@ -7,45 +7,23 @@ sidebar_position: 1
 
 Investigations and plans waiting for implementation, sorted by last updated date.
 
-## Roadmap
-
 | Document | Goal | Updated |
 |----------|------|---------|
-| [STATUS-platform-roadmap](STATUS-platform-roadmap.md) | Prioritized list of all open investigations and completed work | 2026-03-13 |
-
-## Backstage
-
-| Investigation | Goal | Updated |
-|---------------|------|---------|
-| [INVESTIGATE-backstage-enhancements](INVESTIGATE-backstage-enhancements.md) | Evaluate and prioritize additional Backstage features (Grafana plugin, Scaffolder, TechDocs, OIDC) | 2026-03-13 |
-| [INVESTIGATE-backstage-auth](INVESTIGATE-backstage-auth.md) | Add Authentik OIDC authentication to Backstage | 2026-03-13 |
-| [INVESTIGATE-backstage](INVESTIGATE-backstage.md) | Original Backstage investigation (completed, kept for reference) | 2026-03-13 |
-
-## Platform & Infrastructure
-
-| Investigation | Goal | Updated |
-|---------------|------|---------|
-| [INVESTIGATE-provision-host-tools-and-auth](INVESTIGATE-provision-host-tools-and-auth.md) | Provision-host tools and provider authentication | 2026-03-13 |
-| [INVESTIGATE-remote-deployment-targets](INVESTIGATE-remote-deployment-targets.md) | Remote deployment targets and target management | 2026-03-12 |
-| [INVESTIGATE-verification-playbooks-usage](INVESTIGATE-verification-playbooks-usage.md) | Verification playbooks usage and coverage | 2026-03-12 |
-| [INVESTIGATE-undeploy-purge-flag](INVESTIGATE-undeploy-purge-flag.md) | Undeploy --purge flag for complete cleanup | 2026-03-12 |
-| [INVESTIGATE-container-pull-command](INVESTIGATE-container-pull-command.md) | UIS container pull command investigation | 2026-03-11 |
-| [INVESTIGATE-version-pinning](INVESTIGATE-version-pinning.md) | Version pinning for Helm charts and container images | 2026-02-27 |
-
-## Documentation
-
-| Investigation | Goal | Updated |
-|---------------|------|---------|
-| [INVESTIGATE-docs-markdown-update-logic](INVESTIGATE-docs-markdown-update-logic.md) | Docs markdown generator update logic for partial page regeneration | 2026-03-11 |
-| [INVESTIGATE-host-docs-migration](INVESTIGATE-host-docs-migration.md) | Migrate host documentation to UIS CLI | 2026-03-02 |
-
-## Services
-
-| Investigation | Goal | Updated |
-|---------------|------|---------|
-| [INVESTIGATE-service-version-metadata](INVESTIGATE-service-version-metadata.md) | Version metadata in service scripts for docs and CLI | 2026-03-09 |
-| [INVESTIGATE-gravitee-fix](INVESTIGATE-gravitee-fix.md) | Fix Gravitee deployment — broken before migration, never verified | 2026-03-09 |
-| [INVESTIGATE-enonic-content-deployment](INVESTIGATE-enonic-content-deployment.md) | Enonic content deployment automation | 2026-03-09 |
-| [INVESTIGATE-enonic-app-deployment-pipeline](INVESTIGATE-enonic-app-deployment-pipeline.md) | Enonic app deployment pipeline (JAR files) | 2026-03-06 |
-| [INVESTIGATE-authentik-user-config](INVESTIGATE-authentik-user-config.md) | Authentik user config migration | 2026-01-31 |
-| [INVESTIGATE-espocrm](INVESTIGATE-espocrm.md) | Notes for installing EspoCRM in UIS | — |
+| [Platform Roadmap](STATUS-platform-roadmap.md) | Track prioritized investigations and planned work for the UIS platform | 2026-03-13 |
+| [INVESTIGATE: Version Pinning for Helm Charts and Container Images](INVESTIGATE-version-pinning.md) | Everything works today, but 18 of 21 Helm charts and several container images have no version pinning. Any upstream release — intentional or accidental — can break the system without warning. A single `./uis deploy` could pull a new chart version with breaking changes. | 2026-03-13 |
+| [INVESTIGATE: Verification Playbooks Usage and Coverage](INVESTIGATE-verification-playbooks-usage.md) | The `ansible/playbooks/utility/` folder contains a mix of verification playbooks, task includes, setup helpers, and one-off utilities. Several of these files appear to have no active caller in the current repo. | 2026-03-13 |
+| [INVESTIGATE: Undeploy --purge flag](INVESTIGATE-undeploy-purge-flag.md) | — | 2026-03-13 |
+| [Investigate: Version Metadata in Service Scripts](INVESTIGATE-service-version-metadata.md) | Decide how service scripts should expose version information for docs generation and CLI display | 2026-03-13 |
+| [INVESTIGATE: Remote Deployment Targets & Target Management](INVESTIGATE-remote-deployment-targets.md) | — | 2026-03-13 |
+| [INVESTIGATE: Provision-Host Tools and Provider Authentication](INVESTIGATE-provision-host-tools-and-auth.md) | — | 2026-03-13 |
+| [INVESTIGATE: Migrate Host Documentation to UIS CLI](INVESTIGATE-host-docs-migration.md) | — | 2026-03-13 |
+| [Investigate: Fix Gravitee Deployment](INVESTIGATE-gravitee-fix.md) | Get Gravitee working and aligned with UIS patterns — it was broken before the service migration and has never been verified | 2026-03-13 |
+| [Notes for installing EspoCRM in UIS](INVESTIGATE-espocrm.md) | — | 2026-03-13 |
+| [Investigate: Enonic Content Deployment](INVESTIGATE-enonic-content-deployment.md) | Determine how content (data) moves between Enonic environments and whether it can be automated | 2026-03-13 |
+| [Investigate: Enonic App Deployment Pipeline](INVESTIGATE-enonic-app-deployment-pipeline.md) | Design and implement a pull-based pipeline for deploying Enonic apps (JAR files) into the Enonic XP instance running in UIS | 2026-03-13 |
+| [Investigate: Docs Markdown Generator Update Logic](INVESTIGATE-docs-markdown-update-logic.md) | Add logic to `uis-docs-markdown.sh` to update metadata-driven sections of existing markdown pages without overwriting manually written content | 2026-03-13 |
+| [Investigate: UIS Container Pull Command](INVESTIGATE-container-pull-command.md) | Add a `./uis pull` command that pulls the latest provision-host container image and restarts the container | 2026-03-13 |
+| [Investigate: Backstage Developer Portal for UIS](INVESTIGATE-backstage.md) | Deploy Backstage as the developer portal for UIS, modeling all existing services in a software catalog | 2026-03-13 |
+| [Investigate: Backstage Enhancements](INVESTIGATE-backstage-enhancements.md) | Evaluate and prioritize additional Backstage features beyond the initial deployment (PLAN-002) | 2026-03-13 |
+| [Investigate: Backstage Authentik OIDC Authentication](INVESTIGATE-backstage-auth.md) | Investigate adding Authentik OIDC authentication to Backstage (replacing guest access) | 2026-03-13 |
+| [INVESTIGATE: Authentik User Config Migration](INVESTIGATE-authentik-user-config.md) | User-configurable Authentik data (test users, domains, protected services, OAuth apps) is hardcoded in `manifests/` where users shouldn't be editing files. This data should live in `.uis.extend/` so users can customize their setup without touching infrastructure code. | 2026-03-13 |
