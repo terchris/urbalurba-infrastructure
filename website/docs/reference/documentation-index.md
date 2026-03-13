@@ -212,9 +212,9 @@ Welcome to the complete documentation for **Urbalurba Infrastructure** — a zer
 
 | Document | Purpose |
 |----------|---------|
-| [Developing with AI](../ai-development/index.md) | AI-assisted development overview |
-| [AI Development Workflow](../ai-development/workflow.md) | Workflow for AI-assisted contributions |
-| [Creating Plans](../ai-development/creating-plans.md) | How to create implementation plans |
+| [AI Developer Guide](../ai-developer/README.md) | Overview for AI coding assistants |
+| [Workflow](../ai-developer/WORKFLOW.md) | Workflow for AI-assisted contributions |
+| [Plans](../ai-developer/PLANS.md) | Plan structure, templates, and best practices |
 
 ## Finding What You Need
 

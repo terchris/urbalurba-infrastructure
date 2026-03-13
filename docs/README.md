@@ -12,16 +12,16 @@ This folder contains documentation for AI coding assistants and developers worki
 
 For detailed AI development documentation, see:
 
-- [AI Development Overview](../website/docs/ai-development/index.md) - How AI-assisted development works
-- [Workflow](../website/docs/ai-development/workflow.md) - The full flow from idea to implementation
-- [Creating Plans](../website/docs/ai-development/creating-plans.md) - Plan templates and best practices
+- [AI Developer Guide](../website/docs/ai-developer/README.md) - Overview for AI coding assistants
+- [Workflow](../website/docs/ai-developer/WORKFLOW.md) - The full flow from idea to implementation
+- [Plans](../website/docs/ai-developer/PLANS.md) - Plan structure, templates, and best practices
 
 ### Plans Location
 
 Implementation plans are stored in:
 
 ```
-website/docs/ai-development/ai-developer/plans/
+website/docs/ai-developer/plans/
 ├── active/      # Currently being worked on
 ├── backlog/     # Approved plans waiting for implementation
 └── completed/   # Done - kept for reference
