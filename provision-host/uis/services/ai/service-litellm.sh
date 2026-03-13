@@ -25,6 +25,8 @@ SCRIPT_NAMESPACE="ai"
 SCRIPT_KIND="Component"        # Component | Resource
 SCRIPT_TYPE="service"          # service | tool | library | database | cache | message-broker
 SCRIPT_OWNER="app-team"   # platform-team | app-team
+SCRIPT_PROVIDES_APIS="litellm-api"
+SCRIPT_CONSUMES_APIS=""
 
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Call 100+ LLM APIs using OpenAI format"

@@ -25,6 +25,8 @@ SCRIPT_NAMESPACE="default"
 SCRIPT_KIND="Component"        # Component | Resource
 SCRIPT_TYPE="service"          # service | tool | library | database | cache | message-broker
 SCRIPT_OWNER="app-team"   # platform-team | app-team
+SCRIPT_PROVIDES_APIS="gravitee-api"
+SCRIPT_CONSUMES_APIS=""
 
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Open-source API management platform for designing, deploying, and managing APIs"

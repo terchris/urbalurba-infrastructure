@@ -25,6 +25,8 @@ SCRIPT_NAMESPACE="ai"
 SCRIPT_KIND="Component"        # Component | Resource
 SCRIPT_TYPE="service"          # service | tool | library | database | cache | message-broker
 SCRIPT_OWNER="app-team"   # platform-team | app-team
+SCRIPT_PROVIDES_APIS="openwebui-api"
+SCRIPT_CONSUMES_APIS="litellm-api"
 
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Self-hosted AI interface supporting multiple model providers"
