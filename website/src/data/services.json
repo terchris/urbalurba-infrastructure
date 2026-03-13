@@ -346,6 +346,27 @@
 ,
   {
     "@type": "SoftwareApplication",
+    "id": "backstage",
+    "name": "Backstage (RHDH)",
+    "description": "Developer portal with software catalog and Kubernetes visibility",
+    "category": "MANAGEMENT",
+    "tags": ["developer-portal", "catalog", "backstage", "rhdh", "kubernetes"],
+    "abstract": "Developer portal for software catalog and service visibility",
+    "logo": "backstage-logo.webp",
+    "website": "https://backstage.io"
+    ,"summary": "Backstage (via Red Hat Developer Hub) provides a centralized developer portal with a software catalog showing all UIS services, their relationships, Kubernetes pod status, and Grafana dashboard links."
+    ,"docs": "/docs/packages/management/backstage"
+    ,"playbook": "650-setup-backstage.yml"
+    ,"priority": 80
+    ,"checkCommand": "kubectl get pods -n backstage -l app.kubernetes.io/instance=backstage --no-headers 2>/dev/null | grep -q Running"
+    ,"removePlaybook": "650-remove-backstage.yml"
+    ,"requires": ["postgresql"]
+    ,"helmChart": "rhdh-chart/backstage"
+    ,"namespace": "backstage"
+  }
+,
+  {
+    "@type": "SoftwareApplication",
     "id": "nextcloud",
     "name": "Nextcloud",
     "description": "Self-hosted collaboration platform with file sync and document editing",
