@@ -120,6 +120,7 @@ Testing:
 
 Documentation:
   docs generate           Generate JSON files for website
+  docs plans              Generate plan index pages for website
 
 Information:
   version                 Show UIS version
@@ -1409,9 +1410,19 @@ cmd_docs() {
 
             "$docs_script" "$output_dir"
             ;;
+        plans)
+            local plans_script="$SCRIPT_DIR/uis-docs-plan-indexes.sh"
+
+            if [[ ! -f "$plans_script" ]]; then
+                log_error "uis-docs-plan-indexes.sh not found"
+                exit "$EXIT_GENERAL_ERROR"
+            fi
+
+            "$plans_script" "$@"
+            ;;
         *)
             log_error "Unknown docs subcommand: $subcmd"
-            echo "Usage: uis docs [generate [output-dir]]"
+            echo "Usage: uis docs [generate [output-dir] | plans [plans-dir]]"
             exit "$EXIT_GENERAL_ERROR"
             ;;
     esac
