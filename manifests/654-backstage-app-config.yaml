@@ -34,6 +34,12 @@ data:
       baseUrl: http://backstage.localhost
       listen:
         port: 7007
+      auth:
+        externalAccess:
+          - type: static
+            options:
+              token: ${BACKSTAGE_SESSION_SECRET}
+              subject: backstage-server
       database:
         client: pg
         connection:
@@ -77,6 +83,7 @@ data:
               name: local
               authProvider: serviceAccount
               skipTLSVerify: true
+              caFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
               skipMetricsLookup: true
 
     # Grafana plugin configuration

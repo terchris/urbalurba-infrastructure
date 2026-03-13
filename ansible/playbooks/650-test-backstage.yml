@@ -10,6 +10,7 @@
 #   C. Kubernetes plugin - check that K8s plugin responds
 #   D. UI via Traefik - backstage.localhost must be routable
 #   E. Grafana plugin - check Grafana integration (if Grafana deployed)
+#   F. K8s pod data - verify K8s plugin returns actual pod data for nginx
 #
 # Usage:
 # ansible-playbook ansible/playbooks/650-test-backstage.yml -e kube_context="rancher-desktop"
@@ -29,7 +30,7 @@
         msg: |
           End-to-End Backstage Tests
           ===============================================
-          Running 5 test groups
+          Running 6 test groups
 
     - name: "0.1. Get Traefik ClusterIP for in-cluster hostname routing"
       ansible.builtin.shell: |
@@ -265,6 +266,80 @@
         msg: |
           Test E: Grafana Plugin — {{ 'CHECKED (Grafana deployed)' if grafana_check.stdout | int > 0 else 'SKIPPED (Grafana not deployed)' }}
 
+    # ===== Test F: K8s plugin returns actual pod data =====
+    # Uses backstage itself (always deployed) rather than nginx (may not be installed)
+    - name: "F1. Query K8s plugin for backstage pod data"
+      ansible.builtin.shell: |
+        kubectl run curl-test-k8spods-{{ 99999 | random }} --image=curlimages/curl --rm -i --restart=Never -n {{ backstage_namespace }} -- \
+          sh -c '
+            # Get a guest token
+            TOKEN_RESPONSE=$(curl -s -X POST http://{{ backstage_service }}:{{ backstage_port }}/api/auth/guest/refresh)
+            TOKEN=$(echo "$TOKEN_RESPONSE" | sed -n "s/.*\"token\":\"\([^\"]*\)\".*/\1/p")
+
+            if [ -z "$TOKEN" ]; then
+              echo "K8S_PODS_RESULT: AUTH_FAILED"
+              exit 0
+            fi
+
+            # Query K8s plugin for backstage entity pods
+            RESPONSE=$(curl -s \
+              -H "Authorization: Bearer $TOKEN" \
+              -H "Content-Type: application/json" \
+              -d "{
+                \"entity\": {
+                  \"metadata\": {
+                    \"name\": \"backstage\",
+                    \"namespace\": \"default\",
+                    \"annotations\": {
+                      \"backstage.io/kubernetes-label-selector\": \"app.kubernetes.io/instance=backstage\",
+                      \"backstage.io/kubernetes-namespace\": \"backstage\"
+                    }
+                  },
+                  \"kind\": \"Component\"
+                }
+              }" \
+              "http://{{ backstage_service }}:{{ backstage_port }}/api/kubernetes/services/backstage")
+
+            echo "$RESPONSE"
+
+            # Check for pods in response
+            if echo "$RESPONSE" | grep -q "\"type\":\"pods\""; then
+              echo "K8S_PODS_RESULT: HAS_PODS"
+            elif echo "$RESPONSE" | grep -q "FETCH_ERROR\|error"; then
+              echo "K8S_PODS_RESULT: FETCH_ERROR"
+            else
+              echo "K8S_PODS_RESULT: NO_PODS"
+            fi
+          '
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: k8s_pods_test
+      failed_when: false
+      changed_when: false
+
+    - name: "F2. Verify K8s plugin returns pod data"
+      ansible.builtin.assert:
+        that:
+          - "'K8S_PODS_RESULT: HAS_PODS' in k8s_pods_test.stdout"
+        fail_msg: |
+          FAILED: K8s plugin did not return pod data for backstage!
+          Expected pod resources in /api/kubernetes/services/backstage response.
+          Got: {{ k8s_pods_test.stdout[:500] | default('No output') }}
+
+          Troubleshooting:
+          - Check K8s plugin is enabled in 650-backstage-config.yaml (global.dynamic.plugins)
+          - Check NODE_EXTRA_CA_CERTS is set (TLS trust for cluster CA)
+          - Check backend.auth.externalAccess is configured (static token auth)
+          - Check ServiceAccount RBAC: kubectl get clusterrolebinding backstage-cluster-reader
+          - Check pod logs: kubectl logs -n {{ backstage_namespace }} -l app.kubernetes.io/instance=backstage --tail=50
+        success_msg: "Test F PASSED: K8s plugin returns pod data for backstage"
+
+    - name: "F3. Display K8s pod data test result"
+      ansible.builtin.debug:
+        msg: |
+          Test F: K8s Pod Data — PASSED
+          /api/kubernetes/services/backstage returns actual pod resources
+
     # ===== Summary =====
     - name: "S1. Display comprehensive test results"
       ansible.builtin.debug:
@@ -286,6 +361,9 @@
           - "  backstage.localhost routes correctly"
           - ""
           - "Test E — Grafana Plugin:       {{ 'CHECKED' if grafana_check.stdout | int > 0 else 'SKIPPED (Grafana not deployed)' }}"
+          - ""
+          - "Test F — K8s Pod Data:         PASSED"
+          - "  Plugin returns actual pod resources for backstage"
           - ""
           - "==============================================="
           - "ALL TESTS PASSED"

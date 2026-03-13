@@ -61,6 +61,12 @@ upstream:
         baseUrl: http://backstage.localhost
       backend:
         baseUrl: http://backstage.localhost
+        auth:
+          externalAccess:
+            - type: static
+              options:
+                token: ${BACKSTAGE_SESSION_SECRET}
+                subject: backstage-server
         database:
           connection:
             host: postgresql.default.svc.cluster.local
@@ -74,6 +80,25 @@ upstream:
         providers:
           guest:
             dangerouslyAllowOutsideDevelopment: true
+      # Kubernetes plugin — must be in appConfig (chart ConfigMap loads last)
+      kubernetes:
+        serviceLocatorMethod:
+          type: multiTenant
+        clusterLocatorMethods:
+          - type: config
+            clusters:
+              - url: https://kubernetes.default.svc
+                name: local
+                authProvider: serviceAccount
+                skipTLSVerify: true
+                caFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+                skipMetricsLookup: true
+
+    # Extra environment variables
+    extraEnvVars:
+      # Trust the cluster CA cert so K8s plugin can talk to the API server
+      - name: NODE_EXTRA_CA_CERTS
+        value: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
 
     # Extra environment variables from secrets
     extraEnvVarsSecrets:
@@ -148,11 +173,34 @@ route:
   enabled: false
 
 # Dynamic plugins configuration (RHDH feature)
+# Plugins in dynamic-plugins.default.yaml are disabled by default.
+# List them here with disabled: false to enable.
 global:
   dynamic:
     includes:
       - dynamic-plugins.default.yaml
-    plugins: []
+    plugins:
+      # Kubernetes backend plugin — serves /api/kubernetes
+      - package: ./dynamic-plugins/dist/backstage-plugin-kubernetes-backend-dynamic
+        disabled: false
+      # Kubernetes frontend plugin — adds "Kubernetes" tab on entity pages
+      - package: ./dynamic-plugins/dist/backstage-plugin-kubernetes
+        disabled: false
+        pluginConfig:
+          dynamicPlugins:
+            frontend:
+              backstage.plugin-kubernetes:
+                mountPoints:
+                  - mountPoint: entity.page.kubernetes/cards
+                    importName: EntityKubernetesContent
+                    config:
+                      layout:
+                        gridColumn: 1 / -1
+                    if:
+                      anyOf:
+                        - hasAnnotation: backstage.io/kubernetes-label-selector
+                        - hasAnnotation: backstage.io/kubernetes-namespace
+                        - hasAnnotation: backstage.io/kubernetes-id
       # Grafana plugin — not bundled in RHDH 1.9, enable when available via OCI
       # - package: ./dynamic-plugins/dist/janus-idp-backstage-plugin-grafana
       #   disabled: false

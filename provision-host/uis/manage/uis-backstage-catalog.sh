@@ -147,7 +147,7 @@ extract_all_metadata() {
     # Reset variables
     _id="" _name="" _desc="" _category=""
     _namespace="" _requires="" _docs=""
-    _kind="" _type="" _owner=""
+    _kind="" _type="" _owner="" _check_command=""
 
     while IFS= read -r line; do
         case "$line" in
@@ -200,6 +200,10 @@ extract_all_metadata() {
                 _owner="${_owner%%#*}"
                 _owner="${_owner%% *}"
                 _owner="${_owner%	*}"
+                ;;
+            SCRIPT_CHECK_COMMAND=*)
+                _check_command="${line#SCRIPT_CHECK_COMMAND=}"
+                _check_command="${_check_command//\"/}"; _check_command="${_check_command//\'/}"
                 ;;
         esac
     done < "$script_file"
@@ -396,7 +400,7 @@ spec:
 generate_service_entity() {
     local id="$1" name="$2" desc="$3" category="$4"
     local namespace="$5" requires="$6" docs="$7"
-    local kind="$8" type="$9" owner="${10}"
+    local kind="$8" type="$9" owner="${10}" check_command="${11}"
 
     # Defaults
     kind="${kind:-Component}"
@@ -430,11 +434,24 @@ metadata:
   annotations:
     backstage.io/techdocs-ref: url:${docs_url}"
 
-    # Components get kubernetes annotations
-    if [[ "$kind" == "Component" ]]; then
+    # Components and Resources get kubernetes annotations
+    if [[ "$kind" == "Component" || "$kind" == "Resource" ]]; then
+        # Extract label selector from SCRIPT_CHECK_COMMAND (e.g., "-l app.kubernetes.io/name=nginx")
+        local label_selector=""
+        if [[ "$check_command" =~ -l[[:space:]]*([^[:space:]]+) ]]; then
+            label_selector="${BASH_REMATCH[1]}"
+        fi
+
         content+="
-    backstage.io/kubernetes-id: ${id}
     backstage.io/kubernetes-namespace: ${namespace}"
+        if [[ -n "$label_selector" ]]; then
+            content+="
+    backstage.io/kubernetes-label-selector: \"${label_selector}\""
+        else
+            # Fallback for services without SCRIPT_CHECK_COMMAND
+            content+="
+    backstage.io/kubernetes-id: ${id}"
+        fi
     fi
 
     content+="
@@ -490,7 +507,7 @@ metadata:
   description: \"Document text extraction service for AI pipelines (PDF, DOCX, etc.)\"
   annotations:
     backstage.io/techdocs-ref: url:https://uis.sovereignsky.no/docs/packages/ai/tika
-    backstage.io/kubernetes-id: tika
+    backstage.io/kubernetes-label-selector: \"app.kubernetes.io/instance=tika\"
     backstage.io/kubernetes-namespace: ai
     grafana/dashboard-selector: \"tag:tika\"
     uis.sovereignsky.no/docs-url: \"https://uis.sovereignsky.no/docs/packages/ai/tika\"
@@ -517,7 +534,7 @@ metadata:
   description: \"Document editor for Nextcloud (DOCX, XLSX, PPTX editing in browser)\"
   annotations:
     backstage.io/techdocs-ref: url:https://uis.sovereignsky.no/docs/packages/applications/onlyoffice
-    backstage.io/kubernetes-id: onlyoffice
+    backstage.io/kubernetes-label-selector: \"app=onlyoffice\"
     backstage.io/kubernetes-namespace: nextcloud
     grafana/dashboard-selector: \"tag:onlyoffice\"
     uis.sovereignsky.no/docs-url: \"https://uis.sovereignsky.no/docs/packages/applications/onlyoffice\"
@@ -688,7 +705,7 @@ main() {
         generate_service_entity \
             "$_id" "$_name" "$_desc" "$_category" \
             "$_namespace" "$_requires" "$_docs" \
-            "$_kind" "$_type" "$_owner"
+            "$_kind" "$_type" "$_owner" "$_check_command"
 
         service_count=$((service_count + 1))
     done < <(find "$SERVICES_DIR" -name "*.sh" -type f -print0 2>/dev/null | sort -z)
