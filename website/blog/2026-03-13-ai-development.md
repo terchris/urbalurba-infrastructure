@@ -10,6 +10,10 @@ image: ./ai-development-tester.png
 
 We're building an open-source replacement for Azure's managed services — 30+ services, from databases to AI to authentication — with a team of one human and two AI developers. Every feature starts as a written plan, gets implemented by one Claude Code session, and tested from scratch by another. Here's the workflow that makes it possible.
 
+![Two Claude Code terminals side by side](./ai-development-tester.png)
+
+*Left (blue terminal): The Contributor — editing code in the main repo after reviewing tester feedback. Right (black terminal): The Tester — has just verified that Backstage API entities show correct Kubernetes annotations, tested in a real browser, and is writing "PASS" results back to `talk.md` for the contributor to read.*
+
 <!-- truncate -->
 
 ## The Team
@@ -21,10 +25,6 @@ Three participants, three roles:
 - **The Tester** (Claude Code) — works in a separate directory, tests as a fresh user, reports issues and suggestions
 
 The human steers. The contributor implements. The tester verifies. The contributor and tester communicate through a shared markdown file called `talk.md` — no shared context, no shortcuts. The tester follows instructions exactly as a new user would.
-
-![Two Claude Code terminals side by side](./ai-development-tester.png)
-
-*Left (blue terminal): The Contributor — editing code in the main repo after reviewing tester feedback. Right (black terminal): The Tester — has just verified that Backstage API entities show correct Kubernetes annotations, tested in a real browser, and is writing "PASS" results back to `talk.md` for the contributor to read.*
 
 ## Plans Before Code
 
