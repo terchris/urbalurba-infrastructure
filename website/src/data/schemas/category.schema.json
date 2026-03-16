@@ -28,6 +28,11 @@
       "type": "string",
       "description": "Icon name for display (e.g., 'server', 'database', 'brain')",
       "pattern": "^[a-z-]+$"
+    },
+    "logo": {
+      "type": "string",
+      "description": "Logo filename (SVG/PNG) in static/img/categories/",
+      "pattern": "^[a-z0-9-]+-logo\\.(svg|png)$"
     }
   }
 }

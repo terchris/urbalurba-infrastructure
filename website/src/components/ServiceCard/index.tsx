@@ -15,12 +15,16 @@ export default function ServiceCard({ service }: ServiceCardProps): React.JSX.El
   return (
     <article className={styles.serviceCard}>
       <div className={styles.logoContainer}>
-        <img
-          src={logoUrl}
-          alt={`${service.name} logo`}
-          className={styles.logo}
-          loading="lazy"
-        />
+        {service.logo ? (
+          <img
+            src={logoUrl}
+            alt={`${service.name} logo`}
+            className={styles.logo}
+            loading="lazy"
+          />
+        ) : (
+          <div className={styles.logo} aria-label={`${service.name} logo`} />
+        )}
       </div>
       <div className={styles.content}>
         <Link to={servicePath} className={styles.title}>
