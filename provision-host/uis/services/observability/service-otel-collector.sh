@@ -29,7 +29,7 @@ SCRIPT_OWNER="platform-team"   # platform-team | app-team
 
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Vendor-agnostic telemetry collection and processing"
-SCRIPT_LOGO="opentelemetry-logo.webp"
+SCRIPT_LOGO="otel-collector-logo.svg"
 SCRIPT_WEBSITE="https://opentelemetry.io"
 SCRIPT_TAGS="telemetry,opentelemetry,otel,observability,traces,metrics,logs"
 SCRIPT_SUMMARY="The OpenTelemetry Collector offers a vendor-agnostic implementation to receive, process, and export telemetry data. It removes the need to run multiple agents/collectors."

@@ -29,7 +29,7 @@ SCRIPT_OWNER="platform-team"   # platform-team | app-team
 
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Time-series database for metrics collection, storage, and alerting"
-SCRIPT_LOGO="prometheus-logo.webp"
+SCRIPT_LOGO="prometheus-logo.svg"
 SCRIPT_WEBSITE="https://prometheus.io"
 SCRIPT_TAGS="monitoring,metrics,alerting,time-series,observability"
 SCRIPT_SUMMARY="Prometheus is a systems monitoring and alerting toolkit that collects metrics from configured targets, stores them locally, and provides a powerful query language (PromQL) for analysis and alerting."

@@ -28,7 +28,7 @@ SCRIPT_OWNER="platform-team"   # platform-team | app-team
 
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="High-performance vector database for AI applications"
-SCRIPT_LOGO="qdrant-logo.webp"
+SCRIPT_LOGO="qdrant-logo.svg"
 SCRIPT_WEBSITE="https://qdrant.tech"
 SCRIPT_TAGS="vector-database,ai,embeddings,similarity-search,semantic-search"
 SCRIPT_SUMMARY="Qdrant is a vector similarity search engine and database designed for AI applications. It provides extended filtering support, making it useful for neural network or semantic-based matching."

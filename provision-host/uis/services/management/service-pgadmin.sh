@@ -28,7 +28,7 @@ SCRIPT_OWNER="platform-team"   # platform-team | app-team
 
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Web administration interface for PostgreSQL"
-SCRIPT_LOGO="pgadmin-logo.webp"
+SCRIPT_LOGO="pgadmin-logo.png"
 SCRIPT_WEBSITE="https://www.pgadmin.org"
 SCRIPT_TAGS="postgresql,database,admin,management,web-ui"
 SCRIPT_SUMMARY="pgAdmin is a feature-rich open source administration and development platform for PostgreSQL. It provides a graphical interface for managing databases, running queries, and monitoring server activity."

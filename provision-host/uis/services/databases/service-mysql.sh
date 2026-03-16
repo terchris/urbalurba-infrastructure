@@ -28,7 +28,7 @@ SCRIPT_OWNER="platform-team"   # platform-team | app-team
 
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Popular open-source relational database for web applications"
-SCRIPT_LOGO="mysql-logo.webp"
+SCRIPT_LOGO="mysql-logo.svg"
 SCRIPT_WEBSITE="https://www.mysql.com"
 SCRIPT_TAGS="database,sql,relational,mysql,rdbms"
 SCRIPT_SUMMARY="MySQL is the world's most popular open-source relational database management system. It powers many of the most accessed applications including Facebook, Twitter, and YouTube."

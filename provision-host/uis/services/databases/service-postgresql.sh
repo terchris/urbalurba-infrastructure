@@ -28,7 +28,7 @@ SCRIPT_OWNER="platform-team"   # platform-team | app-team
 
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="World's most advanced open-source relational database"
-SCRIPT_LOGO="postgresql-logo.webp"
+SCRIPT_LOGO="postgresql-logo.svg"
 SCRIPT_WEBSITE="https://www.postgresql.org"
 SCRIPT_TAGS="database,sql,relational,postgres,rdbms"
 SCRIPT_SUMMARY="PostgreSQL is a powerful, open-source object-relational database system with over 35 years of active development. It has earned a strong reputation for reliability, feature robustness, and performance."

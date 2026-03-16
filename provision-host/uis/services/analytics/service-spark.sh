@@ -28,7 +28,7 @@ SCRIPT_OWNER="app-team"   # platform-team | app-team
 
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Fast and general-purpose cluster computing system for big data processing"
-SCRIPT_LOGO="spark-logo.webp"
+SCRIPT_LOGO="spark-logo.svg"
 SCRIPT_WEBSITE="https://spark.apache.org"
 SCRIPT_TAGS="big-data,analytics,distributed-computing,etl,machine-learning"
 SCRIPT_SUMMARY="Apache Spark is a unified analytics engine for large-scale data processing. It provides high-level APIs in Java, Scala, Python, and R, and supports SQL queries, streaming data, machine learning, and graph processing."

@@ -28,7 +28,7 @@ SCRIPT_OWNER="platform-team"   # platform-team | app-team
 
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Visual management interface for Redis"
-SCRIPT_LOGO="redisinsight-logo.webp"
+SCRIPT_LOGO="redisinsight-logo.svg"
 SCRIPT_WEBSITE="https://redis.io/insight/"
 SCRIPT_TAGS="redis,database,admin,management,web-ui,cache"
 SCRIPT_SUMMARY="RedisInsight is a visual tool for managing Redis databases. It provides a graphical interface for browsing keys, running commands, monitoring performance, and managing Redis data structures."

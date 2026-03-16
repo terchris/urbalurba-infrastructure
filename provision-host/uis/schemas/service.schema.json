@@ -45,7 +45,7 @@
     "logo": {
       "type": "string",
       "description": "Logo filename (SVG preferred, WebP fallback). Empty string if no logo available.",
-      "pattern": "^([a-z0-9-]+-logo\\.(svg|webp))?$"
+      "pattern": "^([a-z0-9-]+-logo\\.(svg|png|webp))?$"
     },
     "website": {
       "type": "string",

@@ -30,7 +30,7 @@ SCRIPT_OWNER="app-team"   # platform-team | app-team
 
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Self-hosted collaboration platform — file sync, document editing, calendar, and contacts"
-SCRIPT_LOGO="nextcloud-logo.webp"
+SCRIPT_LOGO=""
 SCRIPT_WEBSITE="https://nextcloud.com"
 SCRIPT_TAGS="collaboration,file-sync,document-editing,calendar,contacts,onlyoffice"
 SCRIPT_SUMMARY="Nextcloud is a self-hosted content collaboration platform providing file sync and sharing, browser-based document editing via OnlyOffice, calendar, contacts, and more. Deployed with the official Helm chart, reusing existing UIS PostgreSQL and Redis services."

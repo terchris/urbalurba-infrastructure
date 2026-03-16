@@ -28,7 +28,7 @@ SCRIPT_OWNER="platform-team"   # platform-team | app-team
 
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="General purpose document database"
-SCRIPT_LOGO="mongodb-logo.webp"
+SCRIPT_LOGO="mongodb-logo.svg"
 SCRIPT_WEBSITE="https://www.mongodb.com"
 SCRIPT_TAGS="database,nosql,document,json,flexible-schema"
 SCRIPT_SUMMARY="MongoDB is a document-oriented NoSQL database designed for high-volume data storage. It stores data in flexible, JSON-like documents, meaning fields can vary from document to document."

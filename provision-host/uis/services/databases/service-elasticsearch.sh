@@ -28,7 +28,7 @@ SCRIPT_OWNER="platform-team"   # platform-team | app-team
 
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="RESTful search and analytics engine for all types of data"
-SCRIPT_LOGO="elasticsearch-logo.webp"
+SCRIPT_LOGO="elasticsearch-logo.svg"
 SCRIPT_WEBSITE="https://www.elastic.co/elasticsearch"
 SCRIPT_TAGS="search,full-text,analytics,indexing,distributed"
 SCRIPT_SUMMARY="Elasticsearch is a distributed, RESTful search and analytics engine capable of addressing a growing number of use cases. It centrally stores your data for lightning fast search and fine-tuned relevancy."

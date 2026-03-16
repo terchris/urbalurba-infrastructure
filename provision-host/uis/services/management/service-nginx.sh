@@ -29,7 +29,7 @@ SCRIPT_OWNER="platform-team"   # platform-team | app-team
 
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="High-performance web server and reverse proxy"
-SCRIPT_LOGO="nginx-logo.webp"
+SCRIPT_LOGO="nginx-logo.svg"
 SCRIPT_WEBSITE="https://nginx.org"
 SCRIPT_TAGS="webserver,proxy,reverse-proxy,load-balancer,http"
 SCRIPT_SUMMARY="Nginx is a high-performance HTTP server and reverse proxy, known for its stability, rich feature set, simple configuration, and low resource consumption."

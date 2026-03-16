@@ -28,7 +28,7 @@ SCRIPT_OWNER="app-team"   # platform-team | app-team
 
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Open-source data catalog for unified governance across data and AI assets"
-SCRIPT_LOGO="unity-catalog-logo.webp"
+SCRIPT_LOGO="unity-catalog-logo.png"
 SCRIPT_WEBSITE="https://www.unitycatalog.io"
 SCRIPT_TAGS="data-catalog,governance,metadata,lakehouse,data-lineage"
 SCRIPT_SUMMARY="Unity Catalog is an open-source data catalog that provides unified governance for data and AI assets. It enables fine-grained access control, data lineage tracking, and metadata management across your data lakehouse."

@@ -29,7 +29,7 @@ SCRIPT_OWNER="platform-team"   # platform-team | app-team
 
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Open source distributed tracing backend"
-SCRIPT_LOGO="tempo-logo.webp"
+SCRIPT_LOGO="tempo-logo.svg"
 SCRIPT_WEBSITE="https://grafana.com/oss/tempo/"
 SCRIPT_TAGS="tracing,distributed-tracing,observability,monitoring,spans"
 SCRIPT_SUMMARY="Tempo is an open source, easy-to-use, high-scale distributed tracing backend. It requires only object storage to operate and integrates seamlessly with Grafana, Prometheus, and Loki."

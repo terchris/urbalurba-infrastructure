@@ -30,7 +30,7 @@ SCRIPT_OWNER="app-team"   # platform-team | app-team
 
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Headless CMS platform with embedded storage, Content Studio, and 100+ integrations"
-SCRIPT_LOGO="enonic-logo.webp"
+SCRIPT_LOGO=""
 SCRIPT_WEBSITE="https://enonic.com"
 SCRIPT_TAGS="cms,headless-cms,content-management,content-studio,graphql,enonic-xp"
 SCRIPT_SUMMARY="Enonic XP is a Java/GraalVM-based headless CMS platform with embedded Elasticsearch and NoSQL storage. It provides Content Studio for editorial work, headless APIs (GraphQL/REST), and a composable architecture for building content-driven applications."

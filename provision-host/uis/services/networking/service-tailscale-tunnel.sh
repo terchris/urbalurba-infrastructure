@@ -28,7 +28,7 @@ SCRIPT_OWNER="platform-team"   # platform-team | app-team
 
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Zero-config WireGuard-based mesh VPN for secure remote access"
-SCRIPT_LOGO="tailscale-logo.webp"
+SCRIPT_LOGO="tailscale-logo.svg"
 SCRIPT_WEBSITE="https://tailscale.com"
 SCRIPT_TAGS="vpn,wireguard,mesh-network,remote-access,zero-trust"
 SCRIPT_SUMMARY="Tailscale creates a secure, private network between your servers, computers, and cloud instances using WireGuard encryption. It provides zero-config networking with built-in NAT traversal."

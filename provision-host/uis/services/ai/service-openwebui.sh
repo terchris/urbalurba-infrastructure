@@ -30,7 +30,7 @@ SCRIPT_CONSUMES_APIS="litellm-api"
 
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Self-hosted AI interface supporting multiple model providers"
-SCRIPT_LOGO="openwebui-logo.webp"
+SCRIPT_LOGO="openwebui-logo.png"
 SCRIPT_WEBSITE="https://openwebui.com"
 SCRIPT_TAGS="ai,llm,chat,interface,openai,ollama"
 SCRIPT_SUMMARY="Open WebUI is an extensible, feature-rich, and user-friendly self-hosted AI interface. It supports various LLM runners including Ollama and OpenAI-compatible APIs."
