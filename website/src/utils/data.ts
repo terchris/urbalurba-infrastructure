@@ -47,7 +47,7 @@ export function getCategories(): Category[] {
     tags: [],
     abstract: c.description,
     summary: c.description,
-    logo: '',
+    logo: c.logo || '',
     manifest_range: '',
   }));
   return categories.sort((a, b) => a.order - b.order);

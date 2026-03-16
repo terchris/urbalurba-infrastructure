@@ -25,18 +25,18 @@
 _UIS_CATEGORIES_LOADED=1
 
 # Category definitions as indexed arrays (bash 3.x compatible)
-# Format: ID|Display Name|Description|tags|icon
+# Format: ID|Display Name|Description|tags|icon|logo
 _CATEGORY_DATA=(
-    "OBSERVABILITY|Observability|Metrics, logs, and tracing|monitoring,observability|chart-line"
-    "AI|AI & ML|AI and machine learning services|ai,ml,llm|brain"
-    "ANALYTICS|Analytics|Data science and analytics platforms|analytics,datascience|flask"
-    "IDENTITY|Identity|Identity and access management|identity,auth,sso|shield"
-    "DATABASES|Databases|Data storage and caching services|database,storage|database"
-    "MANAGEMENT|Management|Admin tools, GitOps, and test services|admin,management|cog"
-    "APPLICATIONS|Applications|End-user applications and collaboration platforms|applications,collaboration|briefcase"
-    "NETWORKING|Networking|VPN tunnels and network access|network,vpn|globe"
-    "STORAGE|Storage|Platform storage infrastructure|storage,persistent|hard-drive"
-    "INTEGRATION|Integration|Messaging, API gateways, and event streams|integration,messaging|inbox"
+    "OBSERVABILITY|Observability|Metrics, logs, and tracing|monitoring,observability|chart-line|monitoring-logo.svg"
+    "AI|AI & ML|AI and machine learning services|ai,ml,llm|brain|ai-logo.svg"
+    "ANALYTICS|Analytics|Data science and analytics platforms|analytics,datascience|flask|datascience-logo.svg"
+    "IDENTITY|Identity|Identity and access management|identity,auth,sso|shield|authentication-logo.svg"
+    "DATABASES|Databases|Data storage and caching services|database,storage|database|databases-logo.svg"
+    "MANAGEMENT|Management|Admin tools, GitOps, and test services|admin,management|cog|management-logo.svg"
+    "APPLICATIONS|Applications|End-user applications and collaboration platforms|applications,collaboration|briefcase|development-logo.svg"
+    "NETWORKING|Networking|VPN tunnels and network access|network,vpn|globe|core-logo.svg"
+    "STORAGE|Storage|Platform storage infrastructure|storage,persistent|hard-drive|core-logo.svg"
+    "INTEGRATION|Integration|Messaging, API gateways, and event streams|integration,messaging|inbox|queues-logo.svg"
 )
 
 # Category display order (just the IDs)
@@ -104,8 +104,23 @@ get_category_icon() {
     local cat_id="$1"
     local data
     data=$(_find_category_data "$cat_id") || return 1
-    # Format: ID|Name|Description|tags|icon
-    echo "${data##*|}"           # Get icon (after last |)
+    # Format: ID|Name|Description|tags|icon|logo
+    local rest="${data#*|}"      # Remove ID|
+    rest="${rest#*|}"            # Remove Name|
+    rest="${rest#*|}"            # Remove Description|
+    rest="${rest#*|}"            # Remove tags|
+    echo "${rest%%|*}"           # Get icon (before next |)
+}
+
+# Get logo filename for a category
+# Usage: get_category_logo "OBSERVABILITY"
+# Output: "monitoring-logo.svg"
+get_category_logo() {
+    local cat_id="$1"
+    local data
+    data=$(_find_category_data "$cat_id") || return 1
+    # Format: ID|Name|Description|tags|icon|logo
+    echo "${data##*|}"           # Get logo (after last |)
 }
 
 # Check if a category ID is valid
@@ -139,10 +154,11 @@ generate_categories_json_internal() {
         [[ "$first" != "true" ]] && echo ","
         first=false
 
-        local name desc icon
+        local name desc icon logo
         name=$(get_category_name "$cat_id")
         desc=$(get_category_description "$cat_id")
         icon=$(get_category_icon "$cat_id")
+        logo=$(get_category_logo "$cat_id")
 
         cat <<EOF
     {
@@ -150,7 +166,8 @@ generate_categories_json_internal() {
       "name": "$name",
       "order": $order,
       "description": "$desc",
-      "icon": "$icon"
+      "icon": "$icon",
+      "logo": "$logo"
     }
 EOF
         ((++order))

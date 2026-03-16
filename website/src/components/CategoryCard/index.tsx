@@ -17,12 +17,16 @@ export default function CategoryCard({
   return (
     <a href={categoryPath} className={styles.categoryCard}>
       <div className={styles.logoContainer}>
-        <img
-          src={logoUrl}
-          alt={`${category.name} icon`}
-          className={styles.logo}
-          loading="lazy"
-        />
+        {category.logo ? (
+          <img
+            src={logoUrl}
+            alt={`${category.name} icon`}
+            className={styles.logo}
+            loading="lazy"
+          />
+        ) : (
+          <div className={styles.logo} aria-label={`${category.name} icon`} />
+        )}
       </div>
       <div className={styles.content}>
         <h3 className={styles.title}>{category.name}</h3>

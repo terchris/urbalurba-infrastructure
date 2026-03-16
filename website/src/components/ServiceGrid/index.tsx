@@ -37,11 +37,13 @@ function CategorySection({ category }: { category: Category }): React.JSX.Elemen
       className={styles.section}
     >
       <header className={styles.sectionHeader}>
-        <img
-          src={logoUrl}
-          alt={`${category.name} icon`}
-          className={styles.sectionLogo}
-        />
+        {category.logo && (
+          <img
+            src={logoUrl}
+            alt={`${category.name} icon`}
+            className={styles.sectionLogo}
+          />
+        )}
         <h3 className={styles.sectionTitle}>{category.name}</h3>
         <span className={styles.serviceCount}>
           {services.length} {services.length === 1 ? 'service' : 'services'}
