@@ -20,6 +20,20 @@
   border-radius: 2px;
 }
 
+.serviceLink {
+  text-decoration: none;
+  color: inherit;
+}
+
+.serviceLink:hover .serviceLogo {
+  border-color: var(--ifm-color-primary);
+  box-shadow: 0 0 0 2px var(--ifm-color-primary-lighter);
+}
+
+.serviceLink:hover .serviceName {
+  color: var(--ifm-color-primary);
+}
+
 .serviceNode {
   display: flex;
   flex-direction: column;

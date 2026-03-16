@@ -28,7 +28,7 @@ SCRIPT_OWNER="platform-team"   # platform-team | app-team
 
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Lightweight test container for debugging ingress and authentication"
-SCRIPT_LOGO=""
+SCRIPT_LOGO="whoami-logo.svg"
 SCRIPT_WEBSITE="https://github.com/traefik/whoami"
 SCRIPT_TAGS="testing,debug,ingress,traefik,development"
 SCRIPT_SUMMARY="Whoami is a tiny Go webserver that prints OS information and HTTP request details. It's useful for testing ingress configurations, authentication flows, and debugging network issues."

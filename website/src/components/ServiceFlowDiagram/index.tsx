@@ -3,6 +3,7 @@
  * Shows services in installation order with arrows between them.
  */
 import React from 'react';
+import Link from '@docusaurus/Link';
 import useBaseUrl from '@docusaurus/useBaseUrl';
 import type { ServiceFlowDiagramProps } from '../../types/stack';
 import { getServiceById } from '../../utils/data';
@@ -37,15 +38,16 @@ export default function ServiceFlowDiagram({
 }
 
 type ServiceNodeProps = {
-  service: { identifier: string; name: string; logo: string };
+  service: { identifier: string; name: string; logo: string; docs?: string; url?: string };
   optional?: boolean;
   showName?: boolean;
 };
 
 function ServiceNode({ service, optional, showName }: ServiceNodeProps): React.JSX.Element {
   const logoUrl = useBaseUrl(`/img/services/${service.logo}`);
+  const linkTarget = service.docs || service.url;
 
-  return (
+  const content = (
     <div className={`${styles.serviceNode} ${optional ? styles.optionalNode : ''}`}>
       <img
         src={logoUrl}
@@ -55,6 +57,14 @@ function ServiceNode({ service, optional, showName }: ServiceNodeProps): React.J
       />
       {showName && <span className={styles.serviceName}>{service.name}</span>}
     </div>
+  );
+
+  if (!linkTarget) return content;
+
+  return (
+    <Link to={linkTarget} className={styles.serviceLink}>
+      {content}
+    </Link>
   );
 }
 

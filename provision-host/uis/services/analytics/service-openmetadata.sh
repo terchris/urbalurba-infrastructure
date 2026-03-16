@@ -31,7 +31,7 @@ SCRIPT_CONSUMES_APIS=""
 
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Open-source metadata platform for data discovery, governance, and observability"
-SCRIPT_LOGO=""
+SCRIPT_LOGO="openmetadata-logo.png"
 SCRIPT_WEBSITE="https://open-metadata.org"
 SCRIPT_TAGS="data-governance,metadata,data-discovery,data-lineage,data-quality,data-catalog"
 SCRIPT_SUMMARY="OpenMetadata is an open-source metadata platform for data discovery, data observability, and data governance. It provides unified metadata management with 100+ connectors, column-level lineage, data quality checks, and collaboration features."
