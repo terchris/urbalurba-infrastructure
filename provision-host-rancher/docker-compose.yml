@@ -7,7 +7,7 @@ services:
     container_name: provision-host
     volumes:
       # mounting the host kubeconfig for initial kubeconfig setup
-      - ~/.kube:/tmp/host-kube:ro
+      - ~/.kube:/tmp/host-kube:rw
       # Persistent data volume - now contains urbalurbadisk
       - provision-host-data:/mnt
     environment:
