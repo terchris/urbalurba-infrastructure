@@ -28,7 +28,7 @@ SCRIPT_OWNER="platform-team"   # platform-team | app-team
 
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="In-memory data structure store for caching and messaging"
-SCRIPT_LOGO="redis-logo.webp"
+SCRIPT_LOGO="redis-logo.svg"
 SCRIPT_WEBSITE="https://redis.io"
 SCRIPT_TAGS="cache,in-memory,key-value,message-broker,session"
 SCRIPT_SUMMARY="Redis is an open-source, in-memory data structure store used as a database, cache, message broker, and streaming engine. It supports various data structures like strings, hashes, lists, and sets."

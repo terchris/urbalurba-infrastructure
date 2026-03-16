@@ -28,7 +28,7 @@ SCRIPT_OWNER="platform-team"   # platform-team | app-team
 
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Reliable message broker supporting multiple messaging protocols"
-SCRIPT_LOGO="rabbitmq-logo.webp"
+SCRIPT_LOGO="rabbitmq-logo.svg"
 SCRIPT_WEBSITE="https://www.rabbitmq.com"
 SCRIPT_TAGS="message-queue,amqp,messaging,async,pubsub"
 SCRIPT_SUMMARY="RabbitMQ is a reliable and mature messaging broker that supports multiple messaging protocols including AMQP. It provides features like message persistence, delivery acknowledgment, and flexible routing."

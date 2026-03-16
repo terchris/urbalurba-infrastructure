@@ -29,7 +29,7 @@ SCRIPT_OWNER="platform-team"
 
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Developer portal for software catalog and service visibility"
-SCRIPT_LOGO="backstage-logo.webp"
+SCRIPT_LOGO=""
 SCRIPT_WEBSITE="https://backstage.io"
 SCRIPT_TAGS="developer-portal,catalog,backstage,rhdh,kubernetes"
 SCRIPT_SUMMARY="Backstage (via Red Hat Developer Hub) provides a centralized developer portal with a software catalog showing all UIS services, their relationships, Kubernetes pod status, and Grafana dashboard links."

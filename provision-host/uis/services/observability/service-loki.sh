@@ -29,7 +29,7 @@ SCRIPT_OWNER="platform-team"   # platform-team | app-team
 
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Horizontally-scalable log aggregation system"
-SCRIPT_LOGO="loki-logo.webp"
+SCRIPT_LOGO="loki-logo.png"
 SCRIPT_WEBSITE="https://grafana.com/oss/loki/"
 SCRIPT_TAGS="logging,logs,aggregation,observability,monitoring"
 SCRIPT_SUMMARY="Loki is a horizontally-scalable, highly-available, multi-tenant log aggregation system inspired by Prometheus. It indexes labels, not log content, making it cost-effective and easy to operate."

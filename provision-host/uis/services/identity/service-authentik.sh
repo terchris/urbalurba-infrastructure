@@ -30,7 +30,7 @@ SCRIPT_CONSUMES_APIS=""
 
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Open-source identity provider with SSO, MFA, and user management"
-SCRIPT_LOGO="authentik-logo.webp"
+SCRIPT_LOGO="authentik-logo.svg"
 SCRIPT_WEBSITE="https://goauthentik.io"
 SCRIPT_TAGS="authentication,sso,identity,oauth,saml,ldap,mfa"
 SCRIPT_SUMMARY="Authentik is an open-source Identity Provider focused on flexibility and versatility. It supports SAML, OAuth/OIDC, LDAP, and proxy authentication with built-in MFA support."

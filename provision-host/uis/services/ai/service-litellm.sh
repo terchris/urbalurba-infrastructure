@@ -30,7 +30,7 @@ SCRIPT_CONSUMES_APIS=""
 
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Call 100+ LLM APIs using OpenAI format"
-SCRIPT_LOGO="litellm-logo.webp"
+SCRIPT_LOGO="litellm-logo.svg"
 SCRIPT_WEBSITE="https://litellm.ai"
 SCRIPT_TAGS="ai,llm,api-gateway,openai,proxy,unified-api"
 SCRIPT_SUMMARY="LiteLLM is a unified API gateway that allows you to call 100+ LLM APIs using the OpenAI format. It provides load balancing, fallbacks, spend tracking, and virtual keys."

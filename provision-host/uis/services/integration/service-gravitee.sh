@@ -30,7 +30,7 @@ SCRIPT_CONSUMES_APIS=""
 
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Open-source API management platform for designing, deploying, and managing APIs"
-SCRIPT_LOGO="gravitee-logo.webp"
+SCRIPT_LOGO="gravitee-logo.svg"
 SCRIPT_WEBSITE="https://www.gravitee.io"
 SCRIPT_TAGS="api-gateway,api-management,rest,graphql,security"
 SCRIPT_SUMMARY="Gravitee is an open-source API management platform that helps you design, deploy, and manage APIs. It provides a gateway, management console, and developer portal for comprehensive API lifecycle management."

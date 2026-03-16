@@ -31,7 +31,7 @@ SCRIPT_CONSUMES_APIS=""
 
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="Observability platform for metrics, logs, and distributed tracing"
-SCRIPT_LOGO="grafana-logo.webp"
+SCRIPT_LOGO="grafana-logo.svg"
 SCRIPT_WEBSITE="https://grafana.com"
 SCRIPT_TAGS="monitoring,dashboards,visualization,observability,metrics,logs"
 SCRIPT_SUMMARY="Grafana is the open-source analytics and monitoring solution for every database. Create, explore, and share dashboards with your team and foster a data-driven culture."
