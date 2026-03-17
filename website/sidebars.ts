@@ -195,6 +195,7 @@ const sidebars: SidebarsConfig = {
         description: 'Host configuration, platform setup, and infrastructure details.',
       },
       items: [
+        'advanced/how-deployment-works',
         {
           type: 'category',
           label: 'Hosts & Platforms',

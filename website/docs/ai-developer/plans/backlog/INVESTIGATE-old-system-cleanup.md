@@ -158,17 +158,27 @@ This investigation will produce multiple plans, each tackling a different part:
 
 **Implemented**: [PLAN-delete-old-deployment-system](../completed/PLAN-delete-old-deployment-system.md) (2026-03-17, PR #90)
 
-### Plan area: "How Deployment Works" documentation
-- Write page in `advanced/` covering:
-  - The execution flow: `./uis deploy` → service scanner discovers `uis/services/` → reads metadata → resolves dependencies and priority order → runs Ansible playbooks → verifies with health checks
-  - How `SCRIPT_PRIORITY` controls deployment order (lower = earlier)
-  - How `SCRIPT_REQUIRES` resolves dependency chains
-  - How `SCRIPT_PLAYBOOK` and `SCRIPT_REMOVE_PLAYBOOK` map to Ansible playbooks in `ansible/playbooks/`
-  - How `SCRIPT_CHECK_COMMAND` verifies deployment success
-  - How stacks group services and `enabled-services.conf` controls what gets deployed
-  - Reference the service metadata specification in `contributors/guides/adding-a-service.md` and `contributors/rules/kubernetes-deployment.md`
+### ~~Plan area: "How Deployment Works" documentation~~ — COMPLETED
+
+**Implemented**: [PLAN-how-deployment-works](../completed/PLAN-how-deployment-works.md) (2026-03-17)
 
 ### Plan area: Documentation gap filling
 - Review and fill gaps in service override customization docs
 - Review and fill gaps in stack creation docs
 - Ensure the getting-started path (install → first deploy → understand the system) is complete and consistent
+- **CI/CD pipelines and generator scripts** — contributor-facing documentation for the repo's own GitHub Actions workflows and the generator scripts they call. Currently undocumented:
+  - `generate-uis-docs.yml` — runs `uis-docs.sh`, `uis-docs-markdown.sh`, `uis-docs-plan-indexes.sh` on push to main; auto-commits generated files
+  - `test-uis.yml` — runs static tests, unit tests, JSON validation on PRs
+  - `docs.yml` — builds and deploys Docusaurus to GitHub Pages
+  - `build-uis-container.yml` — builds provision-host container image (multi-arch)
+  - `build-postgresql-container.yml` — builds PostgreSQL container image
+  - Generator scripts in `provision-host/uis/manage/`: `uis-docs.sh` (JSON), `uis-docs-markdown.sh` (Markdown pages), `uis-backstage-catalog.sh` (Backstage catalog YAML, not yet in CI/CD), `uis-docs-plan-indexes.sh` (plan indexes)
+  - Should go in `contributors/` — contributors need to know what's automated, what triggers it, and what files are auto-generated (so they don't manually edit them)
+- **Full system testing guide** — contributor-facing documentation for `./uis test-all` and the integration testing framework. Currently only mentioned briefly in the CLI reference and adding-a-service guide. No dedicated page explaining:
+  - How `test-all` works: deploy → verify → undeploy flow for every service
+  - How `integration-testing.sh` orchestrates the test suite
+  - How `./uis verify <service>` runs per-service E2E tests (Ansible verify playbooks)
+  - How to add verify tests for a new service (registering in `integration-testing.sh` and `uis-cli.sh`)
+  - Available flags: `--dry-run`, `--clean`, `--only <svc>`
+  - Current test coverage: which services have verify playbooks, which don't
+  - Should go in `contributors/guides/` — contributors need to know how to test their changes
