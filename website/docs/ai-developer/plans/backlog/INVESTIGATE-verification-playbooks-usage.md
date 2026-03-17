@@ -266,7 +266,7 @@ After this investigation, it should be obvious:
 - `ansible/playbooks/*-test-*.yml`
 - `provision-host/uis/services/`
 - `provision-host/kubernetes/`
-- `website/docs/packages/`
+- `website/docs/services/`
 
 ---
 

@@ -31,7 +31,7 @@ Deployment verification (Phase 2) requires a running cluster. The contributor (C
 ### Tasks
 
 - [x] 1.1 Set `SCRIPT_REMOVE_PLAYBOOK="220-remove-argocd.yml"` in `provision-host/uis/services/management/service-argocd.sh` ✓
-- [x] 1.2 Fix `SCRIPT_DOCS` from `/docs/packages/management/argocd` to `/docs/packages/development/argocd` in the same file ✓
+- [x] 1.2 Fix `SCRIPT_DOCS` from `/docs/services/management/argocd` to `/docs/services/development/argocd` in the same file ✓
 
 ### Validation
 

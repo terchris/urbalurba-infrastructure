@@ -585,8 +585,8 @@ Create individual detail pages for each service, linked from ServiceCard.
 ### URL Structure
 
 Services link to existing docs where available:
-- `/docs/packages/ai/openwebui` (if doc exists)
-- `/docs/packages/monitoring/prometheus` (if doc exists)
+- `/docs/services/ai/openwebui` (if doc exists)
+- `/docs/services/monitoring/prometheus` (if doc exists)
 
 ### Tasks
 
@@ -607,16 +607,16 @@ Services link to existing docs where available:
 
 | Category | Docs Folder |
 |----------|-------------|
-| AI | `/docs/packages/ai/` |
-| AUTHENTICATION | `/docs/packages/authentication/` |
-| DATABASES | `/docs/packages/databases/` |
-| MONITORING | `/docs/packages/monitoring/` |
-| QUEUES | `/docs/packages/queues/` |
-| SEARCH | `/docs/packages/search/` |
-| DATASCIENCE | `/docs/packages/datascience/` |
-| CORE | `/docs/packages/core/` |
-| MANAGEMENT | `/docs/packages/management/` |
-| DEVELOPMENT | `/docs/packages/development/` |
+| AI | `/docs/services/ai/` |
+| AUTHENTICATION | `/docs/services/authentication/` |
+| DATABASES | `/docs/services/databases/` |
+| MONITORING | `/docs/services/monitoring/` |
+| QUEUES | `/docs/services/queues/` |
+| SEARCH | `/docs/services/search/` |
+| DATASCIENCE | `/docs/services/datascience/` |
+| CORE | `/docs/services/core/` |
+| MANAGEMENT | `/docs/services/management/` |
+| DEVELOPMENT | `/docs/services/development/` |
 
 ### Validation
 
@@ -929,7 +929,7 @@ JSON-LD format using schema.org `ItemList` and `SoftwareApplication`.
       "url": "https://prometheus.io",
       "summary": "Prometheus scrapes metrics from services and stores time-series data.",
       "manifest": "031-prometheus.yaml",
-      "docs": "/docs/packages/monitoring/prometheus",
+      "docs": "/docs/services/monitoring/prometheus",
       "related": ["grafana", "alertmanager"],
       "requires": []
     }

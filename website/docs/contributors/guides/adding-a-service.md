@@ -14,7 +14,7 @@ A UIS service consists of these pieces:
 | Config / Helm values | `manifests/NNN-<id>-config.yaml` | Helm values or ConfigMap |
 | IngressRoute | `manifests/NNN-<id>-ingressroute.yaml` | Traefik routing (if web-accessible) |
 | Secrets entries | Three template files in `provision-host/uis/templates/` | Credentials (if needed) |
-| Documentation | `website/docs/packages/<category>/<id>.md` | Docs website page |
+| Documentation | `website/docs/services/<category>/<id>.md` | Docs website page |
 
 The numbered prefix (`NNN`) comes from the manifest numbering convention for your service's category.
 
@@ -86,7 +86,7 @@ SCRIPT_SUMMARY="Extended description for the documentation page"
 SCRIPT_LOGO="myservice-logo.webp"
 SCRIPT_WEBSITE="https://myservice.example.com"
 SCRIPT_TAGS="tag1,tag2,tag3"
-SCRIPT_DOCS="/docs/packages/category/myservice"
+SCRIPT_DOCS="/docs/services/category/myservice"
 ```
 
 **Field reference:**
@@ -479,7 +479,7 @@ See **[Kubernetes Deployment Rules](../rules/kubernetes-deployment.md)** for sta
 
 ## Step 11: Create documentation
 
-1. Create `website/docs/packages/<category>/myservice.md`
+1. Create `website/docs/services/<category>/myservice.md`
 2. Add the page to `website/sidebars.ts` under the appropriate category
 3. Run `cd website && npm run build` to verify no broken links
 

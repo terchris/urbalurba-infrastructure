@@ -224,7 +224,7 @@ Technical details, gotchas, code patterns to follow.
 ## Files to Modify
 
 - `manifests/250-new-service.yaml`
-- `docs/packages/new-service.md`
+- `docs/services/new-service.md`
 ```
 
 ---

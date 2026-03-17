@@ -90,7 +90,7 @@ These files enable:
 
 For UIS, we need similar files adapted for Kubernetes services:
 
-**Categories identified** (from `website/docs/packages/`):
+**Categories identified** (from `website/docs/services/`):
 1. AI - OpenWebUI, Ollama, LiteLLM
 2. Authentication - Authentik
 3. Databases - PostgreSQL, MySQL, MongoDB, Qdrant
@@ -121,11 +121,11 @@ website/src/data/
 
 **Current state:**
 - DCT uses "categories" for grouping tools
-- UIS uses "packages" in documentation (`website/docs/packages/`)
+- UIS uses "packages" in documentation (`website/docs/services/`)
 - This creates inconsistency between projects
 
 **Locations using "packages":**
-- `website/docs/packages/` - folder name
+- `website/docs/services/` - folder name
 - Sidebar navigation
 - Documentation links
 - Homepage references

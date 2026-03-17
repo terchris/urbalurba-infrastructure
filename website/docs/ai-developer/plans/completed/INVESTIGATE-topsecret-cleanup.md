@@ -197,15 +197,15 @@ All are text-only changes — update references from `topsecret/` to `.uis.secre
 | `website/docs/getting-started/architecture.md` | 88 | Directory structure diagram |
 | `website/docs/reference/secrets-management.md` | 26, 41 | `cd topsecret/`, directory structure |
 | `website/docs/reference/manifests.md` | 82 | Secrets directory reference |
-| `website/docs/packages/authentication/auth10.md` | 236, 493, 513-514, 523, 666, 686, 702 | Edit instructions for kubernetes-secrets.yml |
-| `website/docs/packages/authentication/index.md` | 26 | Configuration reference |
-| `website/docs/packages/authentication/developer-guide.md` | 9, 12, 109, 129 | Edit instructions |
-| `website/docs/packages/datascience/index.md` | 320 | Secrets reference |
-| `website/docs/packages/datascience/jupyterhub.md` | 91 | `cd /mnt/urbalurbadisk/topsecret` |
-| `website/docs/packages/ai/litellm.md` | 48, 63, 160, 168 | ConfigMap reference |
-| `website/docs/packages/ai/openwebui-model-access.md` | 16, 58, 70 | Model config reference |
-| `website/docs/packages/ai/index.md` | 303 | ConfigMap reference |
-| `website/docs/packages/ai/environment-management.md` | 15, 24, 75, 79, 88, 137, 141, 282 | Multiple ConfigMap references |
+| `website/docs/services/authentication/auth10.md` | 236, 493, 513-514, 523, 666, 686, 702 | Edit instructions for kubernetes-secrets.yml |
+| `website/docs/services/authentication/index.md` | 26 | Configuration reference |
+| `website/docs/services/authentication/developer-guide.md` | 9, 12, 109, 129 | Edit instructions |
+| `website/docs/services/datascience/index.md` | 320 | Secrets reference |
+| `website/docs/services/datascience/jupyterhub.md` | 91 | `cd /mnt/urbalurbadisk/topsecret` |
+| `website/docs/services/ai/litellm.md` | 48, 63, 160, 168 | ConfigMap reference |
+| `website/docs/services/ai/openwebui-model-access.md` | 16, 58, 70 | Model config reference |
+| `website/docs/services/ai/index.md` | 303 | ConfigMap reference |
+| `website/docs/services/ai/environment-management.md` | 15, 24, 75, 79, 88, 137, 141, 282 | Multiple ConfigMap references |
 | `website/docs/provision-host/tools.md` | 184 | Directory structure |
 | `website/docs/rules/development-workflow.md` | 173, 187, 297 | Directory structure, workflow |
 | `website/docs/networking/tailscale-setup.md` | 163, 184, 318, 341, 347 | Secrets editing instructions |

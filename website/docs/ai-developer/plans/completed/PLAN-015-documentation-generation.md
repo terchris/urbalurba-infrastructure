@@ -127,7 +127,7 @@ Create `uis-docs-markdown.sh` (or extend `uis-docs.sh`) that generates markdown 
 ### Output Structure
 
 ```
-website/docs/packages/
+website/docs/services/
 ├── databases/
 │   ├── index.md          ← generated category index
 │   ├── postgresql.md     ← generated service page
@@ -181,7 +181,7 @@ Wire the generator into the existing tooling and CI/CD.
 
 - [ ] 4.1 Add `docs-markdown` subcommand to `uis-docs.sh` (or call `uis-docs-markdown.sh` from it)
 - [ ] 4.2 Add documentation to `reference/uis-cli-reference.md` for the new command
-- [ ] 4.3 Test full generation: `./uis-docs-markdown.sh website/docs/packages/`
+- [ ] 4.3 Test full generation: `./uis-docs-markdown.sh website/docs/services/`
 - [ ] 4.4 Update GitHub Actions workflow to regenerate docs on push (when service scripts change)
 
 ### Validation
@@ -228,8 +228,8 @@ Wire the generator into the existing tooling and CI/CD.
 
 | File | Purpose |
 |------|---------|
-| `website/docs/packages/databases/redis.md` | Template prototype (medium complexity) |
-| `website/docs/packages/management/whoami.md` | Template prototype (simple) |
-| `website/docs/packages/identity/authentik.md` | Template prototype (complex) |
+| `website/docs/services/databases/redis.md` | Template prototype (medium complexity) |
+| `website/docs/services/management/whoami.md` | Template prototype (simple) |
+| `website/docs/services/identity/authentik.md` | Template prototype (complex) |
 | `provision-host/uis/lib/service-scanner.sh` | Existing metadata extraction library |
 | `provision-host/uis/lib/categories.sh` | Category definitions and helpers |

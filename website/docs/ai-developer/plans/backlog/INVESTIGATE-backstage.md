@@ -165,7 +165,7 @@ Following the [Adding a Service](../../../contributors/guides/adding-a-service.m
 | DB setup | `ansible/playbooks/utility/u10-backstage-create-postgres.yml` | Create backstage database in shared PostgreSQL |
 | Secrets | `provision-host/uis/templates/secrets-templates/` | OIDC client ID/secret, session secret, DB password |
 | Helm repo | `ansible/playbooks/05-install-helm-repos.yml` | Add `rhdh-chart` Helm repo |
-| Documentation | `website/docs/packages/management/backstage.md` | Docs website page |
+| Documentation | `website/docs/services/management/backstage.md` | Docs website page |
 
 ### Service Definition
 
@@ -199,7 +199,7 @@ SCRIPT_SUMMARY="Developer portal (Red Hat Developer Hub / Backstage) providing a
 SCRIPT_LOGO="backstage-logo.webp"
 SCRIPT_WEBSITE="https://backstage.io"
 SCRIPT_TAGS="developer-portal,catalog,documentation,kubernetes"
-SCRIPT_DOCS="/docs/packages/management/backstage"
+SCRIPT_DOCS="/docs/services/management/backstage"
 ```
 
 ### Secrets
@@ -396,13 +396,13 @@ metadata:
   name: openwebui
   description: "ChatGPT-like web interface for AI models"
   annotations:
-    backstage.io/techdocs-ref: url:https://uis.sovereignsky.no/docs/packages/ai/openwebui
+    backstage.io/techdocs-ref: url:https://uis.sovereignsky.no/docs/services/ai/openwebui
     backstage.io/kubernetes-label-selector: "app.kubernetes.io/instance=openwebui"
     backstage.io/kubernetes-namespace: ai
-    uis.sovereignsky.no/docs-url: "https://uis.sovereignsky.no/docs/packages/ai/openwebui"
+    uis.sovereignsky.no/docs-url: "https://uis.sovereignsky.no/docs/services/ai/openwebui"
     uis.sovereignsky.no/business-owner: "business-owners"
   links:
-    - url: https://uis.sovereignsky.no/docs/packages/ai/openwebui
+    - url: https://uis.sovereignsky.no/docs/services/ai/openwebui
       title: "openwebui Docs"
       icon: docs
 spec:

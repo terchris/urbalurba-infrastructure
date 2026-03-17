@@ -73,7 +73,7 @@ All subsequent phases depend on the new names being in place. This phase renames
 
 - [x] 1.1 Rename service folders and move scripts to new locations
 - [x] 1.2 Update `SCRIPT_CATEGORY` value in all 26 service scripts to match new category names
-- [x] 1.3 Rename documentation folders under `website/docs/packages/`:
+- [x] 1.3 Rename documentation folders under `website/docs/services/`:
   - `datascience/` → `analytics/`
   - `authentication/` → `identity/`
   - `monitoring/` → `observability/`
@@ -253,7 +253,7 @@ Standardize all category/package index pages using the two templates from the in
 | Area | Files | Change |
 |------|-------|--------|
 | Service scripts | 26 files in `provision-host/uis/services/*/` | Rename folders, update SCRIPT_CATEGORY |
-| Doc folders | 11 folders in `website/docs/packages/` | Rename/merge to 9 |
+| Doc folders | 11 folders in `website/docs/services/` | Rename/merge to 9 |
 | Sidebar | `website/sidebars.ts` | Update structure and labels |
 | Category metadata | `_category_.json` files | Update labels |
 | CLI | `provision-host/uis/manage/uis-cli.sh` | Update category display if hardcoded |

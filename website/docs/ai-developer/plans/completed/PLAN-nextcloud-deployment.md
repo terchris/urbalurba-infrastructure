@@ -336,8 +336,8 @@ Register the service and create documentation. Only after deployment is verified
 
 - [ ] 4.1 Add `nextcloud` to `provision-host/uis/templates/uis.extend/enabled-services.conf.default` (commented out)
 - [ ] 4.2 Add `packages/management/nextcloud` to `website/sidebars.ts`
-- [ ] 4.3 Update `website/docs/packages/management/index.md` — add Nextcloud to services table
-- [ ] 4.4 Create documentation page `website/docs/packages/management/nextcloud.md`
+- [ ] 4.3 Update `website/docs/services/management/index.md` — add Nextcloud to services table
+- [ ] 4.4 Create documentation page `website/docs/services/management/nextcloud.md`
 - [ ] 4.5 Update `website/src/data/services.json` — add Nextcloud entry
 
 ### Implementation Details
@@ -406,7 +406,7 @@ User confirms all status updates are correct.
 | `ansible/playbooks/620-setup-nextcloud.yml` | Deployment playbook |
 | `ansible/playbooks/620-remove-nextcloud.yml` | Removal playbook |
 | `ansible/playbooks/620-test-nextcloud.yml` | E2E verification (6 tests) |
-| `website/docs/packages/management/nextcloud.md` | Documentation page |
+| `website/docs/services/management/nextcloud.md` | Documentation page |
 
 ## Files to Modify
 
@@ -418,7 +418,7 @@ User confirms all status updates are correct.
 | `provision-host/uis/manage/uis-cli.sh` | Add `nextcloud` to `cmd_verify()` |
 | `provision-host/uis/templates/uis.extend/enabled-services.conf.default` | Add `nextcloud` (commented out) |
 | `website/sidebars.ts` | Add to Management items |
-| `website/docs/packages/management/index.md` | Add Nextcloud to services table |
+| `website/docs/services/management/index.md` | Add Nextcloud to services table |
 | `website/src/data/services.json` | Add Nextcloud entry |
 | `website/docs/ai-developer/plans/backlog/INVESTIGATE-nextcloud-deployment.md` | Mark next step done |
 | `website/docs/ai-developer/plans/backlog/STATUS-platform-roadmap.md` | Update #7 status |

@@ -30,107 +30,107 @@ Welcome to the complete documentation for **Urbalurba Infrastructure** — a zer
 | [Infrastructure Overview](../getting-started/infrastructure.md) | Infrastructure components and relationships |
 | [Services Overview](../getting-started/services.md) | Complete services comparison with Azure equivalents |
 
-### Packages — Observability
+### Services — Observability
 
 *Metrics, logs, and distributed tracing*
 
 | Document | Purpose |
 |----------|---------|
-| [Observability Overview](../packages/observability/index.md) | Stack overview and architecture |
-| [Prometheus](../packages/observability/prometheus.md) | Metrics collection and alerting |
-| [Grafana](../packages/observability/grafana.md) | Visualization and dashboards |
-| [Loki](../packages/observability/loki.md) | Log aggregation |
-| [Tempo](../packages/observability/tempo.md) | Distributed tracing |
-| [OpenTelemetry Collector](../packages/observability/otel-collector.md) | Telemetry pipeline |
-| [OTLP Collector](../packages/observability/otel.md) | OTLP ingestion configuration |
-| [sovdev-logger](../packages/observability/sovdev-logger.md) | Multi-language OTLP integration library |
+| [Observability Overview](../services/observability/index.md) | Stack overview and architecture |
+| [Prometheus](../services/observability/prometheus.md) | Metrics collection and alerting |
+| [Grafana](../services/observability/grafana.md) | Visualization and dashboards |
+| [Loki](../services/observability/loki.md) | Log aggregation |
+| [Tempo](../services/observability/tempo.md) | Distributed tracing |
+| [OpenTelemetry Collector](../services/observability/otel-collector.md) | Telemetry pipeline |
+| [OTLP Collector](../services/observability/otel.md) | OTLP ingestion configuration |
+| [sovdev-logger](../services/observability/sovdev-logger.md) | Multi-language OTLP integration library |
 
-### Packages — AI & ML
+### Services — AI & ML
 
 *AI services, LLM integration, and model management*
 
 | Document | Purpose |
 |----------|---------|
-| [AI & ML Overview](../packages/ai/index.md) | AI platform overview |
-| [Open WebUI](../packages/ai/openwebui.md) | ChatGPT-like interface |
-| [LiteLLM](../packages/ai/litellm.md) | LLM proxy configuration |
-| [LiteLLM Client Keys](../packages/ai/litellm-client-keys.md) | API key setup for Claude Code integration |
-| [OpenWebUI Model Access](../packages/ai/openwebui-model-access.md) | Model access configuration |
-| [Environment Management](../packages/ai/environment-management.md) | AI environment and model management |
+| [AI & ML Overview](../services/ai/index.md) | AI platform overview |
+| [Open WebUI](../services/ai/openwebui.md) | ChatGPT-like interface |
+| [LiteLLM](../services/ai/litellm.md) | LLM proxy configuration |
+| [LiteLLM Client Keys](../services/ai/litellm-client-keys.md) | API key setup for Claude Code integration |
+| [OpenWebUI Model Access](../services/ai/openwebui-model-access.md) | Model access configuration |
+| [Environment Management](../services/ai/environment-management.md) | AI environment and model management |
 
-### Packages — Analytics
+### Services — Analytics
 
 *Data science, notebooks, and distributed computing*
 
 | Document | Purpose |
 |----------|---------|
-| [Analytics Overview](../packages/analytics/index.md) | Analytics platform overview |
-| [Apache Spark](../packages/analytics/spark.md) | Distributed computing |
-| [JupyterHub](../packages/analytics/jupyterhub.md) | Collaborative notebooks |
-| [Unity Catalog](../packages/analytics/unity-catalog.md) | Data governance |
+| [Analytics Overview](../services/analytics/index.md) | Analytics platform overview |
+| [Apache Spark](../services/analytics/spark.md) | Distributed computing |
+| [JupyterHub](../services/analytics/jupyterhub.md) | Collaborative notebooks |
+| [Unity Catalog](../services/analytics/unity-catalog.md) | Data governance |
 
-### Packages — Identity
+### Services — Identity
 
 *SSO, authentication, and access control*
 
 | Document | Purpose |
 |----------|---------|
-| [Identity Overview](../packages/identity/index.md) | Identity and access management overview |
-| [Authentik](../packages/identity/authentik.md) | Authentik SSO service |
-| [Auth10 Blueprints](../packages/identity/auth10.md) | Dynamic blueprint creation and management |
-| [Blueprints Syntax](../packages/identity/blueprints-syntax.md) | Authentik blueprint configuration reference |
-| [Developer Guide](../packages/identity/developer-guide.md) | Auth10 developer guide |
-| [Technical Implementation](../packages/identity/technical-implementation.md) | Authentik technical implementation details |
-| [Test Users](../packages/identity/test-users.md) | Test user configuration |
+| [Identity Overview](../services/identity/index.md) | Identity and access management overview |
+| [Authentik](../services/identity/authentik.md) | Authentik SSO service |
+| [Auth10 Blueprints](../services/identity/auth10.md) | Dynamic blueprint creation and management |
+| [Blueprints Syntax](../services/identity/blueprints-syntax.md) | Authentik blueprint configuration reference |
+| [Developer Guide](../services/identity/developer-guide.md) | Auth10 developer guide |
+| [Technical Implementation](../services/identity/technical-implementation.md) | Authentik technical implementation details |
+| [Test Users](../services/identity/test-users.md) | Test user configuration |
 
-### Packages — Databases
+### Services — Databases
 
 *Data storage and caching services*
 
 | Document | Purpose |
 |----------|---------|
-| [Databases Overview](../packages/databases/index.md) | Database services overview |
-| [PostgreSQL](../packages/databases/postgresql.md) | Primary relational database |
-| [PostgreSQL Container](../packages/databases/postgresql-container.md) | Custom PostgreSQL image with AI/ML extensions |
-| [MySQL](../packages/databases/mysql.md) | Alternative SQL database |
-| [MongoDB](../packages/databases/mongodb.md) | NoSQL document database |
-| [Redis](../packages/databases/redis.md) | In-memory cache and message broker |
-| [Elasticsearch](../packages/databases/elasticsearch.md) | Search and analytics engine |
-| [Qdrant](../packages/databases/qdrant.md) | Vector database |
+| [Databases Overview](../services/databases/index.md) | Database services overview |
+| [PostgreSQL](../services/databases/postgresql.md) | Primary relational database |
+| [PostgreSQL Container](../services/databases/postgresql-container.md) | Custom PostgreSQL image with AI/ML extensions |
+| [MySQL](../services/databases/mysql.md) | Alternative SQL database |
+| [MongoDB](../services/databases/mongodb.md) | NoSQL document database |
+| [Redis](../services/databases/redis.md) | In-memory cache and message broker |
+| [Elasticsearch](../services/databases/elasticsearch.md) | Search and analytics engine |
+| [Qdrant](../services/databases/qdrant.md) | Vector database |
 
-### Packages — Management
+### Services — Management
 
 *Admin tools, GitOps, and test services*
 
 | Document | Purpose |
 |----------|---------|
-| [Management Overview](../packages/management/index.md) | Management tools overview |
-| [ArgoCD](../packages/management/argocd.md) | GitOps continuous deployment |
-| [pgAdmin](../packages/management/pgadmin.md) | PostgreSQL administration UI |
-| [RedisInsight](../packages/management/redisinsight.md) | Redis administration UI |
-| [Nginx](../packages/management/nginx.md) | Web server |
-| [Whoami](../packages/management/whoami.md) | Test/debug service |
+| [Management Overview](../services/management/index.md) | Management tools overview |
+| [ArgoCD](../services/management/argocd.md) | GitOps continuous deployment |
+| [pgAdmin](../services/management/pgadmin.md) | PostgreSQL administration UI |
+| [RedisInsight](../services/management/redisinsight.md) | Redis administration UI |
+| [Nginx](../services/management/nginx.md) | Web server |
+| [Whoami](../services/management/whoami.md) | Test/debug service |
 | [Dev Templates](../developing/dev-templates.md) | Development templates and project setup |
 
-### Packages — Integration
+### Services — Integration
 
 *Messaging and API gateways*
 
 | Document | Purpose |
 |----------|---------|
-| [Integration Overview](../packages/integration/index.md) | Integration services overview |
-| [RabbitMQ](../packages/integration/rabbitmq.md) | Message broker |
-| [Gravitee](../packages/integration/gravitee.md) | API management platform |
+| [Integration Overview](../services/integration/index.md) | Integration services overview |
+| [RabbitMQ](../services/integration/rabbitmq.md) | Message broker |
+| [Gravitee](../services/integration/gravitee.md) | API management platform |
 
-### Packages — Networking
+### Services — Networking
 
 *VPN tunnels and network access services*
 
 | Document | Purpose |
 |----------|---------|
-| [Networking Packages Overview](../packages/networking/index.md) | Network service packages |
-| [Cloudflare Tunnel](../packages/networking/cloudflare-tunnel.md) | Cloudflare tunnel service |
-| [Tailscale Tunnel](../packages/networking/tailscale-tunnel.md) | Tailscale tunnel service |
+| [Networking Services Overview](../services/networking/index.md) | Network services |
+| [Cloudflare Tunnel](../services/networking/cloudflare-tunnel.md) | Cloudflare tunnel service |
+| [Tailscale Tunnel](../services/networking/tailscale-tunnel.md) | Tailscale tunnel service |
 
 ### Networking
 
@@ -222,8 +222,8 @@ Welcome to the complete documentation for **Urbalurba Infrastructure** — a zer
 
 **Developers:**
 - Start: [Installation](../getting-started/installation.md) → [Architecture](../getting-started/architecture.md) → [Provision Host](../advanced/provision-host/index.md)
-- AI Development: [AI & ML Overview](../packages/ai/index.md)
-- Authentication: [Identity Overview](../packages/identity/index.md)
+- AI Development: [AI & ML Overview](../services/ai/index.md)
+- Authentication: [Identity Overview](../services/identity/index.md)
 
 **Infrastructure Engineers:**
 - Start: [Architecture](../getting-started/architecture.md) → [Hosts](../advanced/hosts/index.md)
@@ -232,11 +232,11 @@ Welcome to the complete documentation for **Urbalurba Infrastructure** — a zer
 
 **Architects:**
 - Start: [Architecture](../getting-started/architecture.md) → [UIS Deployment System](../contributors/rules/kubernetes-deployment.md)
-- Security: [Identity](../packages/identity/index.md) → [Secrets Management](../contributors/architecture/secrets.md)
+- Security: [Identity](../services/identity/index.md) → [Secrets Management](../contributors/architecture/secrets.md)
 
 **Data Scientists:**
-- Start: [Analytics Overview](../packages/analytics/index.md)
-- AI/ML: [AI Overview](../packages/ai/index.md) → [LiteLLM](../packages/ai/litellm.md)
+- Start: [Analytics Overview](../services/analytics/index.md)
+- AI/ML: [AI Overview](../services/ai/index.md) → [LiteLLM](../services/ai/litellm.md)
 
 ### By Use Case
 
@@ -246,14 +246,14 @@ Welcome to the complete documentation for **Urbalurba Infrastructure** — a zer
 3. [Provision Host](../advanced/provision-host/index.md) — Learn management tools
 
 **Setting Up Authentication:**
-1. [Identity Overview](../packages/identity/index.md) — Core SSO setup
-2. [Auth10 Blueprints](../packages/identity/auth10.md) — Blueprint management
-3. [Technical Implementation](../packages/identity/technical-implementation.md) — Integration details
+1. [Identity Overview](../services/identity/index.md) — Core SSO setup
+2. [Auth10 Blueprints](../services/identity/auth10.md) — Blueprint management
+3. [Technical Implementation](../services/identity/technical-implementation.md) — Integration details
 
 **AI Development:**
-1. [AI & ML Overview](../packages/ai/index.md) — Platform overview
-2. [LiteLLM](../packages/ai/litellm.md) — LLM proxy setup
-3. [Open WebUI](../packages/ai/openwebui.md) — Chat interface
+1. [AI & ML Overview](../services/ai/index.md) — Platform overview
+2. [LiteLLM](../services/ai/litellm.md) — LLM proxy setup
+3. [Open WebUI](../services/ai/openwebui.md) — Chat interface
 
 **Production Deployment:**
 1. [Hosts Overview](../advanced/hosts/index.md) — Deployment strategies

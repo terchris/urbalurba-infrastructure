@@ -156,7 +156,7 @@ Examples: `CORE`, `MONITORING`, `AI`, `DATABASES`
 ```regex
 ^/docs/
 ```
-Examples: `/docs/packages/monitoring/prometheus`, `/docs/stacks/observability`
+Examples: `/docs/services/monitoring/prometheus`, `/docs/stacks/observability`
 
 ### Playbook Pattern
 ```regex

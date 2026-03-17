@@ -125,7 +125,7 @@ Only update the YAML frontmatter and the info table. Leave all other sections un
 ## Current State
 
 - 27 service scripts exist in `provision-host/uis/services/`
-- 27 corresponding `.md` pages exist in `website/docs/packages/`
+- 27 corresponding `.md` pages exist in `website/docs/services/`
 - Some pages are auto-generated scaffolds (placeholder text), others are hand-written with full content
 - Hand-written pages: `nextcloud.md`, `openmetadata.md`, `argocd.md`, `authentik.md`, `elasticsearch.md` (at minimum)
 - No markers or conventions currently distinguish auto-generated from manual content

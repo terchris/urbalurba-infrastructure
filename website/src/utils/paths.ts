@@ -34,7 +34,7 @@ export function getCategoryAnchor(category: string): string {
  */
 export function getServicePath(serviceId: string, category: string): string {
   const folder = getCategoryFolder(category);
-  return `/docs/packages/${folder}/${serviceId}`;
+  return `/docs/services/${folder}/${serviceId}`;
 }
 
 /**

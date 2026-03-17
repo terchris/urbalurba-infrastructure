@@ -94,7 +94,7 @@ SCRIPT_REMOVE_PLAYBOOK="040-remove-database-postgresql.yml"
 SCRIPT_CHECK_COMMAND="kubectl get pods -n default -l app.kubernetes.io/name=postgresql..."
 SCRIPT_REQUIRES=""
 SCRIPT_PRIORITY="30"
-SCRIPT_DOCS="/docs/packages/databases/postgresql"
+SCRIPT_DOCS="/docs/services/databases/postgresql"
 ```
 
 ### Key Commands

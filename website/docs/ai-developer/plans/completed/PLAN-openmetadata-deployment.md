@@ -175,7 +175,7 @@ Register the service and create documentation.
 
 - [x] 3.1 Add `openmetadata` to `.uis.extend/enabled-services.conf` ✓
 - [x] 3.2 Add `packages/analytics/openmetadata` to `website/sidebars.ts` ✓
-- [x] 3.3 Create documentation page `website/docs/packages/analytics/openmetadata.md` ✓
+- [x] 3.3 Create documentation page `website/docs/services/analytics/openmetadata.md` ✓
 
 ### Implementation Details
 
@@ -186,7 +186,7 @@ Register the service and create documentation.
 'packages/analytics/openmetadata',
 ```
 
-**3.3 Documentation** — follow the Elasticsearch docs page pattern (`website/docs/packages/databases/elasticsearch.md`):
+**3.3 Documentation** — follow the Elasticsearch docs page pattern (`website/docs/services/databases/elasticsearch.md`):
 - Service info table (category, deploy/undeploy commands, dependencies, Helm chart with pinned version, namespace)
 - What It Does section
 - Deploy / Verify / Undeploy sections
@@ -275,7 +275,7 @@ User confirms all status updates are correct.
 | `ansible/playbooks/340-setup-openmetadata.yml` | New |
 | `ansible/playbooks/340-remove-openmetadata.yml` | New |
 | `ansible/playbooks/340-test-openmetadata.yml` | New |
-| `website/docs/packages/analytics/openmetadata.md` | New |
+| `website/docs/services/analytics/openmetadata.md` | New |
 
 ## Files to Modify
 
