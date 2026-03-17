@@ -15,6 +15,7 @@ All completed plans and investigations, sorted by date. Kept for reference.
 | [PLAN: Rename "Packages" to "Services" in Documentation](PLAN-rename-packages-to-services.md) | — | 2026-03-17 |
 | [Deploy OpenMetadata](PLAN-openmetadata-deployment.md) | Deploy OpenMetadata 1.12.1 as a UIS platform service using the official Helm chart, reusing existing PostgreSQL and Elasticsearch | 2026-03-17 |
 | [Deploy Nextcloud + OnlyOffice](PLAN-nextcloud-deployment.md) | Deploy Nextcloud 33 with OnlyOffice Document Server as a UIS platform service, reusing existing PostgreSQL and Redis | 2026-03-17 |
+| [PLAN: "How Deployment Works" Documentation Page](PLAN-how-deployment-works.md) | — | 2026-03-17 |
 | [PLAN: Fix Password Architecture — Connect Orphaned Defaults to Templates](PLAN-fix-password-architecture.md) | Make `default-secrets.env` the true single source of truth — all DEFAULT_ variables must flow through to templates, and no credentials should be hardcoded in templates. | 2026-03-17 |
 | [Deploy Enonic XP CMS](PLAN-enonic-xp-deployment.md) | Deploy Enonic XP 7.16.2 as a UIS platform service using direct Kubernetes manifests (StatefulSet pattern), with no external database dependencies | 2026-03-17 |
 | [Upgrade Elasticsearch to 9.3.0](PLAN-elasticsearch-upgrade.md) | Pin Elasticsearch to version 9.3.0, upgrading from the unpinned 8.5.1 default to unblock OpenMetadata deployment and eliminate version drift risk. | 2026-03-17 |
