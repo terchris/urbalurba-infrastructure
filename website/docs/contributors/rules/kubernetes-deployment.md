@@ -308,18 +308,9 @@ The `sync` command scans the cluster for running services and adds them to the e
 
 For a complete step-by-step walkthrough, see the **[Adding a Service Guide](../guides/adding-a-service.md)**.
 
-## Legacy System
+## Legacy System (Removed)
 
-The old deployment system (`provision-host/kubernetes/` with numbered directories and `provision-kubernetes.sh`) still exists for backward compatibility:
-
-```bash
-# Run the old orchestration system
-./uis provision
-```
-
-This executes `provision-host/kubernetes/provision-kubernetes.sh`, which discovers numbered directories (e.g., `01-core/`, `02-databases/`) and runs scripts within them in alphabetic order. The old system uses `not-in-use/` subdirectories to control which scripts execute.
-
-**The old system is not actively maintained.** New services should use the UIS metadata + Ansible pattern described above.
+The old deployment system (`provision-host/kubernetes/` with numbered directories and `provision-kubernetes.sh`) was removed in March 2026. All services now deploy exclusively through the UIS CLI (`./uis deploy`). The old code is preserved in git history.
 
 ---
 

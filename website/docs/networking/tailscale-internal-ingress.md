@@ -116,12 +116,12 @@ kubectl get pods -n tailscale
 | `ansible/playbooks/805-deploy-tailscale-internal-ingress.yml` | Deploy internal ingress |
 | `ansible/playbooks/806-remove-tailscale-internal-ingress.yml` | Remove internal ingress |
 
-### Setup Scripts
+### Deployment
 
-| File | Purpose |
-|------|---------|
-| `provision-host/kubernetes/network/03-setup-tailscale-internal.sh` | Setup script |
-| `provision-host/kubernetes/network/03-remove-tailscale-internal.sh` | Removal script |
+```bash
+./uis deploy tailscale-tunnel
+./uis undeploy tailscale-tunnel
+```
 
 ## Technical Details
 

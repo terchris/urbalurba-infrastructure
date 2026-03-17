@@ -479,11 +479,11 @@ When multiple issues persist, a complete reset may be needed:
    docker start provision-host
    ```
 
-4. **Re-provision services**:
+4. **Re-deploy services**:
    ```bash
-   docker exec -it provision-host bash
-   cd /mnt/urbalurbadisk/
-   ./provision-host/kubernetes/provision-kubernetes.sh
+   ./uis deploy <service-name>
+   # Or deploy all enabled services:
+   ./uis stack install <stack-name>
    ```
 
 ### Data Recovery

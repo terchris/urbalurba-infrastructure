@@ -35,9 +35,8 @@ nano hosts/azure-aks/azure-aks-config.sh
 # 3. Deploy AKS cluster
 ./hosts/install-azure-aks.sh
 
-# 4. Deploy all services
-cd /mnt/urbalurbadisk/provision-host/kubernetes
-./provision-kubernetes.sh azure-aks
+# 4. Deploy all services (remote deployment support pending)
+# See: INVESTIGATE-remote-deployment-targets.md
 
 # 5. Manage cluster
 ./hosts/azure-aks/manage-aks-cluster.sh
@@ -110,7 +109,7 @@ NODE_SIZE="Standard_B2ms"
 2. ✅ **Enter container**: `docker exec -it provision-host bash`
 3. ✅ **Configure Azure**: Edit `azure-aks-config.sh` with your Azure details
 4. ✅ **Deploy cluster**: `./hosts/install-azure-aks.sh` (fully automated)
-5. ✅ **Deploy services**: `cd /mnt/urbalurbadisk/provision-host/kubernetes && ./provision-kubernetes.sh azure-aks`
+5. ⏳ **Deploy services**: Remote deployment support pending — see [Remote Deployment Targets](../../ai-developer/plans/backlog/INVESTIGATE-remote-deployment-targets.md)
 6. ✅ **Manage cluster**: `./hosts/azure-aks/manage-aks-cluster.sh [command]`
 
 ## Cluster Management
@@ -148,11 +147,11 @@ kubectl get nodes
 
 ### Service Deployment
 
-```bash
-# Deploy all Urbalurba services to AKS
-cd /mnt/urbalurbadisk/provision-host/kubernetes
-./provision-kubernetes.sh azure-aks
+:::note Remote deployment support pending
+Service deployment to remote AKS clusters is being reworked to use the UIS CLI. See [Remote Deployment Targets](../../ai-developer/plans/backlog/INVESTIGATE-remote-deployment-targets.md) for status.
+:::
 
+```bash
 # Verify deployment
 kubectl get pods --all-namespaces
 kubectl get pvc --all-namespaces

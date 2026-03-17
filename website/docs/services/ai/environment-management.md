@@ -31,33 +31,13 @@ The environment provides a single, production-ready OpenWebUI instance with ente
 
 ### **Deploy Complete AI Infrastructure**
 
-#### **Automatic Deployment (During Cluster Rebuild)**
-The AI infrastructure is **automatically deployed** during cluster provisioning via:
+#### **Deploy using UIS CLI**
 ```bash
-# This runs automatically via provision-kubernetes.sh
-provision-host/kubernetes/07-ai/01-setup-litellm-openwebui.sh
-```
+# Deploy LiteLLM (required dependency for OpenWebUI)
+./uis deploy litellm
 
-**⚠️ IMPORTANT**: During automatic cluster rebuild:
-- ✅ **USE**: `01-setup-litellm-openwebui.sh` (combined deployment)
-- ❌ **DO NOT USE**: Individual scripts (`02-setup-open-webui.sh`, `03-setup-litellm.sh`)
-- These individual scripts are kept in `not-in-use/` for manual troubleshooting only
-
-#### **Manual Deployment Options**
-```bash
-# Option 1: Deploy using Ansible directly (RECOMMENDED for manual deployment)
-cd /mnt/urbalurbadisk
-
-# Step 1: Deploy LiteLLM first (required dependency)
-ansible-playbook ansible/playbooks/210-setup-litellm.yml
-# ⏳ Wait: ~2-3 minutes for LiteLLM to be verified as working
-
-# Step 2: Deploy OpenWebUI (depends on LiteLLM)
-ansible-playbook ansible/playbooks/200-setup-open-webui.yml
-# ⏳ Wait: ~5-10 minutes for OpenWebUI component setup
-
-# Option 2: Use orchestration script (automated sequencing)
-./scripts/packages/ai.sh
+# Deploy OpenWebUI
+./uis deploy openwebui
 ```
 
 ### **Access OpenWebUI**
@@ -153,11 +133,13 @@ open http://openwebui.localhost
 
 ### **Workflow 3: Complete Infrastructure Management**
 ```bash
-# Remove entire AI infrastructure (from provision-host container)
-docker exec -it provision-host bash -c "cd /mnt/urbalurbadisk/provision-host/kubernetes/07-ai/not-in-use && ./01-remove-litellm-openwebui.sh"
+# Remove entire AI infrastructure
+./uis undeploy openwebui
+./uis undeploy litellm
 
 # Redeploy with new configuration
-./scripts/packages/ai.sh
+./uis deploy litellm
+./uis deploy openwebui
 
 # Benefits:
 # ✅ Clean slate deployment
@@ -276,7 +258,7 @@ This AI infrastructure management approach provides:
 - **Clean deployment** - complete removal and reinstallation capabilities
 
 ### **🔄 Recommended Workflow**
-1. **Start** with complete AI infrastructure deployment via `./scripts/packages/ai.sh`
+1. **Start** with complete AI infrastructure deployment via `./uis deploy litellm` and `./uis deploy openwebui`
 2. **Configure models** by editing `.uis.secrets/generated/kubernetes/kubernetes-secrets.yml`
 3. **Manage user access** through OpenWebUI admin panel and Authentik groups
 4. **Test changes** by restarting LiteLLM deployment after configuration updates

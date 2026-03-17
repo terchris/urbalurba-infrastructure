@@ -196,7 +196,6 @@ show_usage() {
     echo "  restart     Restart the UIS container"
     echo "  status      Show container status"
     echo "  shell       Open a shell in the container"
-    echo "  provision   Run kubernetes provisioning (rancher-desktop)"
     echo "  exec <cmd>  Execute a command in the container"
     echo "  logs        Show container logs"
     echo "  build       Build the container image locally"
@@ -206,7 +205,6 @@ show_usage() {
     echo "Examples:"
     echo "  ./uis start                    # Start the container"
     echo "  ./uis shell                    # Enter the container"
-    echo "  ./uis provision                # Deploy services to kubernetes"
     echo "  ./uis exec kubectl get pods    # Run kubectl command"
     echo ""
     echo "Environment variables:"
@@ -239,12 +237,6 @@ case "${1:-help}" in
     shell)
         start_container
         docker exec $DOCKER_IT "$CONTAINER_NAME" bash
-        ;;
-    provision)
-        start_container
-        log_info "Running kubernetes provisioning..."
-        docker exec $DOCKER_IT "$CONTAINER_NAME" bash -c \
-            "cd /mnt/urbalurbadisk/provision-host/kubernetes && ./provision-kubernetes.sh rancher-desktop"
         ;;
     exec)
         shift

@@ -2,6 +2,10 @@
 # filename: install-azure-microk8s-v2.sh
 # description: Install and configure MicroK8s cluster on Azure
 #
+# ⚠️  DEPRECATED: This script calls provision-host/kubernetes/provision-kubernetes.sh
+# which has been removed. Remote deployment support is being reworked to use the UIS CLI.
+# See: website/docs/ai-developer/plans/backlog/INVESTIGATE-remote-deployment-targets.md
+#
 # Purpose:
 # - Creates an Azure VM with the specified configuration (including MicroK8s installation via cloud-init)
 # - Registers the VM in Ansible inventory on the provision host

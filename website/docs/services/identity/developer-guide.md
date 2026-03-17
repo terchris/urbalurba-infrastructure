@@ -111,8 +111,8 @@ domains: ["tailscale", "cloudflare"]
 
 2. **Deploy Configuration**
    ```bash
-   # Run auth script
-   ./scripts/packages/auth.sh
+   # Deploy Authentik
+   ./uis deploy authentik
    ```
 
 3. **Verify Protection**
@@ -131,7 +131,7 @@ domains: ["tailscale", "cloudflare"]
 
 2. **Deploy Changes**
    ```bash
-   ./scripts/packages/auth.sh
+   ./uis deploy authentik
    ```
 
 3. **Access Service**

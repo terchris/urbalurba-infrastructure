@@ -165,8 +165,8 @@ main() {
     echo "Deploy Services:"
     echo "================"
     echo "To deploy Urbalurba services:"
-    echo "  cd provision-host/kubernetes"
-    echo "  ./provision-kubernetes.sh"
+    echo "  ./uis deploy <service-name>"
+    echo "  ./uis stack install <stack-name>"
     echo
     echo "Cleanup:"
     echo "========"
