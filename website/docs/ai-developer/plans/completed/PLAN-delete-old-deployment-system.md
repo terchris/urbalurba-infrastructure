@@ -5,7 +5,7 @@
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
 **Created**: 2026-03-17
-**Status**: Active
+**Status**: Completed (2026-03-17)
 **Parent**: [INVESTIGATE: Old System Cleanup & Documentation Gaps](../backlog/INVESTIGATE-old-system-cleanup.md)
 **Prerequisites**: [PLAN-rename-packages-to-services](../completed/PLAN-rename-packages-to-services.md) (completed)
 
@@ -111,7 +111,7 @@ Grep confirms no remaining references to `scripts/packages/` in active code or d
 - [x] `./uis provision` command no longer exists in either wrapper
 - [x] No active documentation references `provision-host/kubernetes/` or `scripts/packages/` paths
 - [x] `npm run build` passes with zero broken links
-- [ ] CI/CD pipelines pass (test-uis, build-container, deploy-docs)
+- [x] CI/CD pipelines pass (test-uis, build-container, deploy-docs)
 - [x] `hosts/install-azure-microk8s-v2.sh` has a clear note about being broken pending migration
 
 ---

@@ -154,13 +154,9 @@ This investigation will produce multiple plans, each tackling a different part:
 
 **Implemented**: [PLAN-rename-packages-to-services](../completed/PLAN-rename-packages-to-services.md) (2026-03-17, PR #88)
 
-### Plan area: Delete old deployment system
-- Move last active script (`01-core/020-setup-nginx.sh`) to `not-in-use/`
-- Remove `provision` command from `uis` and `uis.ps1` host-side wrappers
-- Evaluate and clean up `scripts/packages/` folder (separate legacy code)
-- Update 6 documentation files that reference old paths
-- Delete `provision-host/kubernetes/` folder entirely
-- **Dependency:** `hosts/install-azure-microk8s-v2.sh` calls `provision-kubernetes.sh` — either migrate it first or accept it breaks until [INVESTIGATE: Remote Deployment Targets](INVESTIGATE-remote-deployment-targets.md) is implemented
+### ~~Plan area: Delete old deployment system~~ — COMPLETED
+
+**Implemented**: [PLAN-delete-old-deployment-system](../completed/PLAN-delete-old-deployment-system.md) (2026-03-17, PR #90)
 
 ### Plan area: "How Deployment Works" documentation
 - Write page in `advanced/` covering:

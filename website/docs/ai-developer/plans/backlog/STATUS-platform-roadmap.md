@@ -20,7 +20,7 @@ Items that still need work, grouped by priority.
 
 | # | Investigation | Status | Summary |
 |---|--------------|--------|---------|
-| 20 | [Old system cleanup & documentation gaps](INVESTIGATE-old-system-cleanup.md) | In Progress | Delete dead `provision-host/kubernetes/` (60 scripts), ~~rename packages→services~~, write "How Deployment Works" page, fix old references. Will produce multiple plans. Rename completed — see [PLAN](../completed/PLAN-rename-packages-to-services.md). |
+| 20 | [Old system cleanup & documentation gaps](INVESTIGATE-old-system-cleanup.md) | In Progress | ~~Delete dead `provision-host/kubernetes/`~~, ~~rename packages→services~~, write "How Deployment Works" page, fill doc gaps. Rename: [PLAN](../completed/PLAN-rename-packages-to-services.md). Deletion: [PLAN](../completed/PLAN-delete-old-deployment-system.md). |
 
 ### Priority 1: Infrastructure Hardening
 
@@ -86,6 +86,7 @@ Items where the work has been implemented.
 | — | [PowerShell ErrorActionPreference](../completed/PLAN-uis-ps1-erroractionpreference.md) | 2026-03-04 | Fix error handling in PS wrapper. |
 | — | [Backstage investigation](INVESTIGATE-backstage.md) | 2026-03-11 | Initial investigation — led to PLAN-001/002/004. |
 | — | [Rename packages→services](../completed/PLAN-rename-packages-to-services.md) | 2026-03-17 | Renamed `docs/packages/` → `docs/services/`, updated all links, scripts, and config. Part of [#20 Old system cleanup](INVESTIGATE-old-system-cleanup.md). |
+| — | [Delete old deployment system](../completed/PLAN-delete-old-deployment-system.md) | 2026-03-17 | Deleted `provision-host/kubernetes/` (60 scripts, ~6,149 lines), `scripts/packages/`, and `./uis provision` command. Part of [#20 Old system cleanup](INVESTIGATE-old-system-cleanup.md). |
 
 ---
 
