@@ -112,6 +112,7 @@ k9s
 
 ## Related Documentation
 
+- **[How Deployment Works](../../advanced/how-deployment-works.md)** — Deep dive into the deploy flow, dependency resolution, health checks, and stacks
 - **[Architecture](../../getting-started/architecture.md)** — System architecture overview
 - **[Kubernetes Deployment Rules](../rules/kubernetes-deployment.md)** — Conventions for writing playbooks
 - **[Provisioning Rules](../rules/provisioning.md)** — Script and playbook standards
