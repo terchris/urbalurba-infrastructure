@@ -79,7 +79,7 @@ After installation, your directory contains:
 ```
 my-project/
 ├── uis                   # UIS CLI (the only file you downloaded)
-├── .uis.extend/          # Service configuration overrides (yours to edit)
+├── .uis.extend/          # Service configuration (yours to edit)
 ├── .uis.secrets/         # Passwords, API keys, certificates (gitignored)
 └── .gitignore            # Auto-created, excludes .uis.secrets/
 ```

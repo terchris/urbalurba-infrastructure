@@ -275,6 +275,8 @@ const sidebars: SidebarsConfig = {
           },
           items: [
             'contributors/guides/adding-a-service',
+            'contributors/guides/integration-testing',
+            'contributors/guides/ci-cd-and-generators',
           ],
         },
         {

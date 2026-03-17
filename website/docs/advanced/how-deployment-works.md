@@ -188,7 +188,7 @@ Stacks are pre-defined bundles of services that work together. They deploy multi
 
 Each service installed via a stack is automatically added to `enabled-services.conf`, just like a regular deploy.
 
-Stacks are defined in `provision-host/uis/lib/stacks.sh`.
+Stacks are defined in `provision-host/uis/lib/stacks.sh`. To add a custom stack, see [Adding a Custom Stack](../contributors/rules/kubernetes-deployment.md#adding-a-custom-stack) in the deployment rules.
 
 ---
 

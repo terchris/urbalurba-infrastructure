@@ -50,7 +50,7 @@ Your directory now looks like this:
 ```
 my-project/
 ├── uis                   # UIS CLI (the only file you downloaded)
-├── .uis.extend/          # Service configuration overrides (yours to edit)
+├── .uis.extend/          # Service configuration (yours to edit)
 ├── .uis.secrets/         # Passwords, API keys, certificates (gitignored)
 └── .gitignore            # Auto-created, excludes .uis.secrets/
 ```
@@ -130,6 +130,13 @@ k9s
 
 ## Next Steps
 
+**Deploy something useful:**
+- **Deploy a database** — `./uis deploy postgresql` gives you PostgreSQL, then `./uis deploy pgadmin` for a web UI
+- **Deploy the observability stack** — `./uis stack install observability` gives you Prometheus, Grafana, Loki, and Tempo
+- **Deploy AI tools** — `./uis stack install ai-local` gives you LiteLLM and OpenWebUI for local AI chat
+
+**Learn more:**
 - **[Services Overview](./services.md)** — See all available services and their cloud equivalents
 - **[Architecture](./architecture.md)** — Understand the full system design
+- **[How Deployment Works](../advanced/how-deployment-works.md)** — Deep dive into the deploy flow, dependencies, and stacks
 - **[Installation Details](./installation.md)** — Platform-specific setup guides

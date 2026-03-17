@@ -319,6 +319,8 @@ And implement `cmd_myservice_verify()` that calls `ansible-playbook NNN-test-mys
 
 **Existing verify playbooks to reference:** ArgoCD (`025-test-argocd.yml`), Enonic XP (`085-test-enonic.yml`), OpenMetadata (`300-test-openmetadata.yml`).
 
+For the full testing framework — how `test-all` works, how to register your verify playbook, and current test coverage — see the **[Integration Testing Guide](./integration-testing.md)**.
+
 ## Step 5c: Alternative — StatefulSet pattern (no Helm)
 
 Not every service needs Helm. If the service has no official Helm chart, uses embedded storage, or is simpler to deploy directly, use a **StatefulSet manifest** instead.
