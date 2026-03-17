@@ -21,10 +21,10 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
-      label: 'Packages',
+      label: 'Services',
       link: {
         type: 'generated-index',
-        description: 'Service packages and categories available in the infrastructure stack.',
+        description: 'Services and categories available in the infrastructure stack.',
       },
       items: [
         {
@@ -32,15 +32,15 @@ const sidebars: SidebarsConfig = {
           label: 'Observability',
           link: {
             type: 'doc',
-            id: 'packages/observability/index',
+            id: 'services/observability/index',
           },
           items: [
-            'packages/observability/prometheus',
-            'packages/observability/grafana',
-            'packages/observability/loki',
-            'packages/observability/tempo',
-            'packages/observability/otel',
-            'packages/observability/sovdev-logger',
+            'services/observability/prometheus',
+            'services/observability/grafana',
+            'services/observability/loki',
+            'services/observability/tempo',
+            'services/observability/otel',
+            'services/observability/sovdev-logger',
           ],
         },
         {
@@ -48,14 +48,14 @@ const sidebars: SidebarsConfig = {
           label: 'AI & Machine Learning',
           link: {
             type: 'doc',
-            id: 'packages/ai/index',
+            id: 'services/ai/index',
           },
           items: [
-            'packages/ai/openwebui',
-            'packages/ai/litellm',
-            'packages/ai/litellm-client-keys',
-            'packages/ai/openwebui-model-access',
-            'packages/ai/environment-management',
+            'services/ai/openwebui',
+            'services/ai/litellm',
+            'services/ai/litellm-client-keys',
+            'services/ai/openwebui-model-access',
+            'services/ai/environment-management',
           ],
         },
         {
@@ -63,13 +63,13 @@ const sidebars: SidebarsConfig = {
           label: 'Analytics',
           link: {
             type: 'doc',
-            id: 'packages/analytics/index',
+            id: 'services/analytics/index',
           },
           items: [
-            'packages/analytics/jupyterhub',
-            'packages/analytics/openmetadata',
-            'packages/analytics/spark',
-            'packages/analytics/unitycatalog',
+            'services/analytics/jupyterhub',
+            'services/analytics/openmetadata',
+            'services/analytics/spark',
+            'services/analytics/unitycatalog',
           ],
         },
         {
@@ -77,15 +77,15 @@ const sidebars: SidebarsConfig = {
           label: 'Identity',
           link: {
             type: 'doc',
-            id: 'packages/identity/index',
+            id: 'services/identity/index',
           },
           items: [
-            'packages/identity/authentik',
-            'packages/identity/auth10',
-            'packages/identity/developer-guide',
-            'packages/identity/blueprints-syntax',
-            'packages/identity/technical-implementation',
-            'packages/identity/test-users',
+            'services/identity/authentik',
+            'services/identity/auth10',
+            'services/identity/developer-guide',
+            'services/identity/blueprints-syntax',
+            'services/identity/technical-implementation',
+            'services/identity/test-users',
           ],
         },
         {
@@ -93,16 +93,16 @@ const sidebars: SidebarsConfig = {
           label: 'Databases',
           link: {
             type: 'doc',
-            id: 'packages/databases/index',
+            id: 'services/databases/index',
           },
           items: [
-            'packages/databases/postgresql',
-            'packages/databases/postgresql-container',
-            'packages/databases/mysql',
-            'packages/databases/mongodb',
-            'packages/databases/qdrant',
-            'packages/databases/redis',
-            'packages/databases/elasticsearch',
+            'services/databases/postgresql',
+            'services/databases/postgresql-container',
+            'services/databases/mysql',
+            'services/databases/mongodb',
+            'services/databases/qdrant',
+            'services/databases/redis',
+            'services/databases/elasticsearch',
           ],
         },
         {
@@ -110,15 +110,15 @@ const sidebars: SidebarsConfig = {
           label: 'Management',
           link: {
             type: 'doc',
-            id: 'packages/management/index',
+            id: 'services/management/index',
           },
           items: [
-            'packages/management/argocd',
-            'packages/management/backstage',
-            'packages/management/pgadmin',
-            'packages/management/redisinsight',
-            'packages/management/nginx',
-            'packages/management/whoami',
+            'services/management/argocd',
+            'services/management/backstage',
+            'services/management/pgadmin',
+            'services/management/redisinsight',
+            'services/management/nginx',
+            'services/management/whoami',
           ],
         },
         {
@@ -126,10 +126,10 @@ const sidebars: SidebarsConfig = {
           label: 'Applications',
           link: {
             type: 'doc',
-            id: 'packages/applications/index',
+            id: 'services/applications/index',
           },
           items: [
-            'packages/applications/nextcloud',
+            'services/applications/nextcloud',
           ],
         },
         {
@@ -140,8 +140,8 @@ const sidebars: SidebarsConfig = {
             description: 'VPN tunnels and network access services.',
           },
           items: [
-            'packages/networking/tailscale-tunnel',
-            'packages/networking/cloudflare-tunnel',
+            'services/networking/tailscale-tunnel',
+            'services/networking/cloudflare-tunnel',
             'networking/tailscale-setup',
             'networking/tailscale-network-isolation',
             'networking/tailscale-internal-ingress',
@@ -162,12 +162,12 @@ const sidebars: SidebarsConfig = {
           label: 'Integration',
           link: {
             type: 'doc',
-            id: 'packages/integration/index',
+            id: 'services/integration/index',
           },
           items: [
-            'packages/integration/enonic',
-            'packages/integration/rabbitmq',
-            'packages/integration/gravitee',
+            'services/integration/enonic',
+            'services/integration/rabbitmq',
+            'services/integration/gravitee',
           ],
         },
       ],

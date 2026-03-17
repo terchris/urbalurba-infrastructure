@@ -73,5 +73,5 @@ plans/
 
 - [CLAUDE.md](https://github.com/terchris/urbalurba-infrastructure/blob/main/CLAUDE.md) - Project-specific Claude Code instructions (in repo root)
 - [Adding a Service Guide](../contributors/guides/adding-a-service.md) - Complete walkthrough for adding a new service to UIS
-- [Packages documentation](../packages/ai/index.md) - Service documentation
+- [Services documentation](../services/ai/index.md) - Service documentation
 - [Hosts documentation](../advanced/hosts/index.md) - Infrastructure host setup

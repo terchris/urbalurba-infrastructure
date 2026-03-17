@@ -220,7 +220,7 @@ SCRIPT_WEBSITE="https://prometheus.io"
 SCRIPT_SUMMARY="Prometheus scrapes metrics from services and stores time-series data. Configured with service discovery and alerting rules for the UIS stack."
 SCRIPT_MANIFEST="031-prometheus.yaml"
 SCRIPT_PLAYBOOK="030-setup-prometheus.yml"
-SCRIPT_DOCS="/docs/packages/monitoring/prometheus"
+SCRIPT_DOCS="/docs/services/monitoring/prometheus"
 SCRIPT_RELATED="grafana alertmanager loki"
 SCRIPT_REQUIRES=""
 

@@ -154,7 +154,7 @@ Register the service, create docs, build, and test.
 
 - [x] 3.1 Add `backstage` to `.uis.extend/enabled-services.conf`
 - [x] 3.2 Add `packages/management/backstage` to `website/sidebars.ts`
-- [x] 3.3 Create documentation page `website/docs/packages/management/backstage.md`
+- [x] 3.3 Create documentation page `website/docs/services/management/backstage.md`
 - [x] 3.4 Run `./uis build` to build new provision host container
 - [x] 3.5 Write test instructions to `talk/talk.md` for the tester
 - [x] 3.6 Wait for tester results and fix issues (19 tester messages, 16 contributor responses)
@@ -227,7 +227,7 @@ User confirms status updates are correct.
 | `ansible/playbooks/650-setup-backstage.yml` | Setup playbook |
 | `ansible/playbooks/650-remove-backstage.yml` | Remove playbook |
 | `ansible/playbooks/650-test-backstage.yml` | Verify playbook |
-| `website/docs/packages/management/backstage.md` | Documentation |
+| `website/docs/services/management/backstage.md` | Documentation |
 
 ## Files to Modify
 

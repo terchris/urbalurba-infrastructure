@@ -74,7 +74,7 @@ website/docs/
 ├── getting-started/            # Quick start guides
 ├── hosts/                      # Platform documentation
 │   └── cloud-init/            # Cloud-init subsection
-├── packages/                   # Service packages
+├── services/                   # Service documentation
 │   ├── ai/                    # AI & ML services
 │   ├── identity/              # Authentik
 │   ├── databases/             # PostgreSQL, MySQL, etc.
@@ -89,7 +89,7 @@ website/docs/
 
 1. **Create the markdown file** in the appropriate directory:
    ```bash
-   touch website/docs/packages/databases/newdb.md
+   touch website/docs/services/databases/newdb.md
    ```
 
 2. **Add frontmatter** (optional but recommended):
@@ -221,7 +221,7 @@ import TabItem from '@theme/TabItem';
 ### Links
 
 ```markdown
-[Link to another doc](../../packages/ai/litellm)
+[Link to another doc](../../services/ai/litellm)
 [External link](https://example.com)
 ```
 

@@ -173,8 +173,8 @@ Register the service and create documentation.
 
 - [x] 3.1 Add `enonic` to `.uis.extend/enabled-services.conf` ✓
 - [x] 3.2 Add `packages/integration/enonic` to `website/sidebars.ts` (Integration items) ✓
-- [x] 3.3 Update `website/docs/packages/integration/index.md` — add Enonic to services table ✓
-- [x] 3.4 Create documentation page `website/docs/packages/integration/enonic.md` ✓
+- [x] 3.3 Update `website/docs/services/integration/index.md` — add Enonic to services table ✓
+- [x] 3.4 Create documentation page `website/docs/services/integration/enonic.md` ✓
 
 ### Implementation Details
 
@@ -289,7 +289,7 @@ User confirms all status updates are correct.
 | `ansible/playbooks/085-setup-enonic.yml` | Deployment playbook |
 | `ansible/playbooks/085-remove-enonic.yml` | Removal playbook |
 | `ansible/playbooks/085-test-enonic.yml` | E2E verification (6 tests) |
-| `website/docs/packages/integration/enonic.md` | Documentation page |
+| `website/docs/services/integration/enonic.md` | Documentation page |
 
 ## Files to Modify
 
@@ -301,6 +301,6 @@ User confirms all status updates are correct.
 | `provision-host/uis/manage/uis-cli.sh` | Add `enonic` to `cmd_verify()` |
 | `.uis.extend/enabled-services.conf` | Add `enonic` |
 | `website/sidebars.ts` | Add to Integration items |
-| `website/docs/packages/integration/index.md` | Add Enonic to services table |
+| `website/docs/services/integration/index.md` | Add Enonic to services table |
 | `website/docs/ai-developer/plans/backlog/INVESTIGATE-enonic-xp-deployment.md` | Mark last next step done |
 | `website/docs/ai-developer/plans/backlog/STATUS-platform-roadmap.md` | Update #4 status |

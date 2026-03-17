@@ -14,8 +14,8 @@
 #   --help       Show this help message
 #
 # Outputs:
-#   website/docs/packages/<category>/<service>.md  - Per-service pages
-#   website/docs/packages/<category>/index.md      - Category index pages
+#   website/docs/services/<category>/<service>.md  - Per-service pages
+#   website/docs/services/<category>/index.md      - Category index pages
 
 set -e
 
@@ -42,17 +42,17 @@ _detect_docs_dir() {
     fi
     # Container path
     if [[ -d "/mnt/urbalurbadisk/website" ]]; then
-        echo "/mnt/urbalurbadisk/website/docs/packages"
+        echo "/mnt/urbalurbadisk/website/docs/services"
         return 0
     fi
     # Host path: derive from script location
     local base_dir
     base_dir="$(cd "$SCRIPT_DIR/../../.." && pwd)"
     if [[ -d "$base_dir/website" ]]; then
-        echo "$base_dir/website/docs/packages"
+        echo "$base_dir/website/docs/services"
         return 0
     fi
-    echo "./docs/packages"
+    echo "./docs/services"
 }
 
 # ============================================================
@@ -468,7 +468,7 @@ usage() {
     echo "  --service ID   Generate only for a specific service"
     echo "  --help         Show this help message"
     echo ""
-    echo "Default output: website/docs/packages/"
+    echo "Default output: website/docs/services/"
 }
 
 main() {

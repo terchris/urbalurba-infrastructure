@@ -388,7 +388,7 @@ OpenMetadata follows the same pattern — depends on PostgreSQL + Elasticsearch,
 | Secrets variables | Add to `provision-host/uis/templates/secrets-templates/00-common-values.env.template` |
 | Secrets manifest | Add `openmetadata` namespace block to `provision-host/uis/templates/secrets-templates/00-master-secrets.yml.template` |
 | Enabled services | Add `openmetadata` to `provision-host/uis/config/enabled-services.conf` |
-| Documentation | `website/docs/packages/analytics/openmetadata.md` |
+| Documentation | `website/docs/services/analytics/openmetadata.md` |
 | Sidebar entry | Add `openmetadata` to `website/sidebars.ts` under the analytics category |
 
 ---

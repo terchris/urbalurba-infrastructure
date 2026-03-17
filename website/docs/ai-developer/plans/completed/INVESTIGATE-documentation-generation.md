@@ -12,7 +12,7 @@
 
 UIS inherited the script metadata pattern from DevContainer Toolbox (dct), but only uses it for the CLI menu (`./uis list`, `./uis deploy`). In dct, the same metadata also auto-generates a full Docusaurus documentation website — tool pages, category indexes, package tables with links, and a tools overview. UIS has this potential but doesn't use it.
 
-The UIS documentation at `website/docs/packages/` is manually written and can drift from what the scripts actually define.
+The UIS documentation at `website/docs/services/` is manually written and can drift from what the scripts actually define.
 
 ---
 

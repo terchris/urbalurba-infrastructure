@@ -64,7 +64,7 @@ The full workflow is documented in [Workflow](/docs/ai-developer/WORKFLOW) and [
 The Urbalurba Infrastructure Stack (UIS) is an open-source developer platform that covers the same ground as Azure's managed services — but built entirely on open standards. PostgreSQL instead of Azure SQL, Authentik instead of Azure AD, Grafana/Prometheus/Loki instead of Azure Monitor, LiteLLM and OpenWebUI instead of Azure OpenAI, ArgoCD instead of Azure DevOps pipelines. Over 30 services, all deployable with `./uis deploy` and removable with `./uis undeploy`.
 See [how it works](/docs/).
 
-See the full [list of packages](/docs/category/packages). Open standards mean no vendor lock-in. You can run the entire stack in Norway, in Germany, or anywhere else — on infrastructure you control. No data leaves the country unless you decide it should. For organizations that care about digital sovereignty, this is the difference between depending on a US hyperscaler's terms of service and actually owning your infrastructure.
+See the full [list of services](/docs/category/services). Open standards mean no vendor lock-in. You can run the entire stack in Norway, in Germany, or anywhere else — on infrastructure you control. No data leaves the country unless you decide it should. For organizations that care about digital sovereignty, this is the difference between depending on a US hyperscaler's terms of service and actually owning your infrastructure.
 
 Building a platform this broad with a team of three — one human and two AI sessions — is exactly why this workflow matters.
 

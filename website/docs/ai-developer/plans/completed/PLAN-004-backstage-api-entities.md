@@ -99,12 +99,12 @@ metadata:
   name: litellm-api
   description: "Unified API gateway for LLM providers"
   annotations:
-    backstage.io/techdocs-ref: url:https://uis.sovereignsky.no/docs/packages/ai/litellm
+    backstage.io/techdocs-ref: url:https://uis.sovereignsky.no/docs/services/ai/litellm
     backstage.io/kubernetes-namespace: ai
     backstage.io/kubernetes-label-selector: "app.kubernetes.io/name=litellm"
-    uis.sovereignsky.no/docs-url: "https://uis.sovereignsky.no/docs/packages/ai/litellm"
+    uis.sovereignsky.no/docs-url: "https://uis.sovereignsky.no/docs/services/ai/litellm"
   links:
-    - url: https://uis.sovereignsky.no/docs/packages/ai/litellm
+    - url: https://uis.sovereignsky.no/docs/services/ai/litellm
       title: "litellm-api Docs"
       icon: docs
 spec:

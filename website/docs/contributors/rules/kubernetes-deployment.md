@@ -175,7 +175,7 @@ SCRIPT_LOGO="postgresql-logo.webp"
 SCRIPT_WEBSITE="https://www.postgresql.org"
 SCRIPT_TAGS="database,sql,relational,postgres,rdbms"
 SCRIPT_SUMMARY="PostgreSQL is a powerful, open-source object-relational database system..."
-SCRIPT_DOCS="/docs/packages/databases/postgresql"
+SCRIPT_DOCS="/docs/services/databases/postgresql"
 ```
 
 **Three metadata groups:**

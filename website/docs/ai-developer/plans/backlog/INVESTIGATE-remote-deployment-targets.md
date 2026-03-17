@@ -645,6 +645,24 @@ Add a follow-up cleanup task to delete both files after:
 
 ---
 
+## Azure Deployment: Existing Traefik and Storage Scripts
+
+When refactoring deployment targets to the UIS system, these existing files handle Azure-specific infrastructure that Rancher Desktop provides automatically but remote clusters need explicitly:
+
+**Storage classes:**
+- `manifests/000-storage-class-alias.yaml` — storage class alias for cross-cluster compatibility
+- `manifests/001-storage-class-test-pvc.yaml` — PVC test to verify storage works
+- `ansible/playbooks/010-move-hostpath-storage.yml` — hostpath storage setup
+- `ansible/playbooks/010-move-hostpath-storage-azure-works-backup.yml` — Azure-specific storage variant
+
+**Traefik ingress:**
+- `manifests/003-traefik-config.yaml` — Traefik configuration
+- `manifests/012-traefik-nginx-ingress.yaml` — Traefik-to-Nginx ingress routing
+
+These are **not** in `provision-host/kubernetes/` (which is safe to delete) — they live in `manifests/` and `ansible/playbooks/`, which are actively used by the UIS system. The `target bootstrap` command should apply these when preparing a remote cluster for UIS services.
+
+---
+
 ## Open Questions
 
 1. Are the Azure targets (AKS, MicroK8s) still actively used for Red Cross deployments?

@@ -356,7 +356,7 @@ The setup playbook should:
 | IngressRoute (OnlyOffice) | `manifests/623-onlyoffice-ingressroute.yaml` |
 | Secrets variables | Add to `provision-host/uis/templates/secrets-templates/00-common-values.env.template` |
 | Secrets manifest | Add `nextcloud` namespace block to `provision-host/uis/templates/secrets-templates/00-master-secrets.yml.template` |
-| Documentation | `website/docs/packages/management/nextcloud.md` |
+| Documentation | `website/docs/services/management/nextcloud.md` |
 
 ---
 

@@ -258,7 +258,7 @@ Key finding: content depends on apps. The app (with its content type definitions
 | Config / Helm values | `manifests/085-enonic-config.yaml` |
 | StatefulSet (includes sidecar) | `manifests/085-enonic-statefulset.yaml` |
 | IngressRoute | `manifests/085-enonic-ingressroute.yaml` |
-| Documentation | `website/docs/packages/integration/enonic.md` |
+| Documentation | `website/docs/services/integration/enonic.md` |
 
 App deployment CLI files are listed in [INVESTIGATE-enonic-app-deployment-pipeline.md](../backlog/INVESTIGATE-enonic-app-deployment-pipeline.md).
 

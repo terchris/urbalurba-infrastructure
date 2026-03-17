@@ -107,7 +107,7 @@ SCRIPT_SUMMARY="Extended description for the documentation page"
 SCRIPT_LOGO="myservice-logo.webp"
 SCRIPT_WEBSITE="https://myservice.example.com"
 SCRIPT_TAGS="tag1,tag2,tag3"
-SCRIPT_DOCS="/docs/packages/category/myservice"
+SCRIPT_DOCS="/docs/services/category/myservice"
 ```
 
 **Field reference:**
@@ -165,7 +165,7 @@ Three files in `provision-host/uis/templates/` (the source-of-truth shipped in t
 
 See Finding 6 for details.
 
-#### 7. Documentation: `website/docs/packages/<category>/myservice.md`
+#### 7. Documentation: `website/docs/services/<category>/myservice.md`
 
 Docusaurus page. Add to `website/sidebars.ts` under the appropriate category.
 
@@ -633,9 +633,9 @@ manifests/076-authentik-csp-middleware.yaml
 
 ## Finding 11: Documentation Integration
 
-When adding a service, the documentation page goes in `website/docs/packages/<category>/`:
+When adding a service, the documentation page goes in `website/docs/services/<category>/`:
 
-1. Create `website/docs/packages/<category>/myservice.md`
+1. Create `website/docs/services/<category>/myservice.md`
 2. Add to `website/sidebars.ts` under the appropriate category
 3. Run `npm run build` in `website/` to verify no broken links
 
@@ -751,7 +751,7 @@ This playbook adds all required Helm repos and runs `helm repo update`. It's cal
 - [ ] **8. Add secrets** if service needs credentials — edit all three template files (see Finding 6)
 - [ ] **9. Add to default enabled-services.conf** (commented out) in `provision-host/uis/templates/uis.extend/enabled-services.conf.default`
 - [ ] **10. Consider adding to a stack** in `provision-host/uis/lib/stacks.sh` if part of a logical group
-- [ ] **11. Create documentation** page in `website/docs/packages/<category>/` and add to `website/sidebars.ts`
+- [ ] **11. Create documentation** page in `website/docs/services/<category>/` and add to `website/sidebars.ts`
 - [ ] **12. Test deployment**: `uis deploy myservice` (auto-enables)
 - [ ] **13. Test removal**: `uis undeploy myservice`
 - [ ] **14. Verify**: `uis list` shows the service with correct category and metadata

@@ -115,6 +115,6 @@ All services are accessible through `*.localhost` URLs:
 ## Related Documentation
 
 - **[Architecture](./architecture.md)** — How UIS works
-- **[AI Package](../packages/ai/index.md)** — AI services configuration
-- **[Identity Package](../packages/identity/authentik.md)** — SSO setup
+- **[AI Services](../services/ai/index.md)** — AI services configuration
+- **[Identity Services](../services/identity/authentik.md)** — SSO setup
 - **[Service Dependencies](../reference/service-dependencies.md)** — Full dependency graph

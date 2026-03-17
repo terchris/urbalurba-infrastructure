@@ -8,13 +8,19 @@
 
 **Goal**: Track prioritized investigations and planned work for the UIS platform
 
-**Last Updated**: 2026-03-13
+**Last Updated**: 2026-03-17
 
 ---
 
 ## Open Investigations
 
 Items that still need work, grouped by priority.
+
+### Priority 0: Cleanup & Documentation
+
+| # | Investigation | Status | Summary |
+|---|--------------|--------|---------|
+| 20 | [Old system cleanup & documentation gaps](INVESTIGATE-old-system-cleanup.md) | Backlog | Delete dead `provision-host/kubernetes/` (60 scripts), rename packages→services, write "How Deployment Works" page, fix old references. Will produce multiple plans. |
 
 ### Priority 1: Infrastructure Hardening
 

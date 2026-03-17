@@ -46,7 +46,7 @@ This is a feature unique to ArgoCD among UIS services. It allows users to regist
 
 | File | Purpose | Status |
 |------|---------|--------|
-| `website/docs/packages/development/argocd.md` | User docs — access, login, app registration workflow, troubleshooting | ✅ Complete |
+| `website/docs/services/development/argocd.md` | User docs — access, login, app registration workflow, troubleshooting | ✅ Complete |
 
 ### Previous Deployment System
 
@@ -114,7 +114,7 @@ Helm Configuration
 
 ### 2. Docs path mismatch
 
-Service script references `/docs/packages/management/argocd` but the actual docs are at `website/docs/packages/development/argocd.md`. Either the docs should be moved or the service metadata updated.
+Service script references `/docs/services/management/argocd` but the actual docs are at `website/docs/services/development/argocd.md`. Either the docs should be moved or the service metadata updated.
 
 ### 3. Old deployment scripts in not-in-use/
 

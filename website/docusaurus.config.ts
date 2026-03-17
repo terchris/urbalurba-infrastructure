@@ -112,8 +112,8 @@ const config: Config = {
               to: '/docs/getting-started/overview',
             },
             {
-              label: 'Packages',
-              to: '/docs/packages/ai',
+              label: 'Services',
+              to: '/docs/services/ai',
             },
             {
               label: 'Hosts',

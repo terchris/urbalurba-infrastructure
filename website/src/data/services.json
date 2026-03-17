@@ -10,7 +10,7 @@
     "logo": "litellm-logo.svg",
     "website": "https://litellm.ai"
     ,"summary": "LiteLLM is a unified API gateway that allows you to call 100+ LLM APIs using the OpenAI format. It provides load balancing, fallbacks, spend tracking, and virtual keys."
-    ,"docs": "/docs/packages/ai/litellm"
+    ,"docs": "/docs/services/ai/litellm"
     ,"playbook": "210-setup-litellm.yml"
     ,"priority": 51
     ,"checkCommand": "kubectl get pods -n ai -l app.kubernetes.io/name=litellm --no-headers 2>/dev/null | grep -q Running"
@@ -31,7 +31,7 @@
     "logo": "openwebui-logo.png",
     "website": "https://openwebui.com"
     ,"summary": "Open WebUI is an extensible, feature-rich, and user-friendly self-hosted AI interface. It supports various LLM runners including Ollama and OpenAI-compatible APIs."
-    ,"docs": "/docs/packages/ai/openwebui"
+    ,"docs": "/docs/services/ai/openwebui"
     ,"playbook": "200-setup-open-webui.yml"
     ,"priority": 50
     ,"checkCommand": "kubectl get pods -n ai -l app.kubernetes.io/name=open-webui --no-headers 2>/dev/null | grep -q Running"
@@ -52,7 +52,7 @@
     "logo": "jupyterhub-logo.svg",
     "website": "https://jupyter.org/hub"
     ,"summary": "JupyterHub is a multi-user server that manages and proxies multiple instances of Jupyter notebooks. It enables teams to share computational environments and collaborate on data science projects."
-    ,"docs": "/docs/packages/analytics/jupyterhub"
+    ,"docs": "/docs/services/analytics/jupyterhub"
     ,"playbook": "350-setup-jupyterhub.yml"
     ,"priority": 92
     ,"checkCommand": "kubectl get pods -n jupyterhub -l app=jupyterhub --no-headers 2>/dev/null | grep -q Running"
@@ -72,7 +72,7 @@
     "logo": "openmetadata-logo.png",
     "website": "https://open-metadata.org"
     ,"summary": "OpenMetadata is an open-source metadata platform for data discovery, data observability, and data governance. It provides unified metadata management with 100+ connectors, column-level lineage, data quality checks, and collaboration features."
-    ,"docs": "/docs/packages/analytics/openmetadata"
+    ,"docs": "/docs/services/analytics/openmetadata"
     ,"playbook": "340-setup-openmetadata.yml"
     ,"priority": 93
     ,"checkCommand": "kubectl get pods -n openmetadata -l app.kubernetes.io/name=openmetadata --no-headers 2>/dev/null | grep -q Running"
@@ -94,7 +94,7 @@
     "logo": "spark-logo.svg",
     "website": "https://spark.apache.org"
     ,"summary": "Apache Spark is a unified analytics engine for large-scale data processing. It provides high-level APIs in Java, Scala, Python, and R, and supports SQL queries, streaming data, machine learning, and graph processing."
-    ,"docs": "/docs/packages/analytics/spark"
+    ,"docs": "/docs/services/analytics/spark"
     ,"playbook": "330-setup-spark.yml"
     ,"priority": 91
     ,"checkCommand": "kubectl get pods -n spark-operator -l app.kubernetes.io/name=spark-kubernetes-operator --no-headers 2>/dev/null | grep -q Running"
@@ -114,7 +114,7 @@
     "logo": "unity-catalog-logo.png",
     "website": "https://www.unitycatalog.io"
     ,"summary": "Unity Catalog is an open-source data catalog that provides unified governance for data and AI assets. It enables fine-grained access control, data lineage tracking, and metadata management across your data lakehouse."
-    ,"docs": "/docs/packages/analytics/unity-catalog"
+    ,"docs": "/docs/services/analytics/unity-catalog"
     ,"playbook": "320-setup-unity-catalog.yml"
     ,"priority": 90
     ,"checkCommand": "kubectl get pods -n unity-catalog -l app=unity-catalog,component=server --no-headers 2>/dev/null | grep -q Running"
@@ -135,7 +135,7 @@
     "logo": "elasticsearch-logo.svg",
     "website": "https://www.elastic.co/elasticsearch"
     ,"summary": "Elasticsearch is a distributed, RESTful search and analytics engine capable of addressing a growing number of use cases. It centrally stores your data for lightning fast search and fine-tuned relevancy."
-    ,"docs": "/docs/packages/databases/elasticsearch"
+    ,"docs": "/docs/services/databases/elasticsearch"
     ,"playbook": "060-setup-elasticsearch.yml"
     ,"priority": 70
     ,"checkCommand": "kubectl get pods -n default -l app=elasticsearch-master --no-headers 2>/dev/null | grep -q Running"
@@ -155,7 +155,7 @@
     "logo": "mongodb-logo.svg",
     "website": "https://www.mongodb.com"
     ,"summary": "MongoDB is a document-oriented NoSQL database designed for high-volume data storage. It stores data in flexible, JSON-like documents, meaning fields can vary from document to document."
-    ,"docs": "/docs/packages/databases/mongodb"
+    ,"docs": "/docs/services/databases/mongodb"
     ,"playbook": "040-setup-mongodb.yml"
     ,"priority": 31
     ,"checkCommand": "kubectl get pods -n default -l app=mongodb --no-headers 2>/dev/null | grep -q Running"
@@ -175,7 +175,7 @@
     "logo": "mysql-logo.svg",
     "website": "https://www.mysql.com"
     ,"summary": "MySQL is the worlds most popular open-source relational database management system. It powers many of the most accessed applications including Facebook, Twitter, and YouTube."
-    ,"docs": "/docs/packages/databases/mysql"
+    ,"docs": "/docs/services/databases/mysql"
     ,"playbook": "040-database-mysql.yml"
     ,"priority": 31
     ,"checkCommand": "kubectl get pods -n default -l app.kubernetes.io/name=mysql --no-headers 2>/dev/null | grep -q Running"
@@ -195,7 +195,7 @@
     "logo": "postgresql-logo.svg",
     "website": "https://www.postgresql.org"
     ,"summary": "PostgreSQL is a powerful, open-source object-relational database system with over 35 years of active development. It has earned a strong reputation for reliability, feature robustness, and performance."
-    ,"docs": "/docs/packages/databases/postgresql"
+    ,"docs": "/docs/services/databases/postgresql"
     ,"playbook": "040-database-postgresql.yml"
     ,"priority": 30
     ,"checkCommand": "kubectl get pods -n default -l app.kubernetes.io/name=postgresql --no-headers 2>/dev/null | grep -q Running"
@@ -215,7 +215,7 @@
     "logo": "qdrant-logo.svg",
     "website": "https://qdrant.tech"
     ,"summary": "Qdrant is a vector similarity search engine and database designed for AI applications. It provides extended filtering support, making it useful for neural network or semantic-based matching."
-    ,"docs": "/docs/packages/databases/qdrant"
+    ,"docs": "/docs/services/databases/qdrant"
     ,"playbook": "044-setup-qdrant.yml"
     ,"priority": 33
     ,"checkCommand": "kubectl get pods -n default -l app.kubernetes.io/name=qdrant --no-headers 2>/dev/null | grep -q Running"
@@ -235,7 +235,7 @@
     "logo": "redis-logo.svg",
     "website": "https://redis.io"
     ,"summary": "Redis is an open-source, in-memory data structure store used as a database, cache, message broker, and streaming engine. It supports various data structures like strings, hashes, lists, and sets."
-    ,"docs": "/docs/packages/databases/redis"
+    ,"docs": "/docs/services/databases/redis"
     ,"playbook": "050-setup-redis.yml"
     ,"priority": 32
     ,"checkCommand": "kubectl get pods -n default -l app.kubernetes.io/name=redis --no-headers 2>/dev/null | grep -q Running"
@@ -255,7 +255,7 @@
     "logo": "authentik-logo.svg",
     "website": "https://goauthentik.io"
     ,"summary": "Authentik is an open-source Identity Provider focused on flexibility and versatility. It supports SAML, OAuth/OIDC, LDAP, and proxy authentication with built-in MFA support."
-    ,"docs": "/docs/packages/identity/authentik"
+    ,"docs": "/docs/services/identity/authentik"
     ,"playbook": "070-setup-authentik.yml"
     ,"priority": 40
     ,"checkCommand": "kubectl get pods -n authentik -l app.kubernetes.io/name=authentik --no-headers 2>/dev/null | grep -q Running"
@@ -276,7 +276,7 @@
     "logo": "enonic-logo.svg",
     "website": "https://enonic.com"
     ,"summary": "Enonic XP is a Java/GraalVM-based headless CMS platform with embedded Elasticsearch and NoSQL storage. It provides Content Studio for editorial work, headless APIs (GraphQL/REST), and a composable architecture for building content-driven applications."
-    ,"docs": "/docs/packages/integration/enonic"
+    ,"docs": "/docs/services/integration/enonic"
     ,"playbook": "085-setup-enonic.yml"
     ,"priority": 85
     ,"checkCommand": "kubectl get pods -n enonic -l app=enonic-xp --no-headers 2>/dev/null | grep -q Running"
@@ -296,7 +296,7 @@
     "logo": "gravitee-logo.svg",
     "website": "https://www.gravitee.io"
     ,"summary": "Gravitee is an open-source API management platform that helps you design, deploy, and manage APIs. It provides a gateway, management console, and developer portal for comprehensive API lifecycle management."
-    ,"docs": "/docs/packages/integration/gravitee"
+    ,"docs": "/docs/services/integration/gravitee"
     ,"playbook": "090-setup-gravitee.yml"
     ,"priority": 81
     ,"checkCommand": "kubectl get pods -n gravitee -l app.kubernetes.io/name=gravitee --no-headers 2>/dev/null | grep -q Running"
@@ -315,7 +315,7 @@
     "logo": "rabbitmq-logo.svg",
     "website": "https://www.rabbitmq.com"
     ,"summary": "RabbitMQ is a reliable and mature messaging broker that supports multiple messaging protocols including AMQP. It provides features like message persistence, delivery acknowledgment, and flexible routing."
-    ,"docs": "/docs/packages/integration/rabbitmq"
+    ,"docs": "/docs/services/integration/rabbitmq"
     ,"playbook": "080-setup-rabbitmq.yml"
     ,"priority": 60
     ,"checkCommand": "kubectl get pods -n default -l app.kubernetes.io/name=rabbitmq --no-headers 2>/dev/null | grep -q Running"
@@ -335,7 +335,7 @@
     "logo": "argocd-logo.svg",
     "website": "https://argo-cd.readthedocs.io"
     ,"summary": "ArgoCD is a declarative, GitOps continuous delivery tool for Kubernetes. It automates the deployment of applications to specified target environments, keeping them synchronized with their Git repository definitions."
-    ,"docs": "/docs/packages/management/argocd"
+    ,"docs": "/docs/services/management/argocd"
     ,"playbook": "220-setup-argocd.yml"
     ,"priority": 80
     ,"checkCommand": "kubectl get pods -n argocd -l app.kubernetes.io/name=argocd-server --no-headers 2>/dev/null | grep -q Running"
@@ -355,7 +355,7 @@
     "logo": "backstage-logo.svg",
     "website": "https://backstage.io"
     ,"summary": "Backstage (via Red Hat Developer Hub) provides a centralized developer portal with a software catalog showing all UIS services, their relationships, Kubernetes pod status, and Grafana dashboard links."
-    ,"docs": "/docs/packages/management/backstage"
+    ,"docs": "/docs/services/management/backstage"
     ,"playbook": "650-setup-backstage.yml"
     ,"priority": 80
     ,"checkCommand": "kubectl get pods -n backstage -l app.kubernetes.io/instance=backstage --no-headers 2>/dev/null | grep -q Running"
@@ -376,7 +376,7 @@
     "logo": "nextcloud-logo.svg",
     "website": "https://nextcloud.com"
     ,"summary": "Nextcloud is a self-hosted content collaboration platform providing file sync and sharing, browser-based document editing via OnlyOffice, calendar, contacts, and more. Deployed with the official Helm chart, reusing existing UIS PostgreSQL and Redis services."
-    ,"docs": "/docs/packages/applications/nextcloud"
+    ,"docs": "/docs/services/applications/nextcloud"
     ,"playbook": "620-setup-nextcloud.yml"
     ,"priority": 620
     ,"checkCommand": "kubectl get pods -n nextcloud -l app.kubernetes.io/name=nextcloud --no-headers 2>/dev/null | grep -q Running"
@@ -398,7 +398,7 @@
     "logo": "nginx-logo.svg",
     "website": "https://nginx.org"
     ,"summary": "Nginx is a high-performance HTTP server and reverse proxy, known for its stability, rich feature set, simple configuration, and low resource consumption."
-    ,"docs": "/docs/packages/management/nginx"
+    ,"docs": "/docs/services/management/nginx"
     ,"playbook": "020-setup-nginx.yml"
     ,"priority": 1
     ,"checkCommand": "kubectl get pods -n default -l app.kubernetes.io/name=nginx --no-headers 2>/dev/null | grep -q Running"
@@ -418,7 +418,7 @@
     "logo": "pgadmin-logo.png",
     "website": "https://www.pgadmin.org"
     ,"summary": "pgAdmin is a feature-rich open source administration and development platform for PostgreSQL. It provides a graphical interface for managing databases, running queries, and monitoring server activity."
-    ,"docs": "/docs/packages/management/pgadmin"
+    ,"docs": "/docs/services/management/pgadmin"
     ,"playbook": "641-adm-pgadmin.yml"
     ,"priority": 90
     ,"checkCommand": "kubectl get pods -n default -l app.kubernetes.io/name=pgadmin4 --no-headers 2>/dev/null | grep -q Running"
@@ -439,7 +439,7 @@
     "logo": "redisinsight-logo.svg",
     "website": "https://redis.io/insight/"
     ,"summary": "RedisInsight is a visual tool for managing Redis databases. It provides a graphical interface for browsing keys, running commands, monitoring performance, and managing Redis data structures."
-    ,"docs": "/docs/packages/management/redisinsight"
+    ,"docs": "/docs/services/management/redisinsight"
     ,"playbook": "651-adm-redisinsight.yml"
     ,"priority": 90
     ,"checkCommand": "kubectl get pods -n default -l app.kubernetes.io/name=redisinsight --no-headers 2>/dev/null | grep -q Running"
@@ -460,7 +460,7 @@
     "logo": "whoami-logo.svg",
     "website": "https://github.com/traefik/whoami"
     ,"summary": "Whoami is a tiny Go webserver that prints OS information and HTTP request details. Its useful for testing ingress configurations, authentication flows, and debugging network issues."
-    ,"docs": "/docs/packages/management/whoami"
+    ,"docs": "/docs/services/management/whoami"
     ,"playbook": "025-setup-whoami-testpod.yml"
     ,"priority": 2
     ,"checkCommand": "kubectl get pods -n default -l app=whoami --no-headers 2>/dev/null | grep -q Running"
@@ -480,7 +480,7 @@
     "logo": "cloudflare-logo.svg",
     "website": "https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/"
     ,"summary": "Cloudflare Tunnel creates a secure, outbound-only connection between your origin and Cloudflares edge. No need to open public inbound ports - traffic is routed through Cloudflares network."
-    ,"docs": "/docs/packages/networking/cloudflare"
+    ,"docs": "/docs/services/networking/cloudflare-tunnel"
     ,"playbook": "820-deploy-network-cloudflare-tunnel.yml"
     ,"priority": 101
     ,"checkCommand": "kubectl get pods -n default -l app=cloudflared --no-headers 2>/dev/null | grep -q Running"
@@ -501,7 +501,7 @@
     "logo": "tailscale-logo.svg",
     "website": "https://tailscale.com"
     ,"summary": "Tailscale creates a secure, private network between your servers, computers, and cloud instances using WireGuard encryption. It provides zero-config networking with built-in NAT traversal."
-    ,"docs": "/docs/packages/networking/tailscale"
+    ,"docs": "/docs/services/networking/tailscale-tunnel"
     ,"playbook": "802-deploy-network-tailscale-tunnel.yml"
     ,"priority": 100
     ,"checkCommand": "kubectl get pods -n tailscale -l app=operator --no-headers 2>/dev/null | grep -q Running"
@@ -522,7 +522,7 @@
     "logo": "grafana-logo.svg",
     "website": "https://grafana.com"
     ,"summary": "Grafana is the open-source analytics and monitoring solution for every database. Create, explore, and share dashboards with your team and foster a data-driven culture."
-    ,"docs": "/docs/packages/observability/grafana"
+    ,"docs": "/docs/services/observability/grafana"
     ,"playbook": "034-setup-grafana.yml"
     ,"priority": 20
     ,"checkCommand": "kubectl get pods -n monitoring -l app.kubernetes.io/name=grafana --no-headers 2>/dev/null | grep -q Running"
@@ -543,7 +543,7 @@
     "logo": "loki-logo.png",
     "website": "https://grafana.com/oss/loki/"
     ,"summary": "Loki is a horizontally-scalable, highly-available, multi-tenant log aggregation system inspired by Prometheus. It indexes labels, not log content, making it cost-effective and easy to operate."
-    ,"docs": "/docs/packages/observability/loki"
+    ,"docs": "/docs/services/observability/loki"
     ,"playbook": "032-setup-loki.yml"
     ,"priority": 11
     ,"checkCommand": "kubectl get pods -n monitoring -l app.kubernetes.io/name=loki --no-headers 2>/dev/null | grep -q Running"
@@ -563,7 +563,7 @@
     "logo": "otel-collector-logo.svg",
     "website": "https://opentelemetry.io"
     ,"summary": "The OpenTelemetry Collector offers a vendor-agnostic implementation to receive, process, and export telemetry data. It removes the need to run multiple agents/collectors."
-    ,"docs": "/docs/packages/observability/otel-collector"
+    ,"docs": "/docs/services/observability/otel-collector"
     ,"playbook": "033-setup-otel-collector.yml"
     ,"priority": 13
     ,"checkCommand": "kubectl get pods -n monitoring -l app.kubernetes.io/name=opentelemetry-collector --no-headers 2>/dev/null | grep -q Running"
@@ -584,7 +584,7 @@
     "logo": "prometheus-logo.svg",
     "website": "https://prometheus.io"
     ,"summary": "Prometheus is a systems monitoring and alerting toolkit that collects metrics from configured targets, stores them locally, and provides a powerful query language (PromQL) for analysis and alerting."
-    ,"docs": "/docs/packages/observability/prometheus"
+    ,"docs": "/docs/services/observability/prometheus"
     ,"playbook": "030-setup-prometheus.yml"
     ,"priority": 10
     ,"checkCommand": "kubectl get pods -n monitoring -l app.kubernetes.io/name=prometheus --no-headers 2>/dev/null | grep -q Running"
@@ -604,7 +604,7 @@
     "logo": "tempo-logo.svg",
     "website": "https://grafana.com/oss/tempo/"
     ,"summary": "Tempo is an open source, easy-to-use, high-scale distributed tracing backend. It requires only object storage to operate and integrates seamlessly with Grafana, Prometheus, and Loki."
-    ,"docs": "/docs/packages/observability/tempo"
+    ,"docs": "/docs/services/observability/tempo"
     ,"playbook": "031-setup-tempo.yml"
     ,"priority": 12
     ,"checkCommand": "kubectl get pods -n monitoring -l app.kubernetes.io/name=tempo --no-headers 2>/dev/null | grep -q Running"
