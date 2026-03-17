@@ -9,7 +9,6 @@ This directory contains user-specific configuration for UIS.
 | `enabled-services.conf` | List of services to deploy |
 | `enabled-tools.conf` | List of additional tools to install |
 | `cluster-config.sh` | Cluster-specific configuration |
-| `service-overrides/` | Custom overrides for services |
 
 ## Usage
 
@@ -38,8 +37,3 @@ uis deploy
 # Deploy a specific service
 uis deploy grafana
 ```
-
-## Service Overrides
-
-Place custom configuration files in `service-overrides/` to override defaults.
-The format is `<service-id>-config.yaml`.

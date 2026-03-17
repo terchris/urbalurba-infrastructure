@@ -18,9 +18,7 @@ Items that still need work, grouped by priority.
 
 ### Priority 0: Cleanup & Documentation
 
-| # | Investigation | Status | Summary |
-|---|--------------|--------|---------|
-| 20 | [Old system cleanup & documentation gaps](INVESTIGATE-old-system-cleanup.md) | In Progress | ~~Delete dead `provision-host/kubernetes/`~~, ~~rename packages→services~~, ~~write "How Deployment Works" page~~, fill doc gaps. Rename: [PLAN](../completed/PLAN-rename-packages-to-services.md). Deletion: [PLAN](../completed/PLAN-delete-old-deployment-system.md). How Deployment Works: [PLAN](../completed/PLAN-how-deployment-works.md). |
+*All items completed — see [Completed](#completed) table below.*
 
 ### Priority 1: Infrastructure Hardening
 
@@ -88,6 +86,7 @@ Items where the work has been implemented.
 | — | [Rename packages→services](../completed/PLAN-rename-packages-to-services.md) | 2026-03-17 | Renamed `docs/packages/` → `docs/services/`, updated all links, scripts, and config. Part of [#20 Old system cleanup](INVESTIGATE-old-system-cleanup.md). |
 | — | [Delete old deployment system](../completed/PLAN-delete-old-deployment-system.md) | 2026-03-17 | Deleted `provision-host/kubernetes/` (60 scripts, ~6,149 lines), `scripts/packages/`, and `./uis provision` command. Part of [#20 Old system cleanup](INVESTIGATE-old-system-cleanup.md). |
 | — | [How Deployment Works](../completed/PLAN-how-deployment-works.md) | 2026-03-17 | User-facing doc page in `advanced/` covering deploy flow, dependencies, health checks, stacks, and metadata fields. Part of [#20 Old system cleanup](INVESTIGATE-old-system-cleanup.md). |
+| — | [Documentation gap filling](../completed/PLAN-documentation-gap-filling.md) | 2026-03-17 | CI/CD and generator docs, integration testing guide, stack creation guide, service-overrides cleanup, getting-started improvements. Part of [#20 Old system cleanup](INVESTIGATE-old-system-cleanup.md). |
 
 ---
 

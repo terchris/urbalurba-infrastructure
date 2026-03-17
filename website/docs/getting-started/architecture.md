@@ -73,7 +73,7 @@ The container image contains:
 
 Two directories on your host machine are mounted into the container:
 
-- **`.uis.extend/`** — Service configuration overrides, enabled services, cluster settings
+- **`.uis.extend/`** — Enabled services, cluster settings, tool preferences
 - **`.uis.secrets/`** — Passwords, API keys, certificates (gitignored)
 
 These are the only files you manage locally. Everything else is baked into the container image.
@@ -177,3 +177,7 @@ kubectl config use-context azure-aks
 ```
 
 The same `./uis deploy` commands work identically on any cluster — only the Kubernetes endpoint changes.
+
+## Learn More
+
+- **[How Deployment Works](../advanced/how-deployment-works.md)** — Deep dive into the deploy flow, dependency resolution, health checks, and stacks

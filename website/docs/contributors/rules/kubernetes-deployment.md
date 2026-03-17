@@ -284,6 +284,52 @@ Stacks are pre-defined bundles of services that work together. They are defined 
 - **`--skip-optional`**: Skips services listed as optional for the stack
 - Each service installed via a stack is automatically added to `enabled-services.conf`
 
+### Adding a Custom Stack
+
+Stacks are defined in `provision-host/uis/lib/stacks.sh` using a pipe-delimited format. To add a new stack:
+
+**1. Add a stack entry** to the `_STACK_DATA` array:
+
+```bash
+_STACK_DATA=(
+    # ... existing stacks ...
+    "my-stack|My Stack|Short description of the stack|CATEGORY_ID|tag1,tag2,tag3|Brief abstract|service1,service2,service3|service3|Longer summary text.|/docs/stacks/my-stack|my-stack-logo.svg"
+)
+```
+
+The fields are:
+
+| Position | Field | Description |
+|:---:|-------|-------------|
+| 0 | `id` | Stack identifier used in CLI commands (`./uis stack install <id>`) |
+| 1 | `name` | Human-readable display name |
+| 2 | `description` | Short description |
+| 3 | `category` | Category ID (must match a category from categories.sh) |
+| 4 | `tags` | Comma-separated tags for website metadata |
+| 5 | `abstract` | Brief abstract for documentation |
+| 6 | `services` | Comma-separated service IDs in installation order |
+| 7 | `optional_services` | Comma-separated service IDs that `--skip-optional` will skip (subset of services) |
+| 8 | `summary` | Longer summary for documentation |
+| 9 | `docs` | Documentation URL path |
+| 10 | `logo` | Logo filename (in `website/static/img/`) |
+
+**2. Add the ID** to `STACK_ORDER`:
+
+```bash
+STACK_ORDER=(observability ai-local analytics my-stack)
+```
+
+**3. Test it:**
+
+```bash
+./uis stack list              # Should show your new stack
+./uis stack info my-stack     # Should show services and details
+./uis stack install my-stack  # Should deploy all services in order
+./uis stack remove my-stack   # Should undeploy in reverse order
+```
+
+**Important:** Service order in the `services` field matters — list dependencies before dependents. The stack installer deploys left-to-right without dependency resolution (unlike `./uis deploy` which checks `SCRIPT_REQUIRES`).
+
 ## Autostart Configuration
 
 The file `.uis.extend/enabled-services.conf` controls which services are deployed when running `./uis deploy` without arguments.
@@ -319,4 +365,6 @@ The old deployment system (`provision-host/kubernetes/` with numbered directorie
 - [Naming Conventions](./naming-conventions.md) - File and resource naming
 - [Rules Overview](./index.md)
 - [Secrets Management](./secrets-management.md)
+- [CI/CD Pipelines and Generators](../guides/ci-cd-and-generators.md) - Automated documentation generation
+- [Integration Testing](../guides/integration-testing.md) - Full system testing with `test-all`
 - [Ingress and Traefik](./ingress-traefik.md)
