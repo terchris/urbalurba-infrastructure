@@ -21,7 +21,6 @@ These commands run on the host machine and manage the UIS container.
 | `./uis exec <command>` | Execute a command inside the container |
 | `./uis logs [--tail N]` | Show container logs (default: last 50 lines) |
 | `./uis build` | Build the container image locally as `uis-provision-host:local` |
-| `./uis provision` | Run Kubernetes provisioning for rancher-desktop |
 
 ## Service Management
 

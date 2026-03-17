@@ -112,20 +112,17 @@ See documentation: [hosts-multipass-microk8s.md](./multipass-microk8s.md)
 
 The benefit of Kubernetes is that once you have a cluster running, the application deployment process is identical across all cluster types.
 
-Once your Kubernetes cluster is ready, deploy all Urbalurba services:
+Once your Kubernetes cluster is ready, deploy services using the UIS CLI:
 
 ```bash
-# From inside provision-host container:
-cd /mnt/urbalurbadisk/provision-host/kubernetes
-./provision-kubernetes.sh <cluster-context>
+# Deploy a single service
+./uis deploy postgresql
 
-# Examples:
-./provision-kubernetes.sh rancher-desktop    # For Rancher Desktop
-./provision-kubernetes.sh azure-aks          # For Azure AKS
-./provision-kubernetes.sh multipass-microk8s # For Multipass (legacy)
+# Deploy a full stack
+./uis stack install observability
 ```
 
-This script automatically installs all services in the correct order (core systems, databases, AI services, monitoring, etc.).
+The UIS CLI automatically resolves dependencies and deploys services in the correct order.
 
 ## 🔄 Multi-Cluster Management
 

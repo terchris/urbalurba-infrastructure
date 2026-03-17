@@ -171,11 +171,6 @@ switch ($command) {
         Start-UISContainer
         docker exec -it $ContainerName bash
     }
-    "provision" {
-        Start-UISContainer
-        Log-Info "Running kubernetes provisioning..."
-        docker exec -it $ContainerName bash -c "cd /mnt/urbalurbadisk/provision-host/kubernetes && ./provision-kubernetes.sh rancher-desktop"
-    }
     "exec" {
         if ($remaining.Count -eq 0) {
             Log-Error "No command specified"

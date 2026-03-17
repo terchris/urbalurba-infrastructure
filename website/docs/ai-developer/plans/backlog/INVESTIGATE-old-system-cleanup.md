@@ -150,14 +150,9 @@ Cannot just delete `provision-host/kubernetes/`. The order matters:
 
 This investigation will produce multiple plans, each tackling a different part:
 
-### Plan area: Rename "packages" to "services"
-- Rename `website/docs/packages/` → `website/docs/services/`
-- Update sidebar categories and `_category_.json` files
-- Update `uis-docs-markdown.sh` to output to `docs/services/`
-- Update `SCRIPT_DOCS` in all 30 `service-*.sh` files
-- Update `docs` field in `services.json` (auto-generated, follows from script change)
-- Update all internal links across the documentation
-- Redirect old URLs if possible (Docusaurus plugin or manual)
+### ~~Plan area: Rename "packages" to "services"~~ — COMPLETED
+
+**Implemented**: [PLAN-rename-packages-to-services](../completed/PLAN-rename-packages-to-services.md) (2026-03-17, PR #88)
 
 ### Plan area: Delete old deployment system
 - Move last active script (`01-core/020-setup-nginx.sh`) to `not-in-use/`

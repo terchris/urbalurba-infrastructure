@@ -170,8 +170,8 @@ main() {
     
     print_status "Infrastructure setup complete!"
     print_status "To deploy services, run:"
-    echo "  cd /mnt/urbalurbadisk/provision-host/kubernetes"
-    echo "  ./provision-kubernetes.sh azure-aks"
+    echo "  ./uis deploy <service-name>"
+    echo "  ./uis stack install <stack-name>"
     
     # Step 6: Check Traefik external IP
     print_status "Checking Traefik external IP..."
