@@ -83,10 +83,10 @@ Items where the work has been implemented.
 | — | [Dev template ingress cleanup](../completed/PLAN-dev-template-ingress-cleanup.md) | 2026-03-04 | Remove old ingress templates. |
 | — | [PowerShell ErrorActionPreference](../completed/PLAN-uis-ps1-erroractionpreference.md) | 2026-03-04 | Fix error handling in PS wrapper. |
 | — | [Backstage investigation](INVESTIGATE-backstage.md) | 2026-03-11 | Initial investigation — led to PLAN-001/002/004. |
-| — | [Rename packages→services](../completed/PLAN-rename-packages-to-services.md) | 2026-03-17 | Renamed `docs/packages/` → `docs/services/`, updated all links, scripts, and config. Part of [#20 Old system cleanup](INVESTIGATE-old-system-cleanup.md). |
-| — | [Delete old deployment system](../completed/PLAN-delete-old-deployment-system.md) | 2026-03-17 | Deleted `provision-host/kubernetes/` (60 scripts, ~6,149 lines), `scripts/packages/`, and `./uis provision` command. Part of [#20 Old system cleanup](INVESTIGATE-old-system-cleanup.md). |
-| — | [How Deployment Works](../completed/PLAN-how-deployment-works.md) | 2026-03-17 | User-facing doc page in `advanced/` covering deploy flow, dependencies, health checks, stacks, and metadata fields. Part of [#20 Old system cleanup](INVESTIGATE-old-system-cleanup.md). |
-| — | [Documentation gap filling](../completed/PLAN-documentation-gap-filling.md) | 2026-03-17 | CI/CD and generator docs, integration testing guide, stack creation guide, service-overrides cleanup, getting-started improvements. Part of [#20 Old system cleanup](INVESTIGATE-old-system-cleanup.md). |
+| — | [Rename packages→services](../completed/PLAN-rename-packages-to-services.md) | 2026-03-17 | Renamed `docs/packages/` → `docs/services/`, updated all links, scripts, and config. Part of [#20 Old system cleanup](../completed/INVESTIGATE-old-system-cleanup.md). |
+| — | [Delete old deployment system](../completed/PLAN-delete-old-deployment-system.md) | 2026-03-17 | Deleted `provision-host/kubernetes/` (60 scripts, ~6,149 lines), `scripts/packages/`, and `./uis provision` command. Part of [#20 Old system cleanup](../completed/INVESTIGATE-old-system-cleanup.md). |
+| — | [How Deployment Works](../completed/PLAN-how-deployment-works.md) | 2026-03-17 | User-facing doc page in `advanced/` covering deploy flow, dependencies, health checks, stacks, and metadata fields. Part of [#20 Old system cleanup](../completed/INVESTIGATE-old-system-cleanup.md). |
+| — | [Documentation gap filling](../completed/PLAN-documentation-gap-filling.md) | 2026-03-17 | CI/CD and generator docs, integration testing guide, stack creation guide, service-overrides cleanup, getting-started improvements. Part of [#20 Old system cleanup](../completed/INVESTIGATE-old-system-cleanup.md). |
 
 ---
 

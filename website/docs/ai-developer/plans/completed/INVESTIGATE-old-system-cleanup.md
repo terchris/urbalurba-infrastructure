@@ -5,7 +5,7 @@
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
 **Created**: 2026-03-17
-**Status**: Backlog
+**Status**: Completed (2026-03-17)
 **Related to:** [INVESTIGATE: Old Deployment System & UIS Migration](../completed/INVESTIGATE-old-deployment-system.md)
 
 ## Problem Statement
@@ -65,7 +65,7 @@ What's missing or incomplete:
 
 3. **Stack creation** — stacks are documented in rules but no guide on defining custom stacks.
 
-4. **Cloud host deployment** — out of scope, covered by [INVESTIGATE: Remote Deployment Targets](INVESTIGATE-remote-deployment-targets.md).
+4. **Cloud host deployment** — out of scope, covered by [INVESTIGATE: Remote Deployment Targets](../backlog/INVESTIGATE-remote-deployment-targets.md).
 
 5. **Old system references in docs** — some docs may still reference `provision-host/kubernetes/` paths or the old deployment model.
 
@@ -114,7 +114,7 @@ This `scripts/packages/` folder appears to be another legacy system predating UI
 - `hosts/install-azure-aks.sh` (line ~168) — references old system in instructions
 - `hosts/azure-aks/02-azure-aks-setup.sh` (line ~173) — references old system in instructions
 
-**Important:** `hosts/install-azure-microk8s-v2.sh` actively calls the old orchestrator. Deleting `provision-host/kubernetes/` without migrating this script will break Azure VM deployment. This is tied to [INVESTIGATE: Remote Deployment Targets](INVESTIGATE-remote-deployment-targets.md).
+**Important:** `hosts/install-azure-microk8s-v2.sh` actively calls the old orchestrator. Deleting `provision-host/kubernetes/` without migrating this script will break Azure VM deployment. This is tied to [INVESTIGATE: Remote Deployment Targets](../backlog/INVESTIGATE-remote-deployment-targets.md).
 
 **Documentation (6 files reference old paths):**
 - `docs/reference/troubleshooting.md`
@@ -142,7 +142,7 @@ Cannot just delete `provision-host/kubernetes/`. The order matters:
 2. Does `./uis provision` legacy command still need to exist in `uis-cli.sh`?
 3. Are there references to `provision-host/kubernetes/` in CI/CD workflows, Dockerfiles, or entrypoint scripts?
 4. The "how deployment works" page should go in `advanced/` — users who just want to deploy don't need it, but anyone who wants to understand the system does.
-5. Cloud host docs are covered by [INVESTIGATE: Remote Deployment Targets](INVESTIGATE-remote-deployment-targets.md) — not in scope here.
+5. Cloud host docs are covered by [INVESTIGATE: Remote Deployment Targets](../backlog/INVESTIGATE-remote-deployment-targets.md) — not in scope here.
 
 ---
 

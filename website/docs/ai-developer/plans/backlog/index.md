@@ -16,7 +16,6 @@ Investigations and plans waiting for implementation, sorted by last updated date
 | [Investigate: Version Metadata in Service Scripts](INVESTIGATE-service-version-metadata.md) | Decide how service scripts should expose version information for docs generation and CLI display | 2026-03-17 |
 | [INVESTIGATE: Remote Deployment Targets & Target Management](INVESTIGATE-remote-deployment-targets.md) | — | 2026-03-17 |
 | [INVESTIGATE: Provision-Host Tools and Provider Authentication](INVESTIGATE-provision-host-tools-and-auth.md) | — | 2026-03-17 |
-| [INVESTIGATE: Old Deployment System Cleanup & Documentation Gaps](INVESTIGATE-old-system-cleanup.md) | The migration from the old deployment system (`provision-host/kubernetes/`) to the UIS CLI (`provision-host/uis/`) is functionally complete — all 30 services deploy through UIS. But the old system is still in the repo, creating confusion for anyone trying to understand how UIS works. Dead code undermines documentation — if someone sees 60 scripts in `provision-host/kubernetes/`, they can't tell which system is real. | 2026-03-17 |
 | [INVESTIGATE: Migrate Host Documentation to UIS CLI](INVESTIGATE-host-docs-migration.md) | — | 2026-03-17 |
 | [Investigate: Fix Gravitee Deployment](INVESTIGATE-gravitee-fix.md) | Get Gravitee working and aligned with UIS patterns — it was broken before the service migration and has never been verified | 2026-03-17 |
 | [Notes for installing EspoCRM in UIS](INVESTIGATE-espocrm.md) | — | 2026-03-17 |
