@@ -71,7 +71,7 @@ Download the `uis` script and start — the container image is pulled automatica
 
 ```bash
 # Download the UIS CLI
-curl -fsSL https://raw.githubusercontent.com/terchris/urbalurba-infrastructure/main/uis -o uis
+curl -fsSL https://raw.githubusercontent.com/helpers-no/urbalurba-infrastructure/main/uis -o uis
 chmod +x uis
 
 # Start the UIS provision host (pulls the container image automatically)
@@ -88,7 +88,7 @@ chmod +x uis
 
 ```powershell
 # Download the UIS CLI
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/terchris/urbalurba-infrastructure/main/uis.ps1" -OutFile "uis.ps1"
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/helpers-no/urbalurba-infrastructure/main/uis.ps1" -OutFile "uis.ps1"
 
 # Start the UIS provision host (pulls the container image automatically)
 .\uis.ps1 start

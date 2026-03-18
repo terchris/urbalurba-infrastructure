@@ -9,7 +9,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONTAINER_NAME="uis-provision-host"
-IMAGE="${UIS_IMAGE:-ghcr.io/terchris/uis-provision-host:latest}"
+IMAGE="${UIS_IMAGE:-ghcr.io/helpers-no/uis-provision-host:latest}"
 KUBECONFIG_DIR="${UIS_KUBECONFIG_DIR:-$HOME/.kube}"
 
 # Detect if we have a TTY for interactive commands
@@ -48,7 +48,7 @@ check_image() {
     fi
 
     log_info "Build it with: docker build -f Dockerfile.uis-provision-host -t uis-provision-host:local ."
-    log_info "Or pull from registry: export UIS_IMAGE=ghcr.io/terchris/uis-provision-host:latest"
+    log_info "Or pull from registry: export UIS_IMAGE=ghcr.io/helpers-no/uis-provision-host:latest"
     exit 1
 }
 
@@ -208,7 +208,7 @@ show_usage() {
     echo "  ./uis exec kubectl get pods    # Run kubectl command"
     echo ""
     echo "Environment variables:"
-    echo "  UIS_IMAGE          Override the container image (default: ghcr.io/terchris/uis-provision-host:latest)"
+    echo "  UIS_IMAGE          Override the container image (default: ghcr.io/helpers-no/uis-provision-host:latest)"
     echo "  UIS_KUBECONFIG_DIR Override kubeconfig directory (default: \$HOME/.kube)"
 }
 

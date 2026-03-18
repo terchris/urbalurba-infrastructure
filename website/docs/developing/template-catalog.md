@@ -41,4 +41,4 @@ Templates use two build approaches depending on the language:
 
 ## Full list
 
-The templates are maintained in the [urbalurba-dev-templates](https://github.com/terchris/urbalurba-dev-templates) repository. Check there for the latest templates and detailed README files for each one.
+The templates are maintained in the [urbalurba-dev-templates](https://github.com/helpers-no/dev-templates) repository. Check there for the latest templates and detailed README files for each one.

@@ -6,7 +6,7 @@
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ContainerName = "uis-provision-host"
-$Image = if ($env:UIS_IMAGE) { $env:UIS_IMAGE } else { "ghcr.io/terchris/uis-provision-host:latest" }
+$Image = if ($env:UIS_IMAGE) { $env:UIS_IMAGE } else { "ghcr.io/helpers-no/uis-provision-host:latest" }
 $KubeconfigDir = if ($env:UIS_KUBECONFIG_DIR) { $env:UIS_KUBECONFIG_DIR } else { Join-Path $HOME ".kube" }
 
 # Detect if we have an interactive terminal
@@ -33,7 +33,7 @@ function Check-Image {
     }
 
     Log-Info "Build it with: docker build -f Dockerfile.uis-provision-host -t uis-provision-host:local ."
-    Log-Info "Or pull from registry: `$env:UIS_IMAGE = 'ghcr.io/terchris/uis-provision-host:latest'"
+    Log-Info "Or pull from registry: `$env:UIS_IMAGE = 'ghcr.io/helpers-no/uis-provision-host:latest'"
     exit 1
 }
 

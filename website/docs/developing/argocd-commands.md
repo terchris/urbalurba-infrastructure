@@ -21,7 +21,7 @@ uis argocd register <name> <repo-url>
 **Example:**
 
 ```bash
-uis argocd register hello-world https://github.com/terchris/urb-dev-typescript-hello-world
+uis argocd register hello-world https://github.com/helpers-no/urb-dev-typescript-hello-world
 ```
 
 ### What happens during registration
@@ -40,7 +40,7 @@ The app name is independent of the repository name. This lets you use short, mea
 
 ```bash
 # Repo has a long name, but you access it as "hello-world"
-uis argocd register hello-world https://github.com/terchris/urb-dev-typescript-hello-world
+uis argocd register hello-world https://github.com/helpers-no/urb-dev-typescript-hello-world
 
 # Access at: http://hello-world.localhost
 ```
@@ -83,7 +83,7 @@ Shows all registered ArgoCD applications with their health and sync status:
 ArgoCD Applications (2 registered)
 ===============================================
 Name:   hello-world
-Repo:   https://github.com/terchris/urb-dev-typescript-hello-world
+Repo:   https://github.com/helpers-no/urb-dev-typescript-hello-world
 Health: Healthy
 Sync:   Synced
 ---

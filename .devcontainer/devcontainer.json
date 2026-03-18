@@ -1,10 +1,10 @@
 {
     // DevContainer Toolbox — pre-built image mode
-    // Docs: https://github.com/terchris/devcontainer-toolbox
+    // Docs: https://github.com/helpers-no/devcontainer-toolbox
     //
     // overrideCommand: false is REQUIRED so VS Code doesn't bypass the ENTRYPOINT.
     // The entrypoint handles all startup — no lifecycle hooks needed.
-    "image": "ghcr.io/terchris/devcontainer-toolbox:latest",
+    "image": "ghcr.io/helpers-no/devcontainer-toolbox:latest",
     "overrideCommand": false,
 
     // VPN capabilities

@@ -23,14 +23,14 @@ Download the `uis` CLI script — this is the only file you need:
 **macOS / Linux:**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/terchris/urbalurba-infrastructure/main/uis -o uis
+curl -fsSL https://raw.githubusercontent.com/helpers-no/urbalurba-infrastructure/main/uis -o uis
 chmod +x uis
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/terchris/urbalurba-infrastructure/main/uis.ps1" -OutFile "uis.ps1"
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/helpers-no/urbalurba-infrastructure/main/uis.ps1" -OutFile "uis.ps1"
 ```
 
 ## Start the Provision Host
