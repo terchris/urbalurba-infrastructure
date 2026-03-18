@@ -9,6 +9,7 @@ All completed plans and investigations, sorted by date. Kept for reference.
 
 | Plan | Goal | Completed |
 |------|------|-----------|
+| [Plan: Transfer urbalurba-infrastructure to helpers-no](PLAN-transfer-to-helpers-no.md) | Transfer repo from `terchris/` to `helpers-no/` with zero downtime. Includes PostgreSQL container removal (PR #95). | 2026-03-19 |
 | [PLAN-008: Service Migration Status & Remaining Work](STATUS-service-migration.md) | Track migration status of all 26 UIS services and complete remaining work for services that are not fully migrated. | 2026-03-18 |
 | [Fix: uis.ps1 Fails on Windows Due to $ErrorActionPreference = "Stop"](PLAN-uis-ps1-erroractionpreference.md) | Fix PowerShell scripts so they don't crash when Docker writes to stderr on first run. | 2026-03-18 |
 | [PLAN: Rename Tailscale hostname variables for clarity](PLAN-tailscale-variable-rename.md) | Rename `TAILSCALE_CLUSTER_HOSTNAME` to `TAILSCALE_PUBLIC_HOSTNAME` and `TAILSCALE_INTERNAL_HOSTNAME` to `TAILSCALE_OPERATOR_PREFIX` to accurately describe what these UIS-invented variables actually control. | 2026-03-18 |

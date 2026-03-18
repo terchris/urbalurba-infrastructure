@@ -10,7 +10,6 @@ Investigations and plans waiting for implementation, sorted by last updated date
 | Document | Goal | Updated |
 |----------|------|---------|
 | [Platform Roadmap](STATUS-platform-roadmap.md) | Track prioritized investigations and planned work for the UIS platform | 2026-03-18 |
-| [Plan: Transfer urbalurba-infrastructure to helpers-no](PLAN-transfer-to-helpers-no.md) | Transfer this repo from `terchris/urbalurba-infrastructure` to `helpers-no/urbalurba-infrastructure` with zero downtime. | 2026-03-18 |
 | [INVESTIGATE: Version Pinning for Helm Charts and Container Images](INVESTIGATE-version-pinning.md) | Everything works today, but 18 of 21 Helm charts and several container images have no version pinning. Any upstream release — intentional or accidental — can break the system without warning. A single `./uis deploy` could pull a new chart version with breaking changes. | 2026-03-18 |
 | [INVESTIGATE: Verification Playbooks Usage and Coverage](INVESTIGATE-verification-playbooks-usage.md) | The `ansible/playbooks/utility/` folder contains a mix of verification playbooks, task includes, setup helpers, and one-off utilities. Several of these files appear to have no active caller in the current repo. | 2026-03-18 |
 | [INVESTIGATE: Undeploy --purge flag](INVESTIGATE-undeploy-purge-flag.md) | — | 2026-03-18 |
