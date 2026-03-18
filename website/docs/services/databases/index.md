@@ -32,4 +32,4 @@ Other databases are deployed on demand when specific applications need them.
 
 ## Custom PostgreSQL Container
 
-UIS uses a custom PostgreSQL container (`ghcr.io/terchris/urbalurba-postgresql`) with 8 pre-built extensions including pgvector (AI embeddings), PostGIS (geospatial), and more. See [PostgreSQL container details](./postgresql-container.md).
+UIS uses a custom PostgreSQL container (`ghcr.io/helpers-no/urbalurba-postgresql`) with 8 pre-built extensions including pgvector (AI embeddings), PostGIS (geospatial), and more. See [PostgreSQL container details](./postgresql-container.md).

@@ -24,7 +24,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONTAINER_NAME="uis-provision-host"
-IMAGE="${UIS_IMAGE:-ghcr.io/terchris/uis-provision-host:latest}"
+IMAGE="${UIS_IMAGE:-ghcr.io/helpers-no/uis-provision-host:latest}"
 
 # Colors for output
 RED='\033[0;31m'

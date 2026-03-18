@@ -137,7 +137,7 @@ check_docker_running
 check_disk_space
 
 # Pull container image
-IMAGE="ghcr.io/terchris/uis-provision-host:latest"
+IMAGE="ghcr.io/helpers-no/uis-provision-host:latest"
 log_info "Pulling UIS container image..."
 echo "  This may take a few minutes (~2GB download)"
 echo ""

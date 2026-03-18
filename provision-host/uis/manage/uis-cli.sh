@@ -1274,7 +1274,7 @@ cmd_argocd_register() {
         echo "  <repo-url>  Full GitHub repository URL (https://...)" >&2
         echo "" >&2
         echo "Examples:" >&2
-        echo "  uis argocd register hello-world https://github.com/terchris/urb-dev-typescript-hello-world" >&2
+        echo "  uis argocd register hello-world https://github.com/helpers-no/urb-dev-typescript-hello-world" >&2
         echo "  uis argocd register my-app https://github.com/myorg/my-k8s-app" >&2
         exit "$EXIT_GENERAL_ERROR"
     fi

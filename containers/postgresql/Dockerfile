@@ -44,8 +44,8 @@ FROM bitnami/postgresql:16
 LABEL org.opencontainers.image.title="Urbalurba PostgreSQL"
 LABEL org.opencontainers.image.description="PostgreSQL with pgvector, PostGIS, hstore, and ltree for Urbalurba Infrastructure"
 LABEL org.opencontainers.image.vendor="Urbalurba Infrastructure"
-LABEL org.opencontainers.image.source="https://github.com/terchris/urbalurba-infrastructure"
-LABEL org.opencontainers.image.documentation="https://github.com/terchris/urbalurba-infrastructure/blob/main/containers/postgresql/readme-postgres-container.md"
+LABEL org.opencontainers.image.source="https://github.com/helpers-no/urbalurba-infrastructure"
+LABEL org.opencontainers.image.documentation="https://github.com/helpers-no/urbalurba-infrastructure/blob/main/containers/postgresql/readme-postgres-container.md"
 
 # ------------------------------------------------------------------------------
 # SYSTEM PACKAGE INSTALLATION

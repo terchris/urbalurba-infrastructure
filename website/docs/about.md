@@ -35,7 +35,7 @@ UIS packages 26+ open-source services into deployable categories:
 Install the UIS CLI and deploy your first service in minutes:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/terchris/urbalurba-infrastructure/main/uis -o uis
+curl -fsSL https://raw.githubusercontent.com/helpers-no/urbalurba-infrastructure/main/uis -o uis
 chmod +x uis
 ./uis start
 ./uis deploy postgresql
@@ -45,7 +45,7 @@ See the [Getting Started guide](./getting-started/overview.md) for full instruct
 
 ## Connect With Us
 
-- **GitHub**: [terchris/urbalurba-infrastructure](https://github.com/terchris/urbalurba-infrastructure)
+- **GitHub**: [helpers-no/urbalurba-infrastructure](https://github.com/helpers-no/urbalurba-infrastructure)
 - **SovereignSky**: [sovereignsky.no](https://sovereignsky.no)
 - **Helpers.no**: [helpers.no](https://helpers.no)
 

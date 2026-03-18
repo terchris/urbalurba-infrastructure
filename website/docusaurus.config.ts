@@ -3,7 +3,7 @@ import type { Config } from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 
 // GitHub organization and repository from environment or defaults
-const GITHUB_ORG = process.env.GITHUB_ORG || 'terchris';
+const GITHUB_ORG = process.env.GITHUB_ORG || 'helpers-no';
 const GITHUB_REPO = process.env.GITHUB_REPO || 'urbalurba-infrastructure';
 
 const config: Config = {

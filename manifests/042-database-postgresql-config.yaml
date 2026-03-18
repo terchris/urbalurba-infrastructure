@@ -4,7 +4,7 @@
 # PostgreSQL Helm chart configuration using custom Urbalurba PostgreSQL container
 # with pre-built AI and geospatial extensions for modern data-intensive applications.
 #
-# Custom Container: ghcr.io/terchris/urbalurba-postgresql:latest
+# Custom Container: ghcr.io/helpers-no/urbalurba-postgresql:latest
 # - Based on Bitnami PostgreSQL 16 with additional extensions
 # - Pre-built with pgvector, PostGIS, hstore, ltree, and other essential extensions
 # - Multi-architecture support (amd64/arm64) with security scanning
@@ -64,7 +64,7 @@ global:
 
 image:
   registry: ghcr.io
-  repository: terchris/urbalurba-postgresql
+  repository: helpers-no/urbalurba-postgresql
   tag: latest
   pullPolicy: Always
 

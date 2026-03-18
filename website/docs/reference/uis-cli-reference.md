@@ -145,5 +145,5 @@ Manage configurations for different deployment targets.
 
 | Variable | Purpose | Default |
 |----------|---------|---------|
-| `UIS_IMAGE` | Override container image | `ghcr.io/terchris/uis-provision-host:latest` |
+| `UIS_IMAGE` | Override container image | `ghcr.io/helpers-no/uis-provision-host:latest` |
 | `UIS_KUBECONFIG_DIR` | Override kubeconfig directory | `$HOME/.kube` |

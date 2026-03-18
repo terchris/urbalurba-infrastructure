@@ -36,7 +36,7 @@ The standard Bitnami PostgreSQL image doesn't include certain extensions that ar
 ## Container Details
 
 - **Base Image**: `bitnami/postgresql:16`
-- **Registry**: `ghcr.io/terchris/urbalurba-postgresql`
+- **Registry**: `ghcr.io/helpers-no/urbalurba-postgresql`
 - **Architectures**: `linux/amd64`, `linux/arm64`
 - **Security**: Runs as non-root user (UID 1001)
 - **Optimization**: Multi-stage build for minimal size
@@ -121,7 +121,7 @@ docker run -d --name postgres-test \
   -e POSTGRESQL_POSTGRES_PASSWORD=testpass123 \
   -e POSTGRESQL_DATABASE=testdb \
   -p 5432:5432 \
-  ghcr.io/terchris/urbalurba-postgresql:latest
+  ghcr.io/helpers-no/urbalurba-postgresql:latest
 
 # Wait for PostgreSQL to be ready
 docker exec postgres-test pg_isready -U postgres
@@ -164,7 +164,7 @@ spec:
     spec:
       containers:
       - name: postgresql
-        image: ghcr.io/terchris/urbalurba-postgresql:latest
+        image: ghcr.io/helpers-no/urbalurba-postgresql:latest
 ```
 
 ### In Ansible Playbooks
@@ -178,7 +178,7 @@ Reference in `ansible/playbooks/040-database-postgresql.yml`:
         template:
           spec:
             containers:
-            - image: ghcr.io/terchris/urbalurba-postgresql:latest
+            - image: ghcr.io/helpers-no/urbalurba-postgresql:latest
 ```
 
 ## 🔄 CI/CD Pipeline with GitHub Actions
@@ -335,9 +335,9 @@ Each workflow run generates:
 
 ## Image Tags
 
-- `ghcr.io/terchris/urbalurba-postgresql:latest` - Latest stable build
-- `ghcr.io/terchris/urbalurba-postgresql:v1.0.0` - Specific version
-- `ghcr.io/terchris/urbalurba-postgresql:pr-123` - Pull request builds
+- `ghcr.io/helpers-no/urbalurba-postgresql:latest` - Latest stable build
+- `ghcr.io/helpers-no/urbalurba-postgresql:v1.0.0` - Specific version
+- `ghcr.io/helpers-no/urbalurba-postgresql:pr-123` - Pull request builds
 
 ## Multi-Architecture Support
 
@@ -393,7 +393,7 @@ For ARM64 production deployments, validate manually:
 docker run --rm \
   -e POSTGRESQL_PASSWORD=testpass \
   -e POSTGRESQL_DATABASE=testdb \
-  ghcr.io/terchris/urbalurba-postgresql:latest \
+  ghcr.io/helpers-no/urbalurba-postgresql:latest \
   psql -U postgres -d testdb -c "CREATE EXTENSION vector; SELECT version();"
 ```
 

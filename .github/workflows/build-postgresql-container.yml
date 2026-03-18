@@ -12,7 +12,7 @@
 #   - Manual dispatch with custom version
 #   - Release tags
 #
-# Registry: ghcr.io/terchris/urbalurba-postgresql
+# Registry: ghcr.io/helpers-no/urbalurba-postgresql
 # Supported Architectures: linux/amd64, linux/arm64
 
 name: 🐘 Build PostgreSQL Container

@@ -6,7 +6,7 @@
 set -e
 
 # Configuration
-IMAGE_NAME="ghcr.io/terchris/urbalurba-postgresql"
+IMAGE_NAME="ghcr.io/helpers-no/urbalurba-postgresql"
 VERSION=${VERSION:-"latest"}
 PUSH=${PUSH:-"false"}
 PLATFORM=${PLATFORM:-"linux/amd64,linux/arm64"}

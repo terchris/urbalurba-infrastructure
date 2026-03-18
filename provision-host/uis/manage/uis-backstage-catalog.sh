@@ -281,7 +281,7 @@ metadata:
     - url: https://uis.sovereignsky.no/docs
       title: UIS Documentation
       icon: docs
-    - url: https://github.com/terchris/urbalurba-infrastructure
+    - url: https://github.com/helpers-no/urbalurba-infrastructure
       title: GitHub Repository
       icon: github
 spec:

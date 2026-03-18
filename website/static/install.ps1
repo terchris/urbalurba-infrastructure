@@ -68,7 +68,7 @@ if (-not (Test-DockerRunning)) {
 Write-Info "Docker is available"
 
 # Pull container image
-$Image = "ghcr.io/terchris/uis-provision-host:latest"
+$Image = "ghcr.io/helpers-no/uis-provision-host:latest"
 Write-Info "Pulling UIS container image..."
 Write-Host "  This may take a few minutes (~2GB download)"
 Write-Host ""

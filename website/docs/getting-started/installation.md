@@ -38,14 +38,14 @@ The `uis` script is the only file you need. The container image with all tools i
 **macOS / Linux:**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/terchris/urbalurba-infrastructure/main/uis -o uis
+curl -fsSL https://raw.githubusercontent.com/helpers-no/urbalurba-infrastructure/main/uis -o uis
 chmod +x uis
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/terchris/urbalurba-infrastructure/main/uis.ps1" -OutFile "uis.ps1"
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/helpers-no/urbalurba-infrastructure/main/uis.ps1" -OutFile "uis.ps1"
 ```
 
 ## Step 3: Start UIS
@@ -101,14 +101,14 @@ If you need new CLI commands that were added after your initial install, update 
 **macOS / Linux:**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/terchris/urbalurba-infrastructure/main/uis -o uis
+curl -fsSL https://raw.githubusercontent.com/helpers-no/urbalurba-infrastructure/main/uis -o uis
 chmod +x uis
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/terchris/urbalurba-infrastructure/main/uis.ps1" -OutFile "uis.ps1"
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/helpers-no/urbalurba-infrastructure/main/uis.ps1" -OutFile "uis.ps1"
 ```
 
 Then run `./uis pull` to update the container.

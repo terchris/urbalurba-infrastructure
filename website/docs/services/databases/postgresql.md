@@ -21,7 +21,7 @@ Open-source relational database with pre-built AI and geospatial extensions.
 
 PostgreSQL is the primary database in UIS. It powers Authentik (identity), Open WebUI (AI chat), LiteLLM (API gateway), Unity Catalog (data governance), and pgAdmin (database management).
 
-UIS deploys a custom PostgreSQL container (`ghcr.io/terchris/urbalurba-postgresql`) that includes 8 pre-built extensions:
+UIS deploys a custom PostgreSQL container (`ghcr.io/helpers-no/urbalurba-postgresql`) that includes 8 pre-built extensions:
 
 - **pgvector** — vector similarity search for AI embeddings
 - **PostGIS** — geospatial data types and queries
@@ -63,7 +63,7 @@ PostgreSQL configuration is in `manifests/042-database-postgresql-config.yaml`. 
 
 | Setting | Value | Notes |
 |---------|-------|-------|
-| Image | `ghcr.io/terchris/urbalurba-postgresql` | Custom container with extensions |
+| Image | `ghcr.io/helpers-no/urbalurba-postgresql` | Custom container with extensions |
 | Storage | `8Gi` PVC | Persistent data across restarts |
 | Port | `5432` | Standard PostgreSQL port |
 | Memory | `240Mi` request, `512Mi` limit | |
@@ -101,7 +101,7 @@ kubectl logs -l app.kubernetes.io/name=postgresql
 ```
 
 **Custom image pull fails:**
-The custom container is pulled from `ghcr.io/terchris/urbalurba-postgresql`. Check that the image is accessible:
+The custom container is pulled from `ghcr.io/helpers-no/urbalurba-postgresql`. Check that the image is accessible:
 ```bash
 kubectl get pod postgresql-0 -o yaml | grep -A 3 "image:"
 ```
