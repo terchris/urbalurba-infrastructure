@@ -1,24 +1,30 @@
 # File: 042-database-postgresql-config.yaml
 #
 # Description:
-# PostgreSQL Helm chart configuration using custom Urbalurba PostgreSQL container
-# with pre-built AI and geospatial extensions for modern data-intensive applications.
+# PostgreSQL Helm chart configuration using the official Bitnami PostgreSQL image.
+# As of 2026-03, Bitnami ships all 8 required extensions pre-built — pgvector,
+# PostGIS, hstore, ltree, uuid-ossp, pg_trgm, btree_gin, pgcrypto — so a custom
+# container image is no longer needed.
 #
-# Custom Container: ghcr.io/helpers-no/urbalurba-postgresql:latest
-# - Based on Bitnami PostgreSQL 16 with additional extensions
-# - Pre-built with pgvector, PostGIS, hstore, ltree, and other essential extensions
-# - Multi-architecture support (amd64/arm64) with security scanning
-# - Documentation: containers/postgresql/readme-postgres-container.md
+# History:
+# Previously used a custom container (ghcr.io/helpers-no/urbalurba-postgresql)
+# built from containers/postgresql/Dockerfile. Bitnami removed version-pinned
+# tags (e.g. bitnami/postgresql:16) and their latest image (PostgreSQL 18)
+# includes all extensions we previously built manually. The custom container,
+# its Dockerfile, build script, and GitHub Actions workflow were removed.
 #
-# Available Extensions (8 total):
-# - pgvector: Vector similarity search and AI embeddings
-# - PostGIS: Geospatial data types and operations
-# - hstore: Key-value pairs in database columns
-# - ltree: Hierarchical tree-like data structures
-# - uuid-ossp: UUID generation functions
-# - pg_trgm: Trigram matching for fuzzy text search
-# - btree_gin: Additional indexing methods
-# - pgcrypto: Cryptographic functions
+# Pinned version: PostgreSQL 18.3 (Bitnami image digest below)
+# Image: bitnami/postgresql@sha256:be1c3052a04d228fcdef62a34a4847ac7990746a82ec678cdffa56dbd5e47aa2
+#
+# Available Extensions (8 total, all pre-built in Bitnami image):
+#   pgvector 0.8.2  — Vector similarity search and AI embeddings
+#   PostGIS 3.6.2   — Geospatial data types and operations
+#   hstore 1.8      — Key-value pairs in database columns
+#   ltree 1.3       — Hierarchical tree-like data structures
+#   uuid-ossp       — UUID generation functions (built-in)
+#   pg_trgm 1.6     — Trigram matching for fuzzy text search
+#   btree_gin 1.3   — Additional indexing methods
+#   pgcrypto 1.4    — Cryptographic functions
 #
 # Suitable for:
 # - AI applications requiring vector search (RAG, embeddings)
@@ -41,14 +47,11 @@
 # view logs: kubectl logs -f statefulset/postgresql -n default
 # port-forward for direct DB access: kubectl port-forward svc/postgresql 5432:5432 -n default
 # test connection: psql postgresql://<user>:<password>@localhost:5432/<database>
-# verify extensions: kubectl exec -it postgresql-0 -- psql -U postgres -c "SELECT extname FROM pg_extension ORDER BY extname;"
+# verify extensions: kubectl exec -it postgresql-0 -- psql -U postgres -c "SELECT extname, extversion FROM pg_extension ORDER BY extname;"
 #
 # All extensions are enabled in the default database at initialization.
 # If you create a new database, manually enable extensions using:
 # CREATE EXTENSION IF NOT EXISTS <extension_name>;
-#
-# For more information about the custom container:
-# See: containers/postgresql/readme-postgres-container.md
 
 global:
   postgresql:
@@ -56,17 +59,13 @@ global:
       ports:
         postgresql: 5432
 
-# in order to use a custom image we also need to set allowInsecureImages: true
-  security:
-    allowInsecureImages: true
-
-# Use custom Urbalurba PostgreSQL container with pre-built extensions
-
+# Use the official Bitnami PostgreSQL image (includes all required extensions)
+# Pinned by digest to prevent unexpected upgrades
 image:
-  registry: ghcr.io
-  repository: helpers-no/urbalurba-postgresql
-  tag: latest
-  pullPolicy: Always
+  registry: docker.io
+  repository: bitnami/postgresql
+  digest: "sha256:be1c3052a04d228fcdef62a34a4847ac7990746a82ec678cdffa56dbd5e47aa2"
+  pullPolicy: IfNotPresent
 
 primary:
   # Disable resourcesPreset so our explicit resources take effect
@@ -84,8 +83,8 @@ primary:
     enabled: true
     size: 8Gi  # Adjust size as needed
 
-  # PostgreSQL 16 defaults to scram-sha-256 password encryption, but the
-  # Bitnami chart v18+ generates pg_hba.conf with md5 auth method.
+  # PostgreSQL uses scram-sha-256 password encryption.
+  # The Bitnami chart generates pg_hba.conf with md5 auth method by default.
   # This mismatch causes "password authentication failed" on fresh installs.
   # Fix: use scram-sha-256 in pg_hba.conf to match the password storage format.
   pgHbaConfiguration: |-
@@ -94,20 +93,20 @@ primary:
     host all all ::/0 scram-sha-256
 
   # Enable all available extensions at startup
-  # All 8 extensions are pre-built into the custom container
+  # All 8 extensions are pre-built into the Bitnami image
   initdb:
     scripts:
       enable-extensions.sql: |
         -- AI and Vector Search Extensions
         CREATE EXTENSION IF NOT EXISTS vector;
-        
+
         -- Geospatial Extensions
         CREATE EXTENSION IF NOT EXISTS postgis;
-        
+
         -- Advanced Data Type Extensions
         CREATE EXTENSION IF NOT EXISTS hstore;
         CREATE EXTENSION IF NOT EXISTS ltree;
-        
+
         -- Utility Extensions
         CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
         CREATE EXTENSION IF NOT EXISTS pg_trgm;
@@ -120,5 +119,5 @@ service:
 auth:
   postgresPassword: ""  # This will be set by the Helm command
 
-# Custom PostgreSQL container provides all extensions
+# Bitnami PostgreSQL image provides all extensions
 # No additional configuration needed - extensions are pre-built and ready to use

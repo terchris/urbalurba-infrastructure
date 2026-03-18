@@ -97,7 +97,6 @@ const sidebars: SidebarsConfig = {
           },
           items: [
             'services/databases/postgresql',
-            'services/databases/postgresql-container',
             'services/databases/mysql',
             'services/databases/mongodb',
             'services/databases/qdrant',

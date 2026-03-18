@@ -10,7 +10,7 @@
 # - Tests basic database operations for Unity Catalog
 #
 # Prerequisites:
-# - PostgreSQL deployed with urbalurba-postgresql container (using 05-cloud-setup-postgres.sh)
+# - PostgreSQL deployed (bitnami/postgresql, pinned by digest)
 # - urbalurba-secrets containing PGPASSWORD for PostgreSQL access
 # - kubectl configured for target cluster
 #

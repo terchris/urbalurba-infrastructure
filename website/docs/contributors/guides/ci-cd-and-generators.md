@@ -4,7 +4,7 @@ This page documents the repository's GitHub Actions workflows and the generator 
 
 ## GitHub Actions Workflows
 
-The repository has 5 workflows in `.github/workflows/`:
+The repository has 4 workflows in `.github/workflows/`:
 
 | Workflow | File | Triggers on |
 |----------|------|-------------|
@@ -12,7 +12,6 @@ The repository has 5 workflows in `.github/workflows/`:
 | [Test UIS Scripts](#test-uis-scripts) | `test-uis.yml` | PRs and pushes (UIS code changes) |
 | [Deploy Documentation](#deploy-documentation) | `docs.yml` | Push to main (website changes) |
 | [Build UIS Container](#build-uis-container) | `build-uis-container.yml` | Push to main (provisioning changes) |
-| [Build PostgreSQL Container](#build-postgresql-container) | `build-postgresql-container.yml` | Push to main (PostgreSQL container changes) |
 
 All workflows also support manual dispatch via the GitHub Actions UI.
 
@@ -96,25 +95,6 @@ ghcr.io/<owner>/uis-provision-host:latest
 This is the container that users pull when they run `./uis start`.
 
 ---
-
-### Build PostgreSQL Container
-
-**File**: `build-postgresql-container.yml`
-
-**Triggers when `containers/postgresql/**` changes** (pushes, PRs, releases).
-
-The most sophisticated workflow with 4 jobs:
-
-1. **Build** — multi-arch container build
-2. **Security scan** — Trivy vulnerability scanner, uploads SARIF to GitHub Security tab
-3. **Test** — starts the container, verifies all PostgreSQL extensions work (pgvector, PostGIS, hstore, ltree, uuid-ossp, pg_trgm, btree_gin, pgcrypto)
-4. **ARM64 verify** — confirms the ARM64 variant exists and is pullable
-
-Pushes to:
-
-```
-ghcr.io/<owner>/urbalurba-postgresql:latest
-```
 
 ---
 

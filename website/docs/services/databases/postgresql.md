@@ -14,23 +14,27 @@ Open-source relational database with pre-built AI and geospatial extensions.
 | **Undeploy** | `./uis undeploy postgresql` |
 | **Depends on** | None |
 | **Required by** | authentik, openwebui, litellm, unity-catalog, pgadmin |
-| **Helm chart** | `bitnami/postgresql` (unpinned) |
+| **Helm chart** | `bitnami/postgresql` (pinned by digest) |
 | **Default namespace** | `default` |
 
 ## What It Does
 
 PostgreSQL is the primary database in UIS. It powers Authentik (identity), Open WebUI (AI chat), LiteLLM (API gateway), Unity Catalog (data governance), and pgAdmin (database management).
 
-UIS deploys a custom PostgreSQL container (`ghcr.io/helpers-no/urbalurba-postgresql`) that includes 8 pre-built extensions:
+UIS deploys the official Bitnami PostgreSQL 18.3 image (pinned by digest), which includes 8 pre-built extensions:
 
-- **pgvector** — vector similarity search for AI embeddings
-- **PostGIS** — geospatial data types and queries
-- **hstore** — key-value pairs within a single column
-- **ltree** — hierarchical tree-like data
-- **uuid-ossp** — UUID generation
-- **pg_trgm** — fuzzy text search and trigram matching
-- **btree_gin** — additional indexing strategies
-- **pgcrypto** — cryptographic functions
+| Extension | Version | Purpose |
+|-----------|---------|---------|
+| **pgvector** | 0.8.2 | Vector similarity search for AI embeddings |
+| **PostGIS** | 3.6.2 | Geospatial data types and queries |
+| **hstore** | 1.8 | Key-value pairs within a single column |
+| **ltree** | 1.3 | Hierarchical tree-like data |
+| **uuid-ossp** | built-in | UUID generation |
+| **pg_trgm** | 1.6 | Fuzzy text search and trigram matching |
+| **btree_gin** | 1.3 | Additional indexing strategies |
+| **pgcrypto** | 1.4 | Cryptographic functions |
+
+All extensions are enabled automatically at first deploy via the `initdb` SQL script in the Helm values.
 
 ## Deploy
 
@@ -63,7 +67,7 @@ PostgreSQL configuration is in `manifests/042-database-postgresql-config.yaml`. 
 
 | Setting | Value | Notes |
 |---------|-------|-------|
-| Image | `ghcr.io/helpers-no/urbalurba-postgresql` | Custom container with extensions |
+| Image | `bitnami/postgresql` (pinned by digest) | PostgreSQL 18.3 with extensions |
 | Storage | `8Gi` PVC | Persistent data across restarts |
 | Port | `5432` | Standard PostgreSQL port |
 | Memory | `240Mi` request, `512Mi` limit | |
@@ -79,7 +83,7 @@ PostgreSQL configuration is in `manifests/042-database-postgresql-config.yaml`. 
 
 | File | Purpose |
 |------|---------|
-| `manifests/042-database-postgresql-config.yaml` | Helm values (custom image, resources, storage) |
+| `manifests/042-database-postgresql-config.yaml` | Helm values (image, resources, storage) |
 | `ansible/playbooks/040-database-postgresql.yml` | Deployment playbook |
 | `ansible/playbooks/040-remove-database-postgresql.yml` | Removal playbook |
 | `ansible/playbooks/utility/u02-verify-postgres.yml` | Extension and CRUD verification |
@@ -100,8 +104,7 @@ kubectl describe pod -l app.kubernetes.io/name=postgresql
 kubectl logs -l app.kubernetes.io/name=postgresql
 ```
 
-**Custom image pull fails:**
-The custom container is pulled from `ghcr.io/helpers-no/urbalurba-postgresql`. Check that the image is accessible:
+**Image pull fails:**
 ```bash
 kubectl get pod postgresql-0 -o yaml | grep -A 3 "image:"
 ```
@@ -121,5 +124,5 @@ kubectl get endpoints postgresql
 ## Learn More
 
 - [Official PostgreSQL documentation](https://www.postgresql.org/docs/)
-- [Custom container details](./postgresql-container.md)
+- [Bitnami PostgreSQL on Docker Hub](https://hub.docker.com/r/bitnami/postgresql)
 - [pgAdmin management tool](../management/pgadmin.md)
