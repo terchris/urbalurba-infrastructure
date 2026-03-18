@@ -30,6 +30,6 @@ PostgreSQL and Redis are the most commonly needed databases:
 
 Other databases are deployed on demand when specific applications need them.
 
-## Custom PostgreSQL Container
+## PostgreSQL Extensions
 
-UIS uses a custom PostgreSQL container (`ghcr.io/helpers-no/urbalurba-postgresql`) with 8 pre-built extensions including pgvector (AI embeddings), PostGIS (geospatial), and more. See [PostgreSQL container details](./postgresql-container.md).
+UIS deploys the official Bitnami PostgreSQL image (PostgreSQL 18.3) which includes 8 pre-built extensions: pgvector (AI embeddings), PostGIS (geospatial), hstore, ltree, uuid-ossp, pg_trgm, btree_gin, and pgcrypto. See [PostgreSQL details](./postgresql.md).

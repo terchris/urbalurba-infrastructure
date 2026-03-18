@@ -90,8 +90,7 @@ Welcome to the complete documentation for **Urbalurba Infrastructure** — a zer
 | Document | Purpose |
 |----------|---------|
 | [Databases Overview](../services/databases/index.md) | Database services overview |
-| [PostgreSQL](../services/databases/postgresql.md) | Primary relational database |
-| [PostgreSQL Container](../services/databases/postgresql-container.md) | Custom PostgreSQL image with AI/ML extensions |
+| [PostgreSQL](../services/databases/postgresql.md) | Primary relational database with AI/ML extensions |
 | [MySQL](../services/databases/mysql.md) | Alternative SQL database |
 | [MongoDB](../services/databases/mongodb.md) | NoSQL document database |
 | [Redis](../services/databases/redis.md) | In-memory cache and message broker |

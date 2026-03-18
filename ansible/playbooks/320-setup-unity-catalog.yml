@@ -10,7 +10,7 @@
 # Prerequisites:
 # - Kubernetes cluster with sufficient resources (8+ CPUs, 10+ GB RAM)
 # - kubectl configured for target cluster
-# - PostgreSQL deployed with urbalurba-postgresql container
+# - PostgreSQL deployed (bitnami/postgresql, pinned by digest)
 # - urbalurba-secrets applied to unity-catalog namespace (contains Unity Catalog database credentials)
 # - Required manifests: 320-unity-catalog-deployment.yaml, 321-unity-catalog-ingress.yaml
 #
@@ -54,7 +54,7 @@
           📊 Spark Integration: Three-level namespace (catalog.schema.table)
           🎯 Target: {{ kube_context | default('rancher-desktop') }}
           📁 Namespace: {{ unity_catalog_namespace }}
-          🔧 Backend: PostgreSQL with urbalurba-postgresql container
+          🔧 Backend: PostgreSQL (bitnami/postgresql, pinned by digest)
           🔐 Authentication: Database credentials from urbalurba-secrets
 
     # ============= PHASE 1: PREREQUISITES VERIFICATION =============

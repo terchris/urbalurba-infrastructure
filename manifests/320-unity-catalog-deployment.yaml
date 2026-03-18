@@ -12,7 +12,7 @@
 #   kubectl apply -f 320-unity-catalog-deployment.yaml
 #
 # Prerequisites:
-# - PostgreSQL deployed with urbalurba-postgresql container
+# - PostgreSQL deployed (bitnami/postgresql, pinned by digest)
 # - unity-catalog namespace created
 # - urbalurba-secrets applied to unity-catalog namespace
 # - Unity Catalog database created in PostgreSQL (use u07-setup-unity-catalog-database.yml)
