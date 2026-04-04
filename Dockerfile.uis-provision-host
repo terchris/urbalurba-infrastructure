@@ -61,6 +61,7 @@ COPY --chown=ansible:ansible networking/ /mnt/urbalurbadisk/networking/
 COPY --chown=ansible:ansible provision-host/ /mnt/urbalurbadisk/provision-host/
 COPY --chown=ansible:ansible scripts/ /mnt/urbalurbadisk/scripts/
 COPY --chown=ansible:ansible testdata/ /mnt/urbalurbadisk/testdata/
+COPY --chown=ansible:ansible website/src/data/ /mnt/urbalurbadisk/website/src/data/
 
 # Switch to ansible user for provisioning
 USER ansible
@@ -90,6 +91,13 @@ RUN apt-get purge -y --auto-remove snapd 2>/dev/null || true && \
            /var/tmp/* \
            /root/.cache \
            /home/ansible/.cache/pip 2>/dev/null || true
+
+# Create /usr/local/bin/uis wrapper so DCT can call: docker exec uis-provision-host uis <command>
+# A wrapper script (not symlink) ensures BASH_SOURCE resolves to the real script location.
+# See: helpers-no/dev-templates INVESTIGATE-unified-template-system.md (3UIS)
+RUN echo '#!/bin/bash' > /usr/local/bin/uis && \
+    echo 'exec /mnt/urbalurbadisk/provision-host/uis/manage/uis-cli.sh "$@"' >> /usr/local/bin/uis && \
+    chmod +x /usr/local/bin/uis
 
 USER ansible
 WORKDIR /mnt/urbalurbadisk

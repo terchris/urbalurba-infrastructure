@@ -88,6 +88,17 @@
         "pattern": "^[a-z0-9-]+$"
       }
     },
+    "configurable": {
+      "type": "boolean",
+      "description": "Whether this service supports uis configure (per-app database/user creation). Only data services and identity services are configurable.",
+      "default": false
+    },
+    "exposePort": {
+      "type": "integer",
+      "description": "Fixed well-known port for uis expose. Avoids conflicts with standard ports (e.g., PostgreSQL 35432 instead of 5432).",
+      "minimum": 1024,
+      "maximum": 65535
+    },
     "kind": {
       "type": "string",
       "description": "Whether this is a software component or infrastructure resource",
