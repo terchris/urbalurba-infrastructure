@@ -1,0 +1,229 @@
+#!/bin/bash
+# configure-postgresql.sh — PostgreSQL handler for uis configure
+#
+# Creates a per-app database and user in the running PostgreSQL instance.
+# Returns connection details as JSON.
+#
+# See: helpers-no/dev-templates INVESTIGATE-unified-template-system.md (2UIS, 7UIS)
+# See: PLAN-001-uis-configure-expose.md Phase 3
+
+# PostgreSQL connection details (inside the cluster)
+PG_ADMIN_USER="postgres"
+PG_K8S_SVC="postgresql"
+PG_NAMESPACE="default"
+PG_INTERNAL_PORT=5432
+PG_CLUSTER_HOST="postgresql.default.svc.cluster.local"
+
+# Get the admin password from urbalurba-secrets
+_pg_get_admin_password() {
+    local kubeconf="${KUBECONF:-/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all}"
+    kubectl get secret urbalurba-secrets \
+        -n "$PG_NAMESPACE" \
+        --kubeconfig="$kubeconf" \
+        -o jsonpath='{.data.PGPASSWORD}' 2>/dev/null | base64 -d
+}
+
+# Find the postgresql pod name
+_pg_get_pod() {
+    local kubeconf="${KUBECONF:-/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all}"
+    kubectl get pods -n "$PG_NAMESPACE" \
+        --kubeconfig="$kubeconf" \
+        -l app.kubernetes.io/name=postgresql \
+        -o jsonpath='{.items[0].metadata.name}' 2>/dev/null
+}
+
+# Run psql command inside the postgresql pod
+_pg_exec() {
+    local sql="$1"
+    local admin_pass="$2"
+    local kubeconf="${KUBECONF:-/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all}"
+    local pod
+    pod=$(_pg_get_pod)
+
+    if [[ -z "$pod" ]]; then
+        return 1
+    fi
+
+    kubectl exec "$pod" \
+        -n "$PG_NAMESPACE" \
+        --kubeconfig="$kubeconf" \
+        -- env PGPASSWORD="$admin_pass" psql -U "$PG_ADMIN_USER" -t -A -c "$sql" 2>/dev/null
+}
+
+# Run psql with a specific database
+_pg_exec_db() {
+    local sql="$1"
+    local database="$2"
+    local user="$3"
+    local pass="$4"
+    local kubeconf="${KUBECONF:-/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all}"
+    local pod
+    pod=$(_pg_get_pod)
+
+    kubectl exec "$pod" \
+        -n "$PG_NAMESPACE" \
+        --kubeconfig="$kubeconf" \
+        -- env PGPASSWORD="$pass" psql -U "$user" -d "$database" -t -A -c "$sql" 2>/dev/null
+}
+
+# Apply init file via stdin to a database
+_pg_apply_init_file() {
+    local database="$1"
+    local user="$2"
+    local pass="$3"
+    local kubeconf="${KUBECONF:-/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all}"
+    local pod
+    pod=$(_pg_get_pod)
+
+    # Read init file from stdin, pipe to psql with ON_ERROR_STOP
+    kubectl exec -i "$pod" \
+        -n "$PG_NAMESPACE" \
+        --kubeconfig="$kubeconf" \
+        -- env PGPASSWORD="$pass" psql -U "$user" -d "$database" \
+           --set ON_ERROR_STOP=on -f - 2>&1
+}
+
+# Check if a database exists
+_pg_database_exists() {
+    local db_name="$1"
+    local admin_pass="$2"
+    local result
+    result=$(_pg_exec "SELECT 1 FROM pg_database WHERE datname='$db_name'" "$admin_pass")
+    [[ "$result" == "1" ]]
+}
+
+# Check if a user exists
+_pg_user_exists() {
+    local username="$1"
+    local admin_pass="$2"
+    local result
+    result=$(_pg_exec "SELECT 1 FROM pg_roles WHERE rolname='$username'" "$admin_pass")
+    [[ "$result" == "1" ]]
+}
+
+# Main handler — called by configure.sh
+configure_service() {
+    local service_id="$1"
+    local app_name="$2"
+    local database_name="$3"
+    local init_file="$4"
+    local json_output="$5"
+
+    # Derive database name if not provided
+    if [[ -z "$database_name" ]]; then
+        # Convert app-name to app_name_db
+        database_name=$(echo "${app_name}" | tr '-' '_')"_db"
+    fi
+
+    # Derive username from app name (convert hyphens to underscores)
+    local username
+    username=$(echo "${app_name}" | tr '-' '_')
+
+    echo "Configuring PostgreSQL for app '$app_name'..." >&2
+
+    # Get admin password
+    local admin_pass
+    admin_pass=$(_pg_get_admin_password)
+    if [[ -z "$admin_pass" ]]; then
+        if [[ "$json_output" == true ]]; then
+            _configure_error "create_resources" "$service_id" "Could not read PGPASSWORD from urbalurba-secrets. Run: uis secrets apply"
+        fi
+        log_error "Could not read PGPASSWORD from urbalurba-secrets"
+        return 1
+    fi
+
+    # Check idempotency — if database already exists, return already_configured (7UIS option b)
+    if _pg_database_exists "$database_name" "$admin_pass"; then
+        echo "Database '$database_name' already exists." >&2
+        if [[ "$json_output" == true ]]; then
+            cat <<EOF
+{"status":"already_configured","service":"postgresql","message":"Database '$database_name' and user '$username' already exist. Use your stored credentials."}
+EOF
+            return 0
+        fi
+        log_info "Database '$database_name' already exists. Use your stored credentials."
+        return 0
+    fi
+
+    # Generate per-app password (2UIS — UIS does not store this)
+    local app_password
+    app_password=$(openssl rand -base64 24 | tr -d '/+=' | head -c 32)
+
+    echo "Creating user '$username'..." >&2
+
+    # Create user
+    local create_user_result
+    create_user_result=$(_pg_exec "CREATE USER $username WITH PASSWORD '$app_password'" "$admin_pass" 2>&1)
+    if [[ $? -ne 0 ]] && ! _pg_user_exists "$username" "$admin_pass"; then
+        if [[ "$json_output" == true ]]; then
+            _configure_error "create_resources" "$service_id" "Failed to create user '$username': $create_user_result"
+        fi
+        log_error "Failed to create user '$username'"
+        return 1
+    fi
+
+    echo "Creating database '$database_name'..." >&2
+
+    # Create database
+    local create_db_result
+    create_db_result=$(_pg_exec "CREATE DATABASE $database_name OWNER $username" "$admin_pass" 2>&1)
+    if [[ $? -ne 0 ]]; then
+        if [[ "$json_output" == true ]]; then
+            _configure_error "create_resources" "$service_id" "Failed to create database '$database_name': $create_db_result"
+        fi
+        log_error "Failed to create database '$database_name'"
+        return 1
+    fi
+
+    # Grant privileges
+    _pg_exec "GRANT ALL PRIVILEGES ON DATABASE $database_name TO $username" "$admin_pass" >/dev/null 2>&1
+
+    echo "Database '$database_name' created with user '$username'." >&2
+
+    # Apply init file if provided via stdin
+    if [[ "$init_file" == "-" ]]; then
+        echo "Applying init file from stdin..." >&2
+        local init_result
+        init_result=$(_pg_apply_init_file "$database_name" "$username" "$app_password")
+        local init_exit=$?
+        if [[ $init_exit -ne 0 ]]; then
+            if [[ "$json_output" == true ]]; then
+                # Escape the detail for JSON
+                local escaped_detail
+                escaped_detail=$(echo "$init_result" | head -5 | tr '\n' ' ' | sed 's/"/\\"/g')
+                _configure_error "init_file" "$service_id" "$escaped_detail"
+            fi
+            log_error "Init file failed: $init_result"
+            return 1
+        fi
+        echo "Init file applied successfully." >&2
+    fi
+
+    # Auto-expose if not already exposed (6UIS)
+    if type expose_service &>/dev/null; then
+        if ! _is_exposed "$service_id" 2>/dev/null; then
+            echo "Auto-exposing $service_id..." >&2
+            expose_service "$service_id" >&2 || true
+        fi
+    fi
+
+    # Get the expose port
+    local expose_port
+    expose_port=$(_get_expose_port "$service_id" 2>/dev/null || echo "35432")
+
+    # Return JSON on stdout (Decision #13)
+    if [[ "$json_output" == true ]]; then
+        cat <<EOF
+{"status":"ok","service":"postgresql","local":{"host":"host.docker.internal","port":$expose_port,"database_url":"postgresql://$username:$app_password@host.docker.internal:$expose_port/$database_name"},"cluster":{"host":"$PG_CLUSTER_HOST","port":$PG_INTERNAL_PORT,"database_url":"postgresql://$username:$app_password@$PG_CLUSTER_HOST:$PG_INTERNAL_PORT/$database_name"},"database":"$database_name","username":"$username","password":"$app_password"}
+EOF
+    else
+        echo ""
+        echo "PostgreSQL configured for '$app_name':"
+        echo "  Database: $database_name"
+        echo "  Username: $username"
+        echo "  Password: $app_password"
+        echo ""
+        echo "  Local:   postgresql://$username:$app_password@host.docker.internal:$expose_port/$database_name"
+        echo "  Cluster: postgresql://$username:$app_password@$PG_CLUSTER_HOST:$PG_INTERNAL_PORT/$database_name"
+    fi
+}

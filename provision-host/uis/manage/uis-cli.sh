@@ -27,6 +27,8 @@ source "$LIB_DIR/tool-installation.sh" 2>/dev/null || true
 source "$LIB_DIR/secrets-management.sh" 2>/dev/null || true
 source "$LIB_DIR/uis-hosts.sh" 2>/dev/null || true
 source "$LIB_DIR/integration-testing.sh" 2>/dev/null || true
+source "$LIB_DIR/expose.sh" 2>/dev/null || true
+source "$LIB_DIR/configure.sh" 2>/dev/null || true
 
 # Version
 UIS_VERSION="0.1.0"
@@ -59,6 +61,12 @@ Service Discovery:
 Service Deployment:
   deploy [service]        Deploy all autostart services, or a specific service
   undeploy <service>      Remove service from cluster
+
+Service Configuration (for DCT template integration):
+  configure <service>     Create app-specific resources (database, user) and return connection JSON
+  expose <service>        Expose service port to host machine for local development
+  expose <service> --stop Stop exposing a service
+  expose --status         Show currently exposed services
 
 Stack Deployment:
   stack list              List available service stacks
@@ -1210,6 +1218,51 @@ cmd_cloudflare_teardown() {
 }
 
 # ============================================================
+# Configure Command — create per-app resources in running services
+# See: PLAN-001-uis-configure-expose.md Phase 3
+# ============================================================
+
+cmd_configure() {
+    run_configure "$@"
+}
+
+# ============================================================
+# Expose Command — port-forward management for DCT integration
+# See: PLAN-001-uis-configure-expose.md Phase 2
+# ============================================================
+
+cmd_expose() {
+    local service_or_flag="${1:-}"
+    local flag="${2:-}"
+
+    if [[ -z "$service_or_flag" ]]; then
+        log_error "Usage: uis expose <service> | uis expose <service> --stop | uis expose --status"
+        echo "" >&2
+        echo "Exposes K8s service ports to the host machine for local development." >&2
+        echo "DCT containers can then reach services via host.docker.internal:<port>." >&2
+        echo "" >&2
+        echo "Examples:" >&2
+        echo "  uis expose postgresql          # Start port-forward on port 35432" >&2
+        echo "  uis expose postgresql --stop   # Stop port-forward" >&2
+        echo "  uis expose --status            # Show currently exposed services" >&2
+        exit "$EXIT_GENERAL_ERROR"
+    fi
+
+    case "$service_or_flag" in
+        --status)
+            expose_status
+            ;;
+        *)
+            if [[ "$flag" == "--stop" ]]; then
+                unexpose_service "$service_or_flag"
+            else
+                expose_service "$service_or_flag"
+            fi
+            ;;
+    esac
+}
+
+# ============================================================
 # ArgoCD Commands
 # ============================================================
 
@@ -1654,6 +1707,12 @@ main() {
             ;;
         undeploy)
             cmd_undeploy "$@"
+            ;;
+        configure)
+            cmd_configure "$@"
+            ;;
+        expose)
+            cmd_expose "$@"
             ;;
         enable)
             cmd_enable "$@"

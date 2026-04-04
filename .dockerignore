@@ -11,6 +11,7 @@
 
 # Documentation (built separately via Docusaurus)
 website
+!website/src/data
 docs
 
 # IDE and editor files
