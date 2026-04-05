@@ -33,3 +33,7 @@ SCRIPT_WEBSITE="https://www.postgresql.org"
 SCRIPT_TAGS="database,sql,relational,postgres,rdbms"
 SCRIPT_SUMMARY="PostgreSQL is a powerful, open-source object-relational database system with over 35 years of active development. It has earned a strong reputation for reliability, feature robustness, and performance."
 SCRIPT_DOCS="/docs/services/databases/postgresql"
+
+# === Template Integration (Optional) ===
+SCRIPT_CONFIGURABLE="true"
+SCRIPT_EXPOSE_PORT="35432"

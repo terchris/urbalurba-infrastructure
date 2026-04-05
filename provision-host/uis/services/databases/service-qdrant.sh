@@ -33,3 +33,7 @@ SCRIPT_WEBSITE="https://qdrant.tech"
 SCRIPT_TAGS="vector-database,ai,embeddings,similarity-search,semantic-search"
 SCRIPT_SUMMARY="Qdrant is a vector similarity search engine and database designed for AI applications. It provides extended filtering support, making it useful for neural network or semantic-based matching."
 SCRIPT_DOCS="/docs/services/databases/qdrant"
+
+# === Template Integration (Optional) ===
+SCRIPT_CONFIGURABLE="true"
+SCRIPT_EXPOSE_PORT="36333"

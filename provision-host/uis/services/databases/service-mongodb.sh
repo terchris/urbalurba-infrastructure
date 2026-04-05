@@ -33,3 +33,7 @@ SCRIPT_WEBSITE="https://www.mongodb.com"
 SCRIPT_TAGS="database,nosql,document,json,flexible-schema"
 SCRIPT_SUMMARY="MongoDB is a document-oriented NoSQL database designed for high-volume data storage. It stores data in flexible, JSON-like documents, meaning fields can vary from document to document."
 SCRIPT_DOCS="/docs/services/databases/mongodb"
+
+# === Template Integration (Optional) ===
+SCRIPT_CONFIGURABLE="true"
+SCRIPT_EXPOSE_PORT="37017"

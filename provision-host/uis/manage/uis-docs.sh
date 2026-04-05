@@ -97,6 +97,7 @@ generate_services_json() {
         local playbook="" priority="" tags="" summary="" docs=""
         local check_command="" remove_playbook="" requires=""
         local helm_chart="" namespace="" image=""
+        local configurable="" expose_port=""
 
         while IFS= read -r line; do
             case "$line" in
@@ -190,6 +191,16 @@ generate_services_json() {
                     image="${image//\"/}"
                     image="${image//\'/}"
                     ;;
+                SCRIPT_CONFIGURABLE=*)
+                    configurable="${line#SCRIPT_CONFIGURABLE=}"
+                    configurable="${configurable//\"/}"
+                    configurable="${configurable//\'/}"
+                    ;;
+                SCRIPT_EXPOSE_PORT=*)
+                    expose_port="${line#SCRIPT_EXPOSE_PORT=}"
+                    expose_port="${expose_port//\"/}"
+                    expose_port="${expose_port//\'/}"
+                    ;;
             esac
         done < "$script"
 
@@ -266,6 +277,8 @@ EOF
         [[ -n "$helm_chart" ]] && echo "    ,\"helmChart\": \"$(json_escape "$helm_chart")\"" >> "$temp_file"
         [[ -n "$namespace" ]] && echo "    ,\"namespace\": \"$(json_escape "$namespace")\"" >> "$temp_file"
         [[ -n "$image" ]] && echo "    ,\"image\": \"$(json_escape "$image")\"" >> "$temp_file"
+        [[ "$configurable" == "true" ]] && echo "    ,\"configurable\": true" >> "$temp_file"
+        [[ -n "$expose_port" ]] && echo "    ,\"exposePort\": $expose_port" >> "$temp_file"
 
         # Close JSON object
         echo "  }" >> "$temp_file"
