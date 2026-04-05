@@ -12,11 +12,12 @@ CONTAINER_NAME="uis-provision-host"
 IMAGE="${UIS_IMAGE:-ghcr.io/helpers-no/uis-provision-host:latest}"
 KUBECONFIG_DIR="${UIS_KUBECONFIG_DIR:-$HOME/.kube}"
 
-# Detect if we have a TTY for interactive commands
+# Detect TTY for docker exec flags
+# -it for interactive terminal, -i only for piped stdin (still forwards input)
 if [ -t 0 ] && [ -t 1 ]; then
     DOCKER_IT="-it"
 else
-    DOCKER_IT=""
+    DOCKER_IT="-i"
 fi
 
 # Colors for output
