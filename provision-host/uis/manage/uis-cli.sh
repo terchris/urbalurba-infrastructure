@@ -29,6 +29,8 @@ source "$LIB_DIR/uis-hosts.sh" 2>/dev/null || true
 source "$LIB_DIR/integration-testing.sh" 2>/dev/null || true
 source "$LIB_DIR/expose.sh" 2>/dev/null || true
 source "$LIB_DIR/configure.sh" 2>/dev/null || true
+source "$LIB_DIR/template.sh" 2>/dev/null || true
+source "$LIB_DIR/connect.sh" 2>/dev/null || true
 
 # Version
 UIS_VERSION="0.1.0"
@@ -73,6 +75,14 @@ Stack Deployment:
   stack info <stack>      Show stack details and components
   stack install <stack>   Install all services in a stack
   stack remove <stack>    Remove all services in a stack
+
+Template Deployment (from helpers-no/dev-templates):
+  template list           List available UIS templates
+  template info <id>      Show template details
+  template install <id>   Install a UIS stack template (deploy + configure services)
+
+Service Connections (interactive admin access):
+  connect <service> [args]  Open an interactive client (psql, redis-cli, mysql, mongosh)
 
 Configuration:
   enable <service>        Add service to autostart (deployed with 'uis deploy')
@@ -1713,6 +1723,12 @@ main() {
             ;;
         expose)
             cmd_expose "$@"
+            ;;
+        template)
+            run_template "$@"
+            ;;
+        connect)
+            cmd_connect "$@"
             ;;
         enable)
             cmd_enable "$@"
