@@ -35,3 +35,7 @@ SCRIPT_WEBSITE="https://goauthentik.io"
 SCRIPT_TAGS="authentication,sso,identity,oauth,saml,ldap,mfa"
 SCRIPT_SUMMARY="Authentik is an open-source Identity Provider focused on flexibility and versatility. It supports SAML, OAuth/OIDC, LDAP, and proxy authentication with built-in MFA support."
 SCRIPT_DOCS="/docs/services/identity/authentik"
+
+# === Template Integration (Optional) ===
+SCRIPT_CONFIGURABLE="true"
+SCRIPT_EXPOSE_PORT="39000"

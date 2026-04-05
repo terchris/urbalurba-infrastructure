@@ -33,3 +33,7 @@ SCRIPT_WEBSITE="https://redis.io"
 SCRIPT_TAGS="cache,in-memory,key-value,message-broker,session"
 SCRIPT_SUMMARY="Redis is an open-source, in-memory data structure store used as a database, cache, message broker, and streaming engine. It supports various data structures like strings, hashes, lists, and sets."
 SCRIPT_DOCS="/docs/services/databases/redis"
+
+# === Template Integration (Optional) ===
+SCRIPT_CONFIGURABLE="true"
+SCRIPT_EXPOSE_PORT="36379"
