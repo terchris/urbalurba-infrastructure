@@ -118,7 +118,7 @@ run_configure() {
 
     if [[ -z "$app_name" ]]; then
         if [[ "$json_output" == true ]]; then
-            _configure_error "create_resources" "$service_id" "Missing required --app argument"
+            _configure_error "usage" "$service_id" "Missing required --app argument"
         fi
         log_error "Missing required --app argument"
         return 1

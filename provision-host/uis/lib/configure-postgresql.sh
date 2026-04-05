@@ -132,16 +132,43 @@ configure_service() {
         return 1
     fi
 
-    # Check idempotency — if database already exists, return already_configured (7UIS option b)
+    # Get the expose port (used in both ok and already_configured responses)
+    local expose_port
+    expose_port=$(_get_expose_port "$service_id" 2>/dev/null || echo "35432")
+
+    # Check idempotency — if database already exists, reset password and return credentials
+    # (DCT needs full connection details on already_configured — see gap from DCT round 1)
     if _pg_database_exists "$database_name" "$admin_pass"; then
-        echo "Database '$database_name' already exists." >&2
+        echo "Database '$database_name' already exists — resetting password." >&2
+
+        # Generate a fresh password and reset it (we don't store per-app passwords)
+        local app_password
+        app_password=$(openssl rand -base64 24 | tr -d '/+=' | head -c 32)
+
+        local alter_result
+        alter_result=$(_pg_exec "ALTER USER $username WITH PASSWORD '$app_password'" "$admin_pass" 2>&1)
+        if [[ $? -ne 0 ]]; then
+            if [[ "$json_output" == true ]]; then
+                _configure_error "create_resources" "$service_id" "Failed to reset password for user '$username': $alter_result"
+            fi
+            log_error "Failed to reset password for user '$username'"
+            return 1
+        fi
+
+        # Auto-expose if not already exposed
+        if type expose_service &>/dev/null; then
+            if ! _is_exposed "$service_id" 2>/dev/null; then
+                expose_service "$service_id" >&2 || true
+            fi
+        fi
+
         if [[ "$json_output" == true ]]; then
             cat <<EOF
-{"status":"already_configured","service":"postgresql","message":"Database '$database_name' and user '$username' already exist. Use your stored credentials."}
+{"status":"already_configured","service":"postgresql","local":{"host":"host.docker.internal","port":$expose_port,"database_url":"postgresql://$username:$app_password@host.docker.internal:$expose_port/$database_name"},"cluster":{"host":"$PG_CLUSTER_HOST","port":$PG_INTERNAL_PORT,"database_url":"postgresql://$username:$app_password@$PG_CLUSTER_HOST:$PG_INTERNAL_PORT/$database_name"},"database":"$database_name","username":"$username","password":"$app_password","message":"Database and user already existed; password was reset. Store these credentials — old ones are invalidated."}
 EOF
             return 0
         fi
-        log_info "Database '$database_name' already exists. Use your stored credentials."
+        log_info "Database '$database_name' already existed; password reset for user '$username'."
         return 0
     fi
 
@@ -183,17 +210,30 @@ EOF
     # Apply init file if provided via stdin
     if [[ "$init_file" == "-" ]]; then
         echo "Applying init file from stdin..." >&2
-        local init_result
-        init_result=$(_pg_apply_init_file "$database_name" "$username" "$app_password")
-        local init_exit=$?
+        # Guard against set -e: capture both output and exit code without triggering exit
+        local init_result init_exit
+        init_result=$(_pg_apply_init_file "$database_name" "$username" "$app_password") && init_exit=0 || init_exit=$?
         if [[ $init_exit -ne 0 ]]; then
+            # Show the real psql error on stderr so users can see what went wrong
+            echo "Init file failed:" >&2
+            echo "$init_result" >&2
+
+            # Roll back: drop the database and user we just created
+            echo "Rolling back: dropping database '$database_name' and user '$username'..." >&2
+            _pg_exec "DROP DATABASE IF EXISTS $database_name" "$admin_pass" >/dev/null 2>&1
+            _pg_exec "DROP USER IF EXISTS $username" "$admin_pass" >/dev/null 2>&1
+
             if [[ "$json_output" == true ]]; then
-                # Escape the detail for JSON
+                # Build JSON detail from the full psql error output
                 local escaped_detail
-                escaped_detail=$(echo "$init_result" | head -5 | tr '\n' ' ' | sed 's/"/\\"/g')
-                _configure_error "init_file" "$service_id" "$escaped_detail"
+                escaped_detail=$(echo "$init_result" | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read().strip())[1:-1])' 2>/dev/null || echo "$init_result" | tr '\n' ' ' | sed 's/"/\\"/g; s/\\/\\\\/g')
+                # Emit JSON error on STDOUT (DCT parses stdout)
+                cat <<EOF
+{"status":"error","phase":"init_file","service":"postgresql","detail":"$escaped_detail"}
+EOF
+                exit 1
             fi
-            log_error "Init file failed: $init_result"
+            log_error "Init file failed and rollback performed"
             return 1
         fi
         echo "Init file applied successfully." >&2
@@ -206,10 +246,6 @@ EOF
             expose_service "$service_id" >&2 || true
         fi
     fi
-
-    # Get the expose port
-    local expose_port
-    expose_port=$(_get_expose_port "$service_id" 2>/dev/null || echo "35432")
 
     # Return JSON on stdout (Decision #13)
     if [[ "$json_output" == true ]]; then
