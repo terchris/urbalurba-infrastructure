@@ -68,6 +68,8 @@ run_configure() {
     local database_name=""
     local init_file=""
     local json_output=false
+    local namespace=""
+    local secret_name_prefix=""
 
     # Parse arguments
     while [[ $# -gt 0 ]]; do
@@ -82,6 +84,14 @@ run_configure() {
                 ;;
             --init-file)
                 init_file="$2"
+                shift 2
+                ;;
+            --namespace)
+                namespace="$2"
+                shift 2
+                ;;
+            --secret-name-prefix)
+                secret_name_prefix="$2"
                 shift 2
                 ;;
             --json)
@@ -124,6 +134,22 @@ run_configure() {
         return 1
     fi
 
+    # Validate --namespace and --secret-name-prefix go together (or neither)
+    if [[ -n "$namespace" && -z "$secret_name_prefix" ]]; then
+        if [[ "$json_output" == true ]]; then
+            _configure_error "usage" "$service_id" "--namespace requires --secret-name-prefix to be set"
+        fi
+        log_error "--namespace requires --secret-name-prefix to be set"
+        return 1
+    fi
+    if [[ -n "$secret_name_prefix" && -z "$namespace" ]]; then
+        if [[ "$json_output" == true ]]; then
+            _configure_error "usage" "$service_id" "--secret-name-prefix requires --namespace to be set"
+        fi
+        log_error "--secret-name-prefix requires --namespace to be set"
+        return 1
+    fi
+
     # Check if service is configurable
     if ! _is_configurable "$service_id"; then
         if [[ "$json_output" == true ]]; then
@@ -159,5 +185,5 @@ run_configure() {
 
     # Source and run handler
     source "$handler"
-    configure_service "$service_id" "$app_name" "$database_name" "$init_file" "$json_output"
+    configure_service "$service_id" "$app_name" "$database_name" "$init_file" "$json_output" "$namespace" "$secret_name_prefix"
 }

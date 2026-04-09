@@ -101,6 +101,40 @@ _pg_user_exists() {
     [[ "$result" == "1" ]]
 }
 
+# Ensure a Kubernetes namespace exists (idempotent)
+_pg_ensure_namespace() {
+    local ns="$1"
+    local kubeconf="${KUBECONF:-/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all}"
+    kubectl create namespace "$ns" \
+        --kubeconfig="$kubeconf" \
+        --dry-run=client -o yaml 2>/dev/null \
+        | kubectl apply --kubeconfig="$kubeconf" -f - >/dev/null 2>&1
+}
+
+# Create or update a K8s Secret containing DATABASE_URL (idempotent)
+_pg_create_secret() {
+    local ns="$1"
+    local secret_name="$2"
+    local database_url="$3"
+    local kubeconf="${KUBECONF:-/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all}"
+
+    kubectl create secret generic "$secret_name" \
+        --namespace="$ns" \
+        --from-literal=DATABASE_URL="$database_url" \
+        --kubeconfig="$kubeconf" \
+        --dry-run=client -o yaml 2>/dev/null \
+        | kubectl apply --kubeconfig="$kubeconf" -f - >/dev/null 2>&1
+}
+
+# Build JSON fragment for namespace/secret fields (empty if not requested)
+_pg_secret_json_fragment() {
+    local namespace="$1"
+    local secret_name="$2"
+    if [[ -n "$namespace" && -n "$secret_name" ]]; then
+        echo ",\"secret_name\":\"$secret_name\",\"secret_namespace\":\"$namespace\",\"env_var\":\"DATABASE_URL\""
+    fi
+}
+
 # Main handler — called by configure.sh
 configure_service() {
     local service_id="$1"
@@ -108,6 +142,14 @@ configure_service() {
     local database_name="$3"
     local init_file="$4"
     local json_output="$5"
+    local namespace="${6:-}"
+    local secret_name_prefix="${7:-}"
+
+    # Compute secret name once
+    local secret_name=""
+    if [[ -n "$secret_name_prefix" ]]; then
+        secret_name="${secret_name_prefix}-db"
+    fi
 
     # Derive database name if not provided
     if [[ -z "$database_name" ]]; then
@@ -162,9 +204,23 @@ configure_service() {
             fi
         fi
 
+        # Build cluster URL with the new password
+        local cluster_url="postgresql://$username:$app_password@$PG_CLUSTER_HOST:$PG_INTERNAL_PORT/$database_name"
+
+        # If --namespace was passed, ensure namespace exists and update the secret with the new password
+        if [[ -n "$namespace" ]]; then
+            echo "Ensuring namespace '$namespace' exists..." >&2
+            _pg_ensure_namespace "$namespace"
+            echo "Updating secret '$secret_name' in namespace '$namespace'..." >&2
+            _pg_create_secret "$namespace" "$secret_name" "$cluster_url"
+        fi
+
+        local secret_fragment
+        secret_fragment=$(_pg_secret_json_fragment "$namespace" "$secret_name")
+
         if [[ "$json_output" == true ]]; then
             cat <<EOF
-{"status":"already_configured","service":"postgresql","local":{"host":"host.docker.internal","port":$expose_port,"database_url":"postgresql://$username:$app_password@host.docker.internal:$expose_port/$database_name"},"cluster":{"host":"$PG_CLUSTER_HOST","port":$PG_INTERNAL_PORT,"database_url":"postgresql://$username:$app_password@$PG_CLUSTER_HOST:$PG_INTERNAL_PORT/$database_name"},"database":"$database_name","username":"$username","password":"$app_password","message":"Database and user already existed; password was reset. Store these credentials — old ones are invalidated."}
+{"status":"already_configured","service":"postgresql","local":{"host":"host.docker.internal","port":$expose_port,"database_url":"postgresql://$username:$app_password@host.docker.internal:$expose_port/$database_name"},"cluster":{"host":"$PG_CLUSTER_HOST","port":$PG_INTERNAL_PORT,"database_url":"$cluster_url"},"database":"$database_name","username":"$username","password":"$app_password"$secret_fragment,"message":"Database and user already existed; password was reset. Store these credentials — old ones are invalidated."}
 EOF
             return 0
         fi
@@ -247,10 +303,24 @@ EOF
         fi
     fi
 
+    # Build cluster URL (used for both JSON and secret)
+    local cluster_url="postgresql://$username:$app_password@$PG_CLUSTER_HOST:$PG_INTERNAL_PORT/$database_name"
+
+    # If --namespace was passed, ensure namespace exists and create the secret
+    if [[ -n "$namespace" ]]; then
+        echo "Ensuring namespace '$namespace' exists..." >&2
+        _pg_ensure_namespace "$namespace"
+        echo "Creating secret '$secret_name' in namespace '$namespace'..." >&2
+        _pg_create_secret "$namespace" "$secret_name" "$cluster_url"
+    fi
+
+    local secret_fragment
+    secret_fragment=$(_pg_secret_json_fragment "$namespace" "$secret_name")
+
     # Return JSON on stdout (Decision #13)
     if [[ "$json_output" == true ]]; then
         cat <<EOF
-{"status":"ok","service":"postgresql","local":{"host":"host.docker.internal","port":$expose_port,"database_url":"postgresql://$username:$app_password@host.docker.internal:$expose_port/$database_name"},"cluster":{"host":"$PG_CLUSTER_HOST","port":$PG_INTERNAL_PORT,"database_url":"postgresql://$username:$app_password@$PG_CLUSTER_HOST:$PG_INTERNAL_PORT/$database_name"},"database":"$database_name","username":"$username","password":"$app_password"}
+{"status":"ok","service":"postgresql","local":{"host":"host.docker.internal","port":$expose_port,"database_url":"postgresql://$username:$app_password@host.docker.internal:$expose_port/$database_name"},"cluster":{"host":"$PG_CLUSTER_HOST","port":$PG_INTERNAL_PORT,"database_url":"$cluster_url"},"database":"$database_name","username":"$username","password":"$app_password"$secret_fragment}
 EOF
     else
         echo ""
@@ -260,6 +330,10 @@ EOF
         echo "  Password: $app_password"
         echo ""
         echo "  Local:   postgresql://$username:$app_password@host.docker.internal:$expose_port/$database_name"
-        echo "  Cluster: postgresql://$username:$app_password@$PG_CLUSTER_HOST:$PG_INTERNAL_PORT/$database_name"
+        echo "  Cluster: $cluster_url"
+        if [[ -n "$namespace" ]]; then
+            echo ""
+            echo "  Secret:  $secret_name (namespace: $namespace, key: DATABASE_URL)"
+        fi
     fi
 }
