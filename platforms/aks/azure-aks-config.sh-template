@@ -1,0 +1,50 @@
+#!/bin/bash
+# filename: azure-aks-config.sh-template
+# description: Configuration variables for AKS platform provisioning
+# usage: Copy this file to azure-aks-config.sh and fill in your values
+#        Never commit azure-aks-config.sh to git
+
+# ─── Azure Identity ────────────────────────────────────────────────────────────
+TENANT_ID="your-tenant-id"
+SUBSCRIPTION_ID="your-subscription-id"
+
+# ─── AKS Cluster ──────────────────────────────────────────────────────────────
+RESOURCE_GROUP="rg-urbalurba-aks-weu"
+CLUSTER_NAME="azure-aks"
+LOCATION="westeurope"
+
+# Node configuration
+NODE_COUNT=1
+NODE_SIZE="Standard_B2ms"
+MIN_COUNT=1
+MAX_COUNT=3
+OS_DISK_SIZE=30
+
+# ─── OpenTofu State Backend ───────────────────────────────────────────────────
+# Created by scripts/00-bootstrap-state.sh - fill in after running it
+STATE_RESOURCE_GROUP="rg-urbalurba-tfstate"
+STATE_STORAGE_ACCOUNT="saurbalurbatfstate"   # must be globally unique, lowercase, 3-24 chars
+STATE_CONTAINER="tfstate"
+STATE_KEY="aks/terraform.tfstate"
+
+# ─── Tags ─────────────────────────────────────────────────────────────────────
+TAG_COST_CENTER="your-cost-center"
+TAG_PROJECT="urbalurba-infrastructure"
+TAG_ENVIRONMENT="Production"
+TAG_BUSINESS_OWNER="your-email@organization.com"
+TAG_IT_OWNER="your-email@organization.com"
+
+# ─── Derived values (do not edit) ─────────────────────────────────────────────
+KUBECONFIG_FILE="/mnt/urbalurbadisk/kubeconfig/azure-aks-kubeconf"
+
+# Display configuration when sourced
+if [ "${BASH_SOURCE[0]}" != "${0}" ]; then
+    echo "AKS Configuration loaded:"
+    echo "  Tenant:           $TENANT_ID"
+    echo "  Subscription:     $SUBSCRIPTION_ID"
+    echo "  Resource Group:   $RESOURCE_GROUP"
+    echo "  Cluster Name:     $CLUSTER_NAME"
+    echo "  Location:         $LOCATION"
+    echo "  Nodes:            $NODE_COUNT x $NODE_SIZE (auto: $MIN_COUNT-$MAX_COUNT)"
+    echo "  State Backend:    $STATE_STORAGE_ACCOUNT/$STATE_CONTAINER/$STATE_KEY"
+fi
