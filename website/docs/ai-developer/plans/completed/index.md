@@ -11,6 +11,7 @@ All completed plans and investigations, sorted by date. Kept for reference.
 |------|------|-----------|
 | [PLAN-008: Service Migration Status & Remaining Work](STATUS-service-migration.md) | Track migration status of all 26 UIS services and complete remaining work for services that are not fully migrated. | 2026-04-09 |
 | [Fix: uis.ps1 Fails on Windows Due to $ErrorActionPreference = "Stop"](PLAN-uis-ps1-erroractionpreference.md) | Fix PowerShell scripts so they don't crash when Docker writes to stderr on first run. | 2026-04-09 |
+| [Plan: uis configure --namespace + K8s Secret creation](PLAN-uis-configure-namespace-secret.md) | Add `--namespace` and `--secret-name-prefix` flags to `uis configure` so DCT app templates with `requires` can deploy successfully — by ensuring the K8s Secret referenced in their deployment manifest exists in the target namespace. | 2026-04-09 |
 | [Plan: Transfer urbalurba-infrastructure to helpers-no](PLAN-transfer-to-helpers-no.md) | Transfer this repo from `terchris/urbalurba-infrastructure` to `helpers-no/urbalurba-infrastructure` with zero downtime. | 2026-04-09 |
 | [PLAN: Rename Tailscale hostname variables for clarity](PLAN-tailscale-variable-rename.md) | Rename `TAILSCALE_CLUSTER_HOSTNAME` to `TAILSCALE_PUBLIC_HOSTNAME` and `TAILSCALE_INTERNAL_HOSTNAME` to `TAILSCALE_OPERATOR_PREFIX` to accurately describe what these UIS-invented variables actually control. | 2026-04-09 |
 | [PLAN: Rename "Packages" to "Services" in Documentation](PLAN-rename-packages-to-services.md) | — | 2026-04-09 |
