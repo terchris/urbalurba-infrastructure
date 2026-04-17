@@ -99,6 +99,21 @@ else
     fail_test "No 'UIS' in version output"
 fi
 
+start_test "uis version reads from version.txt"
+CLI_DIR="$(dirname "$UIS_CLI")"
+VERSION_FILE="$(cd "$CLI_DIR/../../.." && pwd)/version.txt"
+if [[ -f "$VERSION_FILE" ]]; then
+    EXPECTED="$(cat "$VERSION_FILE" | tr -d '[:space:]')"
+    ACTUAL="$("$UIS_CLI" version 2>&1)"
+    if echo "$ACTUAL" | grep -q "$EXPECTED"; then
+        pass_test
+    else
+        fail_test "Version output '$ACTUAL' does not contain '$EXPECTED' from version.txt"
+    fi
+else
+    fail_test "version.txt not found at $VERSION_FILE"
+fi
+
 # ============================================================
 # Test CLI list command (doesn't require cluster)
 # ============================================================

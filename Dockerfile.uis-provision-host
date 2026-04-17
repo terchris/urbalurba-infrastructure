@@ -63,6 +63,7 @@ COPY --chown=ansible:ansible provision-host/ /mnt/urbalurbadisk/provision-host/
 COPY --chown=ansible:ansible scripts/ /mnt/urbalurbadisk/scripts/
 COPY --chown=ansible:ansible testdata/ /mnt/urbalurbadisk/testdata/
 COPY --chown=ansible:ansible website/src/data/ /mnt/urbalurbadisk/website/src/data/
+COPY --chown=ansible:ansible version.txt /mnt/urbalurbadisk/version.txt
 
 # Switch to ansible user for provisioning
 USER ansible

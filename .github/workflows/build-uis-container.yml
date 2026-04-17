@@ -13,6 +13,7 @@ on:
   push:
     branches: [main]
     paths:
+      - 'version.txt'
       - 'ansible/**'
       - 'manifests/**'
       - 'hosts/**'
@@ -33,12 +34,16 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       packages: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Read version from version.txt
+        id: version
+        run: echo "VERSION=$(cat version.txt | tr -d '[:space:]')" >> $GITHUB_OUTPUT
 
       - name: Set up QEMU (for multi-arch builds)
         uses: docker/setup-qemu-action@v3
@@ -60,6 +65,7 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ steps.version.outputs.VERSION }},enable={{is_default_branch}}
             type=sha,prefix=
             type=ref,event=branch
 
@@ -75,9 +81,26 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Sync website/static/version.txt
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          echo "$VERSION" > website/static/version.txt
+          if git diff --quiet website/static/version.txt; then
+            echo "website/static/version.txt already up to date"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add website/static/version.txt
+            git commit -m "chore: sync website/static/version.txt to ${VERSION} [skip ci]"
+            git pull --rebase
+            git push
+          fi
+
       - name: Generate build summary
         run: |
           echo "## UIS Container Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** \`${{ steps.version.outputs.VERSION }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Image:** \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
