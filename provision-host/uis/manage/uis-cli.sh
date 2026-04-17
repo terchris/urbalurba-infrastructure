@@ -32,8 +32,11 @@ source "$LIB_DIR/configure.sh" 2>/dev/null || true
 source "$LIB_DIR/template.sh" 2>/dev/null || true
 source "$LIB_DIR/connect.sh" 2>/dev/null || true
 
-# Version
-UIS_VERSION="0.1.0"
+# Version — read from version.txt at repo root (baked into container at /mnt/urbalurbadisk/version.txt)
+_version_file="$(cd "$SCRIPT_DIR/../../.." && pwd)/version.txt"
+UIS_VERSION="$(cat "$_version_file" 2>/dev/null | tr -d '[:space:]')"
+UIS_VERSION="${UIS_VERSION:-0.1.0}"
+unset _version_file
 
 # ============================================================
 # Command Functions
