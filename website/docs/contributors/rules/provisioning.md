@@ -40,6 +40,51 @@ SCRIPT_REQUIRES="postgresql"
 
 See [Naming Conventions](./naming-conventions.md) for the complete numbering scheme.
 
+## Underscore-prefixed Extra-vars
+
+Some Ansible extra-vars passed to UIS playbooks use a leading underscore. The convention exists to avoid Ansible's recursive-template error when an inventory variable shares its name with a playbook variable (e.g. `target_host` on the inventory side, `_target` inside the playbook).
+
+The CLI provides two reserved underscore-prefixed extra-vars; service authors may add their own.
+
+### `_target` — cluster context (every playbook)
+
+Every setup/remove playbook receives `_target`, derived from `target_host` (defaults to `rancher-desktop`):
+
+```yaml
+vars:
+  _target: "{{ target_host | default('rancher-desktop') }}"
+```
+
+Use `_target` inside the playbook wherever the cluster name matters. Do not reference `target_host` directly in playbook bodies.
+
+### `_app_name` — per-app instance (multi-instance services only)
+
+Multi-instance services (services where `SCRIPT_MULTI_INSTANCE="true"` in their metadata; PostgREST is the first) ship one Deployment per consuming application. The CLI translates `./uis deploy <svc> --app <name>` into the extra-var `_app_name=<name>`, alongside two more underscore-prefixed extras with sensible defaults:
+
+| Var | Required? | Default | Used for |
+|---|---|---|---|
+| `_app_name` | yes | (none — CLI rejects deploy without `--app`) | k8s object names, label selectors, role prefixes |
+| `_url_prefix` | optional | `api-{{ _app_name }}` | first label of the public hostname (HostRegexp pattern) |
+| `_schema` | optional | service-defined (e.g. `api_v1` for PostgREST) | the per-app Postgres schema the service exposes |
+
+The setup playbook for a multi-instance service should validate these at the top:
+
+```yaml
+- name: 1. Validate required extra-vars are set
+  ansible.builtin.assert:
+    that:
+      - _app_name is defined and _app_name | length > 0
+      - _url_prefix is defined and _url_prefix | length > 0
+      - _schema is defined and _schema | length > 0
+    fail_msg: |
+      Multi-instance services need per-app context.
+      Run via: ./uis deploy <svc> --app <name>
+```
+
+Per-app k8s objects, secret references, and Jinja-rendered manifests then key off `{{ _app_name }}`. See [Adding a Service: Multi-instance services](../guides/adding-a-service.md#multi-instance-services) for the full flow and [`ansible/playbooks/templates/README.md`](https://github.com/helpers-no/urbalurba-infrastructure/blob/main/ansible/playbooks/templates/README.md) for the Jinja template convention.
+
+Single-instance services (the default — most existing UIS services) do **not** receive `_app_name`. The CLI rejects `--app` for them.
+
 ## No .localhost Testing from Host Context
 
 **Never test `.localhost` URLs from Ansible**:

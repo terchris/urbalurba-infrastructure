@@ -103,6 +103,7 @@ SCRIPT_DOCS="/docs/services/category/myservice"
 | `SCRIPT_REMOVE_PLAYBOOK` | No | Playbook for removal |
 | `SCRIPT_REQUIRES` | No | Space-separated service IDs this service depends on |
 | `SCRIPT_PRIORITY` | No | Deploy order — lower numbers deploy first (default: 50) |
+| `SCRIPT_MULTI_INSTANCE` | No | Set to `"true"` if the service ships one Deployment per consuming app (e.g. PostgREST). Default `"false"`. See [Multi-instance services](#multi-instance-services). |
 | `SCRIPT_IMAGE` | No | Container image reference (e.g., `enonic/xp:7.16.2-ubuntu`) |
 | `SCRIPT_HELM_CHART` | No | Helm chart reference |
 | `SCRIPT_NAMESPACE` | No | Kubernetes namespace |
@@ -515,6 +516,80 @@ cd website && npm run build
 ```
 
 If you created a verify playbook, make sure it is registered in both `integration-testing.sh` (VERIFY_SERVICES) and `uis-cli.sh` (cmd_verify) as described in Step 5b.
+
+## Multi-instance services
+
+A few platform services ship **one instance per consuming application** rather than one shared instance per cluster. PostgREST is the first — every consuming app gets its own PostgREST Deployment, all sharing the `postgrest` namespace and the platform's PostgreSQL. The lifecycle becomes `./uis configure postgrest --app atlas` then `./uis deploy postgrest --app atlas`, repeated per app.
+
+If you're adding a service that fits this shape, the conventions below are what you need on top of the single-instance flow already covered above. The full worked example is [INVESTIGATE-postgrest.md](../../ai-developer/plans/backlog/INVESTIGATE-postgrest.md) — read it for the design rationale; this section is the contributor checklist.
+
+### When to use the multi-instance shape
+
+Use it when each consuming application needs its own copy of the service with its own configuration, credentials, or routing — and a single shared instance would not be safe or sensible to share. Example: PostgREST exposes a per-app Postgres schema, so different apps need different `PGRST_DB_URI` values, different `web_anon` roles, and different public URL prefixes.
+
+If a single shared instance is appropriate (most services — postgresql, redis, prometheus, grafana), do **not** use this shape. Single-instance is simpler and the rest of this guide already covers it.
+
+### The `multiInstance` flag
+
+In your `service-<id>.sh`, add:
+
+```bash
+SCRIPT_MULTI_INSTANCE="true"
+```
+
+The scanner emits this as `"multiInstance": true` in `services.json`, and the rest of the platform reads from there:
+
+- `configure.sh` — multi-instance services pre-check that **the dependency** is deployed (e.g. postgresql), not the service itself, since there is no shared "the service" to check.
+- `uis-cli.sh` — `./uis deploy <svc>` and `./uis undeploy <svc>` **require** `--app <name>` for multi-instance services and **reject** it for single-instance services. Defaults are applied: `--url-prefix=api-<app>` and `--schema=api_v1`.
+- `./uis status` and `./uis list` formatters (today: count-only; full per-instance rows are PLAN-005 work).
+
+### The `ansible/playbooks/templates/` directory
+
+Multi-instance services cannot use static `manifests/<NNN>-<id>-*.yaml` files — each instance needs different metadata, env-vars, and IngressRoute hostnames. Instead, put **Jinja templates** in `ansible/playbooks/templates/` and render them at playbook-execution time. The templates are parametrised by per-app extra-vars (`_app_name`, `_url_prefix`, `_schema`).
+
+File naming: `<NNN>-<service>-<role>.yml.j2`, same numeric prefix as the service number in `service-<id>.sh`. Example for PostgREST (`SCRIPT_PLAYBOOK="088-setup-postgrest.yml"`):
+
+```
+ansible/playbooks/templates/088-postgrest-config.yml.j2          # Deployment + Service
+ansible/playbooks/templates/088-postgrest-ingressroute.yml.j2    # Traefik IngressRoute
+```
+
+The full convention — including standard extra-var names and how to use `lookup('template', ...) | from_yaml_all | list` for templates that emit multiple YAML documents — lives in [`ansible/playbooks/templates/README.md`](https://github.com/helpers-no/urbalurba-infrastructure/blob/main/ansible/playbooks/templates/README.md). Read it before writing your first template.
+
+### Per-app extra-vars
+
+The CLI translates `--app <name>` (and any defaults it applies) into Ansible extra-vars with an underscore prefix, matching the existing `_target` convention in [provisioning.md](../rules/provisioning.md):
+
+| Extra-var | Source | Required |
+|---|---|---|
+| `_app_name` | `--app <name>` (no default) | yes — multi-instance deploy fails without it |
+| `_url_prefix` | `--url-prefix <name>` (default: `api-<app_name>`) | optional, default applied |
+| `_schema` | `--schema <name>` (default: `api_v1` for PostgREST; service-defined elsewhere) | optional, default applied |
+
+Service-specific extra-vars (e.g. `_db_role` for PostgREST) are added by the configure handler and documented at the top of the corresponding setup playbook.
+
+### Configure vs deploy split
+
+Multi-instance services almost always need a **configure** step that runs before deploy: it creates per-app credentials, secrets, or roles in an upstream service, and puts the result somewhere the deploy step can pick it up.
+
+Add a handler at `provision-host/uis/lib/configure-<id>.sh` (no `handlers/` subdir — match the existing `configure-postgresql.sh` shape). The handler is dispatched by the configure flag-parser in `provision-host/uis/lib/configure.sh` and receives the per-app context (`app_name`, `database_name`, `schema`, `url_prefix`, …).
+
+The `deploy` playbook in turn **assumes** configure has already run and errors clearly if its preconditions are missing — the user should always be able to fix the error by running the configure step the message tells them to run.
+
+For the lifecycle conventions (idempotent re-configure, `--rotate` to regenerate credentials, `--purge` to remove per-app state, removal-without-purge so re-deploy works without re-configure), see Decisions #16–#20 in [INVESTIGATE-postgrest.md](../../ai-developer/plans/backlog/INVESTIGATE-postgrest.md).
+
+### Worked example: PostgREST
+
+Read these in order if you're adding a second multi-instance service:
+
+| File | What it shows |
+|---|---|
+| [`service-postgrest.sh`](https://github.com/helpers-no/urbalurba-infrastructure/blob/main/provision-host/uis/services/integration/service-postgrest.sh) | `SCRIPT_MULTI_INSTANCE="true"`, the playbook references, image pinning |
+| [`configure-postgrest.sh`](https://github.com/helpers-no/urbalurba-infrastructure/blob/main/provision-host/uis/lib/configure-postgrest.sh) | Per-app role creation, secret writing, idempotent re-configure, rotate, purge |
+| [`088-setup-postgrest.yml`](https://github.com/helpers-no/urbalurba-infrastructure/blob/main/ansible/playbooks/088-setup-postgrest.yml) | Reads extra-vars, errors on missing prereqs, renders both templates |
+| [`088-postgrest-config.yml.j2`](https://github.com/helpers-no/urbalurba-infrastructure/blob/main/ansible/playbooks/templates/088-postgrest-config.yml.j2) | Deployment + Service in one file (multi-doc YAML) |
+| [`088-postgrest-ingressroute.yml.j2`](https://github.com/helpers-no/urbalurba-infrastructure/blob/main/ansible/playbooks/templates/088-postgrest-ingressroute.yml.j2) | Per-app HostRegexp routing |
+| [`088-remove-postgrest.yml`](https://github.com/helpers-no/urbalurba-infrastructure/blob/main/ansible/playbooks/088-remove-postgrest.yml) | Removes per-app k8s objects, leaves Postgres roles + secret intact |
 
 ## Two deployment paths
 
