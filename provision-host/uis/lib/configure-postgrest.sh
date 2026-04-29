@@ -213,22 +213,76 @@ configure_service() {
             return 1
         fi
 
-        echo "Dropping Postgres roles for app '$app_name'..." >&2
-        _pgrst_exec "DROP ROLE IF EXISTS $authenticator_role" "$admin_pass" >/dev/null 2>&1
-        _pgrst_exec "DROP ROLE IF EXISTS $web_anon_role" "$admin_pass" >/dev/null 2>&1
+        # Resolve the target database. The schema-level grants
+        # (USAGE on schema, SELECT on tables, default privileges) live in the
+        # database the operator passed to `configure --database`, which may not
+        # be the default `app_name`. The existing secret holds the authoritative
+        # connection string — read the database name from there if present.
+        local target_db="$database_name"
+        if _pgrst_secret_exists "$secret_name"; then
+            local kubeconf="${KUBECONF:-/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all}"
+            local existing_uri parsed_db
+            existing_uri=$(kubectl get secret "$secret_name" -n "$PGRST_NAMESPACE" \
+                --kubeconfig="$kubeconf" \
+                -o jsonpath='{.data.PGRST_DB_URI}' 2>/dev/null | base64 -d)
+            if [[ -n "$existing_uri" ]]; then
+                # postgresql://user:pass@host:port/dbname[?...] → strip everything before the last '/' and any query string
+                parsed_db="${existing_uri##*/}"
+                parsed_db="${parsed_db%%\?*}"
+                [[ -n "$parsed_db" ]] && target_db="$parsed_db"
+            fi
+        fi
+
+        # DROP OWNED BY clears schema-level privileges (and default privilege
+        # entries where the role is grantee) before DROP ROLE. Without this,
+        # web_anon's GRANT USAGE on the schema blocks DROP ROLE. The DO block
+        # makes both pairs idempotent — re-purge after a partial cleanup
+        # succeeds rather than erroring on a missing role.
+        echo "Dropping Postgres roles for app '$app_name' in database '$target_db'..." >&2
+        local drop_sql drop_result rc
+        drop_sql=$(cat <<EOF
+DO \$\$
+DECLARE
+    role_exists boolean;
+BEGIN
+    SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='$authenticator_role') INTO role_exists;
+    IF role_exists THEN
+        EXECUTE format('DROP OWNED BY %I CASCADE', '$authenticator_role');
+        EXECUTE format('DROP ROLE %I', '$authenticator_role');
+    END IF;
+    SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='$web_anon_role') INTO role_exists;
+    IF role_exists THEN
+        EXECUTE format('DROP OWNED BY %I CASCADE', '$web_anon_role');
+        EXECUTE format('DROP ROLE %I', '$web_anon_role');
+    END IF;
+END
+\$\$;
+EOF
+)
+        drop_result=$(_pgrst_exec_db "$drop_sql" "$admin_pass" "$target_db")
+        rc=$?
+        if [[ $rc -ne 0 ]]; then
+            if [[ "$json_output" == true ]]; then
+                _configure_error "purge" "$service_id" "Failed to drop roles for '$app_name' in '$target_db' (psql exit $rc): $drop_result"
+            fi
+            log_error "Failed to drop roles for '$app_name' in '$target_db' (psql exit $rc):"
+            log_error "$drop_result"
+            return 1
+        fi
 
         echo "Removing secret '$secret_name' from namespace $PGRST_NAMESPACE..." >&2
         _pgrst_delete_secret "$secret_name"
 
         if [[ "$json_output" == true ]]; then
             cat <<EOF
-{"status":"purged","service":"postgrest","app":"$app_name","roles_dropped":["$authenticator_role","$web_anon_role"],"secret_removed":"$secret_name"}
+{"status":"purged","service":"postgrest","app":"$app_name","database":"$target_db","roles_dropped":["$authenticator_role","$web_anon_role"],"secret_removed":"$secret_name"}
 EOF
         else
             echo ""
             echo "Purged PostgREST configuration for '$app_name':"
-            echo "  Dropped roles: $authenticator_role, $web_anon_role"
-            echo "  Removed secret: $PGRST_NAMESPACE/$secret_name"
+            echo "  Database:        $target_db"
+            echo "  Dropped roles:   $authenticator_role, $web_anon_role"
+            echo "  Removed secret:  $PGRST_NAMESPACE/$secret_name"
         fi
         return 0
     fi
