@@ -8,7 +8,7 @@
 
 **Goal**: Implement PostgREST as a deployable, multi-instance UIS service following every decision recorded in [INVESTIGATE-postgrest.md](../backlog/INVESTIGATE-postgrest.md). After this plan, `./uis configure postgrest --app <name>` followed by `./uis deploy postgrest --app <name>` produces a working REST API serving an `api_v1` schema, and the platform supports the multi-instance pattern as a reusable convention.
 
-**Last Updated**: 2026-04-29 — all 6 phases shipped; end-to-end Phase 6 validation passed against rancher-desktop. Two bugs surfaced during validation and fixed: create-path silent SQL failure (`2640d98`) and purge-path silent role-drop failure (`98627ab`). PLAN-002 also corrected the docs claim about OpenAPI 3.0 — PostgREST 12.x emits Swagger 2.0.
+**Last Updated**: 2026-04-29 — all 6 phases shipped; end-to-end Phase 6 validation passed against rancher-desktop. Two bugs surfaced during validation and fixed: create-path silent SQL failure (`2640d98`) and purge-path silent role-drop failure (`98627ab`). PLAN-002 also corrected the docs claim about OpenAPI 3.0 — PostgREST 12.x and 14.x both emit Swagger 2.0 / OpenAPI 2.0 at `GET /`. Image pin bumped to `v14.10` in `b6e34f8` (PR #133); the smoke checks in this plan use `jq .swagger` accordingly.
 
 **Investigation**: [INVESTIGATE-postgrest.md](../backlog/INVESTIGATE-postgrest.md) — 23 resolved decisions; no open design questions.
 
@@ -190,8 +190,8 @@ kubectl get svc testapp-postgrest -n postgrest
 kubectl get ingressroute testapp-postgrest -n postgrest
 
 # Smoke test
-curl -fsS http://api-testapp.localhost/ | jq .openapi
-# Expect: "3.0.0"
+curl -fsS http://api-testapp.localhost/ | jq .swagger
+# Expect: "2.0"  (PostgREST 14.x emits Swagger 2.0 / OpenAPI 2.0)
 ```
 
 User confirms the deploy succeeds and the OpenAPI endpoint returns valid JSON.
@@ -271,7 +271,7 @@ A full happy-path walk-through against a clean cluster, then the cleanup and edg
 - [ ] 6.4 `./uis deploy postgrest --app testapp`
 - [ ] 6.5 Run the four smoke checks from the investigate's "End-to-end verification" section:
   ```bash
-  curl -fsS http://api-testapp.localhost/ | jq .openapi              # "3.0.0"
+  curl -fsS http://api-testapp.localhost/ | jq .swagger              # "2.0"
   curl -fsS http://api-testapp.localhost/kommune | jq 'length > 0'   # true
   curl -sS -o /dev/null -w '%{http_code}\n' \
       http://api-testapp.localhost/_internal                          # 404
@@ -302,7 +302,7 @@ User confirms every step in 6.1–6.10 passes. If 6.10 produces unexpected forma
 
 - [ ] `services.json` contains `"multiInstance": true` for postgrest and `false` (or absent) for every other service
 - [ ] `./uis configure postgrest --app <name>` creates Postgres roles, the namespace, and the per-app secret; rejects `--namespace` / `--secret-name-prefix`
-- [ ] `./uis deploy postgrest --app <name>` succeeds end-to-end; `curl http://api-<name>.localhost/` returns valid OpenAPI 3.0 JSON
+- [ ] `./uis deploy postgrest --app <name>` succeeds end-to-end; `curl http://api-<name>.localhost/` returns valid Swagger 2.0 JSON (PostgREST 14.x emits Swagger 2.0 / OpenAPI 2.0)
 - [ ] Two configured instances coexist in the `postgrest` namespace without collision
 - [ ] `./uis undeploy postgrest --app <name>` removes K8s objects but leaves Postgres roles and Secret intact for clean re-deploy
 - [ ] `./uis configure postgrest --app <name> --purge` removes Postgres roles and Secret
