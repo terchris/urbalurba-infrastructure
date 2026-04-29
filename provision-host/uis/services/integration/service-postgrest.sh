@@ -25,6 +25,7 @@ SCRIPT_MANIFEST=""
 SCRIPT_CHECK_COMMAND="kubectl get deploy -n postgrest -l app.kubernetes.io/name=postgrest --no-headers 2>/dev/null | grep -qE '\\s([1-9][0-9]*)/\\1\\s'"
 SCRIPT_REMOVE_PLAYBOOK=""
 SCRIPT_REQUIRES="postgresql"
+SCRIPT_MULTI_INSTANCE="true"
 SCRIPT_PRIORITY="50"
 
 # === Deployment Details (Optional) ===

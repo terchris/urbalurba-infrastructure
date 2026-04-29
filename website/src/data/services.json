@@ -335,6 +335,7 @@
     ,"requires": ["postgresql"]
     ,"namespace": "postgrest"
     ,"image": "postgrest/postgrest:<version-pinned-during-PLAN-002>"
+    ,"multiInstance": true
   }
 ,
   {
