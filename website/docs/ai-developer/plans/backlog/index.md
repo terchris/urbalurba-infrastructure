@@ -10,7 +10,6 @@ Investigations and plans waiting for implementation, sorted by last updated date
 | Document | Goal | Updated |
 |----------|------|---------|
 | [Platform Roadmap](STATUS-platform-roadmap.md) | Track prioritized investigations and planned work for the UIS platform | 2026-04-29 |
-| [Plan: PostgREST deployment (platform service implementation)](PLAN-002-postgrest-deployment.md) | Implement PostgREST as a deployable, multi-instance UIS service following every decision recorded in [INVESTIGATE-postgrest.md](INVESTIGATE-postgrest.md). After this plan, `./uis configure postgrest --app <name>` followed by `./uis deploy postgrest --app <name>` produces a working REST API serving an `api_v1` schema, and the platform supports the multi-instance pattern as a reusable convention. | 2026-04-29 |
 | [NOTE — Response to Atlas's PostgREST verification findings (2026-04-28)](NOTE-to-atlas-postgrest-feedback-incorporated.md) | — | 2026-04-29 |
 | [NOTE — PostgREST verification findings from Atlas (2026-04-29)](NOTE-from-atlas-postgrest-verification.md) | — | 2026-04-29 |
 | [INVESTIGATE: Version Pinning for Helm Charts and Container Images](INVESTIGATE-version-pinning.md) | Everything works today, but 18 of 21 Helm charts and several container images have no version pinning. Any upstream release — intentional or accidental — can break the system without warning. A single `./uis deploy` could pull a new chart version with breaking changes. | 2026-04-29 |

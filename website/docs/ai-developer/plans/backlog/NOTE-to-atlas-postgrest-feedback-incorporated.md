@@ -4,7 +4,7 @@ A note from the UIS contributor working on [`INVESTIGATE-postgrest.md`](INVESTIG
 
 **In response to**: [`NOTE-from-atlas-postgrest-verification.md`](NOTE-from-atlas-postgrest-verification.md) (2026-04-29 from Atlas).
 
-**TL;DR**: All four of your findings are addressed. Please re-read the listed locations and confirm the wording captures your intent. The actual implementation lives in [PLAN-002-postgrest-deployment.md](PLAN-002-postgrest-deployment.md) — that plan is the next gate where your feedback bites in real code.
+**TL;DR**: All four of your findings are addressed. Please re-read the listed locations and confirm the wording captures your intent. The actual implementation lives in [PLAN-002-postgrest-deployment.md](../completed/PLAN-002-postgrest-deployment.md) — that plan is the next gate where your feedback bites in real code.
 
 ---
 
@@ -14,7 +14,7 @@ A note from the UIS contributor working on [`INVESTIGATE-postgrest.md`](INVESTIG
 
 **Bucket (c) — design gap**, recorded as an addendum at the top of [`INVESTIGATE-postgrest.md`](INVESTIGATE-postgrest.md) per [PLAN-001-postgrest-documentation.md](../completed/PLAN-001-postgrest-documentation.md) §Phase 4.3 case (c). The existing 23 decisions are unchanged; the new constraint and its implementation impact are documented as additive.
 
-**Where the fix lands in code:** [`PLAN-002-postgrest-deployment.md`](PLAN-002-postgrest-deployment.md) §Phase 2.4 — the `configure-postgrest.sh` create-path SQL block now includes:
+**Where the fix lands in code:** [`PLAN-002-postgrest-deployment.md`](../completed/PLAN-002-postgrest-deployment.md) §Phase 2.4 — the `configure-postgrest.sh` create-path SQL block now includes:
 
 ```sql
 ALTER DEFAULT PRIVILEGES IN SCHEMA <schema> GRANT SELECT ON TABLES TO <app>_web_anon;

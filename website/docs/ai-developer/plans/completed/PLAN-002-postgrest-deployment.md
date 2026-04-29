@@ -4,13 +4,13 @@
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Backlog
+## Status: Completed (2026-04-29)
 
-**Goal**: Implement PostgREST as a deployable, multi-instance UIS service following every decision recorded in [INVESTIGATE-postgrest.md](INVESTIGATE-postgrest.md). After this plan, `./uis configure postgrest --app <name>` followed by `./uis deploy postgrest --app <name>` produces a working REST API serving an `api_v1` schema, and the platform supports the multi-instance pattern as a reusable convention.
+**Goal**: Implement PostgREST as a deployable, multi-instance UIS service following every decision recorded in [INVESTIGATE-postgrest.md](../backlog/INVESTIGATE-postgrest.md). After this plan, `./uis configure postgrest --app <name>` followed by `./uis deploy postgrest --app <name>` produces a working REST API serving an `api_v1` schema, and the platform supports the multi-instance pattern as a reusable convention.
 
-**Last Updated**: 2026-04-28
+**Last Updated**: 2026-04-29 — all 6 phases shipped; end-to-end Phase 6 validation passed against rancher-desktop. Two bugs surfaced during validation and fixed: create-path silent SQL failure (`2640d98`) and purge-path silent role-drop failure (`98627ab`). PLAN-002 also corrected the docs claim about OpenAPI 3.0 — PostgREST 12.x emits Swagger 2.0.
 
-**Investigation**: [INVESTIGATE-postgrest.md](INVESTIGATE-postgrest.md) — 23 resolved decisions; no open design questions.
+**Investigation**: [INVESTIGATE-postgrest.md](../backlog/INVESTIGATE-postgrest.md) — 23 resolved decisions; no open design questions.
 
 **Prerequisites**:
 - [PLAN-001-postgrest-documentation.md](../completed/PLAN-001-postgrest-documentation.md) approved by the Atlas developer. The docs are the design contract this plan builds toward; if PLAN-001 surfaces a design gap (case (c) feedback), update the investigate and revise this plan before starting.
@@ -102,7 +102,7 @@ This phase resolves the `_is_service_deployed` precheck conflict (gap #1, closed
     GRANT SELECT ON ALL TABLES IN SCHEMA <schema> TO <app>_web_anon;
     ALTER DEFAULT PRIVILEGES IN SCHEMA <schema> GRANT SELECT ON TABLES TO <app>_web_anon;
     ```
-    The final `ALTER DEFAULT PRIVILEGES` line is **load-bearing** — without it, views added to `<schema>` after configure runs are silently invisible to anonymous requests (they appear in PostgREST's OpenAPI but return `401`/empty rows because `<app>_web_anon` has no `SELECT`). See [INVESTIGATE-postgrest.md](INVESTIGATE-postgrest.md) addendum (2026-04-29) for the failure mode Atlas reproduced and the rationale for fixing here rather than per-consumer.
+    The final `ALTER DEFAULT PRIVILEGES` line is **load-bearing** — without it, views added to `<schema>` after configure runs are silently invisible to anonymous requests (they appear in PostgREST's OpenAPI but return `401`/empty rows because `<app>_web_anon` has no `SELECT`). See [INVESTIGATE-postgrest.md](../backlog/INVESTIGATE-postgrest.md) addendum (2026-04-29) for the failure mode Atlas reproduced and the rationale for fixing here rather than per-consumer.
   - Ensure namespace `postgrest` exists (reuse `_pg_ensure_namespace` pattern from `configure-postgresql.sh:105-112`).
   - Create secret `<app>-postgrest` in namespace `postgrest`, key `PGRST_DB_URI`, value `postgresql://<app>_authenticator:<pw>@postgresql.default.svc.cluster.local:5432/<database>`.
   - JSON output schema per Decision #20: `{app, namespace, secret, in_cluster_url, public_url_prefix}` — no credentials. Plain output: a single "next step" hint pointing at `./uis deploy postgrest --app <app>`.

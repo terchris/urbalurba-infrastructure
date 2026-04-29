@@ -36,7 +36,7 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA api_v1 GRANT SELECT ON TABLES TO <app>_web_an
 
 This grants `SELECT` on **future** tables/views in `api_v1` automatically. Belt-and-suspenders alongside the existing GRANT-on-existing line. Idempotent; safe to re-run.
 
-**Implementation impact.** [PLAN-002-postgrest-deployment.md](PLAN-002-postgrest-deployment.md) Phase 2.4 (the `configure-postgrest.sh` create-path SQL block) must include this `ALTER DEFAULT PRIVILEGES` statement. The line is small but load-bearing — without it, every consumer of UIS PostgREST has to either re-run configure on every schema change, or distribute the fix to their own migrations (Atlas's PLAN-004 emits guarded grants as a workaround if UIS doesn't ship this). The "fix once in UIS" path is cleaner and matches the "schema and roles are application-side / platform deploys PostgREST and documents the contract" boundary stated below.
+**Implementation impact.** [PLAN-002-postgrest-deployment.md](../completed/PLAN-002-postgrest-deployment.md) Phase 2.4 (the `configure-postgrest.sh` create-path SQL block) must include this `ALTER DEFAULT PRIVILEGES` statement. The line is small but load-bearing — without it, every consumer of UIS PostgREST has to either re-run configure on every schema change, or distribute the fix to their own migrations (Atlas's PLAN-004 emits guarded grants as a workaround if UIS doesn't ship this). The "fix once in UIS" path is cleaner and matches the "schema and roles are application-side / platform deploys PostgREST and documents the contract" boundary stated below.
 
 **Two related Atlas findings, captured for completeness:**
 
