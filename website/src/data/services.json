@@ -320,6 +320,25 @@
 ,
   {
     "@type": "SoftwareApplication",
+    "id": "postgrest",
+    "name": "PostgREST",
+    "description": "Auto-generated REST API from a curated PostgreSQL schema",
+    "category": "INTEGRATION",
+    "tags": ["rest-api", "postgrest", "api-platform", "postgresql", "read-only"],
+    "abstract": "A platform service that turns a curated api_v1 PostgreSQL schema into a public REST API.",
+    "logo": "postgrest-logo.png",
+    "website": "https://postgrest.org"
+    ,"summary": "PostgREST is a single Haskell binary that introspects a PostgreSQL schema and exposes its tables and views as REST endpoints, with foreign keys becoming embedded-resource relations and OpenAPI 3.0 metadata served at GET /. UIS deploys one PostgREST instance per consuming application, all sharing a single namespace and the shared PostgreSQL service. Each instance is configured separately via ./uis configure postgrest --app <name>."
+    ,"docs": "/docs/services/integration/postgrest"
+    ,"priority": 50
+    ,"checkCommand": "kubectl get deploy -n postgrest -l app.kubernetes.io/name=postgrest --no-headers 2>/dev/null | grep -qE \\\\s([1-9][0-9]*)/\\\\1\\\\s"
+    ,"requires": ["postgresql"]
+    ,"namespace": "postgrest"
+    ,"image": "postgrest/postgrest:<version-pinned-during-PLAN-002>"
+  }
+,
+  {
+    "@type": "SoftwareApplication",
     "id": "rabbitmq",
     "name": "RabbitMQ",
     "description": "Message broker for async communication",
