@@ -73,9 +73,25 @@ deploy_enabled_services() {
 }
 
 # Deploy a single service by ID
-# Usage: deploy_single_service <service_id>
+# Check if a service is multi-instance per services.json (multiInstance: true)
+_is_service_multi_instance() {
+    local service_id="$1"
+    local services_json="${SERVICES_JSON:-/mnt/urbalurbadisk/website/src/data/services.json}"
+    [[ -f "$services_json" ]] || return 1
+    local val
+    val=$(jq -r --arg id "$service_id" '.services[] | select(.id == $id) | .multiInstance // false' "$services_json" 2>/dev/null)
+    [[ "$val" == "true" ]]
+}
+
+# Usage: deploy_single_service <service_id> [<app_name> [<url_prefix> [<schema>]]]
+# For multi-instance services (multiInstance: true in services.json), app_name is
+# required and gets translated into Ansible extra-vars (_app_name, _url_prefix,
+# _schema) per the convention in ansible/playbooks/templates/README.md.
 deploy_single_service() {
     local service_id="$1"
+    local app_name="${2:-}"
+    local url_prefix="${3:-}"
+    local schema="${4:-}"
     local script
 
     script=$(find_service_script "$service_id")
@@ -93,7 +109,11 @@ deploy_single_service() {
     # shellcheck source=/dev/null
     source "$script" 2>/dev/null
 
-    log_info "Deploying $SCRIPT_NAME ($service_id)..."
+    if [[ -n "$app_name" ]]; then
+        log_info "Deploying $SCRIPT_NAME ($service_id) — app: $app_name..."
+    else
+        log_info "Deploying $SCRIPT_NAME ($service_id)..."
+    fi
 
     # Check dependencies first
     if [[ -n "$SCRIPT_REQUIRES" ]]; then
@@ -119,8 +139,18 @@ deploy_single_service() {
             target_host="${TARGET_HOST:-rancher-desktop}"
         fi
 
-        log_info "Running Ansible playbook: $SCRIPT_PLAYBOOK (target: $target_host)"
-        if ! ansible-playbook "$playbook_path" -e "target_host=$target_host"; then
+        # Build extra-vars. Multi-instance services receive per-app context.
+        local -a ansible_args=("-e" "target_host=$target_host")
+        if [[ -n "$app_name" ]]; then
+            ansible_args+=("-e" "_app_name=$app_name")
+            [[ -n "$url_prefix" ]] && ansible_args+=("-e" "_url_prefix=$url_prefix")
+            [[ -n "$schema" ]] && ansible_args+=("-e" "_schema=$schema")
+            log_info "Running Ansible playbook: $SCRIPT_PLAYBOOK (target: $target_host, app: $app_name)"
+        else
+            log_info "Running Ansible playbook: $SCRIPT_PLAYBOOK (target: $target_host)"
+        fi
+
+        if ! ansible-playbook "$playbook_path" "${ansible_args[@]}"; then
             die_k8s "Playbook failed: $SCRIPT_PLAYBOOK"
         fi
 
@@ -158,9 +188,12 @@ deploy_single_service() {
 }
 
 # Remove a single service by ID
-# Usage: remove_single_service <service_id>
+# Usage: remove_single_service <service_id> [<app_name>]
+# For multi-instance services, app_name is required and is passed as _app_name
+# extra-var to the removal playbook.
 remove_single_service() {
     local service_id="$1"
+    local app_name="${2:-}"
     local script
 
     script=$(find_service_script "$service_id")
@@ -174,7 +207,11 @@ remove_single_service() {
     # shellcheck source=/dev/null
     source "$script" 2>/dev/null
 
-    log_info "Removing $SCRIPT_NAME ($service_id)..."
+    if [[ -n "$app_name" ]]; then
+        log_info "Removing $SCRIPT_NAME ($service_id) — app: $app_name..."
+    else
+        log_info "Removing $SCRIPT_NAME ($service_id)..."
+    fi
 
     # Load cluster config for target_host
     local cluster_config="$CONFIG_DIR/cluster-config.sh"
@@ -195,9 +232,11 @@ remove_single_service() {
 
         local remove_playbook="$ANSIBLE_DIR/$playbook_file"
         if [[ -f "$remove_playbook" ]]; then
+            local -a ansible_args=("-e" "target_host=$target_host")
+            [[ -n "$app_name" ]] && ansible_args+=("-e" "_app_name=$app_name")
             log_info "Running removal: $SCRIPT_REMOVE_PLAYBOOK"
             # shellcheck disable=SC2086
-            if ! ansible-playbook "$remove_playbook" -e "target_host=$target_host" $extra_params; then
+            if ! ansible-playbook "$remove_playbook" "${ansible_args[@]}" $extra_params; then
                 die_k8s "Removal playbook failed"
             fi
             log_success "$SCRIPT_NAME removed"

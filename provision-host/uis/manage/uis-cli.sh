@@ -64,8 +64,10 @@ Service Discovery:
   cluster types           List available cluster types
 
 Service Deployment:
-  deploy [service]        Deploy all autostart services, or a specific service
-  undeploy <service>      Remove service from cluster
+  deploy [service]                    Deploy all autostart services, or a specific service
+  deploy <service> --app <name>       Deploy a multi-instance service for one app
+  undeploy <service>                  Remove service from cluster
+  undeploy <service> --app <name>     Remove one instance of a multi-instance service
 
 Service Configuration (for DCT template integration):
   configure <service>     Create app-specific resources (database, user) and return connection JSON
@@ -293,7 +295,21 @@ cmd_categories() {
 }
 
 cmd_deploy() {
-    local service_id="${1:-}"
+    local service_id=""
+    local app_name=""
+    local url_prefix=""
+    local schema=""
+
+    # Parse positional + flag args. First positional is service_id.
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --app)         app_name="$2"; shift 2 ;;
+            --url-prefix)  url_prefix="$2"; shift 2 ;;
+            --schema)      schema="$2"; shift 2 ;;
+            -*)            log_error "Unknown option: $1"; exit "$EXIT_GENERAL_ERROR" ;;
+            *)             [[ -z "$service_id" ]] && service_id="$1"; shift ;;
+        esac
+    done
 
     # Initialize if needed
     if ! check_first_run; then
@@ -314,14 +330,31 @@ cmd_deploy() {
             exit 1
         fi
 
-        # Deploy specific service
-        log_info "Deploying service: $service_id"
+        # Multi-instance vs single-instance validation
+        if _is_service_multi_instance "$service_id"; then
+            if [[ -z "$app_name" ]]; then
+                log_error "Service '$service_id' is multi-instance — --app <name> is required"
+                log_info "Example: uis deploy $service_id --app atlas"
+                exit "$EXIT_GENERAL_ERROR"
+            fi
+            # Apply per-app defaults (Decision #16/#19 in INVESTIGATE-postgrest.md)
+            url_prefix="${url_prefix:-api-$app_name}"
+            schema="${schema:-api_v1}"
+            log_info "Deploying service: $service_id (app: $app_name)"
+        else
+            if [[ -n "$app_name" || -n "$url_prefix" || -n "$schema" ]]; then
+                log_error "Service '$service_id' is single-instance — --app/--url-prefix/--schema not allowed"
+                exit "$EXIT_GENERAL_ERROR"
+            fi
+            log_info "Deploying service: $service_id"
+        fi
 
-        # Deploy and auto-enable
-        deploy_single_service "$service_id"
+        # Deploy
+        deploy_single_service "$service_id" "$app_name" "$url_prefix" "$schema"
 
         # Auto-enable if successful and service-auto-enable is available
-        if type enable_service &>/dev/null; then
+        # (Skip for multi-instance: enabled-services.conf is for single-instance autostart only)
+        if [[ -z "$app_name" ]] && type enable_service &>/dev/null; then
             if ! is_service_enabled "$service_id"; then
                 enable_service "$service_id"
                 log_info "Service '$service_id' added to autostart"
@@ -338,10 +371,19 @@ cmd_deploy() {
 }
 
 cmd_undeploy() {
-    local service_id="${1:-}"
+    local service_id=""
+    local app_name=""
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --app) app_name="$2"; shift 2 ;;
+            -*)    log_error "Unknown option: $1"; exit "$EXIT_GENERAL_ERROR" ;;
+            *)     [[ -z "$service_id" ]] && service_id="$1"; shift ;;
+        esac
+    done
 
     if [[ -z "$service_id" ]]; then
-        log_error "Usage: uis undeploy <service>"
+        log_error "Usage: uis undeploy <service> [--app <name>]"
         exit 1
     fi
 
@@ -354,8 +396,22 @@ cmd_undeploy() {
         exit 1
     fi
 
+    # Multi-instance vs single-instance validation
+    if _is_service_multi_instance "$service_id"; then
+        if [[ -z "$app_name" ]]; then
+            log_error "Service '$service_id' is multi-instance — --app <name> is required"
+            log_info "Example: uis undeploy $service_id --app atlas"
+            exit "$EXIT_GENERAL_ERROR"
+        fi
+    else
+        if [[ -n "$app_name" ]]; then
+            log_error "Service '$service_id' is single-instance — --app not allowed"
+            exit "$EXIT_GENERAL_ERROR"
+        fi
+    fi
+
     # Remove from kubernetes
-    remove_single_service "$service_id"
+    remove_single_service "$service_id" "$app_name"
 }
 
 cmd_enable() {
