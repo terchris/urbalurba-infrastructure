@@ -334,7 +334,7 @@ cmd_deploy() {
         if _is_service_multi_instance "$service_id"; then
             if [[ -z "$app_name" ]]; then
                 log_error "Service '$service_id' is multi-instance — --app <name> is required"
-                log_info "Example: uis deploy $service_id --app atlas"
+                log_info "Example: uis deploy $service_id --app atlas" >&2
                 exit "$EXIT_GENERAL_ERROR"
             fi
             # Apply per-app defaults (Decision #16/#19 in INVESTIGATE-postgrest.md)
@@ -400,7 +400,7 @@ cmd_undeploy() {
     if _is_service_multi_instance "$service_id"; then
         if [[ -z "$app_name" ]]; then
             log_error "Service '$service_id' is multi-instance — --app <name> is required"
-            log_info "Example: uis undeploy $service_id --app atlas"
+            log_info "Example: uis undeploy $service_id --app atlas" >&2
             exit "$EXIT_GENERAL_ERROR"
         fi
     else
