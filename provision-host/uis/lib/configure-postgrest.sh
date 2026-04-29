@@ -39,7 +39,8 @@ _pgrst_get_pod() {
         -o jsonpath='{.items[0].metadata.name}' 2>/dev/null
 }
 
-# Run a SQL command as the postgres admin user
+# Run a SQL command as the postgres admin user (default database).
+# Used for cluster-wide queries (pg_roles existence, CREATE/DROP ROLE, ALTER USER).
 _pgrst_exec() {
     local sql="$1"
     local admin_pass="$2"
@@ -55,6 +56,29 @@ _pgrst_exec() {
         -n "$PG_NAMESPACE" \
         --kubeconfig="$kubeconf" \
         -- env PGPASSWORD="$admin_pass" psql -U "$PG_ADMIN_USER" -t -A -c "$sql" 2>/dev/null
+}
+
+# Run a SQL block against a specific database. Mirrors `_pg_exec_db` in
+# configure-postgresql.sh. Uses -i + stdin (heredoc) so multi-statement blocks
+# work, and merges stderr into stdout so the caller can capture diagnostic
+# text on failure (no `2>/dev/null` here — silent failure is what bit us).
+_pgrst_exec_db() {
+    local sql="$1"
+    local admin_pass="$2"
+    local database="$3"
+    local kubeconf="${KUBECONF:-/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all}"
+    local pod
+    pod=$(_pgrst_get_pod)
+
+    if [[ -z "$pod" ]]; then
+        return 1
+    fi
+
+    printf '%s\n' "$sql" | kubectl exec -i "$pod" \
+        -n "$PG_NAMESPACE" \
+        --kubeconfig="$kubeconf" \
+        -- env PGPASSWORD="$admin_pass" psql -U "$PG_ADMIN_USER" -d "$database" \
+           --set ON_ERROR_STOP=on -f - 2>&1
 }
 
 # Check if a role exists
@@ -308,14 +332,16 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA $schema GRANT SELECT ON TABLES TO $web_anon_r
 EOF
 )
 
-    echo "Creating Postgres roles and grants for app '$app_name'..." >&2
-    local sql_result
-    sql_result=$(_pgrst_exec "$sql_block" "$admin_pass" 2>&1)
-    if [[ $? -ne 0 ]]; then
+    echo "Creating Postgres roles and grants for app '$app_name' in database '$database_name'..." >&2
+    local sql_result rc
+    sql_result=$(_pgrst_exec_db "$sql_block" "$admin_pass" "$database_name")
+    rc=$?
+    if [[ $rc -ne 0 ]]; then
         if [[ "$json_output" == true ]]; then
-            _configure_error "create_resources" "$service_id" "Role creation failed for '$app_name': $sql_result. Likely cause: schema '$schema' does not exist in database '$database_name' (the application must create it before configure runs)."
+            _configure_error "create_resources" "$service_id" "Role creation failed for '$app_name' in '$database_name' (psql exit $rc): $sql_result. Likely cause: schema '$schema' does not exist in database '$database_name' (the application must create it before configure runs)."
         fi
-        log_error "Role creation failed for '$app_name': $sql_result"
+        log_error "Role creation failed for '$app_name' in '$database_name' (psql exit $rc):"
+        log_error "$sql_result"
         log_error "Hint: schema '$schema' must exist in database '$database_name' before configure runs (the application's migration creates it)."
         return 1
     fi
