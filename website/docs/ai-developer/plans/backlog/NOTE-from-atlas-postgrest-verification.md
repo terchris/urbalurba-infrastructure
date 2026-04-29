@@ -61,7 +61,7 @@ This grants `SELECT` on **future** tables/views in `api_v1` automatically. Belt-
 
 ## Finding 2 — FK embeds require actual Postgres `FOREIGN KEY` constraints
 
-**The issue.** Your INVESTIGATE doesn't deeply discuss resource embedding, but the [PostgREST docs you cite](https://postgrest.org) heavily feature it (`?select=*,kommune(*)` etc.) and the worked example in [`website/docs/services/integration/postgrest.md`](../../../../services/integration/postgrest.md) at line 177 shows it as a key capability:
+**The issue.** Your INVESTIGATE doesn't deeply discuss resource embedding, but the [PostgREST docs you cite](https://postgrest.org) heavily feature it (`?select=*,kommune(*)` etc.) and the worked example in [`website/docs/services/integration/postgrest.md`](../../../services/integration/postgrest.md) at line 177 shows it as a key capability:
 
 > ```bash
 > # An NGO with its kommune embedded — one query, two tables joined
