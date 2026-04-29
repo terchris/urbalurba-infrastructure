@@ -43,7 +43,7 @@ SCRIPT_PROVIDES_APIS=""  # TODO(backstage): emit per-instance <app>-rest entries
 # === Website Metadata (Optional) ===
 SCRIPT_ABSTRACT="A platform service that turns a curated api_v1 PostgreSQL schema into a public REST API."
 SCRIPT_SUMMARY="PostgREST is a single Haskell binary that introspects a PostgreSQL schema and exposes its tables and views as REST endpoints, with foreign keys becoming embedded-resource relations and OpenAPI 3.0 metadata served at GET /. UIS deploys one PostgREST instance per consuming application, all sharing a single namespace and the shared PostgreSQL service. Each instance is configured separately via ./uis configure postgrest --app <name>."
-SCRIPT_LOGO="postgrest-logo.png"
+SCRIPT_LOGO="postgrest-logo.svg"
 SCRIPT_WEBSITE="https://postgrest.org"
 SCRIPT_TAGS="rest-api,postgrest,api-platform,postgresql,read-only"
 SCRIPT_DOCS="/docs/services/integration/postgrest"

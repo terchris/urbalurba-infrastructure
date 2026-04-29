@@ -18,7 +18,7 @@
 
 ## Addendum: 2026-04-29 — Atlas verification feedback (case (c) design gap)
 
-Source: [`NOTE-from-atlas-postgrest-verification.md`](NOTE-from-atlas-postgrest-verification.md). Atlas ran four pre-flight experiments against the design proposed below and surfaced one design gap that affects the role-creation SQL recorded in §"How configure works (per-instance)" → "What configure generates" (lines 219–225 of the original draft). Recorded as an addendum per [PLAN-001-postgrest-documentation.md](PLAN-001-postgrest-documentation.md) Phase 4.3 case (c) — the existing decisions are *not* modified; the new constraint and its implementation impact are documented here so PLAN-002 picks it up.
+Source: [`NOTE-from-atlas-postgrest-verification.md`](NOTE-from-atlas-postgrest-verification.md). Atlas ran four pre-flight experiments against the design proposed below and surfaced one design gap that affects the role-creation SQL recorded in §"How configure works (per-instance)" → "What configure generates" (lines 219–225 of the original draft). Recorded as an addendum per [PLAN-001-postgrest-documentation.md](../completed/PLAN-001-postgrest-documentation.md) Phase 4.3 case (c) — the existing decisions are *not* modified; the new constraint and its implementation impact are documented here so PLAN-002 picks it up.
 
 **The gap.** The role-creation SQL grants `SELECT` on **existing** tables/views in `api_v1` at the moment configure runs:
 
@@ -363,7 +363,7 @@ Following the [PLANS.md guidance on splitting investigations into ordered plans]
   - **No** entries in static `secrets-templates/` — per-app secrets are dynamic, written by `configure` (see "Note on secrets templates" below)
   - `manifests/` — **no static manifests.** PostgREST renders per-app, so all manifests live in `ansible/playbooks/templates/` as `.j2` files
   - `website/docs/services/integration/postgrest.md` documenting the `api_v1` contract, the per-app role naming convention, the schema-reload mechanism (`NOTIFY pgrst, 'reload schema'` or `kubectl rollout restart`), and a worked configure example
-  - `website/static/img/services/postgrest-logo.png` (official upstream PNG; PostgREST does not publish an SVG)
+  - `website/static/img/services/postgrest-logo.svg` (icon-only SVG; the upstream PNG carries the wordmark and doesn't fit the service-card layout)
   - Verification: configure + deploy a `postgrest --app test` instance against a temp schema in `default/postgresql`; `GET /` returns OpenAPI spec; sample view returns rows.
 
 - [ ] **PLAN-003-postgrest-verify.md** — `ansible/playbooks/088-test-postgrest.yml` covering OpenAPI spec, sample-view rows, 404 on schemas outside `api_v1`, and CORS headers. Register in `VERIFY_SERVICES` and `cmd_verify` per [Adding a Service §5b](../../../contributors/guides/adding-a-service.md).
@@ -391,7 +391,7 @@ Per the file map in [Adding a Service](../../../contributors/guides/adding-a-ser
 - `provision-host/uis/manage/uis-cli.sh` — pass `--app <name>` through to setup / remove / status playbooks
 - `provision-host/uis/templates/uis.extend/enabled-services.conf.default` — commented entry
 - `website/docs/services/integration/postgrest.md` — Docusaurus service page following [Documentation Standards](../../../contributors/rules/documentation.md)
-- `website/static/img/services/postgrest-logo.png` — service logo. PostgREST does not publish an SVG; use the official PNG from upstream (`https://raw.githubusercontent.com/PostgREST/postgrest/main/static/postgrest.png`). UIS already accepts PNG for several services (`loki-logo.png`, `openmetadata-logo.png`, `pgadmin-logo.png`). Filename must match `SCRIPT_LOGO="postgrest-logo.png"` in `service-postgrest.sh`.
+- `website/static/img/services/postgrest-logo.svg` — service logo. Icon-only SVG (no wordmark) so it fits the square service-card layout. The upstream PNG (`https://raw.githubusercontent.com/PostgREST/postgrest/main/static/postgrest.png`) carries the full wordmark and is too wide for the card; if a future contributor wants the original, UIS still accepts PNG for several other services (`loki-logo.png`, `openmetadata-logo.png`, `pgadmin-logo.png`). Filename must match `SCRIPT_LOGO="postgrest-logo.svg"` in `service-postgrest.sh`.
 - `website/sidebars.ts` — register the new doc page under the integration category
 
 **Contributor documentation updates (per Decision #21 — new template-rendering convention):**

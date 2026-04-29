@@ -13,7 +13,7 @@
 **Investigation**: [INVESTIGATE-postgrest.md](INVESTIGATE-postgrest.md) — 23 resolved decisions; no open design questions.
 
 **Prerequisites**:
-- [PLAN-001-postgrest-documentation.md](PLAN-001-postgrest-documentation.md) approved by the Atlas developer. The docs are the design contract this plan builds toward; if PLAN-001 surfaces a design gap (case (c) feedback), update the investigate and revise this plan before starting.
+- [PLAN-001-postgrest-documentation.md](../completed/PLAN-001-postgrest-documentation.md) approved by the Atlas developer. The docs are the design contract this plan builds toward; if PLAN-001 surfaces a design gap (case (c) feedback), update the investigate and revise this plan before starting.
 - The metadata file `provision-host/uis/services/integration/service-postgrest.sh`, the docs page `website/docs/services/integration/postgrest.md`, and the logo already exist (delivered by PLAN-001). This plan extends them; it does not recreate them.
 
 **Blocks**:
