@@ -36,7 +36,7 @@ Accurate. The `target/manifest.json` workaround call-out is precisely the path A
 
 ### 3. `ALTER DEFAULT PRIVILEGES` line in PLAN-002 Phase 2.4 ✓
 
-[`PLAN-002-postgrest-deployment.md` Phase 2.4](PLAN-002-postgrest-deployment.md) (lines 97–105):
+[`PLAN-002-postgrest-deployment.md` Phase 2.4](../completed/PLAN-002-postgrest-deployment.md) (lines 97–105):
 
 ```sql
 CREATE ROLE <app>_web_anon NOLOGIN;

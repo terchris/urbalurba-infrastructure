@@ -36,7 +36,7 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA api_v1 GRANT SELECT ON TABLES TO <app>_web_an
 
 This grants `SELECT` on **future** tables/views in `api_v1` automatically. Belt-and-suspenders alongside the existing GRANT-on-existing line. Idempotent; safe to re-run.
 
-**Implementation impact.** [PLAN-002-postgrest-deployment.md](PLAN-002-postgrest-deployment.md) Phase 2.4 (the `configure-postgrest.sh` create-path SQL block) must include this `ALTER DEFAULT PRIVILEGES` statement. The line is small but load-bearing — without it, every consumer of UIS PostgREST has to either re-run configure on every schema change, or distribute the fix to their own migrations (Atlas's PLAN-004 emits guarded grants as a workaround if UIS doesn't ship this). The "fix once in UIS" path is cleaner and matches the "schema and roles are application-side / platform deploys PostgREST and documents the contract" boundary stated below.
+**Implementation impact.** [PLAN-002-postgrest-deployment.md](../completed/PLAN-002-postgrest-deployment.md) Phase 2.4 (the `configure-postgrest.sh` create-path SQL block) must include this `ALTER DEFAULT PRIVILEGES` statement. The line is small but load-bearing — without it, every consumer of UIS PostgREST has to either re-run configure on every schema change, or distribute the fix to their own migrations (Atlas's PLAN-004 emits guarded grants as a workaround if UIS doesn't ship this). The "fix once in UIS" path is cleaner and matches the "schema and roles are application-side / platform deploys PostgREST and documents the contract" boundary stated below.
 
 **Two related Atlas findings, captured for completeness:**
 
@@ -103,7 +103,7 @@ Free manifest numbers in the `INTEGRATION` range (080–091): **086, 087, 088, 0
 
 ## What PostgREST is
 
-A standalone web server (single Haskell binary, ~30 MB image, MIT licensed, [`PostgREST/postgrest`](https://github.com/PostgREST/postgrest)) that introspects a configured PostgreSQL schema and exposes its tables and views as REST endpoints. Foreign keys become embedded-resource relations (`?select=*,kommune(*)`). The server emits OpenAPI 3.0 metadata at `GET /`.
+A standalone web server (single Haskell binary, ~30 MB image, MIT licensed, [`PostgREST/postgrest`](https://github.com/PostgREST/postgrest)) that introspects a configured PostgreSQL schema and exposes its tables and views as REST endpoints. Foreign keys become embedded-resource relations (`?select=*,kommune(*)`). The server emits OpenAPI metadata at `GET /` (PostgREST 12.x, the version UIS currently pins, emits Swagger 2.0; later releases may upgrade to OpenAPI 3.x).
 
 Properties that matter for UIS packaging:
 
@@ -203,8 +203,8 @@ The setup and remove playbooks receive the per-app instance via Ansible extra-va
 Four runnable checks against a deployed instance (e.g. `postgrest --app smoke` pointing at a tiny `api_v1.kommune` view):
 
 ```bash
-# 1. OpenAPI spec
-curl -fsS http://api-smoke.localhost/ | jq .openapi              # "3.0.0"
+# 1. OpenAPI spec (PostgREST 12.x emits Swagger 2.0; check for the swagger key)
+curl -fsS http://api-smoke.localhost/ | jq .swagger              # "2.0"
 
 # 2. Sample view returns rows
 curl -fsS http://api-smoke.localhost/kommune | jq 'length > 0'   # true

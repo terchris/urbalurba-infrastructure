@@ -19,7 +19,7 @@ Auto-generated REST API from a curated PostgreSQL schema.
 
 ## What It Does
 
-PostgREST is a single Haskell binary that introspects a PostgreSQL schema and exposes its tables and views as REST endpoints, with foreign keys becoming embedded-resource relations and OpenAPI 3.0 metadata served at `GET /`. UIS deploys one PostgREST instance per consuming application, all sharing a single namespace and the platform's PostgreSQL service. Each instance is configured separately via `./uis configure postgrest --app <name>`.
+PostgREST is a single Haskell binary that introspects a PostgreSQL schema and exposes its tables and views as REST endpoints, with foreign keys becoming embedded-resource relations and OpenAPI metadata served at `GET /`. PostgREST 12.x (the version UIS currently pins) emits Swagger 2.0; later releases may upgrade to OpenAPI 3.x. UIS deploys one PostgREST instance per consuming application, all sharing a single namespace and the platform's PostgreSQL service. Each instance is configured separately via `./uis configure postgrest --app <name>`.
 
 ## Configuration
 

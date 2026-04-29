@@ -265,6 +265,44 @@ The target host (default: `rancher-desktop`) is read from `cluster-config.sh`. T
 - `multipass-microk8s`
 - `raspberry-microk8s`
 
+## Manifests vs Templates: Single-Instance vs Multi-Instance
+
+UIS services come in two shapes, and the shape determines how the Kubernetes YAML is authored.
+
+### Single-instance services (the default)
+
+One shared instance per cluster. PostgreSQL, Redis, Prometheus, Grafana — every existing service in the table above. The setup playbook applies static manifest files via `kubernetes.core.k8s: src: <file>`:
+
+| Where | What |
+|---|---|
+| `manifests/<NNN>-<id>-config.yaml` | Helm values or ConfigMap |
+| `manifests/<NNN>-<id>-ingressroute.yaml` | Traefik IngressRoute |
+| `manifests/<NNN>-<id>-statefulset.yaml` (alt) | StatefulSet for Helm-less services |
+
+The metadata sets `SCRIPT_MULTI_INSTANCE` to nothing (or `"false"`). `./uis deploy <id>` and `./uis undeploy <id>` operate without an `--app` flag — the CLI rejects `--app` for single-instance services with a clear error.
+
+### Multi-instance services (per-app deployments)
+
+One Deployment **per consuming application**, all sharing the service's namespace. PostgREST is the first such service: `./uis configure postgrest --app atlas` then `./uis deploy postgrest --app atlas` produces an `atlas-postgrest` Deployment routed at `api-atlas.<domain>`. A second app (`./uis deploy postgrest --app customers`) coexists alongside it without collision.
+
+Static manifests do not work here — every instance needs different metadata, env-vars, and IngressRoute hostnames. Multi-instance services author **Jinja templates** instead, rendered at playbook-execution time:
+
+| Where | What |
+|---|---|
+| `ansible/playbooks/templates/<NNN>-<id>-<role>.yml.j2` | Per-app Deployment, Service, IngressRoute, etc. |
+
+The setup playbook applies them via `kubernetes.core.k8s: definition: "{{ lookup('template', '...j2') | from_yaml_all | list }}"` with per-app extra-vars (`_app_name`, `_url_prefix`, `_schema`). The metadata sets `SCRIPT_MULTI_INSTANCE="true"`, which propagates to `services.json` as `"multiInstance": true` and changes how the CLI routes lifecycle commands:
+
+- `./uis deploy <id>` and `./uis undeploy <id>` **require** `--app <name>`.
+- `./uis configure <id>` pre-checks the dependency (e.g. postgresql) is deployed, not the service itself.
+- `./uis status` and `./uis list` show per-instance state (PLAN-005 polishes the formatting).
+
+The full convention — file naming, the `_app_name`/`_url_prefix`/`_schema` extra-var contract, and `lookup('template', ...) | from_yaml_all | list` for multi-document templates — lives in [`ansible/playbooks/templates/README.md`](https://github.com/helpers-no/urbalurba-infrastructure/blob/main/ansible/playbooks/templates/README.md). The contributor walkthrough is in [Adding a Service: Multi-instance services](../guides/adding-a-service.md#multi-instance-services).
+
+### Which shape should you pick?
+
+Default to single-instance unless you have a reason. Pick multi-instance only when each consuming application needs its own copy with its own configuration, credentials, or routing — and a shared instance would not be safe or sensible to share. Most data-plane services (databases, caches, message brokers, observability backends) are single-instance. PostgREST is multi-instance because each app exposes a different Postgres schema with different `web_anon` roles and a different public URL.
+
 ## Stacks
 
 Stacks are pre-defined bundles of services that work together. They are defined in `provision-host/uis/lib/stacks.sh`.

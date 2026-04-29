@@ -97,7 +97,7 @@ generate_services_json() {
         local playbook="" priority="" tags="" summary="" docs=""
         local check_command="" remove_playbook="" requires=""
         local helm_chart="" namespace="" image=""
-        local configurable="" expose_port=""
+        local configurable="" expose_port="" multi_instance=""
 
         while IFS= read -r line; do
             case "$line" in
@@ -196,6 +196,11 @@ generate_services_json() {
                     configurable="${configurable//\"/}"
                     configurable="${configurable//\'/}"
                     ;;
+                SCRIPT_MULTI_INSTANCE=*)
+                    multi_instance="${line#SCRIPT_MULTI_INSTANCE=}"
+                    multi_instance="${multi_instance//\"/}"
+                    multi_instance="${multi_instance//\'/}"
+                    ;;
                 SCRIPT_EXPOSE_PORT=*)
                     expose_port="${line#SCRIPT_EXPOSE_PORT=}"
                     expose_port="${expose_port//\"/}"
@@ -278,6 +283,7 @@ EOF
         [[ -n "$namespace" ]] && echo "    ,\"namespace\": \"$(json_escape "$namespace")\"" >> "$temp_file"
         [[ -n "$image" ]] && echo "    ,\"image\": \"$(json_escape "$image")\"" >> "$temp_file"
         [[ "$configurable" == "true" ]] && echo "    ,\"configurable\": true" >> "$temp_file"
+        [[ "$multi_instance" == "true" ]] && echo "    ,\"multiInstance\": true" >> "$temp_file"
         [[ -n "$expose_port" ]] && echo "    ,\"exposePort\": $expose_port" >> "$temp_file"
 
         # Close JSON object

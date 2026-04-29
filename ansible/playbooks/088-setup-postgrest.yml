@@ -1,0 +1,119 @@
+---
+# file: ansible/playbooks/088-setup-postgrest.yml
+# Description:
+# Set up one PostgREST instance for a specific application. PostgREST is a
+# multi-instance UIS service — each consuming application gets its own
+# Deployment, Service, and IngressRoute, all rendered from Jinja templates
+# using the per-app extra-vars below.
+#
+# Prerequisites:
+# - Kubernetes cluster running
+# - kubectl configured for target cluster
+# - postgresql service deployed (PostgREST connects to it)
+# - configure-postgrest.sh has run for the same --app: it created the per-app
+#   Postgres roles AND wrote the per-app secret <app>-postgrest in the
+#   postgrest namespace. This playbook errors out cleanly if that secret is
+#   missing, since the rendered Deployment cannot start without it.
+#
+# Required extra-vars (passed by uis-cli.sh from `--app <name>`):
+#   _app_name    — per-app instance name (k8s-safe), e.g. "atlas"
+#   _url_prefix  — first label of the public hostname, e.g. "api-atlas"
+#   _schema      — Postgres schema PostgREST exposes, e.g. "api_v1"
+#
+# Usage:
+# ansible-playbook playbooks/088-setup-postgrest.yml \
+#   -e "_app_name=atlas _url_prefix=api-atlas _schema=api_v1"
+
+- name: Set up PostgREST instance for one application
+  hosts: localhost
+  gather_facts: false
+  vars:
+    merged_kubeconf_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
+    postgrest_namespace: "postgrest"
+    pod_readiness_timeout: 120
+
+  tasks:
+
+    - name: 1. Validate required extra-vars are set
+      ansible.builtin.assert:
+        that:
+          - _app_name is defined and _app_name | length > 0
+          - _url_prefix is defined and _url_prefix | length > 0
+          - _schema is defined and _schema | length > 0
+        fail_msg: |
+          Missing required extra-vars. Multi-instance services need per-app
+          context. Run via: ./uis deploy postgrest --app <name>
+          Or directly: ansible-playbook ... -e "_app_name=X _url_prefix=Y _schema=Z"
+
+    - name: 2. Print playbook context
+      ansible.builtin.debug:
+        msg: |
+          Setting up PostgREST instance
+          App:       {{ _app_name }}
+          Schema:    {{ _schema }}
+          URL host:  {{ _url_prefix }}.<any-domain-traefik-knows>
+          Namespace: {{ postgrest_namespace }} (shared)
+
+    # ============= PHASE 1: PREREQUISITE CHECK =============
+
+    - name: 3. Ensure postgrest namespace exists
+      kubernetes.core.k8s:
+        name: "{{ postgrest_namespace }}"
+        api_version: v1
+        kind: Namespace
+        state: present
+        kubeconfig: "{{ merged_kubeconf_file }}"
+
+    - name: 4. Verify per-app secret exists (configure-postgrest.sh must have run)
+      kubernetes.core.k8s_info:
+        kind: Secret
+        name: "{{ _app_name }}-postgrest"
+        namespace: "{{ postgrest_namespace }}"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      register: pgrst_secret_check
+
+    - name: 5. Fail with helpful message if secret is missing
+      ansible.builtin.fail:
+        msg: |
+          Secret '{{ _app_name }}-postgrest' not found in namespace '{{ postgrest_namespace }}'.
+          The configure step must run before deploy. Run:
+            ./uis configure postgrest --app {{ _app_name }} --schema {{ _schema }} --url-prefix {{ _url_prefix }}
+          Then retry this deploy.
+      when: pgrst_secret_check.resources | length == 0
+
+    # ============= PHASE 2: APPLY RENDERED MANIFESTS =============
+
+    - name: 6. Apply per-app PostgREST Deployment + Service
+      kubernetes.core.k8s:
+        state: present
+        kubeconfig: "{{ merged_kubeconf_file }}"
+        definition: "{{ lookup('template', 'templates/088-postgrest-config.yml.j2') | from_yaml_all | list }}"
+
+    - name: 7. Apply per-app IngressRoute (HostRegexp covers every domain Traefik knows)
+      kubernetes.core.k8s:
+        state: present
+        kubeconfig: "{{ merged_kubeconf_file }}"
+        definition: "{{ lookup('template', 'templates/088-postgrest-ingressroute.yml.j2') | from_yaml }}"
+
+    # ============= PHASE 3: WAIT FOR ROLLOUT =============
+
+    - name: 8. Wait for the per-app Deployment to become ready
+      kubernetes.core.k8s_info:
+        kind: Deployment
+        name: "{{ _app_name }}-postgrest"
+        namespace: "{{ postgrest_namespace }}"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+        wait: true
+        wait_condition:
+          type: Available
+          status: "True"
+        wait_timeout: "{{ pod_readiness_timeout }}"
+
+    - name: 9. Print success summary
+      ansible.builtin.debug:
+        msg: |
+          PostgREST instance '{{ _app_name }}' is ready.
+            Deployment: {{ _app_name }}-postgrest (postgrest namespace)
+            URL prefix: {{ _url_prefix }}.localhost (or any tailscale/cloudflare domain Traefik knows)
+            Smoke test: curl http://{{ _url_prefix }}.localhost/
+            Schema reload after adding a view: NOTIFY pgrst, 'reload schema';

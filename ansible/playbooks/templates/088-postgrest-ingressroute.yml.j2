@@ -1,0 +1,28 @@
+# Per-app Traefik IngressRoute for one PostgREST instance.
+# Rendered by 088-setup-postgrest.yml with extra-vars:
+#   _app_name    — per-app instance name (k8s-safe), e.g. "atlas"
+#   _url_prefix  — first label of the public hostname, e.g. "api-atlas"
+#
+# The HostRegexp pattern matches every domain Traefik knows — Rancher Desktop's
+# *.localhost wildcard, the Tailscale tunnel's *.<tailnet>.ts.net domain, and
+# any Cloudflare-tunnelled public domain — all via a single rule. See
+# `website/docs/contributors/rules/ingress-traefik.md` for the convention.
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: "{{ _app_name }}-postgrest"
+  namespace: postgrest
+  labels:
+    app.kubernetes.io/name: postgrest
+    app.kubernetes.io/instance: "{{ _app_name }}"
+    app.kubernetes.io/managed-by: uis
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: HostRegexp(`{{ _url_prefix }}\..+`)
+      kind: Rule
+      services:
+        - name: "{{ _app_name }}-postgrest"
+          port: 3000

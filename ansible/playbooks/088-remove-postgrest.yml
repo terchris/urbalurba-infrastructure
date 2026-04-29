@@ -1,0 +1,76 @@
+---
+# file: ansible/playbooks/088-remove-postgrest.yml
+# Description:
+# Remove one PostgREST instance's Kubernetes objects (Deployment, Service,
+# IngressRoute) for a specific application. Leaves Postgres roles and the
+# per-app secret untouched — those are removed by `./uis configure postgrest
+# --app <name> --purge` (Decision #18 in INVESTIGATE-postgrest.md).
+#
+# This split lets an operator undeploy + redeploy without re-running configure
+# and re-rotating the password.
+#
+# Required extra-vars (passed by uis-cli.sh from `--app <name>`):
+#   _app_name    — per-app instance name to remove
+#
+# Usage:
+# ansible-playbook playbooks/088-remove-postgrest.yml -e "_app_name=atlas"
+
+- name: Remove PostgREST instance for one application
+  hosts: localhost
+  gather_facts: false
+  vars:
+    merged_kubeconf_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
+    postgrest_namespace: "postgrest"
+
+  tasks:
+
+    - name: 1. Validate required extra-var
+      ansible.builtin.assert:
+        that:
+          - _app_name is defined and _app_name | length > 0
+        fail_msg: |
+          Missing required extra-var. Run via: ./uis undeploy postgrest --app <name>
+
+    - name: 2. Print removal context
+      ansible.builtin.debug:
+        msg: |
+          Removing PostgREST instance '{{ _app_name }}'
+          - Deletes:  Deployment, Service, IngressRoute in {{ postgrest_namespace }}
+          - Leaves:   Postgres roles ({{ _app_name | replace('-', '_') }}_web_anon,
+                      {{ _app_name | replace('-', '_') }}_authenticator),
+                      Secret '{{ _app_name }}-postgrest'
+          - To remove all: ./uis configure postgrest --app {{ _app_name }} --purge
+
+    - name: 3. Delete IngressRoute
+      kubernetes.core.k8s:
+        state: absent
+        api_version: traefik.io/v1alpha1
+        kind: IngressRoute
+        name: "{{ _app_name }}-postgrest"
+        namespace: "{{ postgrest_namespace }}"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+
+    - name: 4. Delete Service
+      kubernetes.core.k8s:
+        state: absent
+        api_version: v1
+        kind: Service
+        name: "{{ _app_name }}-postgrest"
+        namespace: "{{ postgrest_namespace }}"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+
+    - name: 5. Delete Deployment
+      kubernetes.core.k8s:
+        state: absent
+        api_version: apps/v1
+        kind: Deployment
+        name: "{{ _app_name }}-postgrest"
+        namespace: "{{ postgrest_namespace }}"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+
+    - name: 6. Print success summary
+      ansible.builtin.debug:
+        msg: |
+          PostgREST instance '{{ _app_name }}' Kubernetes objects removed.
+          Postgres roles and the secret remain — re-deploy works without re-configure.
+          Full teardown: ./uis configure postgrest --app {{ _app_name }} --purge
