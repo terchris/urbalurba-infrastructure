@@ -29,8 +29,11 @@ SCRIPT_CONFIGURABLE="true"
 SCRIPT_PRIORITY="50"
 
 # === Deployment Details (Optional) ===
-# Image pinned 2026-04-29 per INVESTIGATE-version-pinning.md
-SCRIPT_IMAGE="postgrest/postgrest:v12.2.3"
+# Image pinned to latest stable 2026-04-29 per INVESTIGATE-version-pinning.md.
+# v14.x still emits Swagger 2.0 (a.k.a. OpenAPI 2.0) at GET /; v15+ may switch
+# to OpenAPI 3.x. PostgREST follows MAJOR.PATCH versioning; only even majors
+# are released. Upgrade by bumping this tag and re-running Phase 6 validation.
+SCRIPT_IMAGE="postgrest/postgrest:v14.10"
 SCRIPT_NAMESPACE="postgrest"
 
 # === Extended Metadata (Optional) ===

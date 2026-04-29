@@ -336,7 +336,7 @@
     ,"removePlaybook": "088-remove-postgrest.yml"
     ,"requires": ["postgresql"]
     ,"namespace": "postgrest"
-    ,"image": "postgrest/postgrest:v12.2.3"
+    ,"image": "postgrest/postgrest:v14.10"
     ,"configurable": true
     ,"multiInstance": true
   }
