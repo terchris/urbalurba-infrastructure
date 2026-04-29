@@ -198,10 +198,15 @@ run_configure() {
     # Check if service is configurable
     if ! _is_configurable "$service_id"; then
         if [[ "$json_output" == true ]]; then
-            _configure_error "deploy_check" "$service_id" "Service '$service_id' is not configurable. Only data services and identity services support uis configure."
+            _configure_error "deploy_check" "$service_id" "Service '$service_id' is not configurable (no SCRIPT_CONFIGURABLE=true in service metadata)."
         fi
         log_error "Service '$service_id' is not configurable."
-        echo "Configurable services: postgresql, mysql, mongodb, redis, elasticsearch, qdrant, authentik, postgrest" >&2
+        local -a configurable_services
+        # shellcheck disable=SC2207
+        configurable_services=($(jq -r '.services[] | select(.configurable == true) | .id' "$SERVICES_JSON" 2>/dev/null | sort))
+        if [[ ${#configurable_services[@]} -gt 0 ]]; then
+            echo "Configurable services: ${configurable_services[*]}" >&2
+        fi
         return 1
     fi
 

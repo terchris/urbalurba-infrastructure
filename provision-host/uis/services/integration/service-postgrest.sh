@@ -25,10 +25,12 @@ SCRIPT_CHECK_COMMAND="kubectl get deploy -n postgrest -l app.kubernetes.io/name=
 SCRIPT_REMOVE_PLAYBOOK="088-remove-postgrest.yml"
 SCRIPT_REQUIRES="postgresql"
 SCRIPT_MULTI_INSTANCE="true"
+SCRIPT_CONFIGURABLE="true"
 SCRIPT_PRIORITY="50"
 
 # === Deployment Details (Optional) ===
-SCRIPT_IMAGE="postgrest/postgrest:v12.2.3"  # pinned 2026-04-29 per INVESTIGATE-version-pinning.md
+# Image pinned 2026-04-29 per INVESTIGATE-version-pinning.md
+SCRIPT_IMAGE="postgrest/postgrest:v12.2.3"
 SCRIPT_NAMESPACE="postgrest"
 
 # === Extended Metadata (Optional) ===
