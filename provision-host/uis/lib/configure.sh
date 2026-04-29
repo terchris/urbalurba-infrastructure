@@ -37,6 +37,31 @@ _is_configurable() {
     [[ "$val" == "true" ]]
 }
 
+# Check if a service is multi-instance (multiInstance: true in services.json)
+# Multi-instance services configure dependencies before dispatching, not the service itself.
+_is_multi_instance() {
+    local service_id="$1"
+
+    if [[ ! -f "$SERVICES_JSON" ]]; then
+        return 1
+    fi
+
+    local val
+    val=$(jq -r --arg id "$service_id" '.services[] | select(.id == $id) | .multiInstance // false' "$SERVICES_JSON")
+    [[ "$val" == "true" ]]
+}
+
+# Get space-separated list of services that the target service requires (from services.json .requires)
+_get_requires() {
+    local service_id="$1"
+
+    if [[ ! -f "$SERVICES_JSON" ]]; then
+        return 1
+    fi
+
+    jq -r --arg id "$service_id" '.services[] | select(.id == $id) | .requires // [] | .[]' "$SERVICES_JSON" 2>/dev/null
+}
+
 # Get namespace for a service from services.json
 _get_service_namespace() {
     local service_id="$1"
@@ -70,6 +95,10 @@ run_configure() {
     local json_output=false
     local namespace=""
     local secret_name_prefix=""
+    local schema=""
+    local url_prefix=""
+    local rotate=false
+    local purge=false
 
     # Parse arguments
     while [[ $# -gt 0 ]]; do
@@ -93,6 +122,22 @@ run_configure() {
             --secret-name-prefix)
                 secret_name_prefix="$2"
                 shift 2
+                ;;
+            --schema)
+                schema="$2"
+                shift 2
+                ;;
+            --url-prefix)
+                url_prefix="$2"
+                shift 2
+                ;;
+            --rotate)
+                rotate=true
+                shift
+                ;;
+            --purge)
+                purge=true
+                shift
                 ;;
             --json)
                 json_output=true
@@ -156,21 +201,40 @@ run_configure() {
             _configure_error "deploy_check" "$service_id" "Service '$service_id' is not configurable. Only data services and identity services support uis configure."
         fi
         log_error "Service '$service_id' is not configurable."
-        echo "Configurable services: postgresql, mysql, mongodb, redis, elasticsearch, qdrant, authentik" >&2
+        echo "Configurable services: postgresql, mysql, mongodb, redis, elasticsearch, qdrant, authentik, postgrest" >&2
         return 1
     fi
 
-    # Check if service is deployed
-    echo "Checking if $service_id is deployed..." >&2
-    if ! _is_service_deployed "$service_id"; then
-        if [[ "$json_output" == true ]]; then
-            _configure_error "deploy_check" "$service_id" "Service '$service_id' is not deployed. Deploy it first: uis deploy $service_id"
+    # Precheck: for multi-instance services, check the data-plane dependencies are deployed
+    # (the service itself has no instances until configure runs); for single-instance services,
+    # check the service itself is deployed. See INVESTIGATE-postgrest.md Decision #23.
+    if _is_multi_instance "$service_id"; then
+        local dep
+        while IFS= read -r dep; do
+            [[ -z "$dep" ]] && continue
+            echo "Checking if dependency '$dep' is deployed..." >&2
+            if ! _is_service_deployed "$dep"; then
+                if [[ "$json_output" == true ]]; then
+                    _configure_error "deploy_check" "$service_id" "Cannot configure $service_id: dependency '$dep' is not deployed. Deploy it first: uis deploy $dep"
+                fi
+                log_error "Cannot configure $service_id: dependency '$dep' is not deployed."
+                echo "Deploy it first: uis deploy $dep" >&2
+                return 1
+            fi
+            echo "Dependency '$dep' is running." >&2
+        done < <(_get_requires "$service_id")
+    else
+        echo "Checking if $service_id is deployed..." >&2
+        if ! _is_service_deployed "$service_id"; then
+            if [[ "$json_output" == true ]]; then
+                _configure_error "deploy_check" "$service_id" "Service '$service_id' is not deployed. Deploy it first: uis deploy $service_id"
+            fi
+            log_error "Service '$service_id' is not deployed."
+            echo "Deploy it first: uis deploy $service_id" >&2
+            return 1
         fi
-        log_error "Service '$service_id' is not deployed."
-        echo "Deploy it first: uis deploy $service_id" >&2
-        return 1
+        echo "$service_id is running." >&2
     fi
-    echo "$service_id is running." >&2
 
     # Dispatch to per-service handler
     local handler="$CONFIGURE_HANDLERS_DIR/configure-${service_id}.sh"
@@ -183,7 +247,9 @@ run_configure() {
         return 1
     fi
 
-    # Source and run handler
+    # Source and run handler. Multi-instance handlers receive the extended argument set
+    # (schema, url_prefix, rotate, purge); single-instance handlers ignore the trailing args
+    # via positional parameter rules.
     source "$handler"
-    configure_service "$service_id" "$app_name" "$database_name" "$init_file" "$json_output" "$namespace" "$secret_name_prefix"
+    configure_service "$service_id" "$app_name" "$database_name" "$init_file" "$json_output" "$namespace" "$secret_name_prefix" "$schema" "$url_prefix" "$rotate" "$purge"
 }
