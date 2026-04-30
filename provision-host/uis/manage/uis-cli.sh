@@ -373,17 +373,21 @@ cmd_deploy() {
 cmd_undeploy() {
     local service_id=""
     local app_name=""
+    local purge="false"
+    local yes="false"
 
     while [[ $# -gt 0 ]]; do
         case "$1" in
-            --app) app_name="$2"; shift 2 ;;
-            -*)    log_error "Unknown option: $1"; exit "$EXIT_GENERAL_ERROR" ;;
-            *)     [[ -z "$service_id" ]] && service_id="$1"; shift ;;
+            --app)   app_name="$2"; shift 2 ;;
+            --purge) purge="true"; shift ;;
+            --yes|-y) yes="true"; shift ;;
+            -*)      log_error "Unknown option: $1"; exit "$EXIT_GENERAL_ERROR" ;;
+            *)       [[ -z "$service_id" ]] && service_id="$1"; shift ;;
         esac
     done
 
     if [[ -z "$service_id" ]]; then
-        log_error "Usage: uis undeploy <service> [--app <name>]"
+        log_error "Usage: uis undeploy <service> [--app <name>] [--purge] [--yes]"
         exit 1
     fi
 
@@ -410,8 +414,26 @@ cmd_undeploy() {
         fi
     fi
 
+    # Confirmation prompt for --purge (skipped with --yes or non-TTY stdin)
+    if [[ "$purge" == "true" && "$yes" != "true" ]]; then
+        if [[ -t 0 ]]; then
+            log_warn "--purge will delete persistent state for '$service_id' (databases, roles, secrets, PVCs, namespace)."
+            log_warn "This is irreversible. Run with --yes to skip this prompt."
+            printf "Type 'yes' to continue: "
+            local reply
+            read -r reply
+            if [[ "$reply" != "yes" ]]; then
+                log_info "Aborted."
+                exit 0
+            fi
+        else
+            log_error "--purge requires interactive confirmation or --yes; stdin is not a TTY"
+            exit "$EXIT_GENERAL_ERROR"
+        fi
+    fi
+
     # Remove from kubernetes
-    remove_single_service "$service_id" "$app_name"
+    remove_single_service "$service_id" "$app_name" "$purge"
 }
 
 cmd_enable() {

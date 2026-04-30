@@ -1,0 +1,213 @@
+---
+# file: ansible/playbooks/090-remove-gravitee.yml
+# Description:
+#   Remove Gravitee APIM from the cluster.
+#
+#   Default mode (no extra-var):
+#     - Uninstall the Helm release
+#     - Remove the four Traefik IngressRoutes
+#     - Wait for pods to terminate
+#     KEEPS: PVCs, gravitee/urbalurba-secrets, namespace, PostgreSQL graviteedb
+#     A subsequent ./uis deploy gravitee re-installs without re-bootstrap.
+#
+#   Purge mode (-e _purge=true, set by `./uis undeploy gravitee --purge`):
+#     - Everything default mode does, plus:
+#     - DROP DATABASE graviteedb on PostgreSQL
+#     - DROP ROLE gravitee_user
+#     - Delete all PVCs in gravitee namespace
+#     - Delete the gravitee/urbalurba-secrets Secret
+#     - Delete the gravitee namespace
+#     User-level confirmation is enforced by uis-cli.sh before this playbook runs.
+#
+# Usage:
+#   ansible-playbook playbooks/090-remove-gravitee.yml
+#   ansible-playbook playbooks/090-remove-gravitee.yml -e _purge=true
+
+- name: Remove Gravitee APIM from Kubernetes
+  hosts: localhost
+  gather_facts: false
+  vars:
+    merged_kubeconf_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
+    manifests_folder: "/mnt/urbalurbadisk/manifests"
+    gravitee_namespace: "gravitee"
+    gravitee_release_name: "gravitee-apim"
+    gravitee_ingress_file: "{{ manifests_folder }}/091-gravitee-ingress.yaml"
+    purge_mode: "{{ _purge | default(false) | bool }}"
+
+  tasks:
+    - name: 1. Print removal context
+      ansible.builtin.debug:
+        msg: |
+          Removing Gravitee APIM
+          Namespace:    {{ gravitee_namespace }}
+          Release name: {{ gravitee_release_name }}
+          Mode:         {{ 'PURGE — drops database, role, secret, PVCs, namespace' if purge_mode else 'default — keeps PVCs, secret, database, namespace' }}
+
+    # ============= ALWAYS: KUBERNETES OBJECTS =============
+
+    - name: 2. Delete Traefik IngressRoutes
+      kubernetes.core.k8s:
+        src: "{{ gravitee_ingress_file }}"
+        state: absent
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      ignore_errors: true
+
+    - name: 3. Check for Gravitee Helm release
+      ansible.builtin.shell: helm list -n {{ gravitee_namespace }} | grep -w {{ gravitee_release_name }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: helm_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: 4. Uninstall Gravitee Helm release
+      ansible.builtin.command: helm uninstall {{ gravitee_release_name }} -n {{ gravitee_namespace }}
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      when: helm_check.rc == 0
+      changed_when: true
+      ignore_errors: true
+
+    - name: 5. Wait for APIM pods to terminate
+      ansible.builtin.shell: |
+        kubectl wait --for=delete pod -l app.kubernetes.io/instance={{ gravitee_release_name }} -n {{ gravitee_namespace }} --timeout=120s 2>/dev/null || true
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      changed_when: false
+
+    # ============= PURGE MODE ONLY: DATABASE + PERSISTENT STATE =============
+
+    - name: 6. Get PostgreSQL pod name (purge only)
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ merged_kubeconf_file }}"
+        kind: Pod
+        namespace: default
+        label_selectors:
+          - app.kubernetes.io/name=postgresql
+      register: postgres_pods
+      when: purge_mode
+
+    - name: 7. Set PostgreSQL pod name (purge only)
+      ansible.builtin.set_fact:
+        postgres_pod_name: "{{ postgres_pods.resources[0].metadata.name }}"
+      when: purge_mode and postgres_pods.resources is defined and postgres_pods.resources | length > 0
+
+    - name: 8. Read postgres admin password (purge only)
+      ansible.builtin.shell: >-
+        kubectl get secret urbalurba-secrets -n default
+        -o jsonpath='{.data.PGPASSWORD}' | base64 -d
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: postgres_password
+      when: purge_mode and postgres_pod_name is defined
+      changed_when: false
+      no_log: true
+
+    - name: 9. Read Gravitee DB user / database name from secrets (purge only)
+      ansible.builtin.shell: |
+        echo "user=$(kubectl get secret urbalurba-secrets -n {{ gravitee_namespace }} -o jsonpath='{.data.GRAVITEE_POSTGRES_USER}' 2>/dev/null | base64 -d)"
+        echo "db=$(kubectl get secret urbalurba-secrets -n {{ gravitee_namespace }} -o jsonpath='{.data.GRAVITEE_POSTGRES_DATABASE}' 2>/dev/null | base64 -d)"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: gravitee_db_meta
+      when: purge_mode and postgres_pod_name is defined
+      changed_when: false
+
+    - name: 10. Parse user / database vars (purge only)
+      ansible.builtin.set_fact:
+        gravitee_db_user: "{{ (gravitee_db_meta.stdout_lines | select('match', '^user=') | first).split('=', 1)[1] | default('gravitee_user') }}"
+        gravitee_db_name: "{{ (gravitee_db_meta.stdout_lines | select('match', '^db=') | first).split('=', 1)[1] | default('graviteedb') }}"
+      when: purge_mode and gravitee_db_meta is defined and gravitee_db_meta.stdout_lines is defined
+
+    - name: 11. Drop Gravitee database (purge only)
+      ansible.builtin.shell: >-
+        kubectl exec -n default {{ postgres_pod_name }} --
+        bash -c "PGPASSWORD='{{ postgres_password.stdout }}'
+        psql -h postgresql.default -U postgres -c
+        \"DROP DATABASE IF EXISTS {{ gravitee_db_name }};\""
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      when: purge_mode and postgres_pod_name is defined and gravitee_db_name is defined
+      changed_when: true
+      ignore_errors: true
+      no_log: true
+
+    - name: 12. Drop Gravitee role (purge only)
+      ansible.builtin.shell: >-
+        kubectl exec -n default {{ postgres_pod_name }} --
+        bash -c "PGPASSWORD='{{ postgres_password.stdout }}'
+        psql -h postgresql.default -U postgres -c
+        \"DROP ROLE IF EXISTS {{ gravitee_db_user }};\""
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      when: purge_mode and postgres_pod_name is defined and gravitee_db_user is defined
+      changed_when: true
+      ignore_errors: true
+      no_log: true
+
+    - name: 13. Delete all PVCs in gravitee namespace (purge only)
+      ansible.builtin.shell: >-
+        kubectl delete pvc -n {{ gravitee_namespace }} --all --ignore-not-found
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      when: purge_mode
+      changed_when: true
+      ignore_errors: true
+
+    - name: 14. Delete urbalurba-secrets in gravitee namespace (purge only)
+      kubernetes.core.k8s:
+        state: absent
+        api_version: v1
+        kind: Secret
+        name: urbalurba-secrets
+        namespace: "{{ gravitee_namespace }}"
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      when: purge_mode
+      ignore_errors: true
+
+    - name: 15. Delete gravitee namespace (purge only)
+      kubernetes.core.k8s:
+        name: "{{ gravitee_namespace }}"
+        api_version: v1
+        kind: Namespace
+        state: absent
+        kubeconfig: "{{ merged_kubeconf_file }}"
+      when: purge_mode
+      ignore_errors: true
+
+    # ============= STATUS =============
+
+    - name: 16. Display removal status
+      ansible.builtin.debug:
+        msg: |
+          ======================================================
+          Gravitee APIM Removal Status
+          ======================================================
+
+          Mode: {{ 'PURGE' if purge_mode else 'default' }}
+
+          {% if purge_mode %}
+          Removed:
+            - Helm release ({{ gravitee_release_name }})
+            - 4 IngressRoutes
+            - PostgreSQL database ({{ gravitee_db_name | default('graviteedb') }}) and role ({{ gravitee_db_user | default('gravitee_user') }})
+            - All PVCs in namespace
+            - gravitee/urbalurba-secrets
+            - gravitee namespace
+
+          A subsequent ./uis deploy gravitee will fully bootstrap from scratch.
+          {% else %}
+          Removed:
+            - Helm release ({{ gravitee_release_name }})
+            - 4 IngressRoutes
+
+          KEPT (use --purge to remove):
+            - PostgreSQL database ({{ gravitee_db_name | default('graviteedb') }}) and role
+            - All PVCs in {{ gravitee_namespace }} namespace
+            - gravitee/urbalurba-secrets
+            - {{ gravitee_namespace }} namespace
+
+          A subsequent ./uis deploy gravitee re-installs without re-bootstrap.
+          {% endif %}
+
+          ======================================================
