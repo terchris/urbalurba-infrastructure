@@ -239,7 +239,7 @@ configure_service() {
         # makes both pairs idempotent — re-purge after a partial cleanup
         # succeeds rather than erroring on a missing role.
         echo "Dropping Postgres roles for app '$app_name' in database '$target_db'..." >&2
-        local drop_sql drop_result rc
+        local drop_sql drop_result rc=0
         drop_sql=$(cat <<EOF
 DO \$\$
 DECLARE
@@ -259,8 +259,8 @@ END
 \$\$;
 EOF
 )
-        drop_result=$(_pgrst_exec_db "$drop_sql" "$admin_pass" "$target_db")
-        rc=$?
+        # `|| rc=$?` to capture exit without tripping caller's `set -e`.
+        drop_result=$(_pgrst_exec_db "$drop_sql" "$admin_pass" "$target_db") || rc=$?
         if [[ $rc -ne 0 ]]; then
             if [[ "$json_output" == true ]]; then
                 _configure_error "purge" "$service_id" "Failed to drop roles for '$app_name' in '$target_db' (psql exit $rc): $drop_result"
@@ -304,13 +304,15 @@ EOF
         local new_password
         new_password=$(openssl rand -base64 24 | tr -d '/+=' | head -c 32)
 
-        local alter_result
-        alter_result=$(_pgrst_exec "ALTER USER $authenticator_role WITH PASSWORD '$new_password'" "$admin_pass" 2>&1)
-        if [[ $? -ne 0 ]]; then
+        # `|| rc=$?` so a failing alter doesn't trip the caller's `set -e`.
+        local alter_result rc=0
+        alter_result=$(_pgrst_exec "ALTER USER $authenticator_role WITH PASSWORD '$new_password'" "$admin_pass" 2>&1) || rc=$?
+        if [[ $rc -ne 0 ]]; then
             if [[ "$json_output" == true ]]; then
-                _configure_error "rotate" "$service_id" "Failed to rotate password for '$authenticator_role': $alter_result"
+                _configure_error "rotate" "$service_id" "Failed to rotate password for '$authenticator_role' (psql exit $rc): $alter_result"
             fi
-            log_error "Failed to rotate password for '$authenticator_role'"
+            log_error "Failed to rotate password for '$authenticator_role' (psql exit $rc):"
+            log_error "$alter_result"
             return 1
         fi
 
@@ -360,6 +362,21 @@ EOF
     echo "  Schema:   $schema" >&2
     echo "  URL prefix: $url_prefix" >&2
 
+    # Precheck: the per-app database must exist (otherwise psql exits 2 with
+    # "could not connect" inside _pgrst_exec_db, which is a confusing failure).
+    # `|| true` to keep the check itself errexit-safe.
+    local db_check_rc=0
+    local db_check
+    db_check=$(_pgrst_exec "SELECT 1 FROM pg_database WHERE datname='$database_name'" "$admin_pass") || db_check_rc=$?
+    if [[ $db_check_rc -ne 0 || "$db_check" != "1" ]]; then
+        local msg="Database '$database_name' does not exist in the cluster's PostgreSQL. Create it first (typically via the consuming app's migration / bootstrap script), then retry: ./uis configure postgrest --app $app_name --database $database_name"
+        if [[ "$json_output" == true ]]; then
+            _configure_error "create_resources" "$service_id" "$msg"
+        fi
+        log_error "$msg"
+        return 1
+    fi
+
     # Generate password (UIS does not store this; only the secret holds it)
     local app_password
     app_password=$(openssl rand -base64 24 | tr -d '/+=' | head -c 32)
@@ -387,16 +404,29 @@ EOF
 )
 
     echo "Creating Postgres roles and grants for app '$app_name' in database '$database_name'..." >&2
-    local sql_result rc
-    sql_result=$(_pgrst_exec_db "$sql_block" "$admin_pass" "$database_name")
-    rc=$?
+    # Capture exit code WITHOUT tripping the calling script's `set -e`. A bare
+    # `var=$(failing_cmd); rc=$?` would terminate uis-cli.sh before we reach
+    # the if-check. The `|| rc=$?` form makes the assignment a compound
+    # command that errexit treats as handled. Same fix in rotate + purge below.
+    local sql_result rc=0
+    sql_result=$(_pgrst_exec_db "$sql_block" "$admin_pass" "$database_name") || rc=$?
     if [[ $rc -ne 0 ]]; then
+        local hint="psql exit $rc: $sql_result"
+        if [[ $rc -eq 2 ]]; then
+            hint+=$'\n'"Hint: psql exit 2 means it could not connect to database '$database_name'. Verify the database exists: kubectl exec -n default postgresql-0 -- psql -U postgres -lqt | grep '$database_name'"
+        else
+            hint+=$'\n'"Hint: schema '$schema' must exist in database '$database_name' before configure runs (the application's migration creates it)."
+        fi
         if [[ "$json_output" == true ]]; then
-            _configure_error "create_resources" "$service_id" "Role creation failed for '$app_name' in '$database_name' (psql exit $rc): $sql_result. Likely cause: schema '$schema' does not exist in database '$database_name' (the application must create it before configure runs)."
+            _configure_error "create_resources" "$service_id" "Role creation failed for '$app_name' in '$database_name'. $hint"
         fi
         log_error "Role creation failed for '$app_name' in '$database_name' (psql exit $rc):"
         log_error "$sql_result"
-        log_error "Hint: schema '$schema' must exist in database '$database_name' before configure runs (the application's migration creates it)."
+        if [[ $rc -eq 2 ]]; then
+            log_error "Hint: psql exit 2 = connection error. Verify '$database_name' exists in the cluster's postgresql instance."
+        else
+            log_error "Hint: schema '$schema' must exist in database '$database_name' before configure runs (the application's migration creates it)."
+        fi
         return 1
     fi
 
