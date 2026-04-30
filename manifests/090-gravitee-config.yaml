@@ -199,6 +199,22 @@ ui:
   enabled: true
   replicaCount: 1
 
+  # The Console SPA fetches /constants.json at startup to learn where the
+  # management API lives. Without explicit baseURL the chart falls back to
+  # constructing https://<api.ingress.management.hosts[0]><...path> from the
+  # chart defaults (apim.example.com) — which doesn't resolve, so the SPA
+  # silently fails on first XHR. UIS exposes the management API at
+  # http://gravitee-api.localhost/management via 091-gravitee-ingress.yaml.
+  baseURL: http://gravitee-api.localhost/management
+
+  # The Console also surfaces a "go to Developer Portal" link to users.
+  # The chart hardcodes this to https://<gateway.ingress.hosts[0]>/, which is
+  # wrong on two counts (https-only, and points at the gateway not the portal
+  # SPA). Override here. Maps under ui.portal are merged into constants.json
+  # and rendered after the chart's hardcoded entrypoint, so JSON last-wins.
+  portal:
+    entrypoint: http://gravitee-portal.localhost/
+
   ingress:
     enabled: false
 
@@ -216,6 +232,12 @@ ui:
 portal:
   enabled: true
   replicaCount: 1
+
+  # Same shape as ui.baseURL above: the Portal SPA fetches /assets/config.json
+  # and needs an explicit base for the portal-side management endpoints. The
+  # api pod serves /portal/... on the same hostname as /management/... — see
+  # installation.api.proxyPath.portal in the values block above.
+  baseURL: http://gravitee-api.localhost/portal
 
   ingress:
     enabled: false
