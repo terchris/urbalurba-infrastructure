@@ -14,12 +14,12 @@ Auto-generated REST API from a curated PostgreSQL schema.
 | **Undeploy** | `./uis undeploy postgrest --app <name>` |
 | **Depends on** | postgresql |
 | **Required by** | None |
-| **Image** | `postgrest/postgrest:<pinned-during-implementation>` |
+| **Image** | `postgrest/postgrest:v14.10` |
 | **Default namespace** | `postgrest` |
 
 ## What It Does
 
-PostgREST is a single Haskell binary that introspects a PostgreSQL schema and exposes its tables and views as REST endpoints, with foreign keys becoming embedded-resource relations and OpenAPI metadata served at `GET /`. PostgREST 12.x (the version UIS currently pins) emits Swagger 2.0; later releases may upgrade to OpenAPI 3.x. UIS deploys one PostgREST instance per consuming application, all sharing a single namespace and the platform's PostgreSQL service. Each instance is configured separately via `./uis configure postgrest --app <name>`.
+PostgREST is a single Haskell binary that introspects a PostgreSQL schema and exposes its tables and views as REST endpoints, with foreign keys becoming embedded-resource relations and OpenAPI metadata served at `GET /`. PostgREST 14.x (the version UIS currently pins, `v14.10`) emits Swagger 2.0; v15+ may upgrade to OpenAPI 3.x. UIS deploys one PostgREST instance per consuming application, all sharing a single namespace and the platform's PostgreSQL service. Each instance is configured separately via `./uis configure postgrest --app <name>`.
 
 ## Configuration
 
@@ -60,27 +60,67 @@ The `<app>_` prefix is required because Postgres roles are cluster-wide. Two app
 ### Lifecycle commands
 
 ```bash
-# 1. Configure (Postgres-side state + Secret in postgrest namespace)
+# 0. Bootstrap the application's database (one-time, per app)
+#    Creates <app>_db + the <app> Postgres role with credentials, and
+#    auto-exposes the cluster's postgresql service at localhost:35432.
+#    Run before the application's data pipeline so that api_v1.* views
+#    exist on the database by the time configure-postgrest runs in step 1.
+./uis configure postgresql --app atlas --database atlas_db --json
+#    → Copy the credentials from the JSON output into the application's
+#      env (DATABASE_URL, PGUSER, PGPASSWORD, PGDATABASE), then run the
+#      application's data pipeline (migrations and any data loading) so
+#      that the api_v1.* views are populated before step 1 runs.
+
+# 1. Configure PostgREST (Postgres-side role pair + Secret in postgrest namespace)
 ./uis configure postgrest --app atlas \
-    --database atlas \
+    --database atlas_db \
     --schema api_v1 \
     --url-prefix api-atlas
 
 # 2. Deploy (Kubernetes objects: Deployment, Service, IngressRoute)
 ./uis deploy postgrest --app atlas
 
-# 3. Verify
-./uis verify postgrest --app atlas
-curl http://api-atlas.localhost/             # OpenAPI spec
+# 3. Verify (see [Smoke checks](#smoke-checks) below for the full template)
+curl http://api-atlas.localhost/             # Swagger 2.0 metadata
 curl http://api-atlas.localhost/kommune      # Sample view
 ```
 
+Step 0 is required before step 1. `./uis configure postgrest` runs a precheck that the named database exists in the cluster's PostgreSQL — if it doesn't, configure aborts with a clear error and creates no side effects (no roles, no Secret). Running step 0 first is what guarantees the precheck passes; it also gives the application a role + credentials to write `marts.*` and `api_v1.*` into. Step 0 is per-app and idempotent.
+
 What changes at each step:
 
-- **`configure`** creates the role pair (`atlas_web_anon`, `atlas_authenticator`) and writes the `atlas-postgrest` Secret. Idempotent: a second call with the same `--app` is a no-op (skip path). Use `--rotate` to generate a new password and update the Secret.
-- **`deploy`** renders per-instance manifests and applies the Deployment, Service, and IngressRoute. Errors out if the instance has not been configured.
+- **`configure postgresql`** (step 0) creates `<app>_db`, the `<app>` Postgres role with a generated password, grants the role on the database, and auto-exposes the cluster service at `localhost:35432`. Returns connection JSON (no credentials are printed elsewhere — the JSON is the only output that carries the password). Use `--rotate` to refresh the password.
+- **`configure postgrest`** (step 1) creates the role pair (`atlas_web_anon`, `atlas_authenticator`) and writes the `atlas-postgrest` Secret. Idempotent: a second call with full state (role pair + Secret) is a no-op skip; from a partial-state baseline (roles exist but Secret missing, or vice versa) it takes a recovery path that re-aligns state via `DO` block + `EXISTS` guards (and `ALTER USER … PASSWORD` to refresh credentials). Use `--rotate` to force a new password and update the Secret.
+- **`deploy`** (step 2) renders per-instance manifests and applies the Deployment, Service, and IngressRoute. Errors out if the instance has not been configured.
 - **`undeploy`** removes only the Kubernetes objects. Postgres roles and the Secret remain, so a follow-up `deploy` works without re-configure.
-- **`configure --purge`** drops the Postgres roles and removes the Secret. Use after `undeploy` for a full teardown.
+- **`configure postgrest --purge`** drops the Postgres roles and removes the Secret. Pass `--database <app>_db` explicitly — without it, purge falls back to `<app>` as the default database name and aborts with "FATAL: database does not exist" (see [Troubleshooting](#troubleshooting)). Use after `undeploy` for a full teardown.
+
+### Smoke checks
+
+Four canonical checks verify a per-app PostgREST instance is healthy after deploy. Run these from the host machine after step 2:
+
+```bash
+# 1. Spec served, version pinned
+curl -sS http://api-<app>.localhost/ | jq '{swagger, version: .info.version}'
+# expect: {"swagger":"2.0","version":"14.10"}
+
+# 2. Real data flowing through a curated view
+curl -sS http://api-<app>.localhost/<view-name> | jq 'length'
+# expect: > 0
+
+# 3. Hidden objects stay hidden (only api_v1.* is exposed)
+curl -sS -o /dev/null -w '%{http_code}\n' http://api-<app>.localhost/<some-internal-table>
+# expect: 404
+
+# 4. CORS preflight works for browser callers
+curl -sS -X OPTIONS \
+    -H 'Origin: https://<your-frontend-host>' \
+    -H 'Access-Control-Request-Method: GET' \
+    http://api-<app>.localhost/<view-name> -i | grep -i access-control
+# expect: Access-Control-Allow-Origin: ...
+```
+
+Check 1 confirms PostgREST is alive and the pinned image is what's actually running. Check 2 confirms the application's `api_v1.*` schema is reachable and populated. Check 3 confirms only `api_v1.*` is in `db-schemas` — everything else (raw tables, internal `marts.*`, secrets) returns 404. Check 4 confirms CORS is open enough for browser apps.
 
 ### Schema reload
 
@@ -125,59 +165,7 @@ A single IngressRoute per instance answers every domain Traefik knows, via `Host
 
 No per-domain configuration in PostgREST or its IngressRoute.
 
-## Example: Atlas open-data API
-
-A worked example for the Atlas open-data application. Atlas publishes Norwegian public-sector data (kommuner, NGOs, social statistics) sourced from SSB, FHI, NAV, and Brreg.
-
-### Application-side: write the api_v1 schema
-
-In Atlas's data repository, as a migration:
-
-```sql
-CREATE SCHEMA api_v1;
-
-CREATE VIEW api_v1.kommune AS
-  SELECT kommune_nr, name, fylke_nr, population_latest
-  FROM marts.dim_kommune;
-
-CREATE VIEW api_v1.ngo AS
-  SELECT id, name, orgnr, kommune_nr, registered_at
-  FROM marts.dim_ngo;
-
-CREATE VIEW api_v1.low_income_children AS
-  SELECT kommune_nr, year, low_income_share, source
-  FROM marts.fct_low_income_children;
-```
-
-Atlas does **not** create the `atlas_web_anon` or `atlas_authenticator` roles or grant privileges — `./uis configure postgrest` does that.
-
-### Platform-side: configure and deploy
-
-```bash
-./uis configure postgrest --app atlas \
-    --database atlas \
-    --schema api_v1 \
-    --url-prefix api-atlas
-
-./uis deploy postgrest --app atlas
-```
-
-### Querying the API
-
-Three queries that demonstrate why PostgREST fits Atlas's relational data:
-
-```bash
-# All kommuner in fylke 03 (Oslo)
-curl 'http://api-atlas.localhost/kommune?fylke_nr=eq.03'
-
-# A single NGO by org-number
-curl 'http://api-atlas.localhost/ngo?orgnr=eq.971234567'
-
-# An NGO with its kommune embedded — one query, two tables joined
-curl 'http://api-atlas.localhost/ngo?select=*,kommune(*)&id=eq.123'
-```
-
-The third query is the access pattern PostgREST is being chosen for: foreign keys become embedded-resource relations, no hand-coded join endpoint required.
+## Limitations and gotchas
 
 ### Embedded resources require real FK constraints
 
@@ -192,6 +180,84 @@ If you're unsure, start without embeds and add them later if external demand sur
 ### Column descriptions don't propagate to wrapper views
 
 `COMMENT ON COLUMN marts.dim_kommune.name IS '…'` is **not** visible on `api_v1.kommune` defined as `CREATE VIEW api_v1.kommune AS SELECT … FROM marts.dim_kommune`. PostgREST projects empty `description` fields in the OpenAPI spec for view columns unless the consumer explicitly emits `COMMENT ON COLUMN api_v1.kommune.name IS '…'` per column. If your build pipeline already has descriptions in the underlying-table layer (e.g. dbt's `target/manifest.json`), have the migration generator re-emit them on the view.
+
+## Example: Atlas open-data API
+
+Atlas (`atlas.helpers.no`) publishes Norwegian public-sector and NGO supply data via PostgREST as the first consuming application of this service. Atlas is a worked-out, production-shaped example of every concept this page describes — `api_v1` schema as the public contract, role-pair anonymous access, generated views, Swagger 2.0 spec — verified end-to-end against rancher-desktop on 2026-04-30 (see [Atlas's PostgREST API contributor docs](https://github.com/terchris/atlas/blob/main/website/docs/contributors/api-v1.md)).
+
+### The api_v1 surface
+
+Nine wrapper views, one per `marts.mart_*` model in Atlas's curated `models/marts/api/` directory. Each is auto-generated from dbt's `target/manifest.json` rather than hand-written, so column descriptions and view definitions stay in sync with the underlying dbt model. The full list, returned by PostgREST's own `GET /` introspection:
+
+| Endpoint | What it serves |
+|---|---|
+| `/indicator_summary` | One row per (source, contents_code) — coverage, latest year, min/max, upstream timestamp. The "what indicators exist and how complete are they" surface. |
+| `/indicator_latest_values` | One row per (kommune, indicator, contents_code) at the latest year — the wide-table surface for kommune-level dashboards. |
+| `/indicator_missing_kommuner` | Per-indicator gap report: which kommuner have null values at the latest year. |
+| `/coverage_gap_barnefattigdom` | The "child poverty per kommune" cut, ordered for journalist-style "worst-N" queries. |
+| `/distrikt_summary` | Kommune-level NGO presence summary (chapter counts by NGO). |
+| `/ngo_index` | One row per NGO — chapter counts, geographic spread. |
+| `/ngo_overview` | Per-NGO breakdown by chapter level (national/regional/local) + activity + kommune coverage. |
+| `/activity_catalog` | One row per service-category-tagged activity across all NGOs. |
+| `/kommune_local_chapters` | One row per (kommune, NGO chapter) for chapter-level joins. |
+
+### Application-side: how api_v1 is built
+
+In Atlas's data repository, the `api_v1.*` views are produced by a generator that reads dbt's `target/manifest.json` after `dbt run` finishes, then emits one `CREATE OR REPLACE VIEW api_v1.<name>` per `mart_<name>` model in the curated set, plus a `COMMENT ON COLUMN` per column (descriptions sourced from `schema.yml`, propagated by dbt-osmosis). The generator runs at PR time as part of `regenerate-api-v1.sh`; the SQL file is checked in. Apply happens after `dbt run` on a fresh database via `apply-api-v1.sh`. Five validation gates (drift, coverage, static and runtime description coverage, row-count parity vs the underlying mart) keep the wrapper layer honest.
+
+The pattern is concrete and reproducible — see [PLAN-004](https://github.com/terchris/atlas/blob/main/website/docs/ai-developer/plans/completed/PLAN-004-postgrest-api-v1-wrapper.md) for the full design and rationale, and [api-v1.md](https://github.com/terchris/atlas/blob/main/website/docs/contributors/api-v1.md) for the contributor-facing workflow. Hand-writing wrapper views is also fine for smaller surfaces; Atlas just outgrew it once views started repeating shape.
+
+Atlas does **not** create the `atlas_web_anon` or `atlas_authenticator` roles or grant privileges — `./uis configure postgrest` does that.
+
+### Platform-side: configure and deploy
+
+```bash
+./uis configure postgresql --app atlas --database atlas_db --json
+# (Atlas's data pipeline runs against atlas_db here — migrations, ingest, dbt, apply-api-v1.sh)
+
+./uis configure postgrest --app atlas \
+    --database atlas_db \
+    --schema api_v1 \
+    --url-prefix api-atlas
+./uis deploy postgrest --app atlas
+```
+
+### Querying the API — three real access patterns
+
+```bash
+# 1. List all source/contents combinations, ordered by latest year
+$ curl -sS 'http://api-atlas.localhost/indicator_summary?order=latest_year.desc&limit=2'
+[{"source_id":"fhi-bor-alene","contents_code":"SMR","contents_label":"Standardisert rate (100 = nasjonalt snitt)",
+  "latest_year":2025,"kommuner_with_value":357,"kommuner_with_null":0,
+  "min_value":58.88,"max_value":142.27,"upstream_updated":"2026-04-30T06:22:21.532+00:00"},
+ {"source_id":"fhi-bor-alene","contents_code":"RATE","contents_label":"Andel (prosent)",
+  "latest_year":2025,"kommuner_with_value":357,"kommuner_with_null":0,
+  "min_value":14.78,"max_value":35.71,"upstream_updated":"2026-04-30T06:22:21.532+00:00"}]
+
+# 2. Filter by source — what does SSB 08764 (poverty rates) cover?
+$ curl -sS 'http://api-atlas.localhost/indicator_summary?source_id=eq.ssb-08764&limit=2'
+[{"source_id":"ssb-08764","contents_code":"EUskala50","contents_label":"EU-skala 50 prosent",
+  "latest_year":2024,"kommuner_with_value":357,"kommuner_with_null":1,
+  "min_value":0,"max_value":20.8,"upstream_updated":"2026-04-30T06:19:23.61+00:00"},
+ {"source_id":"ssb-08764","contents_code":"EUskala60","contents_label":"EU-skala 60 prosent",
+  "latest_year":2024,"kommuner_with_value":357,"kommuner_with_null":1,
+  "min_value":4.6,"max_value":28.6,"upstream_updated":"2026-04-30T06:19:23.61+00:00"}]
+
+# 3. Top-3 kommuner by child poverty rate (the "worst kommuner" journalist query)
+$ curl -sS 'http://api-atlas.localhost/coverage_gap_barnefattigdom?order=value_pct.desc&limit=3'
+[{"kommune_nr":"9999","kommune_name":"Uoppgitt","fylke_name":"Uoppgitt","year":2024,
+  "value_pct":null,"personer":null},
+ {"kommune_nr":"5630","kommune_name":"Berlevåg","fylke_name":"Finnmark","year":2024,
+  "value_pct":28.6,"personer":119},
+ {"kommune_nr":"3419","kommune_name":"Våler (Innlandet)","fylke_name":"Innlandet","year":2024,
+  "value_pct":28.2,"personer":525}]
+```
+
+PostgREST's filter / order / limit operators handle this without any application-side code — the views are the contract, the operators are the API.
+
+### What doesn't work in v1: FK embeds
+
+Atlas's `api_v1.*` does **not** support PostgREST's embedded-resource pattern (`?select=*,kommune(*)`) in v1. The reason is generic and covered by the [Embedded resources require real FK constraints](#embedded-resources-require-real-fk-constraints) subsection above: Atlas's `marts.*` lacks Postgres `FOREIGN KEY` constraints because dbt's `relationships:` tests are SQL assertions rather than DDL, and PostgREST reads `pg_constraint` not dbt's manifest. Atlas's PLAN-004 [Q10] resolved this as **(c) skip embeds in v1** — `mart_*` views are designed as fat rows (joined columns inline), so external consumers don't need embeds for kommune/fylke names, NGO names, etc. Revisit later via dbt-postgres `+constraints_enabled: true` or computed relationships if external demand surfaces.
 
 ## Undeploy
 
@@ -218,6 +284,36 @@ Or restart the pods: `kubectl rollout restart deployment/<app>-postgrest -n post
 ### PostgREST returns 401 unauthorized for an anonymous request
 
 The `<app>_authenticator` role lacks permission to switch to `<app>_web_anon`. `./uis configure postgrest --app <name>` grants this automatically; if you see this error after a clean configure, run `./uis configure postgrest --app <name> --rotate` to recreate the role pair, or check that the GRANT statement was not rolled back manually.
+
+### `./uis configure postgrest` exits unexpectedly or behaves oddly
+
+Pull the latest UIS image and try again:
+
+```bash
+./uis pull
+```
+
+`./uis pull` updates the `uis-provision-host` container to the latest published `ghcr.io/helpers-no/uis-provision-host:latest` and restarts it. Older images may carry handler bugs that have already been fixed on `main` but haven't been picked up locally yet. Re-run the failing command after the pull completes.
+
+### `./uis configure postgrest --app <name> --purge` errors with "FATAL: database does not exist"
+
+Pass `--database <app>_db` explicitly:
+
+```bash
+./uis configure postgrest --app atlas --database atlas_db --purge
+```
+
+Without `--database`, the purge path falls back to `<app>` as the database name (e.g. `atlas`, not `atlas_db`) and the underlying `psql -d <app>` connection fails. Tracked as a UX nit; the explicit-`--database` form is correct and matches how you'd run any other `configure` invocation.
+
+### `./uis configure postgrest` errors with "Database '\<name\>' does not exist"
+
+The configure precheck found no database named `<name>` in the cluster's PostgreSQL. This is the precheck working as intended — the message points at the missing prerequisite. Run step 0 first:
+
+```bash
+./uis configure postgresql --app <name> --database <name>_db --json
+```
+
+…then run your application's data pipeline against the new database so `api_v1.*` is populated, then re-run `./uis configure postgrest`.
 
 ## Out of scope
 
