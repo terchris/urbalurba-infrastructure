@@ -65,12 +65,6 @@ jdbc:
 ratelimit:
   type: none
 
-# Analytics (request counts, latency, status-code distributions, log
-# search) require Elasticsearch. Disabling here means the analytics
-# tab in the Console is empty; everything else works.
-analytics:
-  enabled: false
-
 # ---------------------------------------------------------------
 # External URLs for Console / Portal SPAs
 # ---------------------------------------------------------------
@@ -111,15 +105,32 @@ api:
   autoscaling:
     enabled: false
 
-  # JDBC password is provided at runtime as an env var sourced from
-  # the gravitee/urbalurba-secrets Secret. The chart honors
-  # GRAVITEE_MANAGEMENT_JDBC_PASSWORD for management.jdbc.password.
-  extraEnvs:
+  # Analytics (request counts, latency, status-code distributions, log
+  # search) require Elasticsearch. Setting type: none here disables the
+  # analytics repository at gravitee.yml render time. The chart's default
+  # is "elasticsearch", which leaves a stale ES endpoint baked into the
+  # ConfigMap and causes the api pod to loop on DNS resolution failures
+  # for graviteeio-apim-elasticsearch-ingest-hl.
+  analytics:
+    type: none
+
+  # Secret-backed env vars. The chart key is `env` (singular list), not
+  # `extraEnvs`. Spring Boot env-var override convention maps these to
+  # gravitee.yml keys: GRAVITEE_MANAGEMENT_JDBC_PASSWORD overrides
+  # management.jdbc.password; GRAVITEE_API_PROPERTIES_ENCRYPTION_SECRET
+  # overrides api.properties.encryption.secret (without it, gravitee logs
+  # "You still use the default secret" on every start).
+  env:
     - name: GRAVITEE_MANAGEMENT_JDBC_PASSWORD
       valueFrom:
         secretKeyRef:
           name: urbalurba-secrets
           key: GRAVITEE_POSTGRES_PASSWORD
+    - name: GRAVITEE_API_PROPERTIES_ENCRYPTION_SECRET
+      valueFrom:
+        secretKeyRef:
+          name: urbalurba-secrets
+          key: GRAVITEE_ENCRYPTION_KEY
 
   # Disable chart-managed Kubernetes Ingress; UIS routes via Traefik
   # IngressRoute (manifests/091-gravitee-ingress.yaml).
@@ -146,14 +157,29 @@ gateway:
   autoscaling:
     enabled: false
 
-  # Gateway also reads API definitions from the management database
-  # via JDBC, so it needs the same password.
-  extraEnvs:
+  # Disable the Elasticsearch reporter on the gateway side. Without this,
+  # the gateway's gravitee.yml ConfigMap still has a reporters.elasticsearch
+  # block targeting graviteeio-apim-elasticsearch-ingest-hl, which the
+  # gateway tries to push request metrics to. Same shape as the api-side
+  # analytics override above.
+  reporters:
+    elasticsearch:
+      enabled: false
+
+  # Gateway reads API definitions from the management database via JDBC,
+  # so it needs the same password. Same chart-key correction as api: env,
+  # not extraEnvs.
+  env:
     - name: GRAVITEE_MANAGEMENT_JDBC_PASSWORD
       valueFrom:
         secretKeyRef:
           name: urbalurba-secrets
           key: GRAVITEE_POSTGRES_PASSWORD
+    - name: GRAVITEE_API_PROPERTIES_ENCRYPTION_SECRET
+      valueFrom:
+        secretKeyRef:
+          name: urbalurba-secrets
+          key: GRAVITEE_ENCRYPTION_KEY
 
   ingress:
     enabled: false
