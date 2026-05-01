@@ -224,7 +224,77 @@
         state: present
         kubeconfig: "{{ merged_kubeconf_file }}"
 
-    # ============= PHASE 4: HELM REPO + DEPLOY =============
+    # ============= PHASE 4: ADMIN-USER WIRING =============
+    # The chart's gravitee.yml ships with a hardcoded in-memory user
+    # `admin` whose bcrypted password is the well-known plaintext "admin".
+    # We override it with a bcrypt of GRAVITEE_ADMIN_PASSWORD from the
+    # namespace secret so the Console actually honors the secret-stored
+    # credentials. Bcrypt is salted, so we cache the result back into the
+    # secret to keep helm-upgrade idempotent — a fresh hash every deploy
+    # would change the api-configmap checksum and force pod rollouts.
+
+    - name: 20a. Read admin credentials from gravitee/urbalurba-secrets
+      ansible.builtin.shell: |
+        echo "email=$(kubectl get secret urbalurba-secrets -n {{ gravitee_namespace }} -o jsonpath='{.data.GRAVITEE_ADMIN_EMAIL}' 2>/dev/null | base64 -d)"
+        echo "password=$(kubectl get secret urbalurba-secrets -n {{ gravitee_namespace }} -o jsonpath='{.data.GRAVITEE_ADMIN_PASSWORD}' 2>/dev/null | base64 -d)"
+        echo "bcrypt=$(kubectl get secret urbalurba-secrets -n {{ gravitee_namespace }} -o jsonpath='{.data.GRAVITEE_ADMIN_PASSWORD_BCRYPT}' 2>/dev/null | base64 -d)"
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: admin_creds_raw
+      changed_when: false
+      no_log: true
+
+    - name: 20b. Parse admin credentials
+      ansible.builtin.set_fact:
+        gravitee_admin_email: "{{ (admin_creds_raw.stdout_lines | select('match', '^email=') | first | default('email=')).split('=', 1)[1] }}"
+        gravitee_admin_password: "{{ (admin_creds_raw.stdout_lines | select('match', '^password=') | first | default('password=')).split('=', 1)[1] }}"
+        gravitee_admin_bcrypt_existing: "{{ (admin_creds_raw.stdout_lines | select('match', '^bcrypt=') | first | default('bcrypt=')).split('=', 1)[1] }}"
+      no_log: true
+
+    - name: 20c. Fail if admin password is empty
+      ansible.builtin.fail:
+        msg: |
+          gravitee/urbalurba-secrets has empty GRAVITEE_ADMIN_PASSWORD. The api pod's
+          in-memory admin user can't be configured. Verify your secrets template has
+          DEFAULT_ADMIN_PASSWORD set, then ./uis secrets generate && ./uis secrets apply.
+      when: gravitee_admin_password | length == 0
+
+    - name: 20d. Verify cached bcrypt or compute a fresh one
+      ansible.builtin.shell: |
+        python3 - <<'PY'
+        import bcrypt, os, sys
+        pw = os.environ['ADMIN_PW'].encode()
+        existing = os.environ['EXISTING_BCRYPT'].encode()
+        if existing and existing.startswith((b'$2a$', b'$2b$', b'$2y$')):
+            try:
+                if bcrypt.checkpw(pw, existing):
+                    print(existing.decode(), end='')
+                    sys.exit(0)
+            except Exception:
+                pass
+        # No usable cached bcrypt — compute fresh
+        h = bcrypt.hashpw(pw, bcrypt.gensalt(rounds=10, prefix=b'2a'))
+        print(h.decode(), end='')
+        PY
+      environment:
+        ADMIN_PW: "{{ gravitee_admin_password }}"
+        EXISTING_BCRYPT: "{{ gravitee_admin_bcrypt_existing }}"
+      register: admin_bcrypt
+      changed_when: admin_bcrypt.stdout != gravitee_admin_bcrypt_existing
+      no_log: true
+
+    - name: 20e. Cache bcrypt back into gravitee/urbalurba-secrets (so helm upgrade is idempotent)
+      ansible.builtin.shell: >-
+        kubectl patch secret urbalurba-secrets -n {{ gravitee_namespace }}
+        --type=merge -p
+        '{"data":{"GRAVITEE_ADMIN_PASSWORD_BCRYPT":"{{ admin_bcrypt.stdout | b64encode }}"}}'
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      when: admin_bcrypt.stdout != gravitee_admin_bcrypt_existing
+      changed_when: true
+      no_log: true
+
+    # ============= PHASE 5: HELM REPO + DEPLOY =============
 
     - name: 21. Check existing Helm repositories
       ansible.builtin.command: helm repo list
@@ -247,6 +317,8 @@
         helm upgrade --install {{ gravitee_release_name }} {{ gravitee_helm_chart }}
         --version {{ gravitee_chart_version }}
         -f {{ gravitee_config_file }}
+        --set-string adminPasswordBcrypt={{ admin_bcrypt.stdout }}
+        --set-string adminEmail={{ gravitee_admin_email }}
         --namespace {{ gravitee_namespace }}
         --timeout {{ installation_timeout }}s
         --wait
@@ -254,6 +326,7 @@
         KUBECONFIG: "{{ merged_kubeconf_file }}"
       register: gravitee_install
       changed_when: true
+      no_log: true
 
     - name: 25. Display Helm install summary
       ansible.builtin.debug:
