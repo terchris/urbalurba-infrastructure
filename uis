@@ -282,6 +282,26 @@ case "${1:-help}" in
         # Clean up old temp directories
         docker exec "$CONTAINER_NAME" rm -rf /mnt/urbalurbadisk/.temp /mnt/urbalurbadisk/generate 2>/dev/null || true
 
+        # Test 0: deploy-flow binaries are present
+        # Catches silent regressions in the provision-host-02-kubetools.sh layer
+        # (e.g. a curl from dl.k8s.io failing without aborting the build, leaving
+        # an empty /usr/local/bin/kubectl). Without this, missing binaries only
+        # surface when an actual ./uis deploy runs against a cluster.
+        log_info "Test 0: deploy-flow binary presence"
+        docker exec "$CONTAINER_NAME" bash -c '
+          set -e
+          for bin in kubectl helm ansible-playbook python3; do
+            if ! command -v "$bin" >/dev/null 2>&1; then
+              echo "MISSING: $bin not found on PATH" >&2
+              exit 1
+            fi
+            echo "  $bin: $(command -v "$bin")"
+          done
+          # bcrypt is needed by 090-setup-gravitee.yml for admin-password wiring
+          python3 -c "import bcrypt" || { echo "MISSING: python3 bcrypt module" >&2; exit 1; }
+          echo "  python3 bcrypt: ok"
+        '
+
         # Test 1: uis-cli version
         log_info "Test 1: uis-cli version"
         docker exec "$CONTAINER_NAME" /mnt/urbalurbadisk/provision-host/uis/manage/uis-cli.sh version

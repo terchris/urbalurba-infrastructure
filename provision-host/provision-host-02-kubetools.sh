@@ -59,13 +59,16 @@ install_ansible_kubernetes() {
         add_status "Ansible" "Status" "Already installed (${ANSIBLE_VERSION})"
     else
         echo "Installing Ansible and Kubernetes Python module"
+        # ansible-core is installed from PyPI rather than the ppa:ansible/ansible PPA.
+        # Launchpad's HTTPS layer flakes regularly (504s, SSL handshake EOF), and the
+        # add-apt-repository call goes through api.launchpad.net which is the
+        # single point of failure. PyPI is more reliable. On Python 3.10 (Ubuntu 22.04),
+        # pip auto-resolves to ansible-core 2.17.x, which matches what the PPA shipped.
+        # python3-kubernetes still comes from apt (universe), unchanged.
         sudo apt-get update -qq || return 1
-        sudo apt-get install -qq -y software-properties-common || return 1
-        sudo add-apt-repository --yes --update ppa:ansible/ansible || return 1
-
-        # Install ansible-core (slim) instead of full ansible package (~350MB savings)
-        # Then install only the collections we actually use
-        sudo DEBIAN_FRONTEND=noninteractive apt-get install -qq -y ansible-core python3-kubernetes || return 1
+        sudo DEBIAN_FRONTEND=noninteractive apt-get install -qq -y --no-install-recommends \
+            python3-pip python3-kubernetes || return 1
+        sudo pip3 install --quiet ansible-core || return 1
         check_command_success "Ansible" "Installation" || return 1
 
         # Install only required Ansible collections (used in our playbooks)
@@ -177,12 +180,21 @@ install_kubectl() {
     # Check if we're in a container or if snap is available
     if [ "$RUNNING_IN_CONTAINER" = "true" ] || ! command -v snap &> /dev/null; then
         echo "Installing kubectl directly (not using snap)"
-        KUBECTL_VERSION=$(curl -L -s https://dl.k8s.io/release/stable.txt)
-        curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/$(dpkg --print-architecture)/kubectl"
-        chmod +x kubectl
-        sudo mv kubectl /usr/local/bin/
+        KUBECTL_VERSION=$(curl -fL -s https://dl.k8s.io/release/stable.txt) || { add_error "kubectl" "Failed to fetch stable version"; return 1; }
+        if [ -z "$KUBECTL_VERSION" ]; then
+            add_error "kubectl" "Empty version from dl.k8s.io/release/stable.txt"
+            return 1
+        fi
+        curl -fLO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/$(dpkg --print-architecture)/kubectl" || { add_error "kubectl" "Failed to download kubectl binary"; return 1; }
+        chmod +x kubectl || { add_error "kubectl" "Failed to chmod kubectl"; return 1; }
+        sudo mv kubectl /usr/local/bin/ || { add_error "kubectl" "Failed to move kubectl to /usr/local/bin/"; return 1; }
+        if ! command -v kubectl &> /dev/null; then
+            add_error "kubectl" "kubectl not on PATH after install"
+            return 1
+        fi
         KUBECTL_VERSION=$(kubectl version --client --output=yaml | grep gitVersion | cut -d' ' -f4)
         add_status "kubectl" "Status" "Installed (${KUBECTL_VERSION})"
+        return 0
     else
         echo "Installing kubectl using snap"
         if sudo snap install kubectl --classic; then
@@ -324,10 +336,14 @@ main() {
         sudo apt-get install -qq -y curl snapd || return 1
     fi
 
-    install_ansible_kubernetes || return 1
+    # Install kubectl, helm, k9s first — direct downloads from k8s.io / GitHub,
+    # most resilient. Ansible install (via PyPI) also avoids launchpad now,
+    # but we keep it last so a transient PyPI hiccup can't strand the cluster
+    # tooling that other scripts depend on.
     install_kubectl || return 1
-    install_k9s || return 1
     install_helm || return 1
+    install_k9s || return 1
+    install_ansible_kubernetes || return 1
 
     print_summary
 
