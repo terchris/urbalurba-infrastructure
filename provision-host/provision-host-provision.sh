@@ -171,12 +171,6 @@ main() {
 
     print_summary
 
-    # In container builds, continue even if some scripts fail (e.g., snap not available)
-    if is_container && [ "$overall_exit_code" -ne 0 ]; then
-        echo "Some scripts failed but continuing (container build mode)"
-        exit 0
-    fi
-
     exit $overall_exit_code
 }
 
