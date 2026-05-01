@@ -58,6 +58,15 @@ The two roles are separate. Using PostgreSQL for management/config is solid (JDB
 
 Default chart values are sized for production. UIS overrides per-component `resources.requests` and `resources.limits` in `manifests/090-gravitee-config.yaml` to a laptop-tuned baseline (~1.2 CPU / 2.5 GiB combined across the four pods). Adjust there if the local cluster has more or less headroom.
 
+### Enterprise-only Console features
+
+The Helm chart we deploy is the OSS Gravitee APIM image. The Console SPA still ships UI for several Enterprise-licensed modules, which appear with a lock icon and are non-functional without an EE license:
+
+- **API Products**, **Kafka Clusters**, **Audit**, **Alerts** in the left navigation.
+- A `503` on `GET /management/v2/organizations/DEFAULT/ui/customization` (Console branding/customization) — served by an EE component the OSS chart does not deploy. Login, navigation, and API management work normally; only the customization UI is unavailable.
+
+These are expected on an OSS install and are not regressions to investigate.
+
 ## Deploy
 
 ```bash
