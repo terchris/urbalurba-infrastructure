@@ -1,115 +1,93 @@
 # file: /mnt/urbalurbadisk/manifests/091-gravitee-ingress.yaml
-# description: Simple hostname-based ingress for Gravitee APIM 4.8.4
+# description: Hostname + path routing for Gravitee APIM 4.11
 #
-# HOSTNAME STRATEGY (Simple Host-Based Routing):
-# - api.localhost → API Gateway (gravitee-apim-gateway:82)
-# - portal.localhost → Developer Portal (gravitee-apim-portal:8003)  
-# - gravitee.localhost → Management Console (gravitee-apim-ui:8002)
-# - gravitee-api.localhost → Management API (gravitee-apim-api:83)
+# HOSTNAME STRATEGY (HostRegexp-based — works on localhost, Tailscale, Cloudflare):
 #
-# DESIGN PRINCIPLES:
-# - Follows same pattern as whoami-public.localhost (proven working)
-# - Uses traefik.io/v1alpha1 API (cluster standard)
-# - Simple Host() matching (no complex path routing)
-# - No middleware needed (services handle their own paths)
-# - No conflicts with existing nginx catch-all (priority: 1)
+#   gravitee.<domain>              Console SPA (gravitee-apim-ui:8002)
+#   gravitee.<domain>/management/  Management API (gravitee-apim-api:83)
+#   gravitee.<domain>/portal/      Portal-facing API (same api pod, different sub-path)
+#   gravitee-portal.<domain>       Developer Portal SPA (gravitee-apim-portal:8003)
+#   gravitee-gw.<domain>           Public API Gateway (gravitee-apim-gateway:82)
+#
+# WHY CONSOLE + API SHARE A HOSTNAME:
+# Gravitee's auth uses an HttpOnly session cookie set by the management API on
+# login. Cross-origin XHR (Console at gravitee.<domain> calling API at a
+# different subdomain) needs SameSite=None;Secure, which requires HTTPS. On
+# plain HTTP for laptop dev, the only workable shape is same-origin: route the
+# management API under /management/ on the Console hostname so cookies travel
+# trivially. This matches the chart's default deployment shape (Console at
+# /console/, API at /management/ on the same host).
+#
+# Match priorities are explicit: PathPrefix routes have priority 100 so they
+# match before the catch-all root route on the same host.
+#
+# Service names and ports verified against `helm template graviteeio/apim
+# --version 4.11.3`. No chart-managed Kubernetes Ingress is created — UIS owns
+# routing here. All routes are public (no Authentik forward auth) for v1;
+# SSO is a follow-up plan.
 
 ---
-# =============================================================================
-# DEVELOPER DOMAIN - API Gateway 
-# =============================================================================
-
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
-  name: gravitee-api-gateway
-  namespace: default
+  name: gravitee-console
+  namespace: gravitee
   labels:
     app: gravitee-apim
-    component: api-gateway
-    domain: developer
-    protection: none
+    component: ui
 spec:
   entryPoints:
     - web
   routes:
-    - match: Host(`api.localhost`)
+    # Management + portal API endpoints share the Console hostname. Higher
+    # priority than the catch-all UI route below so PathPrefix matches first.
+    - match: HostRegexp(`gravitee\..+`) && (PathPrefix(`/management`) || PathPrefix(`/portal`))
       kind: Rule
+      priority: 100
       services:
-        - name: gravitee-apim-gateway
-          port: 82
-
----
-# =============================================================================
-# DEVELOPER DOMAIN - Portal UI
-# =============================================================================
-
-apiVersion: traefik.io/v1alpha1
-kind: IngressRoute
-metadata:
-  name: gravitee-developer-portal
-  namespace: default
-  labels:
-    app: gravitee-apim
-    component: developer-portal
-    domain: developer
-    protection: none
-spec:
-  entryPoints:
-    - web
-  routes:
-    - match: Host(`portal.localhost`)
-      kind: Rule
-      services:
-        - name: gravitee-apim-portal
-          port: 8003
-
----
-# =============================================================================
-# ADMIN DOMAIN - Management Console
-# =============================================================================
-
-apiVersion: traefik.io/v1alpha1
-kind: IngressRoute
-metadata:
-  name: gravitee-admin-console
-  namespace: default
-  labels:
-    app: gravitee-apim
-    component: admin-console
-    domain: admin
-    protection: none
-spec:
-  entryPoints:
-    - web
-  routes:
-    - match: Host(`gravitee.localhost`)
+        - name: gravitee-apim-api
+          port: 83
+    # Everything else on the Console hostname → SPA shell + assets.
+    - match: HostRegexp(`gravitee\..+`)
       kind: Rule
       services:
         - name: gravitee-apim-ui
           port: 8002
 
 ---
-# =============================================================================
-# ADMIN DOMAIN - Management API
-# =============================================================================
-
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
-  name: gravitee-admin-api
-  namespace: default
+  name: gravitee-gateway
+  namespace: gravitee
   labels:
     app: gravitee-apim
-    component: admin-api
-    domain: admin
-    protection: none
+    component: gateway
 spec:
   entryPoints:
     - web
   routes:
-    - match: Host(`gravitee-api.localhost`)
+    - match: HostRegexp(`gravitee-gw\..+`)
       kind: Rule
       services:
-        - name: gravitee-apim-api
-          port: 83
+        - name: gravitee-apim-gateway
+          port: 82
+
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: gravitee-portal
+  namespace: gravitee
+  labels:
+    app: gravitee-apim
+    component: portal
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: HostRegexp(`gravitee-portal\..+`)
+      kind: Rule
+      services:
+        - name: gravitee-apim-portal
+          port: 8003

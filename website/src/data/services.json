@@ -305,17 +305,20 @@
     "name": "Gravitee",
     "description": "API management and gateway platform",
     "category": "INTEGRATION",
-    "tags": ["api-gateway", "api-management", "rest", "graphql", "security"],
-    "abstract": "Open-source API management platform for designing, deploying, and managing APIs",
+    "tags": ["api-gateway", "api-management", "gravitee", "postgresql"],
+    "abstract": "A platform service that runs Gravitee API Management with PostgreSQL as the metadata store and no Elasticsearch/Redis dependencies.",
     "logo": "gravitee-logo.svg",
     "website": "https://www.gravitee.io"
-    ,"summary": "Gravitee is an open-source API management platform that helps you design, deploy, and manage APIs. It provides a gateway, management console, and developer portal for comprehensive API lifecycle management."
+    ,"summary": "Gravitee APIM is an open-source API gateway and management platform with admin Console, Developer Portal, and runtime API gateway. UIS deploys APIM 4.11 with PostgreSQL as the management store via the JDBC repository plugin (no MongoDB). Elasticsearch and Redis are not deployed; analytics dashboards and rate-limit policies are disabled. Suitable for laptop-scale development clusters."
     ,"docs": "/docs/services/integration/gravitee"
     ,"playbook": "090-setup-gravitee.yml"
-    ,"priority": 81
-    ,"checkCommand": "kubectl get pods -n gravitee -l app.kubernetes.io/name=gravitee --no-headers 2>/dev/null | grep -q Running"
+    ,"priority": 50
+    ,"checkCommand": "kubectl get pods -n gravitee -l app.kubernetes.io/instance=gravitee-apim --no-headers 2>/dev/null | grep -qE \\\\s(Running|Completed)\\\\s"
+    ,"removePlaybook": "090-remove-gravitee.yml"
+    ,"requires": ["postgresql"]
     ,"helmChart": "graviteeio/apim"
-    ,"namespace": "default"
+    ,"namespace": "gravitee"
+    ,"image": "graviteeio/apim:4.11.3"
   }
 ,
   {

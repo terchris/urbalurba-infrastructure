@@ -188,12 +188,15 @@ deploy_single_service() {
 }
 
 # Remove a single service by ID
-# Usage: remove_single_service <service_id> [<app_name>]
+# Usage: remove_single_service <service_id> [<app_name>] [<purge>]
 # For multi-instance services, app_name is required and is passed as _app_name
 # extra-var to the removal playbook.
+# When purge="true", _purge=true is passed as an extra-var so the removal
+# playbook can drop persistent state (databases, roles, secrets, PVCs, namespace).
 remove_single_service() {
     local service_id="$1"
     local app_name="${2:-}"
+    local purge="${3:-false}"
     local script
 
     script=$(find_service_script "$service_id")
@@ -212,6 +215,7 @@ remove_single_service() {
     else
         log_info "Removing $SCRIPT_NAME ($service_id)..."
     fi
+    [[ "$purge" == "true" ]] && log_warn "Purge mode: persistent state will be deleted"
 
     # Load cluster config for target_host
     local cluster_config="$CONFIG_DIR/cluster-config.sh"
@@ -234,6 +238,7 @@ remove_single_service() {
         if [[ -f "$remove_playbook" ]]; then
             local -a ansible_args=("-e" "target_host=$target_host")
             [[ -n "$app_name" ]] && ansible_args+=("-e" "_app_name=$app_name")
+            [[ "$purge" == "true" ]] && ansible_args+=("-e" "_purge=true")
             log_info "Running removal: $SCRIPT_REMOVE_PLAYBOOK"
             # shellcheck disable=SC2086
             if ! ansible-playbook "$remove_playbook" "${ansible_args[@]}" $extra_params; then
