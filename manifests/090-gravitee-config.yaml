@@ -215,6 +215,18 @@ ui:
   portal:
     entrypoint: http://gravitee-portal.localhost/
 
+  # Force the Console SPA to serve assets from the URL root. The chart's default
+  # is to derive CONSOLE_BASE_HREF from ui.ingress.path (which contains "/console"),
+  # baking <base href="/console/"> into the served HTML. UIS routes via Traefik
+  # IngressRoute on a dedicated subdomain (gravitee.localhost) without a sub-path,
+  # so the SPA must serve assets from / or every <script src="..."> resolves to
+  # /console/<asset> and 404s. Setting CONSOLE_BASE_HREF here also short-circuits
+  # the chart's $base_href_defined check (templates/_helpers.tpl line 467) and
+  # suppresses the auto-emit.
+  env:
+    - name: CONSOLE_BASE_HREF
+      value: /
+
   ingress:
     enabled: false
 
@@ -238,6 +250,12 @@ portal:
   # api pod serves /portal/... on the same hostname as /management/... — see
   # installation.api.proxyPath.portal in the values block above.
   baseURL: http://gravitee-api.localhost/portal
+
+  # Same fix as ui.env CONSOLE_BASE_HREF above: force assets to be served from
+  # the URL root instead of the chart's default /portal/ sub-path.
+  env:
+    - name: PORTAL_BASE_HREF
+      value: /
 
   ingress:
     enabled: false
