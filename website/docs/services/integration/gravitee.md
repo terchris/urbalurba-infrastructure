@@ -25,14 +25,17 @@ Gravitee API Management is an open-source API gateway and management platform. U
 
 Single shared instance per UIS cluster. Routing via Traefik `IngressRoute` resources with `HostRegexp` patterns so the same routes work across `*.localhost`, `*.<tailnet>.ts.net`, and Cloudflare-tunneled domains:
 
-| Component | Hostname pattern | Purpose |
+| URL pattern | Routes to | Purpose |
 |---|---|---|
-| Management Console | ``HostRegexp(`gravitee\..+`)`` | Admin UI for API designers |
-| Management API | ``HostRegexp(`gravitee-api\..+`)`` | Backend REST API for Console + Portal |
-| API Gateway | ``HostRegexp(`gravitee-gw\..+`)`` | Runtime API proxy endpoint |
-| Developer Portal | ``HostRegexp(`gravitee-portal\..+`)`` | Public/internal API catalog |
+| ``gravitee.<domain>/`` | `gravitee-apim-ui:8002` | Management Console SPA |
+| ``gravitee.<domain>/management/`` | `gravitee-apim-api:83` | Management REST API (Console XHR target) |
+| ``gravitee.<domain>/portal/`` | `gravitee-apim-api:83` | Portal-facing REST API (Portal SPA XHR target) |
+| ``gravitee-portal.<domain>`` | `gravitee-apim-portal:8003` | Developer Portal SPA |
+| ``gravitee-gw.<domain>`` | `gravitee-apim-gateway:82` | Public API Gateway runtime |
 
-The Management API connects to the cluster's shared `postgresql` service against database `graviteedb` as role `gravitee_user`. The setup playbook creates both during `./uis deploy gravitee`. The Console UI and Developer Portal SPA both call the Management API over HTTP using the cluster-internal service name; no inter-component coupling reaches outside the `gravitee` namespace except for the PostgreSQL connection.
+**Why Console + management API share a hostname.** Gravitee uses an HttpOnly session cookie for Console authentication. Cross-origin XHR (Console at one subdomain calling API at another) needs `SameSite=None; Secure` cookies, which require HTTPS. Plain HTTP for laptop dev forces same-origin: route the API under a `/management/*` path on the Console hostname so cookies travel trivially. This matches the Gravitee chart's default deployment shape.
+
+The Management API connects to the cluster's shared `postgresql` service against database `graviteedb` as role `gravitee_user`. The setup playbook creates both during `./uis deploy gravitee`. No inter-component coupling reaches outside the `gravitee` namespace except for the PostgreSQL connection.
 
 ## Limitations and gotchas
 
@@ -77,8 +80,8 @@ kubectl get ingressroute -n gravitee
 # Smoke checks (run from host)
 curl -fsS http://gravitee.localhost/                            # Console SPA  -> 200
 curl -fsS http://gravitee-portal.localhost/                     # Portal SPA   -> 200
-curl -fsS -u admin:admin \
-    http://gravitee-api.localhost/management/organizations/DEFAULT  # Mgmt API -> 200
+curl -fsS -u admin:LocalDev@123 \
+    http://gravitee.localhost/management/organizations/DEFAULT  # Mgmt API     -> 200
 curl -sS -o /dev/null -w "%{http_code}\n" http://gravitee-gw.localhost/
                                                                 # Gateway      -> 404 by design
                                                                 # (no APIs deployed yet; 404 with body
@@ -132,7 +135,7 @@ After editing the source common-values, run `./uis secrets generate` and `./uis 
 
 ### SPA URL configuration
 
-The Console and Developer Portal SPAs read their management API URL from `/constants.json` (Console) and `/assets/config.json` (Portal). UIS overrides `ui.baseURL`, `portal.baseURL`, and `ui.portal.entrypoint` in `manifests/090-gravitee-config.yaml` so the SPAs talk to `http://gravitee-api.localhost/...` rather than the chart's `apim.example.com` placeholder. CORS on the management API echoes the `Origin` header, so the cross-host XHR pattern (Console at `gravitee.localhost`, API at `gravitee-api.localhost`) works without additional configuration.
+The Console and Developer Portal SPAs read their management API URL from `/constants.json` (Console) and `/assets/config.json` (Portal). UIS overrides `ui.baseURL`, `portal.baseURL`, and `ui.portal.entrypoint` in `manifests/090-gravitee-config.yaml`. Both SPAs point at the same hostname they're served from (Console at `gravitee.<domain>`, with the API at `gravitee.<domain>/management/`) for same-origin auth — see the [Architecture](#architecture) section for why.
 
 ## Undeploy
 
@@ -204,7 +207,7 @@ The Console at `http://gravitee.localhost/` fetches `/constants.json` to learn t
 curl -fsS http://gravitee.localhost/constants.json | head
 ```
 
-Expected `baseURL: "http://gravitee-api.localhost/management"`. If you see `apim.example.com`, `manifests/090-gravitee-config.yaml` is missing the `ui.baseURL` and `portal.baseURL` overrides; re-deploy after restoring them.
+Expected `baseURL: "http://gravitee.localhost/management"`. If you see `apim.example.com`, `manifests/090-gravitee-config.yaml` is missing the `ui.baseURL` and `portal.baseURL` overrides; re-deploy after restoring them.
 
 ## Learn More
 

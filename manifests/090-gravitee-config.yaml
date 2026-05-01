@@ -69,16 +69,21 @@ ratelimit:
 # External URLs for Console / Portal SPAs
 # ---------------------------------------------------------------
 # These are emitted into gravitee.yml on the Management API pod. The
-# Console UI and Developer Portal SPA both run in the user's browser
-# and read these values to build calls to the Management API.
-# Without correct values, the Console silently fails to authenticate
-# on first load. (Decision #16 in INVESTIGATE-gravitee-fix.md.)
+# Console SPA reads them to build calls to the Management API.
+#
+# SAME-ORIGIN ARCHITECTURE: management API and Console SPA share the
+# `gravitee.<domain>` hostname (path-based split: /management/* and
+# /portal/* go to the api pod, everything else to the ui pod — see
+# 091-gravitee-ingress.yaml). Required because Gravitee uses an HttpOnly
+# session cookie for auth and SameSite=None;Secure isn't usable on plain
+# HTTP, so cross-origin auth XHR fails. (Decisions #16, #17 in
+# INVESTIGATE-gravitee-fix.md, plus the Round 9 browser-pass finding.)
 installation:
   type: standalone
   api:
-    # The external URL of the Management API. Console and Portal SPAs
-    # both call this hostname.
-    url: http://gravitee-api.localhost
+    # External URL of the Management API. Console SPA's XHR target.
+    # Same hostname as the Console; path-based split via Traefik.
+    url: http://gravitee.localhost
     proxyPath:
       management: /management
       portal: /portal
@@ -202,10 +207,12 @@ ui:
   # The Console SPA fetches /constants.json at startup to learn where the
   # management API lives. Without explicit baseURL the chart falls back to
   # constructing https://<api.ingress.management.hosts[0]><...path> from the
-  # chart defaults (apim.example.com) — which doesn't resolve, so the SPA
-  # silently fails on first XHR. UIS exposes the management API at
-  # http://gravitee-api.localhost/management via 091-gravitee-ingress.yaml.
-  baseURL: http://gravitee-api.localhost/management
+  # chart defaults (apim.example.com) — which doesn't resolve. We point at
+  # the same hostname the SPA itself is served from (path-based split via
+  # 091-gravitee-ingress.yaml: /management/* → api pod). Same-origin keeps
+  # auth cookies travelling without SameSite=None;Secure (which would need
+  # HTTPS).
+  baseURL: http://gravitee.localhost/management
 
   # The Console also surfaces a "go to Developer Portal" link to users.
   # The chart hardcodes this to https://<gateway.ingress.hosts[0]>/, which is
@@ -245,11 +252,15 @@ portal:
   enabled: true
   replicaCount: 1
 
-  # Same shape as ui.baseURL above: the Portal SPA fetches /assets/config.json
-  # and needs an explicit base for the portal-side management endpoints. The
-  # api pod serves /portal/... on the same hostname as /management/... — see
-  # installation.api.proxyPath.portal in the values block above.
-  baseURL: http://gravitee-api.localhost/portal
+  # Portal SPA fetches /assets/config.json and uses baseURL for its REST calls.
+  # Points at the consolidated Console hostname's /portal sub-path. NOTE: this
+  # is still cross-origin from the Portal SPA's own host (gravitee-portal.<dom>),
+  # so authenticated portal-admin flows (user registration, signed-in catalog
+  # browsing) hit the same HTTP-on-different-hostname cookie issue Console used
+  # to. v1 trade-off: anonymous portal browse works; signed-in portal admin
+  # paths are scope-deferred. Fix in v2 by either consolidating portal under
+  # gravitee.<dom>/_portal/ or by switching the cluster to HTTPS.
+  baseURL: http://gravitee.localhost/portal
 
   # Same fix as ui.env CONSOLE_BASE_HREF above: force assets to be served from
   # the URL root instead of the chart's default /portal/ sub-path.
