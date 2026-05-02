@@ -5,7 +5,7 @@
 #
 #   Default mode (no extra-var):
 #     - Uninstall the Helm release
-#     - Remove the four Traefik IngressRoutes
+#     - Remove the Traefik IngressRoutes (count varies; 091-gravitee-ingress.yaml is the source of truth)
 #     - Wait for pods to terminate
 #     KEEPS: PVCs, gravitee/urbalurba-secrets, namespace, PostgreSQL graviteedb
 #     A subsequent ./uis deploy gravitee re-installs without re-bootstrap.
@@ -44,6 +44,19 @@
           Mode:         {{ 'PURGE — drops database, role, secret, PVCs, namespace' if purge_mode else 'default — keeps PVCs, secret, database, namespace' }}
 
     # ============= ALWAYS: KUBERNETES OBJECTS =============
+
+    - name: 1b. Count IngressRoutes before delete (for accurate status message)
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ merged_kubeconf_file }}"
+        api_version: traefik.io/v1alpha1
+        kind: IngressRoute
+        namespace: "{{ gravitee_namespace }}"
+      register: ingressroutes_before
+      ignore_errors: true
+
+    - name: 1c. Set IngressRoute count fact
+      ansible.builtin.set_fact:
+        ingressroute_count: "{{ ingressroutes_before.resources | default([]) | length }}"
 
     - name: 2. Delete Traefik IngressRoutes
       kubernetes.core.k8s:
@@ -189,7 +202,7 @@
           {% if purge_mode %}
           Removed:
             - Helm release ({{ gravitee_release_name }})
-            - 4 IngressRoutes
+            - {{ ingressroute_count }} IngressRoute{{ '' if ingressroute_count == '1' else 's' }}
             - PostgreSQL database ({{ gravitee_db_name | default('graviteedb') }}) and role ({{ gravitee_db_user | default('gravitee_user') }})
             - All PVCs in namespace
             - gravitee/urbalurba-secrets
@@ -199,7 +212,7 @@
           {% else %}
           Removed:
             - Helm release ({{ gravitee_release_name }})
-            - 4 IngressRoutes
+            - {{ ingressroute_count }} IngressRoute{{ '' if ingressroute_count == '1' else 's' }}
 
           KEPT (use --purge to remove):
             - PostgreSQL database ({{ gravitee_db_name | default('graviteedb') }}) and role
