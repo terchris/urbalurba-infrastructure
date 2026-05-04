@@ -373,9 +373,33 @@
         - ui
         - portal
 
-    # ============= PHASE 6: HEALTH PROBES =============
+    # ============= PHASE 6: POST-DEPLOY DB CONFIG =============
 
-    - name: 27. Health-check Management API from inside the cluster
+    # Liquibase seeds organizations.name = 'Default organization' on first
+    # boot. We overwrite it once the api pod is Ready — Spring Boot blocks
+    # application startup until Liquibase migrations complete, so a Ready
+    # api pod implies the row exists. The UPDATE is idempotent: re-running
+    # ./uis deploy gravitee always sets the configured value. The chart
+    # exposes no value for the human-readable org name (only the slug
+    # 'DEFAULT'), so this lever is the only path. See
+    # PLAN-001-gravitee-org-name.md for context.
+    - name: 27. Set Gravitee organisation name in PostgreSQL
+      ansible.builtin.shell: |
+        set -e
+        ORG_NAME=$(kubectl get secret urbalurba-secrets -n {{ gravitee_namespace }} -o jsonpath='{.data.GRAVITEE_ORG_NAME}' | base64 -d)
+        kubectl exec -n default {{ postgres_pod_name }} -- \
+          bash -c "PGPASSWORD='{{ postgres_password.stdout }}' \
+            psql -h postgresql.default -U postgres -d {{ gravitee_db_name }} \
+            -v ON_ERROR_STOP=1 \
+            -c \"UPDATE organizations SET name = '${ORG_NAME}' WHERE id = 'DEFAULT';\""
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      changed_when: true
+      no_log: true
+
+    # ============= PHASE 7: HEALTH PROBES =============
+
+    - name: 28. Health-check Management API from inside the cluster
       ansible.builtin.shell: |
         kubectl run gravitee-health-{{ 99999 | random }} --image=curlimages/curl --rm -i --restart=Never -n {{ gravitee_namespace }} -- \
           curl -sS -o /dev/null -w "HTTP_CODE:%{http_code}" \
@@ -389,7 +413,7 @@
       failed_when: false
       changed_when: false
 
-    - name: 28. Health-check Gateway from inside the cluster
+    - name: 29. Health-check Gateway from inside the cluster
       ansible.builtin.shell: |
         kubectl run gravitee-gw-health-{{ 99999 | random }} --image=curlimages/curl --rm -i --restart=Never -n {{ gravitee_namespace }} -- \
           curl -sS -o /dev/null -w "HTTP_CODE:%{http_code}" \
@@ -403,16 +427,16 @@
       failed_when: false
       changed_when: false
 
-    # ============= PHASE 7: STATUS =============
+    # ============= PHASE 8: STATUS =============
 
-    - name: 29. Get Gravitee pods
+    - name: 30. Get Gravitee pods
       ansible.builtin.shell: kubectl get pods -n {{ gravitee_namespace }}
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
       register: gravitee_pod_status
       changed_when: false
 
-    - name: 30. Display final deployment status
+    - name: 31. Display final deployment status
       ansible.builtin.debug:
         msg: |
           ======================================================

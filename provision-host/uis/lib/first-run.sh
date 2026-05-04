@@ -288,6 +288,7 @@ copy_secrets_templates() {
             -e "s/DEFAULT_AUTHENTIK_SECRET_KEY=.*/DEFAULT_AUTHENTIK_SECRET_KEY=${DEFAULT_AUTHENTIK_SECRET_KEY}/" \
             -e "s/DEFAULT_AUTHENTIK_BOOTSTRAP_PASSWORD=.*/DEFAULT_AUTHENTIK_BOOTSTRAP_PASSWORD=${DEFAULT_AUTHENTIK_BOOTSTRAP_PASSWORD}/" \
             -e "s/DEFAULT_OPENWEBUI_SECRET_KEY=.*/DEFAULT_OPENWEBUI_SECRET_KEY=${DEFAULT_OPENWEBUI_SECRET_KEY}/" \
+            -e "s|DEFAULT_ORGANIZATION_NAME=.*|DEFAULT_ORGANIZATION_NAME=\"${DEFAULT_ORGANIZATION_NAME}\"|" \
             "$common_values"
         rm -f "$common_values.bak"
         log_success "Set development defaults in 00-common-values.env.template"

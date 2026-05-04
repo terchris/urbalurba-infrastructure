@@ -96,3 +96,68 @@ Each of these can be answered at PLAN time with a 5-min code read.
 ## When to revisit
 
 After the gravitee-config experiment chain (currently OQ5, then PLAN-001+ for Findings 1/2/3/4) lands. This INVESTIGATE → PLAN cycle then runs separately, no dependency.
+
+---
+
+## Adjacent silent-failure mode — bad common-values syntax produces empty secret values (Round 7)
+
+**Reported in**: Round 7 of `talk.md` (uis-user1 tester report, PLAN-001-gravitee-org-name verification).
+
+Different shape from the auto-regen problem above, but the same silent-failure class — same secrets pipeline, same "looks successful but isn't" symptom. Worth fixing in the same investigation cycle since the fix touches the same code path.
+
+### Reproducer
+
+1. Append an unquoted multi-word value to `.uis.secrets/secrets-config/00-common-values.env.template`:
+   ```
+   DEFAULT_ORGANIZATION_NAME=UIS Local Dev
+   ```
+2. Run `./uis secrets generate`.
+3. Run `./uis secrets apply`.
+4. Run `./uis deploy gravitee` (or any service that consumes the affected key).
+
+### Observed (Round 7 trace)
+
+- Step 2 prints `/mnt/.../00-common-values.env.template: line 190: Local: command not found` (warning), but **also** prints success (`✓ Generated`) and writes a YAML file that silently omits the affected key (`GRAVITEE_ORG_NAME` not present).
+- Step 3 reports `✓ Secrets applied successfully`.
+- Step 4's playbook task pulls the missing key as an empty string, then runs `psql UPDATE organizations SET name = '' WHERE id = 'DEFAULT'` — leaving the user with an empty org name in the live system, no error surfaced anywhere.
+
+### Why bash silently truncates
+
+`source 00-common-values.env.template` parses each line as a shell statement. `DEFAULT_ORGANIZATION_NAME=UIS Local Dev` is two statements separated by whitespace: assign `UIS` to `DEFAULT_ORGANIZATION_NAME`, then run `Local Dev` as a command. The variable ends up holding `"UIS"` (truncated), and the whitespace tail becomes a failed command lookup. The "command not found" message is the only signal — but it goes to stderr while the surrounding success messages go to stdout, so it visually buries.
+
+PLAN-001 implementation hit this directly: the new `DEFAULT_ORGANIZATION_NAME` is the **first multi-word default** in `default-secrets.env` and the per-install template, exposing a latent quoting fragility that the (single-word) existing DEFAULT_* values never tripped on. Round 7 fix added quotes at all three layers (image-default, placeholder, sed substitution in `first-run.sh`) so the immediate Gravitee acceptance no longer breaks. But the pipeline-level issue — that `secrets generate` accepts garbage input and produces incomplete output without failing — is still latent for the next person who manually edits the per-install template.
+
+### Options for the PLAN phase
+
+1. **Validate the common-values file before sourcing** — parse with `bash -n` (syntax-check mode), or run `source` in a subshell with `set -e` and bail if any line fails. Cheap, decisive.
+2. **Validate the generated YAML** — after `envsubst` produces `kubernetes-secrets.yml`, check that no value is the literal empty string for any key declared with `${...}` substitution. Catches bash-truncated values plus envsubst's separate failure modes (missing variable defaulting to empty).
+3. **Both** — belt + suspenders. Probably the right answer; each catches a different class.
+
+### Why this lives here, not as its own INVESTIGATE
+
+Same code path (`./uis secrets generate` → `./uis secrets apply` → service deploy), same silent-failure class ("looks successful, isn't"), same blast radius (any service that consumes a misconfigured key). Splitting into two PLANs would mean two passes through the same files. Better to scope this INVESTIGATE → PLAN to "make the secrets pipeline fail loudly" with both Round 6.5 (stale generated artefact) and Round 7 (bad common-values syntax) as the two failure modes the PLAN must address.
+
+---
+
+## Adjacent UX surprise — `copy_secrets_templates` is lazy, not restart-triggered (Round 7.5)
+
+**Reported in**: Round 7.5 of `talk.md` (uis-user1 tester report).
+
+The Round 7.5 tester deleted the per-install `00-common-values.env.template` and ran `./uis restart`, expecting `first-run.sh:copy_secrets_templates` to repopulate it from the image-default. Empirically it didn't — the file stayed absent until the next secrets-pipeline command (`./uis secrets generate`) printed `Copying secrets templates to .uis.secrets/secrets-config/`. So the trigger is "first secrets-pipeline call after the file is missing", not "container restart".
+
+Doesn't affect any current acceptance — by the time `./uis secrets generate` runs, the file exists with the correct quoted value. But surfaces as confusion for any user who deletes the per-install file expecting a restart hook to rebuild it. Two reasonable fixes:
+
+1. **Wire `copy_secrets_templates` into the container entrypoint** so it runs unconditionally on each boot. Predictable: "restart = state matches image" mental model.
+2. **Document the lazy behaviour** in `gravitee.md` / WORKFLOW.md / wherever first-run is mentioned.
+
+Option 1 matches the "things just work without ceremony" philosophy already favoured for the auto-regen problem above; option 2 is the cheap stopgap. PLAN-time decision.
+
+### Why this lives here
+
+Same `first-run.sh` / secrets-pipeline territory, same "implicit triggers" UX class. Three failure modes for the same INVESTIGATE → PLAN cycle:
+
+1. Round 6.5 — generated artefact goes stale silently (auto-regen).
+2. Round 7 — bad common-values syntax silently produces incomplete YAML (validate-loudly).
+3. Round 7.5 — first-run.sh's repopulation is implicit/lazy (entrypoint-trigger or document).
+
+Address them together; same code surface, same UX principle.
