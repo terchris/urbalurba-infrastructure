@@ -150,6 +150,28 @@ deploy_single_service() {
             log_info "Running Ansible playbook: $SCRIPT_PLAYBOOK (target: $target_host)"
         fi
 
+        # Forward system-wide DEFAULT_* knobs from default-secrets.env as
+        # lowercased ansible extra-vars (DEFAULT_AUTOSCALING -> default_autoscaling).
+        # Setup playbooks pick them up via `vars:` mappings to per-service vars
+        # (see e.g. _gravitee_autoscaling in 090-setup-gravitee.yml). Comment
+        # block in default-secrets.env documents the adoption procedure for
+        # new knobs.
+        local defaults_file="/mnt/urbalurbadisk/provision-host/uis/templates/default-secrets.env"
+        if [[ -f "$defaults_file" ]]; then
+            while IFS='=' read -r key value; do
+                # Skip blank lines and comments.
+                [[ -z "$key" || "$key" =~ ^[[:space:]]*# ]] && continue
+                # Only forward DEFAULT_* — other lines (e.g. CLOUDFLARE_*)
+                # belong to the secrets pipeline, not the playbook-knob path.
+                [[ "$key" == DEFAULT_* ]] || continue
+                # Strip surrounding quotes if any, then forward lowercased.
+                value="${value%\"}"; value="${value#\"}"
+                value="${value%\'}"; value="${value#\'}"
+                local lower_key="${key,,}"
+                ansible_args+=("-e" "${lower_key}=${value}")
+            done < "$defaults_file"
+        fi
+
         if ! ansible-playbook "$playbook_path" "${ansible_args[@]}"; then
             die_k8s "Playbook failed: $SCRIPT_PLAYBOOK"
         fi

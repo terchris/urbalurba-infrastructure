@@ -188,9 +188,19 @@
       when: purge_mode
       ignore_errors: true
 
+    - name: 16. Wait for gravitee namespace to fully terminate (purge only)
+      ansible.builtin.shell: |
+        if kubectl get ns {{ gravitee_namespace }} >/dev/null 2>&1; then
+          kubectl wait --for=delete ns/{{ gravitee_namespace }} --timeout=120s
+        fi
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      when: purge_mode
+      changed_when: false
+
     # ============= STATUS =============
 
-    - name: 16. Display removal status
+    - name: 17. Display removal status
       ansible.builtin.debug:
         msg: |
           ======================================================

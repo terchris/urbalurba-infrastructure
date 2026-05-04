@@ -29,6 +29,18 @@
     gravitee_release_name: "gravitee-apim"
     installation_timeout: 600
 
+    # System-wide knob mapping. The wrapper (service-deployment.sh) sources
+    # provision-host/uis/templates/default-secrets.env and forwards every
+    # DEFAULT_* variable as a lowercased ansible extra-var. Adopting services
+    # map them into per-service vars here, then consume those in tasks.
+    # See default-secrets.env for the adoption procedure and rationale.
+    #
+    # _gravitee_autoscaling drives helm --set api/gateway/ui/portal
+    # autoscaling.enabled below. Default 'false' matches local-dev shape.
+    # Override per-deploy with `-e _gravitee_autoscaling=true` (raw ansible)
+    # or globally by flipping DEFAULT_AUTOSCALING in default-secrets.env.
+    _gravitee_autoscaling: "{{ default_autoscaling | default('false') }}"
+
   tasks:
     - name: 1. Print playbook description
       ansible.builtin.debug:
@@ -319,6 +331,10 @@
         -f {{ gravitee_config_file }}
         --set-string adminPasswordBcrypt={{ admin_bcrypt.stdout }}
         --set-string adminEmail={{ gravitee_admin_email }}
+        --set api.autoscaling.enabled={{ _gravitee_autoscaling }}
+        --set gateway.autoscaling.enabled={{ _gravitee_autoscaling }}
+        --set ui.autoscaling.enabled={{ _gravitee_autoscaling }}
+        --set portal.autoscaling.enabled={{ _gravitee_autoscaling }}
         --namespace {{ gravitee_namespace }}
         --timeout {{ installation_timeout }}s
         --wait

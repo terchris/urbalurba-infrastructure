@@ -8,6 +8,13 @@
 # - Chart-managed Kubernetes Ingress disabled; UIS owns routing in
 #   manifests/091-gravitee-ingress.yaml.
 # - Per-component resource overrides tuned for laptop-scale clusters.
+# - Autoscaling on all four components (api, gateway, ui, portal) is
+#   driven by the system-wide DEFAULT_AUTOSCALING knob in
+#   provision-host/uis/templates/default-secrets.env, applied at
+#   helm install time via --set lines in 090-setup-gravitee.yml.
+#   This file deliberately does NOT specify per-component
+#   autoscaling.* values — single source of truth lives in the
+#   default-secrets.env / playbook layer, not here.
 #
 # Connection details and admin credentials are read from the
 # `gravitee/urbalurba-secrets` Secret. The setup playbook bootstraps
@@ -107,8 +114,6 @@ installation:
 api:
   enabled: true
   replicaCount: 1
-  autoscaling:
-    enabled: false
 
   # Analytics (request counts, latency, status-code distributions, log
   # search) require Elasticsearch. Setting type: none here disables the
@@ -159,8 +164,6 @@ api:
 gateway:
   enabled: true
   replicaCount: 1
-  autoscaling:
-    enabled: false
 
   # Disable the Elasticsearch reporter on the gateway side. Without this,
   # the gateway's gravitee.yml ConfigMap still has a reporters.elasticsearch
@@ -205,14 +208,17 @@ ui:
   replicaCount: 1
 
   # The Console SPA fetches /constants.json at startup to learn where the
-  # management API lives. Without explicit baseURL the chart falls back to
-  # constructing https://<api.ingress.management.hosts[0]><...path> from the
-  # chart defaults (apim.example.com) — which doesn't resolve. We point at
-  # the same hostname the SPA itself is served from (path-based split via
-  # 091-gravitee-ingress.yaml: /management/* → api pod). Same-origin keeps
-  # auth cookies travelling without SameSite=None;Secure (which would need
-  # HTTPS).
-  baseURL: http://gravitee.localhost/management
+  # management API lives. We use a *relative* baseURL so a single chart
+  # render works on any hostname Traefik routes (gravitee.localhost,
+  # gravitee.<cloudflared-domain>, gravitee.<tailscale-domain>, …) without
+  # a redeploy. The SPA resolves "/management" against the current page
+  # origin at fetch time, which is exactly what the path-based ingress
+  # split in 091-gravitee-ingress.yaml expects (/management/* → api pod).
+  # Same-origin also keeps auth cookies travelling without SameSite=None.
+  # If the SPA can't tolerate a relative baseURL (OQ4 in
+  # INVESTIGATE-gravitee-post-deploy-config.md), revert to the absolute
+  # form `http://gravitee.localhost/management`.
+  baseURL: /management
 
   # The Console also surfaces a "go to Developer Portal" link to users.
   # The chart hardcodes this to https://<gateway.ingress.hosts[0]>/, which is
