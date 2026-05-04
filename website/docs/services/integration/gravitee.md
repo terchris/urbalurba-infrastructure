@@ -30,10 +30,10 @@ Single shared instance per UIS cluster. Routing via Traefik `IngressRoute` resou
 | ``gravitee.<domain>/`` | `gravitee-apim-ui:8002` | Management Console SPA |
 | ``gravitee.<domain>/management/`` | `gravitee-apim-api:83` | Management REST API (Console XHR target) |
 | ``gravitee.<domain>/portal/`` | `gravitee-apim-api:83` | Portal-facing REST API (Portal SPA XHR target) |
-| ``gravitee-portal.<domain>`` | `gravitee-apim-portal:8003` | Developer Portal SPA |
+| ``gravitee.<domain>/_portal/`` | `gravitee-apim-portal:8003` | Developer Portal SPA |
 | ``gravitee-gw.<domain>`` | `gravitee-apim-gateway:82` | Public API Gateway runtime |
 
-**Why Console + management API share a hostname.** Gravitee uses an HttpOnly session cookie for Console authentication. Cross-origin XHR (Console at one subdomain calling API at another) needs `SameSite=None; Secure` cookies, which require HTTPS. Plain HTTP for laptop dev forces same-origin: route the API under a `/management/*` path on the Console hostname so cookies travel trivially. This matches the Gravitee chart's default deployment shape.
+**Why Console, Portal, and both APIs share the `gravitee.<domain>` hostname.** Gravitee uses an HttpOnly session cookie for Console authentication. Cross-origin XHR (Console / Portal calling APIs on different subdomains) needs `SameSite=None; Secure` cookies, which require HTTPS. Plain HTTP for laptop dev forces same-origin: route both APIs under `/management/*` and `/portal/*` paths on the shared hostname, and serve the Portal SPA itself at `/_portal/*` so it inherits the same origin. Cookies travel trivially. The same chart values work without edits across `gravitee.localhost`, Tailscale, and Cloudflare-tunneled domains — `ui.baseURL`, `portal.baseURL`, and `ui.portal.entrypoint` are all relative URLs that resolve against the page's origin at fetch time.
 
 The Management API connects to the cluster's shared `postgresql` service against database `graviteedb` as role `gravitee_user`. The setup playbook creates both during `./uis deploy gravitee`. No inter-component coupling reaches outside the `gravitee` namespace except for the PostgreSQL connection.
 
@@ -88,7 +88,7 @@ kubectl get ingressroute -n gravitee
 
 # Smoke checks (run from host)
 curl -fsS http://gravitee.localhost/                            # Console SPA  -> 200
-curl -fsS http://gravitee-portal.localhost/                     # Portal SPA   -> 200
+curl -fsS http://gravitee.localhost/_portal/                    # Portal SPA   -> 200
 curl -fsS -u admin:LocalDev@123 \
     http://gravitee.localhost/management/organizations/DEFAULT  # Mgmt API     -> 200
 curl -sS -o /dev/null -w "%{http_code}\n" http://gravitee-gw.localhost/
@@ -144,7 +144,7 @@ After editing the source common-values, run `./uis secrets generate` and `./uis 
 
 ### SPA URL configuration
 
-The Console and Developer Portal SPAs read their management API URL from `/constants.json` (Console) and `/assets/config.json` (Portal). UIS overrides `ui.baseURL`, `portal.baseURL`, and `ui.portal.entrypoint` in `manifests/090-gravitee-config.yaml`. Both SPAs point at the same hostname they're served from (Console at `gravitee.<domain>`, with the API at `gravitee.<domain>/management/`) for same-origin auth — see the [Architecture](#architecture) section for why.
+The Console and Developer Portal SPAs read their API URL from `/constants.json` (Console) and `/assets/config.json` (Portal). UIS overrides `ui.baseURL`, `portal.baseURL`, and `ui.portal.entrypoint` in `manifests/090-gravitee-config.yaml`. All three are **relative URLs** (`/management`, `/portal`, `/_portal/`) so the SPAs resolve them against the current page origin at fetch time — a single chart render serves any hostname Traefik routes (localhost, Tailscale, Cloudflare-tunneled) without per-domain configuration. The Portal SPA's `PORTAL_BASE_HREF` env var is set to `/_portal/` so its assets and route paths align with the sub-path it's served from. See the [Architecture](#architecture) section for the same-origin/auth-cookie rationale.
 
 ## Undeploy
 

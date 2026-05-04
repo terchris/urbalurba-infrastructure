@@ -435,9 +435,9 @@
 
           Access:
             Console:        http://gravitee.localhost
-            Management API: http://gravitee-api.localhost
+            Management API: http://gravitee.localhost/management
             Gateway:        http://gravitee-gw.localhost
-            Portal:         http://gravitee-portal.localhost
+            Portal:         http://gravitee.localhost/_portal/
 
           Admin login (sourced from gravitee/urbalurba-secrets):
             email:    GRAVITEE_ADMIN_EMAIL    (=DEFAULT_ADMIN_EMAIL)

@@ -14,7 +14,7 @@
 
 **Depends on**: [INVESTIGATE-email-smtp-service.md](INVESTIGATE-email-smtp-service.md) for the SMTP gap (Gravitee email is one of several services that needs a UIS-level SMTP relay). Everything else in this plan is local to Gravitee.
 
-**Phase 0 status (2026-05-03)**: four of the nine open questions resolved via tester rounds 1 + 1.5 (`talk.md`, since archived as `talk36.md` once this round wraps). OQ3, OQ6, OQ7, OQ9 confirmed; per-finding fresh-DB baselines captured. OQ1, OQ2, OQ4, OQ5, OQ8 still need maintainer-side build cycles before the PLAN-001+ files can be written. Finding 5 has been demoted from in-scope (does not reproduce on fresh DB — see Finding 5). Issue B from Round 1.5 (a tester-flagged "secrets template gap") was a probe artefact — the layering chain works correctly; see *Variables proposed* below for the verified flow.
+**Phase 0 status (2026-05-04, all open questions resolved)**: nine open questions answered across tester rounds 1, 1.5 (read-only experiments + fresh-DB baseline), 3 (OQ4 — Console relative baseURL), 5 (OQ8 + system-wide `DEFAULT_AUTOSCALING` — shipped via PLAN-gravitee-disable-hpa-dev), and 6/6.5 (OQ5 — Portal sub-path consolidation). OQ1 and OQ2 demoted to fallbacks and not run. Finding 1 resolved as a side effect of OQ5. Finding 5 demoted (does not reproduce as a functional bug). Finding 8 shipped. **All chart/ingress experiments closed; next step is PLAN-001+ for the remaining deploy-time fixes (Findings 2 + 3 + Finding 4 api-side).**
 
 ---
 
@@ -193,6 +193,8 @@ For each finding, the investigation must determine **the layer at which the wron
 
 **Acceptance:** raw-text `curl ... | grep -c '"entrypoint"'` returns `1` (chart fix) **OR** returns `2` with the override being a relative path (Finding 4 path-a as side-effect) **OR** returns `2` with a documented upstream-issue link (file-upstream path).
 
+**Status (2026-05-04, resolved as side effect of OQ5 / Round 6+6.5):** the second branch wins. The chart still emits both `entrypoint` keys (chart helper limitation, no chart-side suppress knob per OQ7), but our override `ui.portal.entrypoint` is now relative `/_portal/` (per Finding 4 / Round 6 Portal consolidation). Browsers and standard JSON parsers last-wins-pick the relative override, which resolves correctly against any hostname Traefik routes. The duplicate-key emission is structurally harmless; no upstream-issue file required, no chart-side fix needed. PLAN-001+ should add a one-line note in `gravitee.md` documenting that the duplicate is expected and benign.
+
 ### Finding 2 — `portalEntrypoint` in `graviteedb.environments.settings`
 
 **Symptom:** `curl /management/organizations/DEFAULT/environments/DEFAULT/settings | jq '.portal.entrypoint'` returns `"https://api.company.com"` — a Gravitee placeholder that lands in the DB at first Liquibase migration and never gets touched again.
@@ -301,12 +303,13 @@ Items 2 and 3 are what this finding must close, **at deploy time, with no domain
 
 **Audit symptom:** noisy 503 reported by browser tester in DevTools and api-pod logs on every page load. Hypothesised root cause: the api pod's Spring controller for `v2/.../ui/customization` is the EE Cockpit endpoint and the OSS install was assumed to be 503-ing because of a missing `@ConditionalOnProperty` guard.
 
-**Round 1 / 1.5 outcome (2026-05-03):** the endpoint returns **`204 No Content`** when probed via curl with basic auth, on both a stale (33h-old) install and a fresh-DB redeploy. **The audit's 503 does not reproduce in this configuration.** Possible explanations (any one of):
-- Audit was via browser cookie-session auth; basic-auth path may take a different controller filter chain (e.g. CSRF rejection short-circuiting before the EE check).
-- Audit captured a transient session state.
-- Upstream landed a fix between the audit and 2026-05-03.
+**Round 1 / 1.5 outcome (2026-05-03, curl basic-auth):** the endpoint returns **`204 No Content`** on both a stale (33h-old) install and a fresh-DB redeploy. The audit's 503 does not reproduce when probed this way.
 
-**This finding is therefore moved out of scope.** No upstream issue to file (no reproducer to attach), no chart change, no doc update beyond a one-line note in `gravitee.md` that this endpoint returns 204 (success-no-content) on OSS installs.
+**Browser-tester observation (Round 3 Section B, 2026-05-04, Chromium with cookie-session auth):** the endpoint returns **`503` on the first cold-start hit, then `204` on an immediate retry**. The SPA continues to render normally — the 503 is transparent to the user and the retry succeeds. So the audit's original 503 was real, but **cold-start-only and self-recovering**, not the persistent error a missing-conditional Spring controller would produce.
+
+**Most likely cause** (still hypothesis, no upstream code-read done): the EE Cockpit controller's lazy-init path returns 503 while the bean is still warming up, then 204 once initialised. Either way, the user-visible behaviour is fine because the SPA's retry handler papers over it.
+
+**This finding stays out of scope.** No upstream issue to file (the cold-start 503 is annoying log noise but not a functional bug — the SPA retry mechanism handles it), no chart change, no playbook change. One-line note in `gravitee.md` covers the diagnostic chain so a future contributor seeing the 503 in DevTools console doesn't dig in fresh.
 
 **Future re-verification.** If the 503 reappears in any future round (browser tester or contributor), capture the request as cookie-session-auth + auth-cookie value + UA string, paste into a fresh INVESTIGATE entry, and re-evaluate. Until then, no action.
 
@@ -344,6 +347,10 @@ So this isn't just a Gravitee asymmetry fix — it's the first concrete instance
 **Acceptance:**
 - Drop-database test ends with **4 pods** (one each of `api`, `gateway`, `ui`, `portal`), no HPA objects in the namespace, no HPA-driven scaling regardless of memory pressure.
 - The values file's HPA blocks are commented in a way that makes "how do I turn this on for prod?" obvious to a future contributor.
+
+**Status (2026-05-04): resolved via PLAN-gravitee-disable-hpa-dev** (now in `completed/`). Approach: system-wide `DEFAULT_AUTOSCALING=false` in `default-secrets.env`, propagated through every setup playbook by the wrapper, mapped per-service via `_gravitee_autoscaling` in `090-setup-gravitee.yml`, applied via four helm `--set` lines on install. Single-knob, future-services-can-adopt design.
+
+**Corollary surfaced by Round 5 override probe (worth recording for the prod-flip path):** the chart has HPA templates for **all four components** (api, gateway, ui, portal), not just ui+portal as initially assumed. With `_gravitee_autoscaling=true`, all four HPAs are created. Empirically, both `ui` (~115%/80%) **and `gateway`** (~131%/80%) exceed the chart's default 80% memory target with idle RSS — meaning a naive prod flip enables four HPAs but two of them (ui, gateway) immediately peg at max=3, producing 10 pods (3 api + 3 gateway + 1 portal + 3 ui). Anyone enabling autoscaling for prod-shape needs to raise `gateway.resources.requests.memory` and `ui.resources.requests.memory` above their actual idle RSS first. Not actionable in the local-dev fix; documented here so the prod-flip docs reckon with it.
 
 ---
 
@@ -402,32 +409,33 @@ The existing gravitee block at `00-master-secrets.yml.template:500-533` already 
 
 ## Open questions
 
-### Resolved during Phase 0 (Round 1 + 1.5, 2026-05-03)
+### Resolved during Phase 0
 
 Run by tester via `talk.md`; outcomes folded into the relevant Findings above.
 
-- **OQ3 — chart `extra*` capability.** The chart exposes only `extraVolumes` and `extraVolumeMounts` (commented examples in `api`, `gateway`, `ui`, `portal` blocks). **No `extraInitContainers`, no `extraContainers`, no `extraEnvs`** keys present in upstream values for chart 4.11.3. Custom Liquibase changeset via `extraVolumes`-mounted changelog is feasible (api pod can mount a config-map of additional changesets). A psql-update-as-init-container would have to come from a separate kustomize-style Deployment patch, not chart values.
-- **OQ6 — api pod X-Forwarded-Host honour.** Probe of `/portal/redirect` with `Host: gravitee.test.example` + `X-Forwarded-Host: gravitee.test.example` + `X-Forwarded-Proto: https` returned `Location: http://gravitee.localhost/...`. Both forwarded headers ignored, host *and* scheme baked in. **The api pod constructs outbound absolute URLs from the chart-rendered `gravitee.yml`, not from the request.** Material constraint on Finding 4.
-- **OQ7 — chart helper-template duplicate-key origin.** `helm template` against `090-gravitee-config.yaml` shows the chart helper emits `entrypoint: "https://apim.example.com/"` as a hardcoded literal *before* iterating user-supplied `ui.portal` keys. Both literals end up in the same rendered `portal:` JSON block. **No chart conditional or value path suppresses the hardcoded default.** Finding 1's chart-side fix is ruled out — only paths are upstream patch, accept-with-doc, or relative-override-via-Path-(a).
-- **OQ9 — `/portal/redirect` Location shape.** Returns 307 with **absolute** Location header. Combined with OQ6, the absolute URL is constructed from chart-baked sources, not the request.
+- **OQ3 (Round 1, 2026-05-03) — chart `extra*` capability.** The chart exposes only `extraVolumes` and `extraVolumeMounts` (commented examples in `api`, `gateway`, `ui`, `portal` blocks). **No `extraInitContainers`, no `extraContainers`, no `extraEnvs`** keys present in upstream values for chart 4.11.3. Custom Liquibase changeset via `extraVolumes`-mounted changelog is feasible (api pod can mount a config-map of additional changesets). A psql-update-as-init-container would have to come from a separate kustomize-style Deployment patch, not chart values.
+- **OQ4 (Round 3 + browser test, 2026-05-04) — Console SPA tolerates relative `ui.baseURL`: yes.** Chart `ui.baseURL` flipped from `http://gravitee.localhost/management` to `/management`. UIS tester confirmed CLI-side: `constants.json` reflects the relative value, Console HTML returns 200, management API responds 200 at the relative path. Browser tester then drove DevTools verification on Chromium: 58 XHRs on full reload, **zero** pointing to a wrong host or to `apim.example.com`, zero CORS errors, navigation works, refresh-while-logged-in works. The B6 multi-domain probe (manual hosts-file edit + load via synthetic hostname) was skipped because the automation environment can't edit `/etc/hosts`; B3's exhaustive 58-request check provides strong indirect evidence the SPA correctly resolves the relative URL against the page origin. **Finding 4's Console-SPA half is solved by this one-line chart change.** B6 left as an optional manual confirmation by the maintainer if belt-and-suspenders is desired; not blocking.
+- **OQ6 (Round 1, 2026-05-03) — api pod X-Forwarded-Host honour.** Probe of `/portal/redirect` with `Host: gravitee.test.example` + `X-Forwarded-Host: gravitee.test.example` + `X-Forwarded-Proto: https` returned `Location: http://gravitee.localhost/...`. Both forwarded headers ignored, host *and* scheme baked in. **The api pod constructs outbound absolute URLs from the chart-rendered `gravitee.yml`, not from the request.** Material constraint on Finding 4.
+- **OQ7 (Round 1, 2026-05-03) — chart helper-template duplicate-key origin.** `helm template` against `090-gravitee-config.yaml` shows the chart helper emits `entrypoint: "https://apim.example.com/"` as a hardcoded literal *before* iterating user-supplied `ui.portal` keys. Both literals end up in the same rendered `portal:` JSON block. **No chart conditional or value path suppresses the hardcoded default.** Finding 1's chart-side fix is ruled out — only paths are upstream patch, accept-with-doc, or relative-override-via-Path-(a).
+- **OQ8 (Round 5, 2026-05-04) — raising ui memory request to 256Mi keeps HPA at min=1 idle.** Question became moot: maintainer chose Path B (system-wide `DEFAULT_AUTOSCALING=false` toggle, see `PLAN-gravitee-disable-hpa-dev` in `completed/`) over Path A (raise memory). Path B ships, Path A's experiment skipped. Corollary observation: chart provisions HPA templates for **all four** components (api, gateway, ui, portal), and `gateway` has the same memory-headroom problem as `ui` — relevant when prod-shape clusters flip `DEFAULT_AUTOSCALING=true`. Already noted in Finding 8.
+- **OQ5 (Round 6 + 6.5 + browser test, 2026-05-04) — Portal SPA tolerates serving from `gravitee.<domain>/_portal/`: yes.** Two-piece fix shipped: chart `portal.baseURL: /portal`, `PORTAL_BASE_HREF: /_portal/`, `ui.portal.entrypoint: /_portal/`; ingress consolidated (separate `gravitee-portal.<domain>` IngressRoute removed) with new path-based route `HostRegexp(\`gravitee\..+\`) && PathPrefix(\`/_portal\`)` referencing a `Middleware/gravitee-portal-strip` resource (`stripPrefix: { prefixes: [/_portal] }`). Round 6 initial attempt missed the StripPrefix middleware and saw a SPA-fallback masking 404s on every asset request — Round 6.5 added the middleware after `uis-user1`'s clean three-probe diagnostic (identical 6592-byte responses for `/`, `/assets/config.json`, `/config.json` proved the masked failure). Browser tester confirmed P2-P6 PASS: Portal renders, all 27 assets load with `/_portal/` prefix, all API XHRs target `gravitee.localhost/portal/...`, navigation maintains the prefix, Console → Portal link works **and same-origin cookie sharing carries the Console-authenticated session into the Portal automatically** (the actual prize from consolidation). Hostname table collapsed from 3 user-visible hostnames to 2. **Finding 1 also resolved as a side effect**: `ui.portal.entrypoint` is now relative `/_portal/`, so the chart's hardcoded duplicate `entrypoint: "https://apim.example.com/"` in `constants.json` is structurally harmless (last-wins to the relative path).
+- **OQ9 (Round 1, 2026-05-03) — `/portal/redirect` Location shape.** Returns 307 with **absolute** Location header. Combined with OQ6, the absolute URL is constructed from chart-baked sources, not the request.
 
-### Still open — pending maintainer-side build cycles
+### Demoted to fallback (not run)
 
-These five questions require the maintainer to edit chart values / playbook tasks, run `./uis build`, and hand off to the tester for redeploy + observation. One question per build cycle, in roughly this order:
+OQ1 and OQ2 only matter as fallbacks if Finding 4's design constraint were relaxed — given Findings 4-Console (OQ4) and 4-Portal (OQ5) are both resolved without single-hostname trade-offs, neither needs to be run.
 
-- **OQ4 — Console SPA tolerates relative `ui.baseURL`?** Edit chart `ui.baseURL: /management`, build, tester redeploys, browser-tester loads Console and watches DevTools Network. If XHRs still target the correct host, OQ4 resolves "yes" and Finding 4's Console-SPA half collapses to a one-line chart change. Highest-value experiment to run first.
-- **OQ5 — Portal SPA tolerates serving from a sub-path (`gravitee.<domain>/_portal/`)?** Edit chart `portal.baseURL: /_portal`, edit `091-gravitee-ingress.yaml` to route `/_portal/*` on the same hostname, build, tester redeploys, browser-tester loads `gravitee.localhost/_portal/`. If the Portal renders, **Finding 1 also resolves as a side-effect** (relative `ui.portal.entrypoint` becomes harmless). Architectural impact: hostname table in `gravitee.md` collapses from 3 user-visible hostnames to 2.
-- **OQ1 — does the api pod re-read `gravitee.yml` on each start?** Only matters as a fallback if Finding 4's design constraint is relaxed (single-hostname mode acceptable). Edit `installation.standalone.portal.urls[0].url`, build, tester redeploys, re-check the settings endpoint. Demoted to "nice-to-know" given OQ6's outcome.
-- **OQ2 — Spring `GRAVITEE_<KEY>` env override for DB-backed settings?** OQ3 ruled out chart-native `extraEnvs`, so this would have to come via the playbook patching the api Deployment with explicit env vars. Demoted to "fallback only" for Finding 3 if no other lever works.
-- **OQ8 — raising ui memory request to 256Mi keeps HPA at min=1 idle?** Edit chart `ui.resources.requests.memory: 256Mi`, build, tester redeploys, observe HPA. Decides Finding 8 between Path A (raise memory request, HPA stays enabled at min=1) vs Path B (`autoscaling.enabled: false` symmetry).
+- **OQ1 — does the api pod re-read `gravitee.yml` on each start?** Demoted: only relevant if a single-hostname mode were accepted. Not running.
+- **OQ2 — Spring `GRAVITEE_<KEY>` env override for DB-backed settings?** Demoted: only relevant as a Finding 3 fallback if other levers fail. Possibly revisited during PLAN-001-gravitee-org-name if the lever choice surfaces a need.
 
-When all five resolve, PLAN-001+ files become writeable with deterministic tasks (no `if OQ4 = yes` branches).
+**All actionable open questions resolved.** PLAN-001+ files (org name, DB-baked URLs) become writeable with deterministic tasks. See *Scope* and *Variables proposed* for what each PLAN should ship.
 
 ---
 
 ## Scope
 
 - **In scope:** Findings 1, 2, 3, 4, 8 — each with a deploy-time-correct mechanism. The drop-database test is the gate. (Finding 5 was originally in-scope but Round 1.5 confirmed the audit's 503 does not reproduce — see Finding 5 for the demotion rationale.)
+- **Status (2026-05-04):** Findings 1 + 4-Console + 4-Portal + 8 shipped. Findings 2 + 3 + 4-api-side remain — all to be implemented via PLAN-001+ (org name first, DB-baked URLs second).
 - **Out of scope:**
   - SMTP (Finding 6) — separate [INVESTIGATE-email-smtp-service.md](INVESTIGATE-email-smtp-service.md).
   - Admin email mismatch (Finding 7) — non-actionable, user config reflects intent.

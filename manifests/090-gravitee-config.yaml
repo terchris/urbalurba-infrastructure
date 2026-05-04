@@ -106,7 +106,7 @@ installation:
     portal:
       urls:
         - envId: DEFAULT
-          url: http://gravitee-portal.localhost
+          url: http://gravitee.localhost/_portal
 
 # ---------------------------------------------------------------
 # Management API
@@ -221,12 +221,14 @@ ui:
   baseURL: /management
 
   # The Console also surfaces a "go to Developer Portal" link to users.
-  # The chart hardcodes this to https://<gateway.ingress.hosts[0]>/, which is
-  # wrong on two counts (https-only, and points at the gateway not the portal
-  # SPA). Override here. Maps under ui.portal are merged into constants.json
-  # and rendered after the chart's hardcoded entrypoint, so JSON last-wins.
+  # Now that Portal is consolidated under gravitee.<domain>/_portal/ (same
+  # origin as Console), this is a relative path that resolves against the
+  # current page host — domain-agnostic. The chart's hardcoded default
+  # `https://apim.example.com/` still emits earlier in the same JSON block
+  # (chart helper limitation), but JSON last-wins so the relative override
+  # is what the SPA sees. Browsers handle the duplicate-key gracefully.
   portal:
-    entrypoint: http://gravitee-portal.localhost/
+    entrypoint: /_portal/
 
   # Force the Console SPA to serve assets from the URL root. The chart's default
   # is to derive CONSOLE_BASE_HREF from ui.ingress.path (which contains "/console"),
@@ -259,20 +261,26 @@ portal:
   replicaCount: 1
 
   # Portal SPA fetches /assets/config.json and uses baseURL for its REST calls.
-  # Points at the consolidated Console hostname's /portal sub-path. NOTE: this
-  # is still cross-origin from the Portal SPA's own host (gravitee-portal.<dom>),
-  # so authenticated portal-admin flows (user registration, signed-in catalog
-  # browsing) hit the same HTTP-on-different-hostname cookie issue Console used
-  # to. v1 trade-off: anonymous portal browse works; signed-in portal admin
-  # paths are scope-deferred. Fix in v2 by either consolidating portal under
-  # gravitee.<dom>/_portal/ or by switching the cluster to HTTPS.
-  baseURL: http://gravitee.localhost/portal
+  # Relative `/portal` resolves against the current page origin
+  # (gravitee.<domain>/_portal/) at fetch time, then routes to the api pod
+  # via the existing /portal/* PathPrefix in 091-gravitee-ingress.yaml.
+  # Same-origin same-host with the Console — auth cookies travel without
+  # SameSite=None;Secure / HTTPS gymnastics. Single deploy serves any
+  # hostname Traefik routes.
+  baseURL: /portal
 
-  # Same fix as ui.env CONSOLE_BASE_HREF above: force assets to be served from
-  # the URL root instead of the chart's default /portal/ sub-path.
+  # Sets <base href="/_portal/"> in the served HTML so the BROWSER builds
+  # asset URLs with the prefix. Pairs with the gravitee-portal-strip
+  # Traefik middleware in 091-gravitee-ingress.yaml, which then strips the
+  # prefix on the way to the pod's nginx (which serves files from the root
+  # of /usr/share/nginx/html/, no /_portal/ sub-directory). Both pieces are
+  # required: without the env var, browser asset URLs would lack the prefix
+  # and Traefik wouldn't route them to this pod; without the middleware,
+  # the pod's nginx 404s every prefixed request and the SPA fallback
+  # returns index.html for every asset → blank page.
   env:
     - name: PORTAL_BASE_HREF
-      value: /
+      value: /_portal/
 
   ingress:
     enabled: false

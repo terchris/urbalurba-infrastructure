@@ -6,7 +6,7 @@
 #   gravitee.<domain>              Console SPA (gravitee-apim-ui:8002)
 #   gravitee.<domain>/management/  Management API (gravitee-apim-api:83)
 #   gravitee.<domain>/portal/      Portal-facing API (same api pod, different sub-path)
-#   gravitee-portal.<domain>       Developer Portal SPA (gravitee-apim-portal:8003)
+#   gravitee.<domain>/_portal/     Developer Portal SPA (gravitee-apim-portal:8003)
 #   gravitee-gw.<domain>           Public API Gateway (gravitee-apim-gateway:82)
 #
 # WHY CONSOLE + API SHARE A HOSTNAME:
@@ -47,6 +47,29 @@ spec:
       services:
         - name: gravitee-apim-api
           port: 83
+    # Developer Portal SPA at /_portal/* on the same hostname (was a separate
+    # gravitee-portal.<domain> hostname in v1). Same-origin with the Console,
+    # so the Portal SPA's REST calls (relative baseURL: /portal) and any auth
+    # cookies travel without SameSite/HTTPS gymnastics.
+    #
+    # Two pieces work together to make sub-path serving correct:
+    #   1. PORTAL_BASE_HREF=/_portal/ in 090-gravitee-config.yaml — tells the
+    #      Portal SPA's served HTML to set <base href="/_portal/">, so the
+    #      browser constructs asset URLs WITH the prefix.
+    #   2. The strip-portal-prefix middleware below — tells Traefik to REMOVE
+    #      the /_portal prefix before forwarding to the portal pod. The pod's
+    #      nginx serves files from /usr/share/nginx/html/ (no /_portal/
+    #      sub-directory), so it needs the bare path.
+    # Without (2), all assets would 404 inside the pod and the SPA's nginx
+    # fallback returns index.html for every miss → blank-page-of-death.
+    - match: HostRegexp(`gravitee\..+`) && PathPrefix(`/_portal`)
+      kind: Rule
+      priority: 100
+      middlewares:
+        - name: gravitee-portal-strip
+      services:
+        - name: gravitee-apim-portal
+          port: 8003
     # Everything else on the Console hostname → SPA shell + assets.
     - match: HostRegexp(`gravitee\..+`)
       kind: Rule
@@ -74,20 +97,21 @@ spec:
           port: 82
 
 ---
+# Strip /_portal prefix before forwarding to the Portal SPA pod. Browser sees
+# /_portal/<asset> paths (because <base href="/_portal/"> is injected by
+# PORTAL_BASE_HREF); the pod's nginx serves files from /usr/share/nginx/html/
+# without the prefix. This middleware bridges the two. Referenced by the
+# /_portal route on the gravitee-console IngressRoute above.
 apiVersion: traefik.io/v1alpha1
-kind: IngressRoute
+kind: Middleware
 metadata:
-  name: gravitee-portal
+  name: gravitee-portal-strip
   namespace: gravitee
   labels:
     app: gravitee-apim
     component: portal
 spec:
-  entryPoints:
-    - web
-  routes:
-    - match: HostRegexp(`gravitee-portal\..+`)
-      kind: Rule
-      services:
-        - name: gravitee-apim-portal
-          port: 8003
+  stripPrefix:
+    prefixes:
+      - /_portal
+

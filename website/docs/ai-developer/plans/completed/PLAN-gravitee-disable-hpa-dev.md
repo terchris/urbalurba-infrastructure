@@ -4,7 +4,9 @@
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Active — design rewritten 2026-05-04 (variable-driven)
+## Status: Completed
+
+**Completed**: 2026-05-04 — Round 5 PASS confirmed by UIS tester (`talk.md:1305+`). All four layers verified, default deploy yields 4 pods + 0 HPAs, `-e _gravitee_autoscaling=true` override re-enables HPAs (chart actually creates HPA templates for all four components, not just ui+portal — see Implementation Notes for the corollary). Round 3 OQ4 chart change unaffected.
 
 **Goal**: Introduce a system-wide `DEFAULT_AUTOSCALING` knob in `default-secrets.env`, propagate it through every setup playbook via ansible extra-vars, and adopt it in Gravitee as the first consumer. With the knob's default value (`false`), `./uis deploy gravitee` produces 4 pods (one each: api, gateway, ui, portal) and zero HPAs. Future autoscaling-aware services (openwebui, jupyterhub, …) adopt the same knob with a 2-line playbook change each.
 
@@ -105,8 +107,8 @@ Remove all four `autoscaling: { enabled: false }` blocks from `manifests/090-gra
 
 ### Tasks
 
-- [ ] 2.1 Append a Round to `talk.md` with restart + drop-redeploy + pod count + HPA count, plus the override-path probe.
-- [ ] 2.2 Wait for tester report.
+- [x] 2.1 Round 5 brief appended to `talk.md`. ✓
+- [x] 2.2 Tester report received: PASS. 4 pods + 0 HPAs default; `-e _gravitee_autoscaling=true` brings 4 HPAs back (not 2 as the brief expected — chart has HPA templates for all four components). Bidirectional flip verified. OQ4 unregressed. ✓
 
 ### Validation
 
@@ -119,13 +121,13 @@ Tester confirms:
 
 ## Acceptance Criteria
 
-- [ ] `DEFAULT_AUTOSCALING=false` in `default-secrets.env` with a comment block explaining its system-wide nature.
-- [ ] `service-deployment.sh:deploy_single_service` sources `default-secrets.env` and forwards every `DEFAULT_*` variable as a lowercased ansible extra-var. Comment block documents the convention.
-- [ ] `090-setup-gravitee.yml` has `_gravitee_autoscaling` mapped from `default_autoscaling` and applies it via four `--set` lines on helm install. Comment documents the pattern.
-- [ ] `manifests/090-gravitee-config.yaml` has no `autoscaling:` blocks.
-- [ ] Default `./uis deploy gravitee` produces 4 pods, 0 HPAs.
-- [ ] Override path (`-e _gravitee_autoscaling=true`) re-enables HPAs.
-- [ ] Round 3 OQ4 chart change (relative `ui.baseURL`) still functions — no regression on `constants.json` content or management-API reachability.
+- [x] `DEFAULT_AUTOSCALING=false` in `default-secrets.env` with a comment block explaining its system-wide nature. ✓
+- [x] `service-deployment.sh:deploy_single_service` sources `default-secrets.env` and forwards every `DEFAULT_*` variable as a lowercased ansible extra-var. Comment block documents the convention. ✓
+- [x] `090-setup-gravitee.yml` has `_gravitee_autoscaling` mapped from `default_autoscaling` and applies it via four `--set` lines on helm install. Comment documents the pattern. ✓
+- [x] `manifests/090-gravitee-config.yaml` has no `autoscaling:` blocks. ✓
+- [x] Default `./uis deploy gravitee` produces 4 pods, 0 HPAs. ✓ confirmed by tester
+- [x] Override path (`-e _gravitee_autoscaling=true`) re-enables HPAs. ✓ confirmed by tester (4 HPAs come back, not 2 — see Implementation Notes corollary)
+- [x] Round 3 OQ4 chart change (relative `ui.baseURL`) still functions — no regression on `constants.json` content or management-API reachability. ✓ confirmed by tester
 
 ---
 
