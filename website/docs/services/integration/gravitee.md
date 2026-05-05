@@ -73,6 +73,19 @@ The Management API uses chart-baked installation URLs for outbound `Location:` r
 
 UIS covers the SPA-served paths (Console XHRs, Portal asset loads) via relative URLs in `ui.baseURL`, `portal.baseURL`, and `ui.portal.entrypoint` — those resolve against the requesting page origin, so a single chart render serves any hostname Traefik routes. The api pod's emitted absolute URLs (login redirects, future password-reset email links, future webhook payloads) still echo `gravitee.localhost`. An upstream patch to `gravitee-io/gravitee-api-management` honouring `X-Forwarded-Host` in the Vert.x filter chain is the only path to closing this for cross-domain installs (Tailscale, Cloudflare tunnel). Practical impact: cross-domain Console navigation and Portal asset loads work correctly; only the absolute-URL emit paths echo the chart-baked host.
 
+### What's been verified — and what hasn't
+
+Install-level integration is heavily verified: Console SPA loads, Portal SPA loads, Management API responds, all four pods (`api`, `gateway`, `ui`, `portal`) reach Ready, IngressRoutes match for `gravitee.localhost` + `HostRegexp(\`gravitee\..+\`)`, drop-database test passes, post-deploy DB seeds for org name and portal entrypoint fire correctly, login + Console navigation + Developer Portal access via same-origin auth cookies all work. The diagnostic trail in `talk.md` Rounds 1–10 covers ten back-to-back tester rounds across these surfaces.
+
+**Gateway-use is not part of the install verification suite.** The deployment has only been verified as "installed correctly" — not as "functional as an API gateway":
+
+- No API has been created through the Console wizard or the Management API as part of integration tests.
+- No traffic has flowed through `gravitee-gw.localhost` to a real backend during automated verification. The Verify-section smoke check returns `404 No context-path matches the request URI` — that confirms the gateway is up and responding, *not* that the route + policy + backend pipeline is functional.
+- Built-in policies (transform-headers, JWT, mock, key-auth, …) — those that don't require Elasticsearch or Redis — haven't been applied or exercised.
+- Developer Portal API publication / subscription flow hasn't been used.
+
+The [End-to-end smoke test](#end-to-end-smoke-test-deploy-a-hello-world-api) under Verify is the recommended first exercise after a fresh deploy. It walks through creating a single proxy API in the Console and calling it through the gateway. If anything in that flow breaks, the symptom is most likely a Console wizard error or a non-404 failure when calling through `gravitee-gw.localhost`; common shapes are listed in [Troubleshooting](#troubleshooting).
+
 ## Deploy
 
 ```bash
@@ -104,13 +117,55 @@ curl -sS -o /dev/null -w "%{http_code}\n" http://gravitee-gw.localhost/
                                                                 # is the gateway responding correctly)
 ```
 
-Open `http://gravitee.localhost` in a browser, log in to the Console with the credentials in `gravitee/urbalurba-secrets`, create an API pointing at any HTTP echo backend, and curl the resulting `/your-context-path` to verify end-to-end gateway routing.
+Get the admin credentials in one line:
 
 ```bash
 EMAIL=$(kubectl get secret urbalurba-secrets -n gravitee -o jsonpath='{.data.GRAVITEE_ADMIN_EMAIL}' | base64 -d)
 PASSWORD=$(kubectl get secret urbalurba-secrets -n gravitee -o jsonpath='{.data.GRAVITEE_ADMIN_PASSWORD}' | base64 -d)
 echo "Console: http://gravitee.localhost/   login: admin (or $EMAIL) / $PASSWORD"
 ```
+
+The smoke checks above only confirm Gravitee is *installed* — they don't prove it works as an API gateway. To validate that, run the end-to-end smoke test below.
+
+### End-to-end smoke test: deploy a hello-world API
+
+Five-minute walkthrough that proves the Console → API definition → Gateway → backend pipeline is functional on this cluster. Run once after a fresh deploy.
+
+1. **Log in** at `http://gravitee.localhost/` with the credentials from the snippet above. The Console lands on the APIs list (empty on a fresh install).
+
+2. **Create a Proxy API.** Click **+ Add API** → choose the **Create from scratch** flow (or the v2 wizard, whichever the version offers). Set:
+
+   | Field | Value |
+   |---|---|
+   | Name | `hello` |
+   | Version | `1` |
+   | Description | (anything) |
+   | Context path | `/hello` |
+   | Endpoint / Target URL | `https://httpbin.org/get` |
+
+   Save. The API lands in `STARTED` status under the APIs list.
+
+3. **Deploy and publish.** Open the new API → **Deploy API** (puts the definition on the gateway pod) → **Publish API** (makes it visible in the Developer Portal — optional for the smoke test, but useful to verify the Portal works too).
+
+4. **Call through the gateway** (no auth — proxy APIs default to keyless until you attach a plan/policy):
+
+   ```bash
+   curl -fsS http://gravitee-gw.localhost/hello | jq '{url, headers}'
+   ```
+
+   Expected: a JSON response from httpbin showing the request URL and headers. The `headers` object should include `X-Gravitee-Request-Id` and `X-Gravitee-Transaction-Id` — Gravitee's tracing headers, proof the request actually traversed the gateway and didn't bypass it.
+
+5. **Confirm in gateway logs:**
+
+   ```bash
+   kubectl logs -n gravitee deployment/gravitee-apim-gateway --tail=20 | grep -i hello
+   ```
+
+   Should show the request being proxied (DEBUG-level logs are off by default; INFO shows context-path resolution). If the gateway log is silent and step 4 returned data, the request hit a different path — re-check the context path matches `/hello`.
+
+6. **Cleanup** (optional, before next purge): from the Console, **Stop API** then **Delete API**. The definition is removed from the gateway and the API list.
+
+If step 4 returns `404 No context-path matches the request URI`, the API definition didn't reach the gateway — most often because the API was created but not deployed (step 3). If it returns `502` or `504`, the gateway reached the backend but timed out — try a backend on the same cluster (e.g. `http://nginx-root-catch-all.default.svc.cluster.local`) to rule out outbound DNS / egress problems.
 
 ## Configuration
 
