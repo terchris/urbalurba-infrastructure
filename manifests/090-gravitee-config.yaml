@@ -130,6 +130,22 @@ api:
   # management.jdbc.password; GRAVITEE_API_PROPERTIES_ENCRYPTION_SECRET
   # overrides api.properties.encryption.secret (without it, gravitee logs
   # "You still use the default secret" on every start).
+  #
+  # Why portal.entrypoint is NOT overridden here (PLAN-002 / Round 9):
+  # The chart's api-deployment template emits a literal-dot env var
+  # `portal.entrypoint = "https://<gateway.ingress.hosts[0]><path>"`.
+  # POSIX env-var names must match `[A-Z_][A-Z0-9_]*` — a literal dot
+  # is invalid, and containerd silently filters such entries from
+  # `execve()` envp. The JVM never sees them. So both the chart's
+  # entry and any duplicate we'd add are dead code. The actual
+  # placeholder `https://api.company.com` is a hardcoded fallback
+  # baked into gravitee-apim-rest-api-model-*.jar — the API returns
+  # it when no row exists for `portal.entrypoint` in the `parameters`
+  # table. The PLAN-002 fix is therefore a post-Liquibase psql
+  # INSERT … ON CONFLICT DO UPDATE in 090-setup-gravitee.yml task 28,
+  # not a chart-values change. See talk.md Round 9 for the diagnostic
+  # trail. Upstream chart bug worth filing: rename to
+  # GRAVITEE_PORTAL_ENTRYPOINT or drop entirely.
   env:
     - name: GRAVITEE_MANAGEMENT_JDBC_PASSWORD
       valueFrom:

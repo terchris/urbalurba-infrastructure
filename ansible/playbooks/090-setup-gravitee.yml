@@ -41,6 +41,16 @@
     # or globally by flipping DEFAULT_AUTOSCALING in default-secrets.env.
     _gravitee_autoscaling: "{{ default_autoscaling | default('false') }}"
 
+    # PLAN-002 / Round 9: portal.entrypoint override applied via
+    # post-Liquibase psql INSERT into the `parameters` table. Hardcoded
+    # rather than DEFAULT_*-plumbed because the value is a consequence of
+    # the same-origin Portal routing (091-gravitee-ingress.yaml StripPrefix
+    # middleware on /_portal/), not a per-install knob. Changing this
+    # value requires coordinated changes in the IngressRoute + the chart's
+    # PORTAL_BASE_HREF — see manifests/090-gravitee-config.yaml and
+    # 091-gravitee-ingress.yaml.
+    _gravitee_portal_entrypoint: "/_portal/"
+
   tasks:
     - name: 1. Print playbook description
       ansible.builtin.debug:
@@ -397,9 +407,33 @@
       changed_when: true
       no_log: true
 
+    # PLAN-002 / Finding 2: override the hardcoded Java fallback for
+    # `portal.entrypoint` (baked into gravitee-apim-rest-api-model-*.jar
+    # as `https://api.company.com`). When no row exists in the `parameters`
+    # table for that key, the API model returns the literal fallback —
+    # which surfaces in /management/.../environments/DEFAULT/settings and
+    # the Console "Open Developer Portal" link. We INSERT a row with the
+    # relative `/_portal/` value (Round 6.5 same-origin Portal); the API
+    # reads the parameters table on every settings request, so no api pod
+    # restart needed. ON CONFLICT keeps the task idempotent across redeploys.
+    # See talk.md Round 9 for the diagnostic trail (chart's literal-dot
+    # env var is a no-op due to POSIX env-name rules — JVM never sees it).
+    - name: 28. Override portal.entrypoint default in parameters table
+      ansible.builtin.shell: |
+        set -e
+        kubectl exec -n default {{ postgres_pod_name }} -- \
+          bash -c "PGPASSWORD='{{ postgres_password.stdout }}' \
+            psql -h postgresql.default -U postgres -d {{ gravitee_db_name }} \
+            -v ON_ERROR_STOP=1 \
+            -c \"INSERT INTO parameters (key, value, reference_id, reference_type) VALUES ('portal.entrypoint', '{{ _gravitee_portal_entrypoint }}', 'DEFAULT', 'ENVIRONMENT') ON CONFLICT (key, reference_id, reference_type) DO UPDATE SET value = EXCLUDED.value;\""
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      changed_when: true
+      no_log: true
+
     # ============= PHASE 7: HEALTH PROBES =============
 
-    - name: 28. Health-check Management API from inside the cluster
+    - name: 29. Health-check Management API from inside the cluster
       ansible.builtin.shell: |
         kubectl run gravitee-health-{{ 99999 | random }} --image=curlimages/curl --rm -i --restart=Never -n {{ gravitee_namespace }} -- \
           curl -sS -o /dev/null -w "HTTP_CODE:%{http_code}" \
@@ -413,7 +447,7 @@
       failed_when: false
       changed_when: false
 
-    - name: 29. Health-check Gateway from inside the cluster
+    - name: 30. Health-check Gateway from inside the cluster
       ansible.builtin.shell: |
         kubectl run gravitee-gw-health-{{ 99999 | random }} --image=curlimages/curl --rm -i --restart=Never -n {{ gravitee_namespace }} -- \
           curl -sS -o /dev/null -w "HTTP_CODE:%{http_code}" \
@@ -429,14 +463,14 @@
 
     # ============= PHASE 8: STATUS =============
 
-    - name: 30. Get Gravitee pods
+    - name: 31. Get Gravitee pods
       ansible.builtin.shell: kubectl get pods -n {{ gravitee_namespace }}
       environment:
         KUBECONFIG: "{{ merged_kubeconf_file }}"
       register: gravitee_pod_status
       changed_when: false
 
-    - name: 31. Display final deployment status
+    - name: 32. Display final deployment status
       ansible.builtin.debug:
         msg: |
           ======================================================

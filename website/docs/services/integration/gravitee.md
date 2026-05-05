@@ -67,6 +67,12 @@ The Helm chart we deploy is the OSS Gravitee APIM image. The Console SPA still s
 
 These are expected on an OSS install and are not regressions to investigate.
 
+### Cross-domain redirects use chart-baked URLs (not `X-Forwarded-Host`)
+
+The Management API uses chart-baked installation URLs for outbound `Location:` redirect construction; it ignores `X-Forwarded-Host` from upstream proxies. A request with `X-Forwarded-Host: gravitee.example.com` to `/management/organizations/DEFAULT/environments/DEFAULT/portal/redirect` returns `Location: http://gravitee.localhost/...` — echoes the chart-baked host, ignores the proxy hint. Domain agility for the api pod's redirect path is upstream-bounded; chart `installation.api.url` is the only knob and it requires an absolute URL (relative values crash the api pod's Spring URI constructor at startup).
+
+UIS covers the SPA-served paths (Console XHRs, Portal asset loads) via relative URLs in `ui.baseURL`, `portal.baseURL`, and `ui.portal.entrypoint` — those resolve against the requesting page origin, so a single chart render serves any hostname Traefik routes. The api pod's emitted absolute URLs (login redirects, future password-reset email links, future webhook payloads) still echo `gravitee.localhost`. An upstream patch to `gravitee-io/gravitee-api-management` honouring `X-Forwarded-Host` in the Vert.x filter chain is the only path to closing this for cross-domain installs (Tailscale, Cloudflare tunnel). Practical impact: cross-domain Console navigation and Portal asset loads work correctly; only the absolute-URL emit paths echo the chart-baked host.
+
 ## Deploy
 
 ```bash
@@ -145,6 +151,19 @@ After editing the source common-values, run `./uis secrets generate` and `./uis 
 ### SPA URL configuration
 
 The Console and Developer Portal SPAs read their API URL from `/constants.json` (Console) and `/assets/config.json` (Portal). UIS overrides `ui.baseURL`, `portal.baseURL`, and `ui.portal.entrypoint` in `manifests/090-gravitee-config.yaml`. All three are **relative URLs** (`/management`, `/portal`, `/_portal/`) so the SPAs resolve them against the current page origin at fetch time — a single chart render serves any hostname Traefik routes (localhost, Tailscale, Cloudflare-tunneled) without per-domain configuration. The Portal SPA's `PORTAL_BASE_HREF` env var is set to `/_portal/` so its assets and route paths align with the sub-path it's served from. See the [Architecture](#architecture) section for the same-origin/auth-cookie rationale.
+
+### Deploy-time DB seed values
+
+The setup playbook writes two values to PostgreSQL after the api pod reaches Ready (Liquibase migrations have completed by then). Both operations are idempotent — re-running `./uis deploy gravitee` always converges to the configured value:
+
+| Value | DB target | Lever | Configured by |
+|---|---|---|---|
+| Organisation name | `organizations.name` (single row, `id=DEFAULT`) | `UPDATE organizations SET name=…` | `DEFAULT_ORGANIZATION_NAME` (default `UIS Local Dev`) |
+| Portal entrypoint | `parameters` row (`key='portal.entrypoint'`, `reference_type='ENVIRONMENT'`) | `INSERT … ON CONFLICT DO UPDATE` | hardcoded `/_portal/` in `_gravitee_portal_entrypoint` (bound to ingress topology) |
+
+The portal entrypoint exists because the Gravitee api pod's Java model (`gravitee-apim-rest-api-model-*.jar`) returns a hardcoded `https://api.company.com` fallback when no DB row defines the `portal.entrypoint` settings key — visible in the Console settings UI and in the Management API's `/management/.../environments/DEFAULT/settings.portal.entrypoint` response. The deploy-time INSERT overrides the fallback. The chart's `templates/api/api-deployment.yaml` also emits a literal-dot `portal.entrypoint` env var on the api Deployment, but POSIX env-var name rules cause containerd to silently filter it from `execve()` envp — the JVM never sees it. See the comment block in `manifests/090-gravitee-config.yaml` (api section) for context.
+
+See `ansible/playbooks/090-setup-gravitee.yml` tasks 27 + 28 for the SQL.
 
 ## Undeploy
 
