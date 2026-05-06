@@ -298,14 +298,15 @@ cmd_deploy() {
     local service_id=""
     local app_name=""
     local url_prefix=""
-    local schema=""
 
     # Parse positional + flag args. First positional is service_id.
+    # Note: deploy does not accept --schema/--schemas. The schema list lives
+    # on the per-app secret (written by configure) and is read by the
+    # Deployment template via valueFrom.secretKeyRef.
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --app)         app_name="$2"; shift 2 ;;
             --url-prefix)  url_prefix="$2"; shift 2 ;;
-            --schema)      schema="$2"; shift 2 ;;
             -*)            log_error "Unknown option: $1"; exit "$EXIT_GENERAL_ERROR" ;;
             *)             [[ -z "$service_id" ]] && service_id="$1"; shift ;;
         esac
@@ -339,18 +340,17 @@ cmd_deploy() {
             fi
             # Apply per-app defaults (Decision #16/#19 in INVESTIGATE-postgrest.md)
             url_prefix="${url_prefix:-api-$app_name}"
-            schema="${schema:-api_v1}"
             log_info "Deploying service: $service_id (app: $app_name)"
         else
-            if [[ -n "$app_name" || -n "$url_prefix" || -n "$schema" ]]; then
-                log_error "Service '$service_id' is single-instance — --app/--url-prefix/--schema not allowed"
+            if [[ -n "$app_name" || -n "$url_prefix" ]]; then
+                log_error "Service '$service_id' is single-instance — --app/--url-prefix not allowed"
                 exit "$EXIT_GENERAL_ERROR"
             fi
             log_info "Deploying service: $service_id"
         fi
 
         # Deploy
-        deploy_single_service "$service_id" "$app_name" "$url_prefix" "$schema"
+        deploy_single_service "$service_id" "$app_name" "$url_prefix"
 
         # Auto-enable if successful and service-auto-enable is available
         # (Skip for multi-instance: enabled-services.conf is for single-instance autostart only)

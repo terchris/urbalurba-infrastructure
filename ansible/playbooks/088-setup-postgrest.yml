@@ -18,11 +18,14 @@
 # Required extra-vars (passed by uis-cli.sh from `--app <name>`):
 #   _app_name    — per-app instance name (k8s-safe), e.g. "atlas"
 #   _url_prefix  — first label of the public hostname, e.g. "api-atlas"
-#   _schema      — Postgres schema PostgREST exposes, e.g. "api_v1"
+#
+# The schema list (PGRST_DB_SCHEMAS) is read from the per-app secret, not
+# passed as an extra-var — configure-postgrest.sh writes it on every
+# successful run; the Deployment template reads it via valueFrom.secretKeyRef.
 #
 # Usage:
 # ansible-playbook playbooks/088-setup-postgrest.yml \
-#   -e "_app_name=atlas _url_prefix=api-atlas _schema=api_v1"
+#   -e "_app_name=atlas _url_prefix=api-atlas"
 
 - name: Set up PostgREST instance for one application
   hosts: localhost
@@ -39,20 +42,20 @@
         that:
           - _app_name is defined and _app_name | length > 0
           - _url_prefix is defined and _url_prefix | length > 0
-          - _schema is defined and _schema | length > 0
         fail_msg: |
           Missing required extra-vars. Multi-instance services need per-app
           context. Run via: ./uis deploy postgrest --app <name>
-          Or directly: ansible-playbook ... -e "_app_name=X _url_prefix=Y _schema=Z"
+          Or directly: ansible-playbook ... -e "_app_name=X _url_prefix=Y"
+          (The schema list is read from the per-app secret, not passed here.)
 
     - name: 2. Print playbook context
       ansible.builtin.debug:
         msg: |
           Setting up PostgREST instance
           App:       {{ _app_name }}
-          Schema:    {{ _schema }}
           URL host:  {{ _url_prefix }}.<any-domain-traefik-knows>
           Namespace: {{ postgrest_namespace }} (shared)
+          Schemas:   read from secret '{{ _app_name }}-postgrest' key PGRST_DB_SCHEMAS
 
     # ============= PHASE 1: PREREQUISITE CHECK =============
 
@@ -77,7 +80,7 @@
         msg: |
           Secret '{{ _app_name }}-postgrest' not found in namespace '{{ postgrest_namespace }}'.
           The configure step must run before deploy. Run:
-            ./uis configure postgrest --app {{ _app_name }} --schema {{ _schema }} --url-prefix {{ _url_prefix }}
+            ./uis configure postgrest --app {{ _app_name }} --schemas <list> --url-prefix {{ _url_prefix }}
           Then retry this deploy.
       when: pgrst_secret_check.resources | length == 0
 

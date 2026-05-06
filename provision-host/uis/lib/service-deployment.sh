@@ -83,15 +83,15 @@ _is_service_multi_instance() {
     [[ "$val" == "true" ]]
 }
 
-# Usage: deploy_single_service <service_id> [<app_name> [<url_prefix> [<schema>]]]
+# Usage: deploy_single_service <service_id> [<app_name> [<url_prefix>]]
 # For multi-instance services (multiInstance: true in services.json), app_name is
-# required and gets translated into Ansible extra-vars (_app_name, _url_prefix,
-# _schema) per the convention in ansible/playbooks/templates/README.md.
+# required and gets translated into Ansible extra-vars (_app_name, _url_prefix)
+# per the convention in ansible/playbooks/templates/README.md. Schema lists for
+# postgrest are read from the per-app secret, not from CLI flags.
 deploy_single_service() {
     local service_id="$1"
     local app_name="${2:-}"
     local url_prefix="${3:-}"
-    local schema="${4:-}"
     local script
 
     script=$(find_service_script "$service_id")
@@ -144,7 +144,6 @@ deploy_single_service() {
         if [[ -n "$app_name" ]]; then
             ansible_args+=("-e" "_app_name=$app_name")
             [[ -n "$url_prefix" ]] && ansible_args+=("-e" "_url_prefix=$url_prefix")
-            [[ -n "$schema" ]] && ansible_args+=("-e" "_schema=$schema")
             log_info "Running Ansible playbook: $SCRIPT_PLAYBOOK (target: $target_host, app: $app_name)"
         else
             log_info "Running Ansible playbook: $SCRIPT_PLAYBOOK (target: $target_host)"

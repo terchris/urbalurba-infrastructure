@@ -95,7 +95,7 @@ run_configure() {
     local json_output=false
     local namespace=""
     local secret_name_prefix=""
-    local schema=""
+    local schemas=""
     local url_prefix=""
     local rotate=false
     local purge=false
@@ -123,8 +123,8 @@ run_configure() {
                 secret_name_prefix="$2"
                 shift 2
                 ;;
-            --schema)
-                schema="$2"
+            --schemas)
+                schemas="$2"
                 shift 2
                 ;;
             --url-prefix)
@@ -253,8 +253,8 @@ run_configure() {
     fi
 
     # Source and run handler. Multi-instance handlers receive the extended argument set
-    # (schema, url_prefix, rotate, purge); single-instance handlers ignore the trailing args
+    # (schemas, url_prefix, rotate, purge); single-instance handlers ignore the trailing args
     # via positional parameter rules.
     source "$handler"
-    configure_service "$service_id" "$app_name" "$database_name" "$init_file" "$json_output" "$namespace" "$secret_name_prefix" "$schema" "$url_prefix" "$rotate" "$purge"
+    configure_service "$service_id" "$app_name" "$database_name" "$init_file" "$json_output" "$namespace" "$secret_name_prefix" "$schemas" "$url_prefix" "$rotate" "$purge"
 }

@@ -4,11 +4,13 @@
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Backlog
+## Status: Completed
 
 **Goal**: Add a `./uis pull` command to the repo-root wrapper that pulls the latest container image and restarts the container
 
-**Last Updated**: 2026-03-11
+**Last Updated**: 2026-05-06
+
+**Completed**: 2026-05-06 — `pull_container()` shipped in both `./uis` (line 174) and `website/static/uis` (line 191); help text in both wrappers documents the command. All phase tasks and acceptance criteria are met by the existing code.
 
 **Related**: [INVESTIGATE-container-pull-command.md](../backlog/INVESTIGATE-container-pull-command.md)
 

@@ -5,10 +5,15 @@
 # deploys one PostgREST instance per consuming application; all
 # instances share a namespace and the platform's PostgreSQL service.
 #
-# Multi-instance lifecycle (PLAN-002):
+# Multi-instance lifecycle:
 #   ./uis configure postgrest --app <name> [--database <db>] \
-#       [--schema api_v1] [--url-prefix api-<name>]
+#       [--schemas api_v1,marts,raw] [--url-prefix api-<name>]
 #   ./uis deploy postgrest --app <name>
+#
+# The schema list lives on the per-app secret (key PGRST_DB_SCHEMAS),
+# written by configure and read by the Deployment template via
+# valueFrom.secretKeyRef. Deploy does not accept --schemas — there's only
+# one source of truth.
 #
 # See INVESTIGATE-postgrest.md and PLAN-002-postgrest-deployment.md.
 
