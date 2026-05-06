@@ -16,6 +16,7 @@ All completed plans and investigations, sorted by date. Kept for reference.
 | [Plan: Transfer urbalurba-infrastructure to helpers-no](PLAN-transfer-to-helpers-no.md) | Transfer this repo from `terchris/urbalurba-infrastructure` to `helpers-no/urbalurba-infrastructure` with zero downtime. | 2026-05-06 |
 | [PLAN: Rename Tailscale hostname variables for clarity](PLAN-tailscale-variable-rename.md) | Rename `TAILSCALE_CLUSTER_HOSTNAME` to `TAILSCALE_PUBLIC_HOSTNAME` and `TAILSCALE_INTERNAL_HOSTNAME` to `TAILSCALE_OPERATOR_PREFIX` to accurately describe what these UIS-invented variables actually control. | 2026-05-06 |
 | [PLAN: Rename "Packages" to "Services" in Documentation](PLAN-rename-packages-to-services.md) | — | 2026-05-06 |
+| [Feature: PostgREST `--schemas` flag with wipe-and-rewrite reconciliation](PLAN-postgrest-multi-schema-reconciliation.md) | Extend `./uis configure postgrest` to expose multiple PostgreSQL schemas via a single PostgREST instance, with deterministic reconfigure semantics. | 2026-05-06 |
 | [Deploy OpenMetadata](PLAN-openmetadata-deployment.md) | Deploy OpenMetadata 1.12.1 as a UIS platform service using the official Helm chart, reusing existing PostgreSQL and Elasticsearch | 2026-05-06 |
 | [Deploy Nextcloud + OnlyOffice](PLAN-nextcloud-deployment.md) | Deploy Nextcloud 33 with OnlyOffice Document Server as a UIS platform service, reusing existing PostgreSQL and Redis | 2026-05-06 |
 | [PLAN: "How Deployment Works" Documentation Page](PLAN-how-deployment-works.md) | — | 2026-05-06 |
