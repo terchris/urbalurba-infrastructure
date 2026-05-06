@@ -4,11 +4,13 @@
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Active
+## Status: Completed
 
 **Goal**: After this plan, `./uis deploy postgresql && ./uis deploy gravitee` on a fresh local cluster produces a working Gravitee APIM 4.11 deployment with admin Console, Developer Portal, and API Gateway, backed by PostgreSQL — no MongoDB, no Elasticsearch, no Redis. `./uis undeploy gravitee --purge` cleanly tears down all Gravitee state.
 
-**Last Updated**: 2026-04-30
+**Last Updated**: 2026-05-06
+
+**Completed**: 2026-05-06 — Gravitee close-out shipped to `origin/main` over the gravitee work-stream commits ending at `de872dd` (E2E smoke-test docs). PLAN-001 (org name) and PLAN-002 (portal entrypoint) follow-ups in `plans/completed/` covered the remaining post-deploy config work. All four URLs (Console, Portal, Gateway, Management API) verified live; CI green; rebuilt `uis-provision-host:latest` published.
 
 **Investigation**: [INVESTIGATE-gravitee-fix.md](../backlog/INVESTIGATE-gravitee-fix.md) — 17 decisions resolved, 12 open checks (all empirical, handled during implementation).
 
