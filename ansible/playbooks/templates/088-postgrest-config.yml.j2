@@ -1,12 +1,14 @@
 # Per-app PostgREST Deployment + Service.
 # Rendered by 088-setup-postgrest.yml with extra-vars:
 #   _app_name    — per-app instance name (k8s-safe), e.g. "atlas"
-#   _schema      — Postgres schema PostgREST exposes, e.g. "api_v1"
 #   _url_prefix  — first label of the public hostname (used by the IngressRoute, not here)
 #
-# The Deployment mounts the per-app secret <app>-postgrest (key PGRST_DB_URI),
-# created by configure-postgrest.sh. If that secret does not exist, the pod
-# will CrashLoopBackOff with a clear "secret not found" event.
+# The schema list (PGRST_DB_SCHEMAS) is no longer a Jinja substitution — it
+# lives as a key on the per-app secret <app>-postgrest, written by
+# configure-postgrest.sh. The Deployment mounts both PGRST_DB_URI and
+# PGRST_DB_SCHEMAS via valueFrom.secretKeyRef. If either key is missing, the
+# pod CrashLoopBackOffs with a clear "couldn't find key" event — that's the
+# operator's signal to run `./uis configure postgrest --app <name> --schemas <list>`.
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -45,7 +47,10 @@ spec:
                   name: "{{ _app_name }}-postgrest"
                   key: PGRST_DB_URI
             - name: PGRST_DB_SCHEMAS
-              value: "{{ _schema }}"
+              valueFrom:
+                secretKeyRef:
+                  name: "{{ _app_name }}-postgrest"
+                  key: PGRST_DB_SCHEMAS
             - name: PGRST_DB_ANON_ROLE
               value: "{{ _app_name | replace('-', '_') }}_web_anon"
             - name: PGRST_DB_POOL

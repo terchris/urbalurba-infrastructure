@@ -74,8 +74,11 @@ The `<app>_` prefix is required because Postgres roles are cluster-wide. Two app
 # 1. Configure PostgREST (Postgres-side role pair + Secret in postgrest namespace)
 ./uis configure postgrest --app atlas \
     --database atlas_db \
-    --schema api_v1 \
+    --schemas api_v1,marts,raw \
     --url-prefix api-atlas
+#    `--schemas` is a comma-separated list — pass one or many. The list is
+#    stored on the per-app secret (key PGRST_DB_SCHEMAS) and consumed by
+#    deploy automatically; deploy itself takes no schema flags.
 
 # 2. Deploy (Kubernetes objects: Deployment, Service, IngressRoute)
 ./uis deploy postgrest --app atlas
@@ -90,29 +93,42 @@ Step 0 is required before step 1. `./uis configure postgrest` runs a precheck th
 What changes at each step:
 
 - **`configure postgresql`** (step 0) creates `<app>_db`, the `<app>` Postgres role with a generated password, grants the role on the database, and auto-exposes the cluster service at `localhost:35432`. Returns connection JSON (no credentials are printed elsewhere — the JSON is the only output that carries the password). Use `--rotate` to refresh the password.
-- **`configure postgrest`** (step 1) creates the role pair (`atlas_web_anon`, `atlas_authenticator`) and writes the `atlas-postgrest` Secret. Idempotent: a second call with full state (role pair + Secret) is a no-op skip; from a partial-state baseline (roles exist but Secret missing, or vice versa) it takes a recovery path that re-aligns state via `DO` block + `EXISTS` guards (and `ALTER USER … PASSWORD` to refresh credentials). Use `--rotate` to force a new password and update the Secret.
+- **`configure postgrest`** (step 1) creates the role pair (`atlas_web_anon`, `atlas_authenticator`) and writes the `atlas-postgrest` Secret with both `PGRST_DB_URI` and `PGRST_DB_SCHEMAS` keys. The handler dispatches on the cluster's current state — see [Reconfigure semantics](#reconfigure-semantics) for the full contract. Re-running with the **same** `--schemas` is a no-op; with a **different** list it wipes-and-rewrites grants to match. If the secret was deleted manually, configure recovers by rotating the password (Reconfigure-fresh-password). If exactly one of the two roles exists, the handler refuses to act and tells you to `--purge` (the cluster is in an inconsistent state that UIS won't auto-recover from). Use `--rotate` to force a new password and update the Secret without changing schemas.
 - **`deploy`** (step 2) renders per-instance manifests and applies the Deployment, Service, and IngressRoute. Errors out if the instance has not been configured.
 - **`undeploy`** removes only the Kubernetes objects. Postgres roles and the Secret remain, so a follow-up `deploy` works without re-configure.
 - **`configure postgrest --purge`** drops the Postgres roles and removes the Secret. Pass `--database <app>_db` explicitly — without it, purge falls back to `<app>` as the default database name and aborts with "FATAL: database does not exist" (see [Troubleshooting](#troubleshooting)). Use after `undeploy` for a full teardown.
 
 ### Smoke checks
 
-Four canonical checks verify a per-app PostgREST instance is healthy after deploy. Run these from the host machine after step 2:
+Five canonical checks verify a per-app PostgREST instance is healthy after deploy. Run these from the host machine after step 2:
 
 ```bash
-# 1. Spec served, version pinned
+# 1. Spec served, version pinned (default schema = first in --schemas)
 curl -sS http://api-<app>.localhost/ | jq '{swagger, version: .info.version}'
 # expect: {"swagger":"2.0","version":"14.10"}
 
-# 2. Real data flowing through a curated view
+# 2. Real data flowing through a curated view (default schema)
 curl -sS http://api-<app>.localhost/<view-name> | jq 'length'
 # expect: > 0
 
-# 3. Hidden objects stay hidden (only api_v1.* is exposed)
-curl -sS -o /dev/null -w '%{http_code}\n' http://api-<app>.localhost/<some-internal-table>
-# expect: 404
+# 3. Each schema in --schemas is reachable via Accept-Profile
+#    PostgREST exposes one schema per request; the first schema in
+#    PGRST_DB_SCHEMAS is the default (no header needed). Switch to a
+#    non-default schema by setting Accept-Profile per request.
+for profile in api_v1 marts raw; do
+    paths=$(curl -sS -H "Accept-Profile: $profile" http://api-<app>.localhost/ | jq '.paths | length')
+    echo "  $profile -> $paths paths"
+done
+# expect: each schema reports a non-zero path count matching the table
+# count for that schema (one row per /table-or-view + 1 for the root /).
 
-# 4. CORS preflight works for browser callers
+# 4. Hidden objects stay hidden (e.g. private_marts not in --schemas)
+curl -sS -o /dev/null -w '%{http_code}\n' \
+    -H 'Accept-Profile: private_marts' http://api-<app>.localhost/
+# expect: 404 (the schema isn't in PGRST_DB_SCHEMAS, so PostgREST refuses
+# to switch to it).
+
+# 5. CORS preflight works for browser callers
 curl -sS -X OPTIONS \
     -H 'Origin: https://<your-frontend-host>' \
     -H 'Access-Control-Request-Method: GET' \
@@ -120,7 +136,7 @@ curl -sS -X OPTIONS \
 # expect: Access-Control-Allow-Origin: ...
 ```
 
-Check 1 confirms PostgREST is alive and the pinned image is what's actually running. Check 2 confirms the application's `api_v1.*` schema is reachable and populated. Check 3 confirms only `api_v1.*` is in `db-schemas` — everything else (raw tables, internal `marts.*`, secrets) returns 404. Check 4 confirms CORS is open enough for browser apps.
+Check 1 confirms PostgREST is alive and the pinned image is what's actually running. Check 2 confirms the default schema (the first one in `--schemas`) is reachable and populated. Check 3 is the **multi-schema verification**: it walks the full `--schemas` list, fetching the OpenAPI spec under each `Accept-Profile` and asserting each schema has a non-zero path count. **Don't skip this check on a multi-schema instance** — without `Accept-Profile`, root-path probes only verify the *default* schema, which masks broken GRANTs on the other schemas. Check 4 confirms `private_*` schemas (or anything else not in `--schemas`) return 404 even when explicitly requested. Check 5 confirms CORS is open enough for browser apps.
 
 ### Schema reload
 
@@ -136,6 +152,61 @@ Or restart the pods for a clean cycle:
 ```bash
 kubectl rollout restart deployment/<app>-postgrest -n postgrest
 ```
+
+`./uis configure postgrest` automatically issues the NOTIFY at the end of any non-no-op run, so a freshly-configured instance picks up new tables without manual intervention. The kubectl rollout is only needed if you change the **order** of `--schemas` (PostgREST re-parses the env var only at startup; the first schema in the list is the default served when `Accept-Profile` is omitted).
+
+### Reconfigure semantics
+
+`./uis configure postgrest --app <app> --schemas <list>` is the only way to change the schema set served by an instance. The handler is **wipe-and-rewrite**:
+
+1. The list passed via `--schemas` is the complete, ordered set of schemas the instance will expose.
+2. Each non-no-op call drops every grant the `<app>_web_anon` role currently holds in the database (`DROP OWNED BY`), then re-applies `GRANT USAGE` / `GRANT SELECT ON ALL TABLES` / `ALTER DEFAULT PRIVILEGES` for each schema in `--schemas`. All inside a single transaction.
+3. A re-run with the **identical** list (string-equal to the value stored on the secret, order included) is a no-op short-circuit — no SQL fires, no secret is rewritten.
+4. A re-run with a **different** list (added schemas, removed schemas, or just reordered) is a regular reconfigure: the wipe-and-rewrite produces an end state that matches `--schemas` exactly. There's no diff state to manage; the new state is fully determined by the flag value.
+
+This keeps the operator-visible contract simple: *the role's grants are exactly `--schemas`, no more, no less.* No accumulated drift across reconfigures, no stealth `pg_default_acl` entries from removed schemas, no need to track what was previously granted.
+
+The trade-off: any out-of-band `GRANT … TO <app>_web_anon` (e.g., a manual GRANT done from `psql` for debugging) will be wiped on the next configure. See [UIS-managed role contract](#uis-managed-role-contract) below.
+
+### Inspecting the current schema list
+
+The schema list lives on the per-app secret as the `PGRST_DB_SCHEMAS` key. Read it with one kubectl line:
+
+```bash
+kubectl get secret <app>-postgrest -n postgrest \
+    -o jsonpath='{.data.PGRST_DB_SCHEMAS}' | base64 -d
+```
+
+The deploy template reads from this same key via `valueFrom.secretKeyRef`, so what kubectl prints is exactly what PostgREST sees on its next pod startup. (Live PostgREST may be running with a stale value if you reconfigured but haven't rolled out a new pod — `kubectl rollout restart deployment/<app>-postgrest -n postgrest` to refresh.)
+
+### UIS-managed role contract
+
+The `<app>_web_anon` role's privileges are **exclusively UIS-managed**. `./uis configure postgrest --app <app>` is the single source of truth: it wipes and re-applies grants based on `--schemas`. Any manual `GRANT … TO <app>_web_anon` will be lost on the next configure.
+
+If you need an extra grant for debugging or one-off access, prefer:
+- A separate Postgres role (not the UIS-managed pair).
+- An ad-hoc psql session as the `postgres` superuser, scoped to a specific query.
+
+Don't extend the anon role's reach by hand — the configure handler will undo it.
+
+### Upgrading from PLAN-002 single-schema
+
+PLAN-002 shipped a single-schema configure handler with a `--schema` flag. The current multi-schema handler (PLAN-XXX) replaces that with `--schemas` and stores the list on the per-app secret as a new `PGRST_DB_SCHEMAS` key.
+
+If you have a per-app PostgREST instance configured under PLAN-002, the secret has only `PGRST_DB_URI` (no `PGRST_DB_SCHEMAS`). Upgrade in one step:
+
+```bash
+./uis configure postgrest --app <app> --database <app>_db --schemas <list>
+```
+
+This takes the **Reconfigure-preserve-URI** path:
+- The existing `PGRST_DB_URI` is preserved verbatim — password unchanged, no restart needed for credentials.
+- Grants are reset to match `<list>` exactly via `DROP OWNED BY` + per-schema GRANTs.
+- The new `PGRST_DB_SCHEMAS` key is added to the secret.
+
+If `<list>` includes `api_v1` (the PLAN-002 default), the resulting grants on `api_v1` are functionally identical to before. Other schemas in `<list>` get the same `USAGE` + `SELECT` + `DEFAULT PRIVILEGES` treatment.
+
+`--rotate` requires `PGRST_DB_SCHEMAS` to be present on the secret — running it on a PLAN-002-era secret without first running configure with `--schemas` will fail loudly with an explicit "run configure first" error. This is deliberate: rotate is not the upgrade path.
 
 ### Multi-instance coexistence
 
@@ -217,7 +288,7 @@ Atlas does **not** create the `atlas_web_anon` or `atlas_authenticator` roles or
 
 ./uis configure postgrest --app atlas \
     --database atlas_db \
-    --schema api_v1 \
+    --schemas api_v1,marts,raw \
     --url-prefix api-atlas
 ./uis deploy postgrest --app atlas
 ```
