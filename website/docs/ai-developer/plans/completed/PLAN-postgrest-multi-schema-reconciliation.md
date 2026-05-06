@@ -4,15 +4,17 @@
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Active
+## Status: Completed
 
 **Goal**: Extend `./uis configure postgrest` to expose multiple PostgreSQL schemas via a single PostgREST instance, with deterministic reconfigure semantics.
 
-**Last Updated**: 2026-05-06 (moved to active/, execution started)
+**Last Updated**: 2026-05-06
+
+**Completed**: 2026-05-06 — PR #140 merged (commits `feb1562` + `120327b`); CI workflows green (Build UIS Container, Test UIS Scripts, Generate UIS Documentation, Deploy Documentation); rebuilt image published as `ghcr.io/helpers-no/uis-provision-host:latest@sha256:42cd40d5f66916a6f6071ab4d69fcf0080a2915b1cf93295bd3b169b8af42f31`. Atlas validated row-flow + privacy boundary against the live deployment in cross-repo talk Message 4.
 
 **Investigation**: [INVESTIGATE-postgrest-multi-schema-reconciliation.md](../backlog/INVESTIGATE-postgrest-multi-schema-reconciliation.md)
 
-**Cross-repo coordination**: [atlas talk thread](file:///Users/terje.christensen/learn/helpers/atlas/website/docs/ai-developer/plans/talk/talk.md) Messages 1–3. Atlas confirmed direction in Message 3; awaiting rebuilt `uis-provision-host:latest` SHA from this PR.
+**Cross-repo coordination**: [atlas talk thread](file:///Users/terje.christensen/learn/helpers/atlas/website/docs/ai-developer/plans/talk/talk.md) Messages 1–4 — direction confirmed (atlas Message 3), implementation summary (uis Message 2), atlas validation green (atlas Message 4). Atlas's `setup.md` lines 294–295 update lands on their side once they pull this image.
 
 ---
 
