@@ -18,7 +18,7 @@
 
 ## Addendum: 2026-04-29 — Atlas verification feedback (case (c) design gap)
 
-Source: Atlas verification feedback (2026-04-29). Atlas ran four pre-flight experiments against the design proposed below and surfaced one design gap that affects the role-creation SQL recorded in §"How configure works (per-instance)" → "What configure generates" (lines 219–225 of the original draft). Recorded as an addendum per [PLAN-001-postgrest-documentation.md](../completed/PLAN-001-postgrest-documentation.md) Phase 4.3 case (c) — the existing decisions are *not* modified; the new constraint and its implementation impact are documented here so PLAN-002 picks it up.
+Source: Atlas verification feedback (2026-04-29). Atlas ran four pre-flight experiments against the design proposed below and surfaced one design gap that affects the role-creation SQL recorded in §"How configure works (per-instance)" → "What configure generates" (lines 219–225 of the original draft). Recorded as an addendum per [PLAN-001-postgrest-documentation.md](./PLAN-001-postgrest-documentation.md) Phase 4.3 case (c) — the existing decisions are *not* modified; the new constraint and its implementation impact are documented here so PLAN-002 picks it up.
 
 **The gap.** The role-creation SQL grants `SELECT` on **existing** tables/views in `api_v1` at the moment configure runs:
 
@@ -36,7 +36,7 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA api_v1 GRANT SELECT ON TABLES TO <app>_web_an
 
 This grants `SELECT` on **future** tables/views in `api_v1` automatically. Belt-and-suspenders alongside the existing GRANT-on-existing line. Idempotent; safe to re-run.
 
-**Implementation impact.** [PLAN-002-postgrest-deployment.md](../completed/PLAN-002-postgrest-deployment.md) Phase 2.4 (the `configure-postgrest.sh` create-path SQL block) must include this `ALTER DEFAULT PRIVILEGES` statement. The line is small but load-bearing — without it, every consumer of UIS PostgREST has to either re-run configure on every schema change, or distribute the fix to their own migrations (Atlas's PLAN-004 emits guarded grants as a workaround if UIS doesn't ship this). The "fix once in UIS" path is cleaner and matches the "schema and roles are application-side / platform deploys PostgREST and documents the contract" boundary stated below.
+**Implementation impact.** [PLAN-002-postgrest-deployment.md](./PLAN-002-postgrest-deployment.md) Phase 2.4 (the `configure-postgrest.sh` create-path SQL block) must include this `ALTER DEFAULT PRIVILEGES` statement. The line is small but load-bearing — without it, every consumer of UIS PostgREST has to either re-run configure on every schema change, or distribute the fix to their own migrations (Atlas's PLAN-004 emits guarded grants as a workaround if UIS doesn't ship this). The "fix once in UIS" path is cleaner and matches the "schema and roles are application-side / platform deploys PostgREST and documents the contract" boundary stated below.
 
 **Two related Atlas findings, captured for completeness:**
 

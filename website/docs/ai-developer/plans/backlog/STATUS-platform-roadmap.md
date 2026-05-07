@@ -26,7 +26,7 @@ Items that still need work, grouped by priority.
 |---|--------------|--------|---------|
 | 2 | [Version pinning](INVESTIGATE-version-pinning.md) | Backlog | 18 of 21 Helm charts unpinned. Pin versions to prevent breaking changes. |
 | 2b | [Service version metadata](INVESTIGATE-service-version-metadata.md) | Backlog | Decide how service scripts expose version info for docs generation. |
-| 3 | [Gravitee fix](INVESTIGATE-gravitee-fix.md) | Backlog | Only unverified service. Hardcoded credentials, no remove playbook, wrong namespace. |
+| 3 | [Gravitee fix](../completed/INVESTIGATE-gravitee-fix.md) | Backlog | Only unverified service. Hardcoded credentials, no remove playbook, wrong namespace. |
 
 ### Priority 2: New Service Deployments
 
@@ -77,12 +77,12 @@ Items where the work has been implemented.
 | — | [Backstage metadata & generator](../completed/PLAN-001-backstage-metadata-and-generator.md) | 2026-03-11 | Service metadata fields and catalog generator. |
 | — | [Backstage deployment](../completed/PLAN-002-backstage-deployment.md) | 2026-03-12 | Deploy RHDH 1.9 with K8s plugin and catalog. |
 | — | [Backstage API entities](../completed/PLAN-004-backstage-api-entities.md) | 2026-03-13 | 7 API entities with providesApis/consumesApis relationships. |
-| 13 | [Container pull command](INVESTIGATE-container-pull-command.md) | 2026-03-12 | Added `./uis pull` to PowerShell wrapper. |
+| 13 | [Container pull command](../completed/INVESTIGATE-container-pull-command.md) | 2026-03-12 | Added `./uis pull` to PowerShell wrapper. |
 | — | [Documentation rewrite](../completed/PLAN-014-documentation-rewrite.md) | 2026-02-27 | Complete docs restructure. |
 | — | [Documentation generation](../completed/PLAN-015-documentation-generation.md) | 2026-03-02 | Automated docs from service metadata. |
 | — | [Dev template ingress cleanup](../completed/PLAN-dev-template-ingress-cleanup.md) | 2026-03-04 | Remove old ingress templates. |
 | — | [PowerShell ErrorActionPreference](../completed/PLAN-uis-ps1-erroractionpreference.md) | 2026-03-04 | Fix error handling in PS wrapper. |
-| — | [Backstage investigation](INVESTIGATE-backstage.md) | 2026-03-11 | Initial investigation — led to PLAN-001/002/004. |
+| — | [Backstage investigation](../completed/INVESTIGATE-backstage.md) | 2026-03-11 | Initial investigation — led to PLAN-001/002/004. |
 | — | [Rename packages→services](../completed/PLAN-rename-packages-to-services.md) | 2026-03-17 | Renamed `docs/packages/` → `docs/services/`, updated all links, scripts, and config. Part of [#20 Old system cleanup](../completed/INVESTIGATE-old-system-cleanup.md). |
 | — | [Delete old deployment system](../completed/PLAN-delete-old-deployment-system.md) | 2026-03-17 | Deleted `provision-host/kubernetes/` (60 scripts, ~6,149 lines), `scripts/packages/`, and `./uis provision` command. Part of [#20 Old system cleanup](../completed/INVESTIGATE-old-system-cleanup.md). |
 | — | [How Deployment Works](../completed/PLAN-how-deployment-works.md) | 2026-03-17 | User-facing doc page in `advanced/` covering deploy flow, dependencies, health checks, stacks, and metadata fields. Part of [#20 Old system cleanup](../completed/INVESTIGATE-old-system-cleanup.md). |
@@ -92,4 +92,4 @@ Items where the work has been implemented.
 
 ## Service Migration (Historical)
 
-The original service migration is tracked in [STATUS-service-migration.md](../completed/STATUS-service-migration.md). Summary: 25 of 26 services verified, only Gravitee remains (broken before migration — see [#3 Gravitee fix](INVESTIGATE-gravitee-fix.md)). Automated test suite (`./uis test-all`) covers 23 services with 47/47 PASS.
+The original service migration is tracked in [STATUS-service-migration.md](../completed/STATUS-service-migration.md). Summary: 25 of 26 services verified, only Gravitee remains (broken before migration — see [#3 Gravitee fix](../completed/INVESTIGATE-gravitee-fix.md)). Automated test suite (`./uis test-all`) covers 23 services with 47/47 PASS.

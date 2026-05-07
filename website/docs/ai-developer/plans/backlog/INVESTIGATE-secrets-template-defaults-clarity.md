@@ -142,7 +142,7 @@ For **Option C** (if scoped in alongside another change):
 ## Related backlog items
 
 - A planned **secrets-template drift detector** — when source `00-common-values.env.template` adds a new variable, existing user `.uis.secrets/secrets-config/00-common-values.env.template` files don't pick it up (this bit the gravitee PR-A tester in Round 2: empty `GRAVITEE_POSTGRES_*` values). Both this clarity work and the drift detector touch the same flow; if scheduled together they share a test/fixture surface. (Standalone INVESTIGATE pending — file when surfaced.)
-- The existing `INVESTIGATE-container-pull-command.md` — separate flow but neighbouring contributor-DX surface.
+- The existing [`INVESTIGATE-container-pull-command.md`](../completed/INVESTIGATE-container-pull-command.md) — separate flow but neighbouring contributor-DX surface.
 
 ---
 

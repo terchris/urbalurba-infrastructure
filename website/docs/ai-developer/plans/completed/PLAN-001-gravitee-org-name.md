@@ -10,7 +10,7 @@
 
 **Last Updated**: 2026-05-04
 
-**Investigation**: [INVESTIGATE-gravitee-post-deploy-config.md](../backlog/INVESTIGATE-gravitee-post-deploy-config.md) — Finding 3.
+**Investigation**: [INVESTIGATE-gravitee-post-deploy-config.md](./INVESTIGATE-gravitee-post-deploy-config.md) — Finding 3.
 
 **Prerequisites**: All resolved as of milestone commit `b7fe659` — every gravitee-config experiment is closed (OQ3, OQ4, OQ5, OQ6, OQ7, OQ9 resolved; OQ1, OQ2, OQ8 demoted/shipped). Chart inspection confirmed no chart value exposes the human-readable organisation name (only the slug ID `DEFAULT`).
 

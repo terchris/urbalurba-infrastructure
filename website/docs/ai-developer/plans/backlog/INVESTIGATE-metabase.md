@@ -197,7 +197,7 @@ Reference: the full data journey for one Atlas source is documented in [`~/learn
 
 **What Metabase is *not* used for in Atlas:**
 - The public-facing Atlas portal (that is Next.js → Postgres direct).
-- Public open-data APIs (that role belongs to PostgREST — see `INVESTIGATE-postgrest.md`).
+- Public open-data APIs (that role belongs to PostgREST — see [`INVESTIGATE-postgrest.md`](../completed/INVESTIGATE-postgrest.md)).
 - Multi-tenant end-user dashboards (Cube was evaluated for this and rejected; see Atlas stack doc).
 
 ---

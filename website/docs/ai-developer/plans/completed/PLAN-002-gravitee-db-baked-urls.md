@@ -25,7 +25,7 @@
 
 **Last Updated**: 2026-05-04
 
-**Investigation**: [INVESTIGATE-gravitee-post-deploy-config.md](../backlog/INVESTIGATE-gravitee-post-deploy-config.md) — Finding 2.
+**Investigation**: [INVESTIGATE-gravitee-post-deploy-config.md](./INVESTIGATE-gravitee-post-deploy-config.md) — Finding 2.
 
 **Prerequisites**: PLAN-001 shipped (org-name DB UPDATE pattern proven via Round 7 + 7.5; playbook task 27 in `090-setup-gravitee.yml` is the template for PLAN-002's task 28).
 

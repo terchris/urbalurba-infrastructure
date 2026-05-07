@@ -14,7 +14,7 @@
 
 **History**: This PLAN's first iteration (2026-05-03) hardcoded `autoscaling: { enabled: false }` in chart values for the four gravitee components — symmetric, but per-service. Maintainer asked for the toggle to be a single system-wide variable that other services can adopt later, defined in `default-secrets.env`. Re-executed under that design.
 
-**Reported in**: Finding 8 of [INVESTIGATE-gravitee-post-deploy-config.md](../backlog/INVESTIGATE-gravitee-post-deploy-config.md). Maintainer's verbatim direction: *"we don't need hpa when this is running in development on the local rancher desktop cluster… there might be others that can adopt this later. if we define it in the default-secrets.env and then use that to set _gravitee_autoscaling."*
+**Reported in**: Finding 8 of [INVESTIGATE-gravitee-post-deploy-config.md](./INVESTIGATE-gravitee-post-deploy-config.md). Maintainer's verbatim direction: *"we don't need hpa when this is running in development on the local rancher desktop cluster… there might be others that can adopt this later. if we define it in the default-secrets.env and then use that to set _gravitee_autoscaling."*
 
 ---
 

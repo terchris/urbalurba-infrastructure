@@ -10,7 +10,7 @@
 
 **Last Updated**: 2026-03-13
 
-**Implementation**: [PLAN-002-backstage-deployment.md](../completed/PLAN-002-backstage-deployment.md) — completed 2026-03-12. Backstage (RHDH 1.9) deployed with 25 catalog components + 7 resources, K8s plugin with live pod status, guest auth, full deploy/undeploy/verify cycle (6 tests including pod data verification).
+**Implementation**: [PLAN-002-backstage-deployment.md](./PLAN-002-backstage-deployment.md) — completed 2026-03-12. Backstage (RHDH 1.9) deployed with 25 catalog components + 7 resources, K8s plugin with live pod status, guest auth, full deploy/undeploy/verify cycle (6 tests including pod data verification).
 
 **Depends on:** PostgreSQL (042), Traefik ingress. Authentik (070-079) is optional — Backstage works without authentication.
 
@@ -641,8 +641,8 @@ This investigation produced completed plans and ongoing investigations:
 
 | Item | Scope | Cluster needed? | Status |
 |------|-------|-----------------|--------|
-| [PLAN-001-backstage-metadata-and-generator.md](../completed/PLAN-001-backstage-metadata-and-generator.md) | Add metadata fields + build catalog generator | No | **Complete** |
-| [PLAN-002-backstage-deployment.md](../completed/PLAN-002-backstage-deployment.md) | Deploy RHDH with K8s plugin, catalog, guest auth | Yes | **Complete** |
+| [PLAN-001-backstage-metadata-and-generator.md](./PLAN-001-backstage-metadata-and-generator.md) | Add metadata fields + build catalog generator | No | **Complete** |
+| [PLAN-002-backstage-deployment.md](./PLAN-002-backstage-deployment.md) | Deploy RHDH with K8s plugin, catalog, guest auth | Yes | **Complete** |
 | [INVESTIGATE-backstage-enhancements.md](INVESTIGATE-backstage-enhancements.md) | API entities, Grafana plugin, Scaffolder, TechDocs | Varies | Backlog |
 | [INVESTIGATE-backstage-auth.md](INVESTIGATE-backstage-auth.md) | Authentik OIDC (optional, was PLAN-003) | Yes | Backlog |
 

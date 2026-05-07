@@ -12,7 +12,7 @@
 
 **Context**: Exploratory conversation about Backstage capabilities (notes captured in this document)
 
-**Depends on**: [INVESTIGATE-backstage.md](INVESTIGATE-backstage.md) (completed), PLAN-002 (completed)
+**Depends on**: [INVESTIGATE-backstage.md](../completed/INVESTIGATE-backstage.md) (completed), PLAN-002 (completed)
 
 ---
 
