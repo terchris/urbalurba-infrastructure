@@ -9,7 +9,7 @@ Investigations and plans waiting for implementation, sorted by last updated date
 
 | Document | Goal | Updated |
 |----------|------|---------|
-| [Platform Roadmap](STATUS-platform-roadmap.md) | Track prioritized investigations and planned work for the UIS platform | 2026-05-06 |
+| [1PRIORITY](1PRIORITY.md) | Tier-ranked triage view of every INVESTIGATE in this folder — what to pick up next, what's deferred, what's still in flight | 2026-05-07 |
 | [NOTE — Response to Atlas's PostgREST verification findings (2026-04-28)](NOTE-to-atlas-postgrest-feedback-incorporated.md) | — | 2026-05-06 |
 | [NOTE — PostgREST verification findings from Atlas (2026-04-29)](NOTE-from-atlas-postgrest-verification.md) | — | 2026-05-06 |
 | [NOTE — PostgREST documentation review: approved (2026-04-29)](NOTE-from-atlas-postgrest-doc-approval.md) | — | 2026-05-06 |
