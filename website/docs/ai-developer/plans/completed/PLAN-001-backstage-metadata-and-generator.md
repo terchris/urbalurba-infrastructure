@@ -10,7 +10,7 @@
 
 **Last Updated**: 2026-03-12
 
-**Investigation**: [INVESTIGATE-backstage.md](../backlog/INVESTIGATE-backstage.md)
+**Investigation**: [INVESTIGATE-backstage.md](./INVESTIGATE-backstage.md)
 
 **Blocks**: PLAN-002-backstage-deployment cannot load a catalog without this
 

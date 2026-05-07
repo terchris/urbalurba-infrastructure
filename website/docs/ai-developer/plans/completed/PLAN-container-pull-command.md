@@ -12,7 +12,7 @@
 
 **Completed**: 2026-05-06 — `pull_container()` shipped in both `./uis` (line 174) and `website/static/uis` (line 191); help text in both wrappers documents the command. All phase tasks and acceptance criteria are met by the existing code.
 
-**Related**: [INVESTIGATE-container-pull-command.md](../backlog/INVESTIGATE-container-pull-command.md)
+**Related**: [INVESTIGATE-container-pull-command.md](./INVESTIGATE-container-pull-command.md)
 
 ---
 

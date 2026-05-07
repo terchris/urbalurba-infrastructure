@@ -12,7 +12,7 @@
 
 **Completed**: 2026-05-06 — Gravitee close-out shipped to `origin/main` over the gravitee work-stream commits ending at `de872dd` (E2E smoke-test docs). PLAN-001 (org name) and PLAN-002 (portal entrypoint) follow-ups in `plans/completed/` covered the remaining post-deploy config work. All four URLs (Console, Portal, Gateway, Management API) verified live; CI green; rebuilt `uis-provision-host:latest` published.
 
-**Investigation**: [INVESTIGATE-gravitee-fix.md](../backlog/INVESTIGATE-gravitee-fix.md) — 17 decisions resolved, 12 open checks (all empirical, handled during implementation).
+**Investigation**: [INVESTIGATE-gravitee-fix.md](./INVESTIGATE-gravitee-fix.md) — 17 decisions resolved, 12 open checks (all empirical, handled during implementation).
 
 **Strategy**: Ships as **two PRs**:
 
@@ -55,7 +55,7 @@ Finishes the work the investigation started. Service-script rewrite + a regen + 
 
 ### Tasks
 
-- [ ] 1.1 Rewrite `provision-host/uis/services/integration/service-gravitee.sh` per the target shape in [INVESTIGATE-gravitee-fix.md § Recommended Target Shape § Service metadata](../backlog/INVESTIGATE-gravitee-fix.md#recommended-target-shape). Pin `SCRIPT_IMAGE="graviteeio/apim:4.11.3"`.
+- [ ] 1.1 Rewrite `provision-host/uis/services/integration/service-gravitee.sh` per the target shape in [INVESTIGATE-gravitee-fix.md § Recommended Target Shape § Service metadata](./INVESTIGATE-gravitee-fix.md#recommended-target-shape). Pin `SCRIPT_IMAGE="graviteeio/apim:4.11.3"`.
 - [ ] 1.2 Add `SCRIPT_LOGO="gravitee-logo.svg"` and source the SVG from Gravitee's official brand assets into `website/static/img/services/gravitee-logo.svg`. Strip embedded CSS / scripts; ensure ~24×24 viewBox so it renders cleanly in the services table.
 - [ ] 1.3 Regenerate `services.json` and the per-service docs that depend on it:
   ```bash
@@ -109,11 +109,11 @@ Builds the deployable configuration. No deploy yet — this phase produces files
   ```
   Capture the four Service names and their HTTP ports. Use these as the source of truth for both 2.2 (IngressRoute) and 2.3 (`SCRIPT_CHECK_COMMAND`'s instance label).
 
-- [ ] 2.2 Rewrite `manifests/091-gravitee-ingress.yaml` per the target shape in [INVESTIGATE-gravitee-fix.md § Recommended Target Shape § IngressRoute](../backlog/INVESTIGATE-gravitee-fix.md#recommended-target-shape). Substitute the actual service names and ports from 2.1.
+- [ ] 2.2 Rewrite `manifests/091-gravitee-ingress.yaml` per the target shape in [INVESTIGATE-gravitee-fix.md § Recommended Target Shape § IngressRoute](./INVESTIGATE-gravitee-fix.md#recommended-target-shape). Substitute the actual service names and ports from 2.1.
 
 - [ ] 2.3 Update `service-gravitee.sh` `SCRIPT_CHECK_COMMAND` if 2.1 reveals the instance label is different from the placeholder `app.kubernetes.io/instance=gravitee-apim`.
 
-- [ ] 2.4 Rewrite `manifests/090-gravitee-config.yaml` per the target shape in [INVESTIGATE-gravitee-fix.md § Recommended Target Shape § Helm values](../backlog/INVESTIGATE-gravitee-fix.md#recommended-target-shape). Specifically:
+- [ ] 2.4 Rewrite `manifests/090-gravitee-config.yaml` per the target shape in [INVESTIGATE-gravitee-fix.md § Recommended Target Shape § Helm values](./INVESTIGATE-gravitee-fix.md#recommended-target-shape). Specifically:
   - Disable bundled subcharts (`mongodb-replicaset.enabled: false`, `elasticsearch.enabled: false`, `es.enabled: false`).
   - `management.type: jdbc`, with JDBC URL/username/password.
   - `ratelimit.type: none`, `analytics.enabled: false`.
@@ -258,7 +258,7 @@ This is the gate. PR-A does not merge until everything in this phase passes on a
   ```
   Expect: full bootstrap rerun, Liquibase recreates schema, all four pods reach Ready.
 
-- [ ] 4.11 Update Open Check answers in [INVESTIGATE-gravitee-fix.md](../backlog/INVESTIGATE-gravitee-fix.md) — replace each open check with the resolved answer. The investigation file moves from `backlog/` to `completed/` after PR-B merges.
+- [ ] 4.11 Update Open Check answers in [INVESTIGATE-gravitee-fix.md](./INVESTIGATE-gravitee-fix.md) — replace each open check with the resolved answer. The investigation file moves from `backlog/` to `completed/` after PR-B merges.
 
 ### Validation
 

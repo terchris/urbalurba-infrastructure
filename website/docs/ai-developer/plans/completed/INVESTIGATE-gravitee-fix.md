@@ -11,7 +11,7 @@
 **Last Updated**: 2026-04-30
 
 **Related**:
-- [STATUS-service-migration.md](../completed/STATUS-service-migration.md) - Gravitee was the only unverified service at end of migration; this investigation supersedes that history.
+- [STATUS-service-migration.md](./STATUS-service-migration.md) - Gravitee was the only unverified service at end of migration; this investigation supersedes that history.
 - [Adding a Service](../../../contributors/guides/adding-a-service.md) - Service definition, playbook, ingress, secrets, and test conventions.
 
 **Depends on**: PostgreSQL (manifest `042`), Traefik IngressRoute CRDs, UIS secrets generation. **Does NOT depend on** MongoDB, Elasticsearch, or Redis.

@@ -12,7 +12,7 @@
 
 **Origin**: Atlas asked for `marts` + `raw` exposure alongside `api_v1` (cross-repo talk thread, atlas Messages 1–3). UIS counter-proposed a per-app `--schemas` flag (uis Message 1). Atlas confirmed direction in Message 3. Before PLAN-XXX drafting, terje raised the reconfigure question: *"can the command be run many times — what happens if it's run with 3 schemas and then I remove one and run again?"* This investigation answers that.
 
-**Depends on**: [INVESTIGATE-postgrest.md](INVESTIGATE-postgrest.md), [PLAN-002-postgrest-deployment.md](../completed/PLAN-002-postgrest-deployment.md), the existing `configure-postgrest.sh` handler.
+**Depends on**: [INVESTIGATE-postgrest.md](INVESTIGATE-postgrest.md), [PLAN-002-postgrest-deployment.md](./PLAN-002-postgrest-deployment.md), the existing `configure-postgrest.sh` handler.
 
 ---
 

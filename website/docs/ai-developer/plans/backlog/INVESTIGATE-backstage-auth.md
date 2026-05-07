@@ -10,7 +10,7 @@
 
 **Last Updated**: 2026-03-13
 
-**Parent investigation**: [INVESTIGATE-backstage.md](INVESTIGATE-backstage.md)
+**Parent investigation**: [INVESTIGATE-backstage.md](../completed/INVESTIGATE-backstage.md)
 
 **Prerequisites**: Backstage deployed (PLAN-002 complete), Authentik deployed
 
@@ -68,7 +68,7 @@ BACKSTAGE_OIDC_CLIENT_SECRET=generate-a-secret-here
 
 ### Multi-domain considerations
 
-If Backstage is exposed on an external domain (e.g., `backstage.urbalurba.no`), the same challenges apply as with other protected services — see the CSP middleware solution in `076-authentik-csp-middleware.yaml` and the domain addition limitations documented in [INVESTIGATE-backstage.md](INVESTIGATE-backstage.md).
+If Backstage is exposed on an external domain (e.g., `backstage.urbalurba.no`), the same challenges apply as with other protected services — see the CSP middleware solution in `076-authentik-csp-middleware.yaml` and the domain addition limitations documented in [INVESTIGATE-backstage.md](../completed/INVESTIGATE-backstage.md).
 
 ---
 

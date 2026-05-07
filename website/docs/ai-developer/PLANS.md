@@ -102,7 +102,7 @@ PLAN-003-backstage-auth-and-plugins.md        ← Optional, after deployment wor
 Each plan references the investigation and the previous plan in its header:
 
 ```markdown
-**Investigation**: [INVESTIGATE-backstage.md](../backlog/INVESTIGATE-backstage.md)
+**Investigation**: [INVESTIGATE-backstage.md](./INVESTIGATE-backstage.md)
 **Prerequisites**: PLAN-001 must be complete first
 ```
 

@@ -11,7 +11,7 @@
 **Completed**: 2026-04-28
 **Last Updated**: 2026-04-28 (all phases done; Atlas feedback incorporated; ready for PLAN-002)
 
-**Investigation**: [INVESTIGATE-postgrest.md](../backlog/INVESTIGATE-postgrest.md)
+**Investigation**: [INVESTIGATE-postgrest.md](./INVESTIGATE-postgrest.md)
 
 **Prerequisites**: The investigate is complete (22 resolved decisions, no open design questions).
 
@@ -121,7 +121,7 @@ PLAN-001 hand-writes the sections that capture what makes PostgREST unusual. The
 
 - [x] 4.1 Share the rendered docs page with the Atlas developer. ✓
 - [x] 4.2 Ask the explicit question: *"Reading this page, can you publish Atlas's data via PostgREST as described?"* ✓
-- [x] 4.3 Capture feedback and sort into buckets. ✓ — feedback received as [`NOTE-from-atlas-postgrest-verification.md`](../backlog/NOTE-from-atlas-postgrest-verification.md) (2026-04-29). Atlas ran four pre-flight experiments against PostgREST 14.10 + UIS PostgreSQL 16.6 and surfaced findings across all three buckets:
+- [x] 4.3 Capture feedback and sort into buckets. ✓ — Atlas verification feedback received 2026-04-29. Atlas ran four pre-flight experiments against PostgREST 14.10 + UIS PostgreSQL 16.6 and surfaced findings across all three buckets:
 
   **Bucket (a) — editorial:** `SCRIPT_SUMMARY` apostrophe stripped by docs generator. Fixed in `service-postgrest.sh` (changed `platform's` to `the shared`).
 
@@ -129,7 +129,7 @@ PLAN-001 hand-writes the sections that capture what makes PostgREST unusual. The
   - **FK embeds need actual `FOREIGN KEY` constraints** — `?select=*,kommune(*)` only works when the underlying tables have FK constraints; `@source`/`@references` comment hints don't synthesise them. Added subsection "Embedded resources require real FK constraints" with the three workarounds (FK constraints in dbt, computed relationships, skip embeds).
   - **Column descriptions don't propagate from underlying tables to wrapper views.** Added subsection explaining the consumer must re-emit `COMMENT ON COLUMN api_v1.*.col` if descriptions are wanted in the OpenAPI output.
 
-  **Bucket (c) — design gap:** `ALTER DEFAULT PRIVILEGES IN SCHEMA api_v1 GRANT SELECT ON TABLES TO <app>_web_anon;` is missing from the role-creation SQL in [INVESTIGATE-postgrest.md](../backlog/INVESTIGATE-postgrest.md) §"What configure generates". Without it, views added to `api_v1` after configure runs are silently invisible to anonymous requests (PostgREST sees them via schema-reload but `<app>_web_anon` has no `SELECT` privilege on the new objects). Recorded as **Addendum 2026-04-29** at the top of INVESTIGATE-postgrest.md and folded into [PLAN-002-postgrest-deployment.md](./PLAN-002-postgrest-deployment.md) Phase 2.4 SQL block. Existing decisions are unchanged per the addendum protocol.
+  **Bucket (c) — design gap:** `ALTER DEFAULT PRIVILEGES IN SCHEMA api_v1 GRANT SELECT ON TABLES TO <app>_web_anon;` is missing from the role-creation SQL in [INVESTIGATE-postgrest.md](./INVESTIGATE-postgrest.md) §"What configure generates". Without it, views added to `api_v1` after configure runs are silently invisible to anonymous requests (PostgREST sees them via schema-reload but `<app>_web_anon` has no `SELECT` privilege on the new objects). Recorded as **Addendum 2026-04-29** at the top of INVESTIGATE-postgrest.md and folded into [PLAN-002-postgrest-deployment.md](./PLAN-002-postgrest-deployment.md) Phase 2.4 SQL block. Existing decisions are unchanged per the addendum protocol.
 
 ### Validation — ✅ PASS
 
