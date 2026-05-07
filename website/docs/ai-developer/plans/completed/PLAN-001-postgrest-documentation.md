@@ -121,7 +121,7 @@ PLAN-001 hand-writes the sections that capture what makes PostgREST unusual. The
 
 - [x] 4.1 Share the rendered docs page with the Atlas developer. ✓
 - [x] 4.2 Ask the explicit question: *"Reading this page, can you publish Atlas's data via PostgREST as described?"* ✓
-- [x] 4.3 Capture feedback and sort into buckets. ✓ — feedback received as [`NOTE-from-atlas-postgrest-verification.md`](../backlog/NOTE-from-atlas-postgrest-verification.md) (2026-04-29). Atlas ran four pre-flight experiments against PostgREST 14.10 + UIS PostgreSQL 16.6 and surfaced findings across all three buckets:
+- [x] 4.3 Capture feedback and sort into buckets. ✓ — Atlas verification feedback received 2026-04-29. Atlas ran four pre-flight experiments against PostgREST 14.10 + UIS PostgreSQL 16.6 and surfaced findings across all three buckets:
 
   **Bucket (a) — editorial:** `SCRIPT_SUMMARY` apostrophe stripped by docs generator. Fixed in `service-postgrest.sh` (changed `platform's` to `the shared`).
 
