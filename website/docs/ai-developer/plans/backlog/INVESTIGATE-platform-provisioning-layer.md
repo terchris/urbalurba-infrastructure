@@ -6,7 +6,7 @@
 
 **Created**: 2026-04-09
 **Updated**: 2026-05-07
-**Status**: ACTIVE — AKS Step 1 shipped to `main` (PR #120, merged 2026-04-09); Step 2 (ACR + Key Vault) and the other platforms (gke, eks, microk8s-vm/metal/rpi) not started.
+**Status**: ACTIVE — AKS Step 1 *drafts* merged to `main` via PR #120 (2026-04-09) but **never run end-to-end**. Production AKS deployments today still go through `hosts/azure-aks/` (the bash + `az aks create` path). Direction (per maintainer, 2026-05-07): make `platforms/aks/` the production path, with helpers.no's Microsoft nonprofit grant as the funding source and atlas-on-AKS as the load-bearing end-state. AKS-only focus; other platforms (gke, eks, microk8s-vm/metal/rpi) deferred until a concrete consumer surfaces.
 
 ---
 
@@ -173,75 +173,51 @@ out. Migration happens platform by platform:
 
 ## AKS — Step-by-Step Plan
 
-AKS is the first platform. It is being built iteratively:
+AKS is the first platform. The current scope is deliberately minimal: get an AKS cluster up that behaves like the Rancher Desktop substrate UIS already targets, so atlas-on-AKS can run with no Azure-specific add-ons. Anything that doesn't have a Rancher-Desktop equivalent is deferred until there's a concrete need (see *Future hardening* below).
 
-### Step 1: Minimal working cluster ✅ Shipped (PR #120, 2026-04-09)
+### Step 1: Minimal working cluster — drafts merged 2026-04-09, **not yet verified end-to-end**
+
+Scope:
 
 - Resource group
 - AKS cluster (matches original `az aks create` flags)
 - Azure Blob remote state
 - Storage class aliases
 - Traefik via Helm in `02-post-apply.sh`
+- **`kubernetes-secrets.yml` applied in `02-post-apply.sh`** — same flow as Rancher Desktop and `hosts/azure-aks/02-azure-aks-setup.sh`. No Key Vault, no Azure-specific secret integration. (Currently *missing* from the tofu draft; the Step 1 PLAN must add it.)
 
-Code lives in `platforms/aks/`. The `feature/platform-aks-opentofu` branch was merged and is now stale; it can be deleted from origin.
+Other gap-analysis findings vs `hosts/azure-aks/` (2026-05-07):
 
-### Step 2: ACR + Key Vault
+- Quota pre-flight check (`hosts/azure-aks/check-aks-quota.sh`) is not ported. Acceptable to let `tofu apply` fail loudly on first run and address the gap only if it bites.
+- PIM check is weaker (single-shot prompt vs 3-attempt loop). Cosmetic; defer unless first-run friction surfaces.
+- External-IP curl reachability test is missing from `02-post-apply.sh`. The nginx in-cluster connectivity test (verification bar below) covers the load-bearing case; the curl test is optional polish.
+- `--generate-ssh-keys` is intentionally absent from the tofu — `azurerm_kubernetes_cluster` generates them for Linux node pools by default.
 
-- Azure Container Registry
-- Role assignment: AKS managed identity → ACR pull
-- Azure Key Vault
-- Key Vault access: RBAC model
-- Config additions to `azure-aks-config.sh-template`
+Code lives in `platforms/aks/`. The `feature/platform-aks-opentofu` branch was merged and the stale remote was deleted.
 
-### Step 3: Workload Identity
+**Verification bar for "Step 1 done":** a tester runs the four scripts (`00-bootstrap-state.sh` → `01-apply.sh` → `02-post-apply.sh`) end-to-end against a real Azure subscription, then runs `./uis deploy nginx` and the deploy completes successfully — including the built-in connectivity tests in `020-setup-nginx.yml` (steps 13 and 15) which spin up a curl-test pod and fetch the test file + index page via cluster-internal DNS. That single command exercises networking, pod scheduling, storage class aliases, service DNS, and IngressRoute application, so it's a sufficient end-to-end signal without needing additional services for the verification.
 
-- Enable OIDC issuer on AKS
-- Federated credential for service account
-- Annotated Kubernetes service account
-- Key Vault secret access via Workload Identity (replaces pod-level managed identity)
+### Step 2: Operational tooling (cost control)
 
-### Step 4: Networking
+The bash path includes two operational scripts that have no `platforms/aks/` equivalent:
 
-- Dedicated VNet and subnet
-- Private cluster option
-- Network Security Group rules
+- `hosts/azure-aks/manage-aks-cluster.sh` (682 lines) — start / stop / scale operations so the cluster only costs money while in use
+- `hosts/azure-aks/toggle-internet-access.sh` — gate the external IP
 
----
+These are not provisioning correctness, but they are the difference between "cluster burns the Microsoft grant 24/7" and "cluster only costs while atlas is being worked on." Out of scope for Step 1; lands as a follow-up plan once Step 1 verifies.
 
-## GKE — Questions to Answer
+### Future hardening (deferred until concrete need)
 
-Before building `platforms/gke/`:
+The original roadmap had Steps 2–4 (ACR + Key Vault, Workload Identity, Networking). These are all deferred — the goal for now is parity with the Rancher Desktop developer substrate, not Azure-grade hardening. Each item below moves out of "deferred" only when a concrete consumer pulls on it.
 
-1. Which GCP project and region?
-2. Standard or Autopilot cluster?
-3. State backend: GCS bucket in same project?
-4. Node pool sizing — same as AKS defaults?
-5. Workload Identity for GKE uses a different mechanism than AKS — needs separate investigation
-6. Does Red Cross have a GCP subscription or is this helpers.no only?
+| Capability | What it would add | Why deferred |
+|---|---|---|
+| Azure Key Vault | Centralised secret storage outside the cluster | UIS already has a working secrets workflow (`kubernetes-secrets.yml`); adding Key Vault is Azure-specific complexity with no current consumer |
+| Azure Container Registry (ACR) | Private container registry with managed-identity pull | UIS images come from public registries (GHCR / Docker Hub); no current need for a private registry |
+| Workload Identity | OIDC-federated identity for pods to access Azure services | The original motivation was Key Vault access; without Key Vault, no consumer remains |
+| Networking hardening | Dedicated VNet, private cluster, NSG rules | The default AKS networking works for getting atlas running; private cluster + NSG matter only when a security review demands it |
 
----
-
-## EKS — Questions to Answer
-
-Before building `platforms/eks/`:
-
-1. Which AWS account and region?
-2. EKS managed node groups or Fargate?
-3. State backend: S3 bucket + DynamoDB lock table
-4. VPC: reuse existing or create new?
-5. IAM roles for service accounts (IRSA) vs EKS Pod Identity
-
----
-
-## MicroK8s VM — Migration Questions
-
-Before migrating `hosts/azure-microk8s/` and `hosts/multipass-microk8s/`:
-
-1. Should `platforms/microk8s-vm/` be cloud-agnostic, or separate `microk8s-azure-vm/` and `microk8s-multipass/`?
-2. The existing scripts reference `topsecret/` via `paths.sh` fallback — this must be cleaned up as part of migration
-3. Ansible playbooks live in `ansible/playbooks/` — should the platform have its own playbooks or reference shared ones?
-4. Cloud-init templates are in `cloud-init/` — same question
-5. Tailscale bootstrap is required for VM targets — the source of truth for the Tailscale auth key needs to be resolved (see INVESTIGATE-remote-deployment-targets.md)
+> **Other platforms (gke, eks, microk8s-vm/metal/rpi) are also deferred.** The Target Platforms table and Directory Structure sketch above keep the multi-platform vision visible, but no per-platform question lists are maintained here until a concrete consumer surfaces. AKS is the focus.
 
 ---
 
