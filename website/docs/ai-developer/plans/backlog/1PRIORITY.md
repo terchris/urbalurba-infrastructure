@@ -62,7 +62,7 @@ INVESTIGATEs that still live in `backlog/` because their work isn't fully shippe
 
 | # | Investigation | State |
 |---|---|---|
-| — | [platform-provisioning-layer](INVESTIGATE-platform-provisioning-layer.md) | Status: ACTIVE on `feature/platform-aks-opentofu`. AKS Step 1 in progress. |
+| — | [platform-provisioning-layer](INVESTIGATE-platform-provisioning-layer.md) | Status: ACTIVE. AKS Step 1 shipped to main (PR #120, 2026-04-09); Step 2 (ACR + Key Vault) and the other platforms (gke, eks, microk8s-vm/metal/rpi) not started. |
 | — | [remote-deployment-targets](INVESTIGATE-remote-deployment-targets.md) | Status: Investigation Complete. Child PLAN drafting next; do not open as new investigation work. |
 | — | [authentik-user-config](INVESTIGATE-authentik-user-config.md) | Status: Investigation Complete — Ready for PLAN. Child PLAN drafting next. Unblocks #12. |
 

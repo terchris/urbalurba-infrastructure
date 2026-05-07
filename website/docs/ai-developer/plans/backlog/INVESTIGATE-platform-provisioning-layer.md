@@ -5,8 +5,8 @@
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
 **Created**: 2026-04-09
-**Updated**: 2026-04-09
-**Status**: ACTIVE — AKS Step 1 in progress on `feature/platform-aks-opentofu`
+**Updated**: 2026-05-07
+**Status**: ACTIVE — AKS Step 1 shipped to `main` (PR #120, merged 2026-04-09); Step 2 (ACR + Key Vault) and the other platforms (gke, eks, microk8s-vm/metal/rpi) not started.
 
 ---
 
@@ -175,13 +175,15 @@ out. Migration happens platform by platform:
 
 AKS is the first platform. It is being built iteratively:
 
-### Step 1 (current): Minimal working cluster ✅
+### Step 1: Minimal working cluster ✅ Shipped (PR #120, 2026-04-09)
 
 - Resource group
 - AKS cluster (matches original `az aks create` flags)
 - Azure Blob remote state
 - Storage class aliases
 - Traefik via Helm in `02-post-apply.sh`
+
+Code lives in `platforms/aks/`. The `feature/platform-aks-opentofu` branch was merged and is now stale; it can be deleted from origin.
 
 ### Step 2: ACR + Key Vault
 
