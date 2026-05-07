@@ -24,6 +24,6 @@ Implementation plans and investigations for the UIS platform. Plans follow the w
 | [Backlog](backlog/index.md) | Approved plans and investigations waiting for work |
 | [Completed](completed/index.md) | Done — kept for reference |
 
-## Investigation priority
+## Platform Roadmap
 
-See [1PRIORITY.md](backlog/1PRIORITY.md) for the tier-ranked view of which INVESTIGATEs to pick up next and which are deferred.
+See [STATUS-platform-roadmap.md](backlog/STATUS-platform-roadmap.md) for the prioritized list of open investigations and completed work.
