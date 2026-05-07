@@ -9,6 +9,7 @@ Investigations and plans waiting for implementation, sorted by last updated date
 
 | Document | Goal | Updated |
 |----------|------|---------|
+| [Plan: AKS — Bring `02-post-apply.sh` secrets-apply step to parity with bash](PLAN-002-aks-secrets-apply-parity.md) | Add a `kubernetes-secrets.yml` apply step to `platforms/aks/scripts/02-post-apply.sh` so that an AKS cluster provisioned via `platforms/aks/` is ready to receive the full UIS service catalogue (postgresql, authentik, openwebui, postgrest, etc.) — not just nginx. Brings the OpenTofu post-apply script into parity with the working bash precedent at `hosts/azure-aks/02-azure-aks-setup.sh:125-141`. | 2026-05-07 |
 | [INVESTIGATE: Version Pinning for Helm Charts and Container Images](INVESTIGATE-version-pinning.md) | Everything works today, but 18 of 21 Helm charts and several container images have no version pinning. Any upstream release — intentional or accidental — can break the system without warning. A single `./uis deploy` could pull a new chart version with breaking changes. | 2026-05-07 |
 | [INVESTIGATE: Verification Playbooks Usage and Coverage](INVESTIGATE-verification-playbooks-usage.md) | The `ansible/playbooks/utility/` folder contains a mix of verification playbooks, task includes, setup helpers, and one-off utilities. Several of these files appear to have no active caller in the current repo. | 2026-05-07 |
 | [INVESTIGATE: Undeploy --purge flag](INVESTIGATE-undeploy-purge-flag.md) | — | 2026-05-07 |

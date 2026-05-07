@@ -63,4 +63,15 @@
     "website": "https://cloud.google.com/sdk/docs/install",
     "builtin": false
   }
+,
+  {
+    "@type": "SoftwareApplication",
+    "id": "opentofu",
+    "name": "OpenTofu",
+    "description": "Open-source infrastructure-as-code (Terraform fork)",
+    "category": "CLOUD_TOOLS",
+    "size": "~30MB",
+    "website": "https://opentofu.org/",
+    "builtin": false
+  }
 ]}
