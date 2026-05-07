@@ -4,9 +4,9 @@
 
 **Last updated**: 2026-05-07. Re-rank whenever an INVESTIGATE moves to `completed/`, a child PLAN ships, or a new INVESTIGATE lands.
 
-**How to read the tiers**: tier order is the order to *start* the investigation, not the order to *finish*. Tier 1 means "next on deck"; Tier 4 means "don't open this yet — wait for prereqs or product clarity." Tier 0 is "active or recently completed and worth surfacing here for context."
+**How to read the tiers**: tier order is the order to *start* the investigation, not the order to *finish*. Tier 1 means "next on deck"; Tier 4 means "don't open this yet — wait for prereqs or product clarity." Tier 0 is "in flight — no fresh investigation work needed but the file still lives here because work isn't fully shipped."
 
-**UIS lifecycle convention**: an INVESTIGATE moves from `backlog/` to `completed/` once every child PLAN has shipped (or the investigation is otherwise closed). The Tier 0 list below points into `completed/` for the items that have already moved, and into `backlog/` for the ones that are *active* — i.e. their work isn't finished yet, even though no fresh investigation is needed.
+**UIS lifecycle convention**: an INVESTIGATE moves from `backlog/` to `completed/` once every child PLAN has shipped (or the investigation is otherwise closed). Once moved, it disappears from this doc — see [`completed/`](../completed/index.md) for the historical list.
 
 ---
 
@@ -56,22 +56,9 @@ These are sketches / parking-lot entries, not concrete research targets. Don't o
 | 21 | [dagster](INVESTIGATE-dagster.md) | Broad research file, not a concrete platform decision. Wait for the data-orchestration use case (atlas's deployment-pipeline INVESTIGATE on the atlas side waits on UIS for this signal) to materialise into a real consumer; then open as a focused investigation. |
 | 22 | [metabase](INVESTIGATE-metabase.md) | Similar to #21 — internal BI / data exploration tool selection. Hold until there's a concrete first consumer driving the requirements. |
 
-## Tier 0 — recently shipped or in flight
+## Tier 0 — in flight
 
-No fresh investigation work needed. Two sub-groups:
-
-**Already in `completed/`** (every child PLAN shipped — link points into `completed/` per the lifecycle convention):
-
-| # | Investigation | State |
-|---|---|---|
-| — | [postgrest](../completed/INVESTIGATE-postgrest.md) | Recommendation accepted; PLAN-001 + PLAN-002 + PLAN-postgrest-multi-schema-reconciliation all in `completed/`. Moved 2026-05-07. |
-| — | [postgrest-multi-schema-reconciliation](../completed/INVESTIGATE-postgrest-multi-schema-reconciliation.md) | Recommendation accepted; child PLAN in `completed/` (PR #140 merged 2026-05-06). Moved 2026-05-07. |
-| — | [container-pull-command](../completed/INVESTIGATE-container-pull-command.md) | Recommendation accepted; PLAN-container-pull-command in `completed/`. Moved 2026-05-07. |
-| — | [backstage](../completed/INVESTIGATE-backstage.md) | Status: Completed. PLAN-002-backstage-deployment shipped. Followups in #12 + #13. Moved 2026-05-07. |
-| — | [gravitee-fix](../completed/INVESTIGATE-gravitee-fix.md) | Gravitee close-out shipped over the work-stream commits ending at `de872dd`. Moved 2026-05-07. |
-| — | [gravitee-post-deploy-config](../completed/INVESTIGATE-gravitee-post-deploy-config.md) | Status: Closed (2026-05-05) — all in-scope findings resolved via the gravitee close-out commits. Moved 2026-05-07. |
-
-**Still in `backlog/`** (work in flight or PLAN drafting next — file stays here until every child PLAN ships):
+INVESTIGATEs that still live in `backlog/` because their work isn't fully shipped yet — either active on a feature branch, or investigation-complete and waiting for a child PLAN to be drafted. No fresh investigation work needed; listed here so the priority view surfaces what's already moving. Items whose child PLANs have all shipped are not listed — they're in [`completed/`](../completed/index.md).
 
 | # | Investigation | State |
 |---|---|---|
@@ -84,18 +71,18 @@ No fresh investigation work needed. Two sub-groups:
 ## Cross-cutting notes
 
 - **Two natural workstreams**: UIS-internal correctness (Tier 1, all four items) and developer-experience polish (Tier 2, items #5–#11). They can run in parallel — different files, no merge contention.
-- **Backstage cluster**: Tier 0 (core shipped) → #12 (auth) → #13 (enhancements). Tight chain; resolve in order.
+- **Backstage cluster**: Backstage core (shipped, in `completed/`) → #12 (auth) → #13 (enhancements). Tight chain; resolve in order.
 - **Platform/host cluster**: Tier 0 platform-provisioning-layer (in flight) → #14 (provision-host tools) → revisit #11 (host docs) once #14 settles. Enables remote/cloud deployment story end-to-end.
 - **Enonic cluster**: #17 → #18. Same pattern as atlas's supply-side cluster — schema/lifecycle decisions land first, content-flow design inherits the shape.
 - **External coupling with atlas**: atlas's deployment-pipeline investigation explicitly waits on UIS's dagster signal (their Tier 3 #14). Resolving #21 unblocks atlas's deployment-pipeline; deferring #21 keeps that block in place — fine if no UIS consumer is pulling on dagster yet, but worth flagging when atlas next asks.
-- **Idea-vs-investigation ratio**: 3 of 31 are still ideas (Tier 4 — espocrm, dagster, metabase). Healthy — most of the backlog is concrete work, not brainstorm residue.
-- **Investigation-completion debt**: 5 Tier-0 investigations are "ready for PLAN" or "investigation complete" without a child PLAN drafted (notably remote-deployment-targets and authentik-user-config). Picking one of these up as the next PLAN-drafting task closes more uncertainty than starting any Tier-1 investigation. They're out of scope for this priority doc (which orders investigation work, not plan work) but worth surfacing.
+- **Idea-vs-investigation ratio**: 3 of 25 are still ideas (Tier 4 — espocrm, dagster, metabase). Healthy — most of the backlog is concrete work, not brainstorm residue.
+- **Investigation-completion debt**: 2 of the 3 Tier-0 entries (remote-deployment-targets, authentik-user-config) are "investigation complete" without a child PLAN drafted yet. Picking one of these up as the next PLAN-drafting task closes more uncertainty than starting any Tier-1 investigation. They're out of scope for this priority doc (which orders investigation work, not plan work) but worth surfacing.
 
 ## How to use this doc
 
 1. Pick the top unstarted item from Tier 1; if all of Tier 1 is in flight or done, move to Tier 2.
 2. When starting an INVESTIGATE, leave it in this folder and update its `Status:` line to note the work is in flight.
-3. When an INVESTIGATE produces a recommendation and a child PLAN is drafted, update this doc: move the row to Tier 0 (sub-group "still in `backlog/`") and note the PLAN it spawned.
-4. When every child PLAN of an INVESTIGATE has shipped, `git mv` the file to `completed/`, fix any cross-references, and move the Tier 0 row from "still in `backlog/`" into "already in `completed/`" (re-target the link to `../completed/`).
+3. When an INVESTIGATE produces a recommendation and a child PLAN is drafted, update this doc: move the row to Tier 0 and note the PLAN it spawned.
+4. When every child PLAN of an INVESTIGATE has shipped, `git mv` the file to `completed/`, fix any cross-references, and **delete** its Tier 0 row from this doc — `completed/index.md` carries it from then on.
 5. When a Tier-3 prereq lands, promote its dependents up to Tier 2 in the next refresh.
 6. Re-rank quarterly or after every 3 INVESTIGATEs ship — whichever comes first.
