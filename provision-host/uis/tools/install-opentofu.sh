@@ -18,12 +18,14 @@ do_install() {
     echo "Installing OpenTofu..."
     echo "Uses the official installer with --install-method deb (sets up apt repo, then installs system-wide)"
 
-    # Run the official installer; --install-method deb adds the OpenTofu apt repo and runs apt install
+    # Run the official installer; --install-method deb adds the OpenTofu apt repo and runs apt install.
+    # DEBIAN_FRONTEND=noninteractive silences the debconf frontend fallback chain inside docker exec
+    # (no controlling tty → debconf otherwise tries Dialog → Readline → Teletype before settling).
     if [[ $EUID -eq 0 ]]; then
-        curl --proto '=https' --tlsv1.2 -fsSL https://get.opentofu.org/install-opentofu.sh | bash -s -- --install-method deb
+        curl --proto '=https' --tlsv1.2 -fsSL https://get.opentofu.org/install-opentofu.sh | DEBIAN_FRONTEND=noninteractive bash -s -- --install-method deb
     else
         echo "Installing OpenTofu (requires sudo)..."
-        curl --proto '=https' --tlsv1.2 -fsSL https://get.opentofu.org/install-opentofu.sh | sudo bash -s -- --install-method deb
+        curl --proto '=https' --tlsv1.2 -fsSL https://get.opentofu.org/install-opentofu.sh | sudo DEBIAN_FRONTEND=noninteractive bash -s -- --install-method deb
     fi
 
     return $?
