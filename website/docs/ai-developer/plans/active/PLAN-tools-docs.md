@@ -89,7 +89,7 @@ Pages that link to or mention the tools system today and need to point to the ne
 
 - [x] 3.2 `website/docs/advanced/provision-host/index.md:40` — currently links to `contributors/architecture/tools.md`. Retarget to `reference/tools.md` (the user-facing page) since this index is in the user-facing nav.
 
-- [ ] 3.3 `website/docs/ai-developer/plans/backlog/PLAN-001b-aks-manual-setup.md` Phase 2 — currently directs the operator to `./uis tools install azure-cli && ./uis tools install opentofu` without context. Add a one-line link to `reference/tools.md` so first-time operators can see the broader inventory. **(deferred — that file lives on the AKS feature branch behind PR #146; will be picked up after #146 merges)**
+- [x] 3.3 `website/docs/ai-developer/plans/backlog/PLAN-001b-aks-manual-setup.md` Phase 2 — currently directs the operator to `./uis tools install azure-cli && ./uis tools install opentofu` without context. Add a one-line link to `reference/tools.md` so first-time operators can see the broader inventory. **(shipped on `feature/aks-config-cloud-accounts` as commit `0c31993`; lands on main when PR #146 merges)**
 
 - [x] 3.4 `website/docs/advanced/provision-host/rancher.md:47` (discovered during grep audit) — same retarget from contributor page to `reference/tools.md`.
 
