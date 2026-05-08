@@ -89,12 +89,6 @@ const config: Config = {
         { to: '/services', label: 'Services', position: 'left' },
         { to: '/blog', label: 'Blog', position: 'left' },
         {
-          type: 'doc',
-          docId: 'ai-developer/plans/backlog/STATUS-platform-roadmap',
-          position: 'left',
-          label: 'Roadmap',
-        },
-        {
           href: `https://github.com/${GITHUB_ORG}/${GITHUB_REPO}`,
           label: 'GitHub',
           position: 'right',
