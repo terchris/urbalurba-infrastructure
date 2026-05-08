@@ -51,7 +51,7 @@ Inside the container (`./uis shell`), running `kubectl version --client && helm 
 
 ## Phase 2: Tooling install (one-time per provision-host build)
 
-Two CLIs not installed by default. Both via `./uis tools install`.
+Two CLIs not installed by default. Both via `./uis tools install`. See [Tools](../../../reference/tools.md) for the full catalogue and how the install system works.
 
 ### Tasks
 
