@@ -23,7 +23,3 @@ Implementation plans and investigations for the UIS platform. Plans follow the w
 | [Active](active/index.md) | Currently being worked on (max 1-2 at a time) |
 | [Backlog](backlog/index.md) | Approved plans and investigations waiting for work |
 | [Completed](completed/index.md) | Done — kept for reference |
-
-## Platform Roadmap
-
-See [STATUS-platform-roadmap.md](backlog/STATUS-platform-roadmap.md) for the prioritized list of open investigations and completed work.

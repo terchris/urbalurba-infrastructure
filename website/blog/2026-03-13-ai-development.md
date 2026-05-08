@@ -89,6 +89,5 @@ The entire AI development workflow is documented and visible on this site:
 - [Creating Plans](/docs/ai-developer/PLANS) — plan templates and structure
 - [Talk Protocol](/docs/ai-developer/TALK) — how the two-session testing works
 - [Plans Overview](/docs/ai-developer/plans-overview) — browse all plans and investigations
-- [Platform Roadmap](/docs/ai-developer/plans/backlog/STATUS-platform-roadmap) — what's next
 
 The plans, investigations, and talk protocol aren't specific to UIS. Any project can use this pattern: plan before you code, test with a fresh perspective, and keep written records of what was built and why.
