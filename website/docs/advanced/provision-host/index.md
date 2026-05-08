@@ -37,7 +37,7 @@ Host Machine
 
 ## Guides
 
-- **[Tools Reference](../../contributors/architecture/tools.md)** — All tools available inside the container
+- **[Tools](../../reference/tools.md)** — Built-in tools and installable CLIs (`./uis tools install <id>`)
 - **[Kubernetes Deployment](../../contributors/architecture/deploy-system.md)** — How services are deployed to the cluster
 - **[Rancher Desktop Integration](./rancher.md)** — Setup specific to Rancher Desktop
 

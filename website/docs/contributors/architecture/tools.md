@@ -1,104 +1,100 @@
-# Tools Reference
+# Tools system architecture
 
-Complete reference for all tools available inside the UIS provision host container.
+How the `./uis tools` subsystem is wired and how to add a new optional CLI to the catalogue.
 
-## Accessing the Tools
+> Looking for the user-facing list of what's available and how to install it? See [reference/tools.md](../../reference/tools.md). This page is for contributors editing the system itself.
 
-All tools are pre-installed in the container. Access them via:
+## Two tiers
 
-```bash
-# Open a shell in the provision host
-./uis shell
+The container ships with a small **built-in** set and a larger **installable on demand** catalogue.
 
-# Or run a command directly
-./uis exec kubectl get pods -A
-```
+| Tier | Where it's defined | When it's available |
+|---|---|---|
+| Built-in | `BUILTIN_TOOLS` in `provision-host/uis/lib/tool-installation.sh:22` | Baked into the image at build time. Always present. |
+| Installable | One `install-<id>.sh` script per tool under `provision-host/uis/tools/` | Added on demand by `./uis tools install <id>`. Lives in the container's writable layer; lost on `docker rm`. |
 
-## Kubernetes Tools
+Built-ins are kept intentionally tiny (`kubectl k9s helm ansible`) — anything every UIS deploy needs. Everything else is opt-in to keep the image small.
 
-| Tool | Purpose |
-|------|---------|
-| **kubectl** | Kubernetes cluster management |
-| **helm** | Kubernetes package management |
-| **k9s** | Terminal-based Kubernetes dashboard |
-| **ansible** | Infrastructure automation and service deployment |
+## Discovery
 
-## Cloud Provider CLIs
+`get_all_tool_ids()` in `tool-installation.sh:26` is the single entry point that the runtime CLI and the docs generator both use:
 
-The container includes CLIs for all major cloud providers:
+1. Emit each ID in `BUILTIN_TOOLS`.
+2. Glob `provision-host/uis/tools/install-*.sh` and read `TOOL_ID=` from each script header.
 
-| Tool | Provider |
-|------|----------|
-| **az** | Azure CLI |
-| **aws** | AWS CLI v2 |
-| **gcloud** | Google Cloud SDK (gcloud, bq, gsutil) |
-| **oci** | Oracle Cloud Infrastructure CLI |
-| **terraform** | Multi-cloud infrastructure as code |
+That's it — there is no manifest file. Adding an `install-<id>.sh` with the right header makes the tool show up in `./uis tools list` automatically.
 
-### Cloud Authentication
+## The install-script contract
 
-Authenticate from inside the provision host:
+Every installable tool is a single bash script under `provision-host/uis/tools/` named `install-<tool-id>.sh`. It has two parts: a metadata header and two functions.
+
+### Metadata header
 
 ```bash
-./uis shell
-
-# Azure
-az login
-
-# AWS
-aws configure
-
-# Google Cloud
-gcloud auth login
-
-# Oracle Cloud
-oci setup config
+TOOL_ID="opentofu"
+TOOL_NAME="OpenTofu"
+TOOL_DESCRIPTION="Open-source infrastructure-as-code (Terraform fork)"
+TOOL_CATEGORY="CLOUD_TOOLS"
+TOOL_CHECK_COMMAND="command -v tofu"
+TOOL_SIZE="~30MB"
+TOOL_WEBSITE="https://opentofu.org/"
 ```
 
-## Networking Tools
+| Field | Required | Used by |
+|---|---|---|
+| `TOOL_ID` | yes | Discovery, dispatch (`./uis tools install <id>`) |
+| `TOOL_NAME` | yes | `./uis tools list` display, docs generation |
+| `TOOL_DESCRIPTION` | yes | `./uis tools list` display, docs generation |
+| `TOOL_CATEGORY` | yes | Grouping (current categories: `BUILTIN`, `CLOUD_TOOLS`) |
+| `TOOL_CHECK_COMMAND` | yes | `is_tool_installed` — must succeed only when the tool is actually installed |
+| `TOOL_SIZE` | recommended | Sets user expectations on download size |
+| `TOOL_WEBSITE` | recommended | Upstream link in docs |
 
-| Tool | Purpose |
-|------|---------|
-| **cloudflared** | Cloudflare Tunnel client |
-| **tailscale** | Mesh VPN (requires separate configuration) |
+The header is parsed by line-prefix matching (`get_tool_value` in `tool-installation.sh:98`), so keep each metadata line as a simple `KEY="value"` assignment — no shell expansion, no multi-line strings.
 
-## Utility Tools
-
-| Tool | Purpose |
-|------|---------|
-| **jq** | JSON processing |
-| **yq** | YAML processing |
-| **gh** | GitHub CLI |
-| **git** | Version control |
-| **python3** | Python runtime |
-| **curl, wget** | HTTP clients |
-| **vim** | Text editor |
-
-## Helm Repositories
-
-Pre-configured chart repositories:
-
-| Repository | Charts |
-|------------|--------|
-| **bitnami** | PostgreSQL, MySQL, MongoDB, Redis, Grafana, etc. |
-| **runix** | pgAdmin |
-| **gravitee** | API management platform |
-
-Update repositories:
+### Required functions
 
 ```bash
-./uis shell
-helm repo update
+do_install() {
+    # Install the tool. Should be idempotent — running it twice must not fail.
+    # Runs as root inside the container ($EUID -eq 0); the sudo branch is for
+    # tooling that runs the script outside the container.
+    ...
+}
+
+do_uninstall() {
+    # Reverse do_install. Used by the future ./uis tools uninstall flow.
+    ...
+}
 ```
 
-## Architecture Support
+Look at `provision-host/uis/tools/install-opentofu.sh` as the canonical minimal example — it delegates to the upstream installer, handles the root/sudo split, and includes a matching `do_uninstall`.
 
-All tools support both architectures:
-- **x86_64** (AMD64) — Intel/AMD machines
-- **aarch64** (ARM64) — Apple Silicon, Raspberry Pi
+`install_tool()` in `tool-installation.sh:184` sources the script in a subshell and calls `do_install`, then re-runs `is_tool_installed` to verify. If `TOOL_CHECK_COMMAND` returns non-zero after a successful install, the install is reported as failed — get the check command right.
 
-## Related Documentation
+## How `tools.json` is generated
 
-- **[Provision Host Overview](../../advanced/provision-host/index.md)** — How the provision host works
-- **[Deploy System](./deploy-system.md)** — Deploying services
-- **[UIS CLI Reference](../../reference/uis-cli-reference.md)** — Complete command reference
+`reference/tools.md` is hand-maintained, but the canonical machine-readable index is `website/src/data/tools.json`, regenerated by `provision-host/uis/manage/uis-docs.sh:329` (`generate_tools_json`). It walks the same `install-*.sh` files and emits a JSON array of `{ id, name, description, category, size, website, check_command }`. Run `provision-host/uis/manage/uis-docs.sh` after adding or changing a tool to refresh it.
+
+## Adding a new installable tool
+
+1. Create `provision-host/uis/tools/install-<tool-id>.sh` modelled on `install-opentofu.sh` (single-file delegation to an upstream installer is the preferred shape — keep it small).
+2. Fill in the metadata header. `TOOL_ID` must match the filename suffix.
+3. Implement `do_install` (idempotent) and `do_uninstall`.
+4. Make sure `TOOL_CHECK_COMMAND` succeeds only after install — `command -v <binary>` is usually enough.
+5. Mark it executable: `chmod +x install-<tool-id>.sh`.
+6. Run `./uis build` and verify in a fresh container:
+   ```bash
+   ./uis tools list                    # new tool shows ❌ Not installed
+   ./uis tools install <tool-id>       # do_install runs
+   ./uis tools list                    # flips to ✅ Installed
+   ./uis exec <binary> --version       # smoke test
+   ```
+7. Run `provision-host/uis/manage/uis-docs.sh` to regenerate `website/src/data/tools.json`.
+8. Add a row to the user-facing table in `website/docs/reference/tools.md` (and the "When you need a specific tool" section if it ties to a workflow).
+
+## Related documentation
+
+- [reference/tools.md](../../reference/tools.md) — User-facing inventory and install commands
+- [Provision Host Overview](../../advanced/provision-host/index.md) — Where the container fits in the stack
+- [UIS CLI Reference](../../reference/uis-cli-reference.md) — `./uis tools` command surface

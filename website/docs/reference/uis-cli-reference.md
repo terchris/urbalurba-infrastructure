@@ -135,8 +135,8 @@ Manage configurations for different deployment targets.
 |---------|-------------|
 | `./uis init` | First-time setup wizard (cluster type, domain, project name) |
 | `./uis setup` | Interactive TUI menu for browsing and deploying services |
-| `./uis tools list` | List optional tools with installation status |
-| `./uis tools install <tool-id>` | Install an optional tool (aws-cli, azure-cli, etc.) |
+| `./uis tools list` | List optional tools with installation status. See [Tools](./tools.md). |
+| `./uis tools install <tool-id>` | Install an optional tool (aws-cli, azure-cli, etc.). See [Tools](./tools.md). |
 | `./uis docs generate [dir]` | Generate JSON data files for website documentation |
 | `./uis version` | Show UIS version |
 | `./uis help` | Show help |

@@ -174,6 +174,7 @@ Welcome to the complete documentation for **Urbalurba Infrastructure** — a zer
 | Document | Purpose |
 |----------|---------|
 | [UIS CLI Reference](./uis-cli-reference.md) | Complete UIS command-line reference |
+| [Tools](./tools.md) | Built-in tools and installable CLIs (`./uis tools install <id>`) |
 | [Service Dependencies](./service-dependencies.md) | Service dependency graph |
 | [Factory Reset](./factory-reset.md) | Factory reset and full verification guide |
 | [Troubleshooting](./troubleshooting.md) | Troubleshooting guide for common issues |
@@ -201,7 +202,7 @@ Welcome to the complete documentation for **Urbalurba Infrastructure** — a zer
 | Document | Purpose |
 |----------|---------|
 | [Deploy System](../contributors/architecture/deploy-system.md) | Kubernetes-specific management tools |
-| [Tools Reference](../contributors/architecture/tools.md) | Command reference and usage patterns |
+| [Tools System Architecture](../contributors/architecture/tools.md) | How `./uis tools` and install scripts work; how to add a new optional tool |
 | [Kubernetes Manifests](../contributors/architecture/manifests.md) | Manifest file reference |
 | [Secrets Management System](../contributors/architecture/secrets.md) | Secrets management system documentation |
 
