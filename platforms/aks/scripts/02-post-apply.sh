@@ -35,17 +35,26 @@ if [[ ! -f /.dockerenv ]] || [[ ! -d /mnt/urbalurbadisk ]]; then
     exit 1
 fi
 
-# ─── Load config ──────────────────────────────────────────────────────────────
+# ─── Load config from .uis.secrets/cloud-accounts/azure-default.env ───────────
+source "/mnt/urbalurbadisk/provision-host/uis/lib/paths.sh"
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PLATFORM_DIR="$SCRIPT_DIR/.."
-CONFIG_FILE="$PLATFORM_DIR/azure-aks-config.sh"
+CONFIG_FILE="$(get_cloud_credentials_path azure)"
 
 if [[ ! -f "$CONFIG_FILE" ]]; then
-    print_error "Config not found: $CONFIG_FILE"
+    print_error "Azure cloud-account config not found: $CONFIG_FILE"
+    echo "  Have you run 00-bootstrap-state.sh and 01-apply.sh first?"
     exit 1
 fi
 
 source "$CONFIG_FILE"
+
+# Inline defaults (only the ones referenced in this script)
+AZURE_AKS_CLUSTER_NAME="${AZURE_AKS_CLUSTER_NAME:-azure-aks}"
+
+# Derived
+KUBECONFIG_FILE="/mnt/urbalurbadisk/kubeconfig/${AZURE_AKS_CLUSTER_NAME}-kubeconf"
 
 print_section "AKS PLATFORM — POST-APPLY SETUP"
 
@@ -65,8 +74,8 @@ fi
 export KUBECONFIG="/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
 
 # ─── Step 2: Switch context ───────────────────────────────────────────────────
-print_status "Switching to $CLUSTER_NAME context..."
-kubectl config use-context "$CLUSTER_NAME"
+print_status "Switching to $AZURE_AKS_CLUSTER_NAME context..."
+kubectl config use-context "$AZURE_AKS_CLUSTER_NAME"
 
 NODE_COUNT_ACTUAL=$(kubectl get nodes --no-headers 2>/dev/null | wc -l)
 if [[ "$NODE_COUNT_ACTUAL" -eq 0 ]]; then
@@ -149,14 +158,14 @@ fi
 # ─── Summary ──────────────────────────────────────────────────────────────────
 print_section "POST-APPLY COMPLETE — CLUSTER READY"
 
-echo "Cluster:        $CLUSTER_NAME"
+echo "Cluster:        $AZURE_AKS_CLUSTER_NAME"
 echo "Nodes:          $(kubectl get nodes --no-headers | wc -l)"
 echo "Storage:        $(kubectl get sc --no-headers | awk '{print $1}' | tr '\n' '  ')"
 [[ -n "$EXTERNAL_IP" ]] && echo "External IP:    $EXTERNAL_IP"
 echo
 echo "Context switching:"
 echo "  kubectl config use-context rancher-desktop  # local"
-echo "  kubectl config use-context $CLUSTER_NAME   # AKS"
+echo "  kubectl config use-context $AZURE_AKS_CLUSTER_NAME   # AKS"
 echo
 echo "Deploy services:"
 echo "  ./uis deploy <service>"

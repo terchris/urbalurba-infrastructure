@@ -21,16 +21,20 @@ ACR, Key Vault, Workload Identity, and VNet come in later steps.
 ## Prerequisites
 
 - Running inside the `provision-host` container
-- `tofu` (OpenTofu) installed in the container
-- `helm` installed in the container
-- Azure CLI logged in: `az login --tenant <tenant-id> --use-device-code`
+- `azure-cli` installed: `./uis tools install azure-cli`
+- `opentofu` installed: `./uis tools install opentofu`
+- `helm` installed in the container (built-in)
+- Azure CLI logged in: `az login --use-device-code` (no `--tenant` flag — see manual-setup runbook)
 
 ## First-time setup
 
 ```bash
-# 1. Copy and fill in your config
-cp platforms/aks/azure-aks-config.sh-template platforms/aks/azure-aks-config.sh
-# Edit platforms/aks/azure-aks-config.sh
+# 1. Copy the template and fill in your values
+cp provision-host/uis/templates/uis.secrets/cloud-accounts/azure.env.template \
+   .uis.secrets/cloud-accounts/azure-default.env
+# Edit .uis.secrets/cloud-accounts/azure-default.env — fill in
+# AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID, AZURE_STATE_STORAGE_ACCOUNT.
+# All AZURE_AKS_* cluster-shape values are optional (defaults applied if commented).
 
 # 2. Bootstrap the state storage (one-time, survives cluster destroy/recreate)
 ./platforms/aks/scripts/00-bootstrap-state.sh
@@ -41,6 +45,9 @@ cp platforms/aks/azure-aks-config.sh-template platforms/aks/azure-aks-config.sh
 # 4. Configure the cluster (storage classes, Traefik)
 ./platforms/aks/scripts/02-post-apply.sh
 ```
+
+For a step-by-step walkthrough including how to discover your Azure values, see
+[PLAN-001b-aks-manual-setup.md](../../website/docs/ai-developer/plans/backlog/PLAN-001b-aks-manual-setup.md).
 
 ## Daily operations
 
@@ -63,8 +70,7 @@ kubectl config use-context azure-aks
 
 ```
 platforms/aks/
-├── azure-aks-config.sh-template   # Copy → azure-aks-config.sh, fill in values
-├── azure-aks-config.sh            # Your config (git-ignored)
+├── README.md
 ├── tofu/
 │   ├── backend.tf                 # Remote state in Azure Blob Storage
 │   ├── main.tf                    # Resource group + AKS cluster
@@ -80,16 +86,24 @@ platforms/aks/
     └── 03-destroy.sh              # tofu destroy + kubeconfig cleanup
 ```
 
+Configuration lives outside `platforms/aks/` (per the secrets architecture):
+
+- **Template**: `provision-host/uis/templates/uis.secrets/cloud-accounts/azure.env.template` (committed)
+- **Your values**: `.uis.secrets/cloud-accounts/azure-default.env` (gitignored)
+
 ## State backend
 
-OpenTofu state is stored in Azure Blob Storage (`rg-urbalurba-tfstate`).
-This resource group is **not** managed by OpenTofu and survives cluster destroy/recreate.
-Blob versioning is enabled — previous state versions are recoverable.
+OpenTofu state is stored in Azure Blob Storage (default: `rg-urbalurba-tfstate`,
+overridable via `AZURE_AKS_STATE_RESOURCE_GROUP`). This resource group is **not**
+managed by OpenTofu and survives cluster destroy/recreate. Blob versioning is
+enabled — previous state versions are recoverable.
 
-## Adding to .gitignore
+## .gitignore
+
+`.uis.secrets/` is already covered by the top-level `.gitignore`. AKS-specific
+generated files inside `platforms/aks/tofu/` to keep ignored:
 
 ```
-platforms/aks/azure-aks-config.sh
 platforms/aks/tofu/terraform.tfvars
 platforms/aks/tofu/tfplan
 platforms/aks/tofu/.terraform/
