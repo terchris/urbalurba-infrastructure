@@ -12,6 +12,6 @@
 terraform {
   backend "azurerm" {
     # Values injected at init time via -backend-config flags in 01-apply.sh
-    # See azure-aks-config.sh for the actual values
+    # See .uis.secrets/cloud-accounts/azure-default.env for the actual values
   }
 }
