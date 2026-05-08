@@ -233,17 +233,72 @@ PLAN-001b's Phase 4 ("Configuration") still describes the old `platforms/aks/azu
 
 ---
 
-## Phase 6: Verification — folds into PLAN-001 Phase 2
+## Phase 6: Verification — local build of the feature branch, *before* merge
 
-The user is currently mid-PLAN-001 Phase 2 (manual run-through). Once Phases 1–5 of this PLAN ship, they continue PLAN-001 Phase 2 from the updated PLAN-001b — copy the new template, fill in the new variable names, run the (updated) scripts.
+The merge gate for this PLAN is "the AKS run-through actually works against the new file structure." We verify that by building the feature branch's image **locally on the host**, recreating the running container against `uis-provision-host:local`, and walking through PLAN-001 Phase 2.4–2.8 against an Azure subscription. The PR merges only after the run succeeds; any failure becomes a fix on the same branch.
+
+This is faster than waiting for CI to publish to GHCR (CI build + push takes ~12 minutes) and means the change is verified end-to-end before it ever reaches `main`.
 
 ### Tasks
 
-- [ ] 6.1 Tester runs PLAN-001 Phase 2.2 onward with the updated PLAN-001b — verify each step works against the new file location and variable names. Any failure becomes a Phase 3 gap in PLAN-001 (not in this PLAN).
+- [ ] 6.1 **Switch the host checkout to the feature branch** so `./uis build` picks up the new code:
+  ```
+  git fetch && git checkout feature/aks-config-cloud-accounts
+  ```
+
+- [ ] 6.2 **Build the local image** with the updated scripts + template baked in:
+  ```
+  ./uis build
+  ```
+  Produces `uis-provision-host:local`.
+
+- [ ] 6.3 **Recycle the running container against the new image**:
+  ```
+  UIS_IMAGE=uis-provision-host:local ./uis restart
+  ```
+  `./uis restart` is `stop` + `start`; `start_container` does `docker rm -f` first, so the container is freshly created from `:local` (not the cached old `:latest`). The Azure CLI token in `~/.azure/` is wiped — re-login in step 6.4.
+
+- [ ] 6.4 **Re-login to Azure** inside the new container:
+  ```
+  ./uis shell
+  cd /mnt/urbalurbadisk
+  az login --use-device-code
+  az account set --subscription <YOUR_SUBSCRIPTION_ID>
+  ```
+
+- [ ] 6.5 **Set up the new config file** (PLAN-001 Phase 2.2 against the updated PLAN-001b):
+  ```
+  cp provision-host/uis/templates/uis.secrets/cloud-accounts/azure.env.template \
+     .uis.secrets/cloud-accounts/azure-default.env
+  nano .uis.secrets/cloud-accounts/azure-default.env
+  ```
+  Fill in the three required values: `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_STATE_STORAGE_ACCOUNT`. Leave optional sections commented unless overriding.
+
+- [ ] 6.6 **Run the AKS provisioning chain end-to-end** (PLAN-001 Phase 2.4–2.7):
+  ```
+  ./platforms/aks/scripts/00-bootstrap-state.sh
+  ./platforms/aks/scripts/01-apply.sh
+  ./platforms/aks/scripts/02-post-apply.sh
+  ./uis deploy nginx
+  ```
+  Expected: nginx playbook's in-cluster connectivity tests (steps 13 + 15) succeed against the AKS cluster.
+
+- [ ] 6.7 **Tear down** to close the cost gate (PLAN-001 Phase 2.8):
+  ```
+  ./platforms/aks/scripts/03-destroy.sh
+  ```
+
+- [ ] 6.8 **If anything in 6.4–6.6 fails** — fix on this same feature branch (no separate branch), `./uis build` again, `./uis restart`, re-run from the failing step. Each gap fix is a small commit on `feature/aks-config-cloud-accounts`. The PR's history will show the iteration before squash-merge.
+
+- [ ] 6.9 **Once the run completes cleanly** — squash-merge the PR:
+  ```
+  gh pr merge 146 --squash --delete-branch
+  ```
+  Then on host: `git checkout main && git pull` and prune the deleted remote branch. CI will rebuild and publish the merged image to GHCR; subsequent contributors use `./uis pull` for their copy.
 
 ### Validation
 
-PLAN-001 Phase 2.7 (`./uis deploy nginx`) still passes against an AKS cluster provisioned via the new file structure. No regression vs the old structure (which was never run end-to-end anyway).
+`./uis deploy nginx` succeeds against an AKS cluster provisioned via `uis-provision-host:local` built from the feature branch. Cluster cleanly destroyed afterward (cost gate). PR #146 merged only after this passes.
 
 ---
 
@@ -279,4 +334,4 @@ PLAN-001 Phase 2.7 (`./uis deploy nginx`) still passes against an AKS cluster pr
 - **Why `AZURE_AKS_*` prefix on AKS-specific values.** The single-file-per-provider model means future Azure-but-not-AKS work (e.g. Azure Container Apps if anyone needs them) would also live in `azure-default.env`. Distinct prefixes keep the namespaces clean. Account-level values (tenant/subscription/state-SA-name/tags) keep the shorter `AZURE_*` prefix since they're shared across any Azure work.
 - **Why no tofu rename.** `tofu/variables.tf` is internal to the OpenTofu module; it has its own namespace. The bash-to-tofu translation already happens via `terraform.tfvars` generation; renaming inside tofu would be churn without payoff.
 - **Why `KUBECONFIG_FILE` derives from `$AZURE_AKS_CLUSTER_NAME`.** Old template hard-coded `azure-aks-kubeconf`. New form accommodates a contributor running multiple clusters with different `AZURE_AKS_CLUSTER_NAME` values without overwriting kubeconfigs. Path stays under `/mnt/urbalurbadisk/kubeconfig/` (unchanged) — moving to `.uis.secrets/generated/kubeconfig/` is a separate concern tied to the kubeconfig-merge work flagged in `secrets.md`.
-- **Sequencing risk.** This PLAN ships *during* PLAN-001 Phase 2. The user is mid-runbook; after this lands, they redo the Phase 4 step (config setup) once with the new file location. The scripts and tofu provider versions don't change, so the actual AKS provisioning behaviour is identical — only the configuration entry-point changes.
+- **Sequencing — verify before merge.** Phase 6 builds the feature branch locally on the host (`./uis build`) and runs the entire AKS provisioning chain against `uis-provision-host:local` *before* the PR merges. This is faster than the CI loop (~12 min for GHCR build/push) and means the change is verified end-to-end before it lands on `main`. Any gap surfaced in Phase 6 is a fix on the same branch + a fresh `./uis build` cycle. Merge happens at task 6.9 only after task 6.6 (`./uis deploy nginx`) succeeds and 6.7 (destroy) closes the cost gate.
