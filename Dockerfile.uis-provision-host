@@ -59,6 +59,7 @@ COPY --chown=ansible:ansible manifests/ /mnt/urbalurbadisk/manifests/
 COPY --chown=ansible:ansible hosts/ /mnt/urbalurbadisk/hosts/
 COPY --chown=ansible:ansible cloud-init/ /mnt/urbalurbadisk/cloud-init/
 COPY --chown=ansible:ansible networking/ /mnt/urbalurbadisk/networking/
+COPY --chown=ansible:ansible platforms/ /mnt/urbalurbadisk/platforms/
 COPY --chown=ansible:ansible provision-host/ /mnt/urbalurbadisk/provision-host/
 COPY --chown=ansible:ansible scripts/ /mnt/urbalurbadisk/scripts/
 COPY --chown=ansible:ansible testdata/ /mnt/urbalurbadisk/testdata/
