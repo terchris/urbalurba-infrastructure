@@ -75,7 +75,15 @@ echo "  Container:        $AZURE_AKS_STATE_CONTAINER"
 echo "  Location:         $AZURE_AKS_LOCATION"
 echo
 
-read -p "Continue? (y/N): " confirm
+if [[ "${UIS_NONINTERACTIVE:-0}" == "1" ]]; then
+    print_status "UIS_NONINTERACTIVE=1 — skipping confirmation"
+    confirm="y"
+elif [[ -t 0 ]]; then
+    read -p "Continue? (y/N): " confirm
+else
+    # No TTY — read from piped stdin (e.g. `printf 'y\n' | docker exec -i …`)
+    read -r confirm
+fi
 [[ "${confirm,,}" != "y" ]] && { print_warning "Aborted"; exit 0; }
 
 # ─── Azure login ──────────────────────────────────────────────────────────────

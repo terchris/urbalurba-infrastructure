@@ -600,6 +600,23 @@ The verification bar from the investigation.
 
 If `03-destroy.sh` errors out partway, **don't walk away** — the cluster is still billing. Re-run the script, or destroy the resource group manually with `az group delete --name "$RESOURCE_GROUP" --yes --no-wait`.
 
+### State RG: persistence vs verification-loop teardown
+
+The state RG (`rg-urbalurba-tfstate` by default) is **intentionally preserved** by `03-destroy.sh`. For production AKS — where you want state continuity across destroy/recreate cycles — that's the right behavior.
+
+For **verification-loop testing** of `00-bootstrap-state.sh → 01-apply.sh` end-to-end, the persistent state RG is a liability:
+
+- If `03-destroy.sh` partially fails (e.g. an orphan resource the provider couldn't reach), the AKS cluster RG is gone but `azurerm_resource_group.aks` may still be in the state file. The next `01-apply.sh` then sees a desynchronised state vs reality.
+- A real first-time AKS Step 1 starts with no state at all — the bootstrap script's idempotency *should* be tested against an empty subscription, not against a state blob from a previous run.
+
+So when running PLAN-001 verification (rather than provisioning a real long-lived cluster), tear down the state RG too after `03-destroy.sh`:
+
+```
+az group delete --name rg-urbalurba-tfstate --yes
+```
+
+Takes ~30-70s. The next run of the verification ladder re-creates `rg-urbalurba-tfstate` from scratch via `00-bootstrap-state.sh` — exercising the full bootstrap path, which is what we want under test. *(Future: a `--purge-state` flag on `03-destroy.sh` would script this; backlog item.)*
+
 ---
 
 ## Phase 10: Recreate (subsequent runs)

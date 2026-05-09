@@ -58,13 +58,15 @@ source "$CONFIG_FILE"
 AZURE_AKS_LOCATION="${AZURE_AKS_LOCATION:-westeurope}"
 AZURE_AKS_RESOURCE_GROUP="${AZURE_AKS_RESOURCE_GROUP:-rg-urbalurba-aks-weu}"
 AZURE_AKS_CLUSTER_NAME="${AZURE_AKS_CLUSTER_NAME:-azure-aks}"
+AZURE_AKS_NODE_SIZE="${AZURE_AKS_NODE_SIZE:-Standard_B2s_v2}"
 AZURE_AKS_NODE_COUNT="${AZURE_AKS_NODE_COUNT:-1}"
 AZURE_AKS_STATE_RESOURCE_GROUP="${AZURE_AKS_STATE_RESOURCE_GROUP:-rg-urbalurba-tfstate}"
 AZURE_AKS_STATE_CONTAINER="${AZURE_AKS_STATE_CONTAINER:-tfstate}"
 AZURE_AKS_STATE_KEY="${AZURE_AKS_STATE_KEY:-aks/terraform.tfstate}"
 
-# Derived
-KUBECONFIG_FILE="/mnt/urbalurbadisk/kubeconfig/${AZURE_AKS_CLUSTER_NAME}-kubeconf"
+# Derived. Same canonical kubeconfig location as 01-apply.sh and 02-post-apply.sh.
+KUBECONFIG_DIR="$(get_kubeconfig_path)"
+KUBECONFIG_FILE="${KUBECONFIG_DIR}/${AZURE_AKS_CLUSTER_NAME}-kubeconf"
 
 print_section "AKS PLATFORM — DESTROY"
 
@@ -78,7 +80,21 @@ echo "  State backend:  $AZURE_AKS_STATE_RESOURCE_GROUP / $AZURE_STATE_STORAGE_A
 echo "  (State history is preserved for future re-creates)"
 echo
 
-read -p "Type the cluster name to confirm deletion ($AZURE_AKS_CLUSTER_NAME): " typed
+if [[ "${UIS_NONINTERACTIVE:-0}" == "1" ]]; then
+    # Non-interactive destroy is dangerous — require an explicit env var that
+    # carries the cluster name, so an accidental UIS_NONINTERACTIVE=1 in the
+    # environment can't trigger a teardown.
+    if [[ "${UIS_DESTROY_CONFIRM:-}" != "$AZURE_AKS_CLUSTER_NAME" ]]; then
+        print_error "Non-interactive destroy requires UIS_DESTROY_CONFIRM=\"$AZURE_AKS_CLUSTER_NAME\""
+        exit 1
+    fi
+    typed="$AZURE_AKS_CLUSTER_NAME"
+elif [[ -t 0 ]]; then
+    read -p "Type the cluster name to confirm deletion ($AZURE_AKS_CLUSTER_NAME): " typed
+else
+    # No TTY — read from piped stdin
+    read -r typed
+fi
 if [[ "$typed" != "$AZURE_AKS_CLUSTER_NAME" ]]; then
     print_warning "Name did not match — aborted"
     exit 0
@@ -91,15 +107,18 @@ if ! az account show >/dev/null 2>&1; then
 fi
 az account set --subscription "$AZURE_SUBSCRIPTION_ID"
 
-# PIM check
-print_status "Checking Contributor role..."
+# Role check (Owner or Contributor — either can manage AKS)
+print_status "Checking cluster-admin role (Owner or Contributor)..."
 if ! az role assignment list \
     --scope "/subscriptions/$AZURE_SUBSCRIPTION_ID" \
-    --query "[?roleDefinitionName=='Contributor' && principalType=='User']" \
+    --include-inherited --include-groups \
+    --query "[?roleDefinitionName=='Owner' || roleDefinitionName=='Contributor']" \
     -o tsv 2>/dev/null | grep -q .; then
-    print_warning "Contributor role not active"
+    print_warning "Neither Owner nor Contributor role active"
     echo "  Activate at: https://portal.azure.com/?feature.msaljs=true#view/Microsoft_Azure_PIMCommon/ActivationMenuBlade/~/azurerbac"
-    read -p "  Press Enter after activating..."
+    if [[ -t 0 ]] && [[ "${UIS_NONINTERACTIVE:-0}" != "1" ]]; then
+        read -p "  Press Enter after activating..."
+    fi
 fi
 
 # ─── Get storage key ──────────────────────────────────────────────────────────
@@ -117,10 +136,22 @@ tofu init \
     -backend-config="storage_account_name=$AZURE_STATE_STORAGE_ACCOUNT" \
     -backend-config="container_name=$AZURE_AKS_STATE_CONTAINER" \
     -backend-config="key=$AZURE_AKS_STATE_KEY" \
-    -reconfigure
+    -reconfigure \
+    -upgrade
 
 print_status "This will take 5-10 minutes..."
-tofu destroy -auto-approve
+# Don't let `set -e` skip our own diagnostic on a destroy failure — the
+# azurerm provider may report partial success even with a non-zero exit.
+if ! tofu destroy -auto-approve; then
+    print_error "tofu destroy failed."
+    print_error "  Common causes:"
+    print_error "    - Orphan resources in the cluster RG (e.g. AKS auto-creates ContainerInsights solution)."
+    print_error "      The provider features.resource_group.prevent_deletion_if_contains_resources=false flag"
+    print_error "      in main.tf should handle this; if you still see RG-not-empty errors, force-delete with:"
+    print_error "        az group delete --name $AZURE_AKS_RESOURCE_GROUP --yes"
+    print_error "    - State drift; re-run with the same backend config."
+    exit 1
+fi
 
 # ─── Clean up kubeconfig ──────────────────────────────────────────────────────
 print_section "Cleaning up kubeconfig"
@@ -144,7 +175,7 @@ echo "✅ Removed kubectl context"
 echo
 echo "💾 State preserved in:     $AZURE_STATE_STORAGE_ACCOUNT"
 echo
-echo "💰 Estimated savings: ~\$5/day (Standard_B2ms x $AZURE_AKS_NODE_COUNT)"
+echo "💰 Estimated savings: ~\$5/day (${AZURE_AKS_NODE_SIZE} x $AZURE_AKS_NODE_COUNT)"
 echo
 echo "To recreate the cluster:"
 echo "  ./platforms/aks/scripts/01-apply.sh"

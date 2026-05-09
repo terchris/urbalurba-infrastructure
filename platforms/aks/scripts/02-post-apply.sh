@@ -53,12 +53,19 @@ source "$CONFIG_FILE"
 # Inline defaults (only the ones referenced in this script)
 AZURE_AKS_CLUSTER_NAME="${AZURE_AKS_CLUSTER_NAME:-azure-aks}"
 
-# Derived
-KUBECONFIG_FILE="/mnt/urbalurbadisk/kubeconfig/${AZURE_AKS_CLUSTER_NAME}-kubeconf"
+# Derived. Both the per-cluster file and the merged file live under
+# $(get_kubeconfig_path) — the canonical UIS kubeconfig directory.
+KUBECONFIG_DIR="$(get_kubeconfig_path)"
+KUBECONFIG_FILE="${KUBECONFIG_DIR}/${AZURE_AKS_CLUSTER_NAME}-kubeconf"
+MERGED_KUBECONFIG="${KUBECONFIG_DIR}/kubeconf-all"
 
 print_section "AKS PLATFORM — POST-APPLY SETUP"
 
 # ─── Step 1: Merge kubeconfig ─────────────────────────────────────────────────
+# 01-apply.sh wrote $KUBECONFIG_FILE into $KUBECONFIG_DIR (the canonical UIS
+# location). 04-merge-kubeconf.yml reads the same directory and writes the
+# merged kubeconf-all there. So we point KUBECONFIG straight at $MERGED_KUBECONFIG
+# without any cross-directory copying.
 print_section "Step 1: Merge kubeconfig"
 
 ANSIBLE_PLAYBOOK="/mnt/urbalurbadisk/ansible/playbooks/04-merge-kubeconf.yml"
@@ -71,7 +78,7 @@ else
     export KUBECONFIG="$KUBECONFIG_FILE"
 fi
 
-export KUBECONFIG="/mnt/urbalurbadisk/kubeconfig/kubeconf-all"
+export KUBECONFIG="$MERGED_KUBECONFIG"
 
 # ─── Step 2: Switch context ───────────────────────────────────────────────────
 print_status "Switching to $AZURE_AKS_CLUSTER_NAME context..."
@@ -129,6 +136,27 @@ if [[ -n "$EXTERNAL_IP" && "$EXTERNAL_IP" != "null" ]]; then
 else
     print_warning "No external IP yet — check later:"
     echo "  kubectl get svc traefik -n kube-system"
+fi
+
+# ─── Step 5: Point UIS at the new AKS cluster ─────────────────────────────────
+# Without this, ./uis deploy <service> would still target rancher-desktop
+# (the default in cluster-config.sh). Flip CLUSTER_TYPE + TARGET_HOST so the
+# next deploy hits the AKS cluster the operator just created.
+print_section "Step 5: Switch UIS target to AKS"
+
+CLUSTER_CONFIG="/mnt/urbalurbadisk/.uis.extend/cluster-config.sh"
+if [[ -f "$CLUSTER_CONFIG" ]]; then
+    sed -i.bak \
+        -e "s|^CLUSTER_TYPE=.*|CLUSTER_TYPE=\"azure-aks\"|" \
+        -e "s|^TARGET_HOST=.*|TARGET_HOST=\"${AZURE_AKS_CLUSTER_NAME}\"|" \
+        "$CLUSTER_CONFIG"
+    rm -f "${CLUSTER_CONFIG}.bak"
+    print_success "cluster-config.sh now points at: CLUSTER_TYPE=azure-aks, TARGET_HOST=${AZURE_AKS_CLUSTER_NAME}"
+    echo "  (Original is preserved in git; revert manually to switch back to rancher-desktop.)"
+else
+    print_warning "cluster-config.sh not found — skipping auto-flip"
+    echo "  Set CLUSTER_TYPE=\"azure-aks\" and TARGET_HOST=\"${AZURE_AKS_CLUSTER_NAME}\" yourself in:"
+    echo "    $CLUSTER_CONFIG"
 fi
 
 # ─── Summary ──────────────────────────────────────────────────────────────────
