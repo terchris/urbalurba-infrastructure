@@ -96,41 +96,17 @@ fi
 kubectl apply -f "$STORAGE_MANIFEST"
 print_success "Storage class aliases applied"
 
-# ─── Step 4: Install Traefik ──────────────────────────────────────────────────
+# ─── Step 4: Install Traefik via the shared UIS playbook ──────────────────────
+# Single source of truth for Traefik across all UIS platforms (rancher-desktop
+# k3s, AKS, GCP, AWS, …). Chart version + proxy image pin live in the playbook
+# and the values file — not duplicated here. See:
+#   ansible/playbooks/003-setup-traefik.yml
+#   manifests/003-traefik-config.yaml
 print_section "Step 3: Install Traefik"
 
-helm repo add traefik https://traefik.github.io/charts >/dev/null 2>&1 || true
-helm repo update >/dev/null 2>&1
-
-TRAEFIK_VALUES="/mnt/urbalurbadisk/manifests/003-traefik-config.yaml"
-
-if helm list -n kube-system | grep -q "^traefik"; then
-    print_warning "Traefik already installed"
-    read -p "Upgrade it? (y/N): " upgrade
-    if [[ "${upgrade,,}" == "y" ]]; then
-        helm upgrade traefik traefik/traefik \
-            -f "$TRAEFIK_VALUES" \
-            --namespace kube-system
-        print_success "Traefik upgraded"
-    fi
-else
-    if [[ -f "$TRAEFIK_VALUES" ]]; then
-        helm install traefik traefik/traefik \
-            -f "$TRAEFIK_VALUES" \
-            --namespace kube-system
-    else
-        print_warning "No Traefik values file at $TRAEFIK_VALUES — installing with defaults"
-        helm install traefik traefik/traefik --namespace kube-system
-    fi
-    print_success "Traefik installed"
-fi
-
-# Wait for Traefik pod
-print_status "Waiting for Traefik pod..."
-kubectl wait --for=condition=ready pod \
-    -l app.kubernetes.io/name=traefik \
-    -n kube-system \
-    --timeout=300s >/dev/null && print_success "Traefik pod ready"
+ansible-playbook /mnt/urbalurbadisk/ansible/playbooks/003-setup-traefik.yml \
+    -e "target_host=$CLUSTER_NAME"
+print_success "Traefik playbook complete"
 
 # ─── Step 5: External IP ──────────────────────────────────────────────────────
 print_section "Step 4: External IP"

@@ -1,0 +1,51 @@
+---
+# File: ansible/playbooks/003-remove-traefik.yml
+# Description: Uninstall the Traefik ingress controller.
+# Usage: ansible-playbook 003-remove-traefik.yml -e "target_host=azure-aks"
+#
+# Refuses to run on k3s-managed clusters (rancher-desktop) — k3s
+# reconciles its bundled chart and would re-install Traefik immediately.
+
+- name: Remove Traefik ingress controller
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    _target: "{{ target_host | default('rancher-desktop') }}"
+    namespace: "kube-system"
+    component_name: "traefik"
+
+  tasks:
+    - name: 1. Detect k3s-managed Traefik
+      ansible.builtin.command: >
+        kubectl get helmcharts.helm.cattle.io {{ component_name }}
+        -n {{ namespace }} --context {{ _target }}
+        -o name
+      register: k3s_traefik
+      changed_when: false
+      failed_when: false
+
+    - name: 2. Refuse to uninstall when k3s manages Traefik
+      ansible.builtin.fail:
+        msg: |
+          Traefik on context '{{ _target }}' is managed by k3s (HelmChart CR).
+          Removing it via helm would be undone by k3s on the next reconcile.
+          To remove the bundled chart, edit the rancher-desktop / k3s configuration.
+      when: k3s_traefik.rc == 0 and k3s_traefik.stdout != ""
+
+    - name: 3. Helm uninstall Traefik
+      ansible.builtin.command: >
+        helm uninstall {{ component_name }}
+        --namespace {{ namespace }}
+        --kube-context {{ _target }}
+      register: traefik_uninstall
+      changed_when: true
+      failed_when:
+        - traefik_uninstall.rc != 0
+        - "'not found' not in (traefik_uninstall.stderr | default(''))"
+
+    - name: 4. Display removal status
+      ansible.builtin.debug:
+        msg:
+          - "Traefik removed from context '{{ _target }}'."
+          - "(IngressRoute CRDs are intentionally left in place; remove manually if desired.)"

@@ -22,10 +22,12 @@ deployment:
 global:
   systemDefaultRegistry: ""
 
-# Image configuration (using official Traefik image for AKS)
+# Image configuration (using official Traefik image)
+# Pinned to match rancher-desktop's k3s-bundled Traefik (rancher/mirrored-library-traefik:3.6.13).
+# Bumped together with the helm chart pin (39.0.7) — see ansible/playbooks/003-setup-traefik.yml.
 image:
   repository: traefik
-  tag: v3.3.2
+  tag: v3.6.13
 
 # High priority for system components
 priorityClassName: system-cluster-critical
