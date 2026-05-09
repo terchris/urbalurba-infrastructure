@@ -64,8 +64,9 @@ AZURE_AKS_STATE_RESOURCE_GROUP="${AZURE_AKS_STATE_RESOURCE_GROUP:-rg-urbalurba-t
 AZURE_AKS_STATE_CONTAINER="${AZURE_AKS_STATE_CONTAINER:-tfstate}"
 AZURE_AKS_STATE_KEY="${AZURE_AKS_STATE_KEY:-aks/terraform.tfstate}"
 
-# Derived. Same canonical kubeconfig location as 01-apply.sh and 02-post-apply.sh.
-KUBECONFIG_DIR="$(get_kubeconfig_path)"
+# Derived. Same in-container kubeconfig location as 01-apply.sh, 02-post-apply.sh,
+# and 04-merge-kubeconf.yml. Avoids the bind-mount flock issue (see 01-apply.sh).
+KUBECONFIG_DIR="/mnt/urbalurbadisk/kubeconfig"
 KUBECONFIG_FILE="${KUBECONFIG_DIR}/${AZURE_AKS_CLUSTER_NAME}-kubeconf"
 
 print_section "AKS PLATFORM — DESTROY"

@@ -73,9 +73,11 @@ AZURE_AKS_STATE_CONTAINER="${AZURE_AKS_STATE_CONTAINER:-tfstate}"
 AZURE_AKS_STATE_KEY="${AZURE_AKS_STATE_KEY:-aks/terraform.tfstate}"
 AZURE_TAG_COST_CENTER="${AZURE_TAG_COST_CENTER:-helpers-no}"
 
-# Derived. Kubeconfig dir is the canonical UIS location ($(get_kubeconfig_path))
-# so 04-merge-kubeconf.yml picks the per-cluster file up automatically.
-KUBECONFIG_DIR="$(get_kubeconfig_path)"
+# Derived. Kubeconfig dir is /mnt/urbalurbadisk/kubeconfig/ (in-container,
+# NOT bind-mounted). The .uis.secrets/.../kubeconfig path returned by
+# get_kubeconfig_path() is bind-mounted and breaks kubectl's flock on
+# Rancher Desktop's lima VM. 04-merge-kubeconf.yml uses the same path.
+KUBECONFIG_DIR="/mnt/urbalurbadisk/kubeconfig"
 KUBECONFIG_FILE="${KUBECONFIG_DIR}/${AZURE_AKS_CLUSTER_NAME}-kubeconf"
 
 print_section "AKS PLATFORM — OPENTOFU APPLY"
@@ -192,7 +194,7 @@ tofu apply tfplan
 print_success "tofu apply complete"
 
 # ─── Write kubeconfig ─────────────────────────────────────────────────────────
-# Writes to the canonical UIS kubeconfig directory ($(get_kubeconfig_path)),
+# Writes to /mnt/urbalurbadisk/kubeconfig/ (in-container, non-bind-mount),
 # which is also where 04-merge-kubeconf.yml looks for *-kubeconf files.
 # 02-post-apply.sh runs the merge playbook next, producing kubeconf-all in
 # the same directory.

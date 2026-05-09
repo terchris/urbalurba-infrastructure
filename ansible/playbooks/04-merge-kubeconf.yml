@@ -30,7 +30,12 @@
   gather_facts: true
   become: false
   vars:
-    kubernetes_files_path: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/"
+    # /mnt/urbalurbadisk/kubeconfig/ is in-container only; .uis.secrets/...
+    # is bind-mounted from the host on Rancher Desktop's lima VM, where
+    # kubectl's flock against kubeconf-all.lock writes a mode-0 phantom
+    # file that even root can't remove. Keep all kubectl write paths off
+    # the bind mount.
+    kubernetes_files_path: "/mnt/urbalurbadisk/kubeconfig/"
     temp_dir: "{{ kubernetes_files_path }}tmp"
     merged_kubeconf_file: "{{ kubernetes_files_path }}kubeconf-all"
     kubeconfig_owner: "ansible"

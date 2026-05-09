@@ -53,9 +53,10 @@ source "$CONFIG_FILE"
 # Inline defaults (only the ones referenced in this script)
 AZURE_AKS_CLUSTER_NAME="${AZURE_AKS_CLUSTER_NAME:-azure-aks}"
 
-# Derived. Both the per-cluster file and the merged file live under
-# $(get_kubeconfig_path) — the canonical UIS kubeconfig directory.
-KUBECONFIG_DIR="$(get_kubeconfig_path)"
+# Derived. /mnt/urbalurbadisk/kubeconfig/ is in-container only — kubectl's
+# flock breaks on the bind-mounted .uis.secrets/.../kubeconfig path returned
+# by get_kubeconfig_path(). Same path the merge playbook uses.
+KUBECONFIG_DIR="/mnt/urbalurbadisk/kubeconfig"
 KUBECONFIG_FILE="${KUBECONFIG_DIR}/${AZURE_AKS_CLUSTER_NAME}-kubeconf"
 MERGED_KUBECONFIG="${KUBECONFIG_DIR}/kubeconf-all"
 
@@ -91,8 +92,30 @@ if [[ "$NODE_COUNT_ACTUAL" -eq 0 ]]; then
 fi
 print_success "Connected — $NODE_COUNT_ACTUAL node(s) ready"
 
-# ─── Step 3: Storage class aliases ────────────────────────────────────────────
-print_section "Step 2: Storage class aliases"
+# ─── Step 3: Point UIS at the new AKS cluster ─────────────────────────────────
+# This MUST run before any UIS service install — `./uis deploy <service>` and
+# the shared playbooks read TARGET_HOST from cluster-config.sh to pick the
+# kubectl context. Without the flip, Traefik (and every later service) would
+# try to deploy to `rancher-desktop`, which isn't even in the merged kubeconfig.
+print_section "Step 3: Switch UIS target to AKS"
+
+CLUSTER_CONFIG="/mnt/urbalurbadisk/.uis.extend/cluster-config.sh"
+if [[ -f "$CLUSTER_CONFIG" ]]; then
+    sed -i.bak \
+        -e "s|^CLUSTER_TYPE=.*|CLUSTER_TYPE=\"azure-aks\"|" \
+        -e "s|^TARGET_HOST=.*|TARGET_HOST=\"${AZURE_AKS_CLUSTER_NAME}\"|" \
+        "$CLUSTER_CONFIG"
+    rm -f "${CLUSTER_CONFIG}.bak"
+    print_success "cluster-config.sh now points at: CLUSTER_TYPE=azure-aks, TARGET_HOST=${AZURE_AKS_CLUSTER_NAME}"
+    echo "  (Revert manually to switch back to rancher-desktop.)"
+else
+    print_warning "cluster-config.sh not found — skipping auto-flip"
+    echo "  Set CLUSTER_TYPE=\"azure-aks\" and TARGET_HOST=\"${AZURE_AKS_CLUSTER_NAME}\" yourself in:"
+    echo "    $CLUSTER_CONFIG"
+fi
+
+# ─── Step 4: Storage class aliases ────────────────────────────────────────────
+print_section "Step 4: Storage class aliases"
 
 STORAGE_MANIFEST="$PLATFORM_DIR/manifests/000-storage-class-azure-alias.yaml"
 if [[ ! -f "$STORAGE_MANIFEST" ]]; then
@@ -103,20 +126,20 @@ fi
 kubectl apply -f "$STORAGE_MANIFEST"
 print_success "Storage class aliases applied"
 
-# ─── Step 4: Install Traefik via the shared UIS playbook ──────────────────────
+# ─── Step 5: Install Traefik via the shared UIS playbook ──────────────────────
 # Single source of truth for Traefik across all UIS platforms (rancher-desktop
 # k3s, AKS, GCP, AWS, …). Chart version + proxy image pin live in the playbook
 # and the values file — not duplicated here. See:
 #   ansible/playbooks/003-setup-traefik.yml
 #   manifests/003-traefik-config.yaml
-print_section "Step 3: Install Traefik"
+print_section "Step 5: Install Traefik"
 
 ansible-playbook /mnt/urbalurbadisk/ansible/playbooks/003-setup-traefik.yml \
-    -e "target_host=$CLUSTER_NAME"
+    -e "target_host=$AZURE_AKS_CLUSTER_NAME"
 print_success "Traefik playbook complete"
 
-# ─── Step 5: External IP ──────────────────────────────────────────────────────
-print_section "Step 4: External IP"
+# ─── Step 6: External IP ──────────────────────────────────────────────────────
+print_section "Step 6: External IP"
 
 ATTEMPTS=0
 EXTERNAL_IP=""
@@ -136,27 +159,6 @@ if [[ -n "$EXTERNAL_IP" && "$EXTERNAL_IP" != "null" ]]; then
 else
     print_warning "No external IP yet — check later:"
     echo "  kubectl get svc traefik -n kube-system"
-fi
-
-# ─── Step 5: Point UIS at the new AKS cluster ─────────────────────────────────
-# Without this, ./uis deploy <service> would still target rancher-desktop
-# (the default in cluster-config.sh). Flip CLUSTER_TYPE + TARGET_HOST so the
-# next deploy hits the AKS cluster the operator just created.
-print_section "Step 5: Switch UIS target to AKS"
-
-CLUSTER_CONFIG="/mnt/urbalurbadisk/.uis.extend/cluster-config.sh"
-if [[ -f "$CLUSTER_CONFIG" ]]; then
-    sed -i.bak \
-        -e "s|^CLUSTER_TYPE=.*|CLUSTER_TYPE=\"azure-aks\"|" \
-        -e "s|^TARGET_HOST=.*|TARGET_HOST=\"${AZURE_AKS_CLUSTER_NAME}\"|" \
-        "$CLUSTER_CONFIG"
-    rm -f "${CLUSTER_CONFIG}.bak"
-    print_success "cluster-config.sh now points at: CLUSTER_TYPE=azure-aks, TARGET_HOST=${AZURE_AKS_CLUSTER_NAME}"
-    echo "  (Original is preserved in git; revert manually to switch back to rancher-desktop.)"
-else
-    print_warning "cluster-config.sh not found — skipping auto-flip"
-    echo "  Set CLUSTER_TYPE=\"azure-aks\" and TARGET_HOST=\"${AZURE_AKS_CLUSTER_NAME}\" yourself in:"
-    echo "    $CLUSTER_CONFIG"
 fi
 
 # ─── Summary ──────────────────────────────────────────────────────────────────

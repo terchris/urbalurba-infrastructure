@@ -43,7 +43,9 @@ service:
   type: LoadBalancer
   ipFamilyPolicy: PreferDualStack
 
-# Port configuration - use non-privileged ports internally
+# Port configuration - use non-privileged ports internally.
+# Chart 39 enables TLS on websecure by default (the old `ports.websecure.tls`
+# nested key was removed from the schema in chart 28). Don't add it back.
 ports:
   web:
     port: 8000
@@ -51,8 +53,6 @@ ports:
   websecure:
     port: 8443
     protocol: TCP
-    tls:
-      enabled: true
 
 # Resource limits for AKS
 resources:
@@ -70,12 +70,15 @@ tolerations:
 - effect: NoSchedule
   key: node-role.kubernetes.io/control-plane
   operator: Exists
-- effect: NoSchedule  
+- effect: NoSchedule
   key: node-role.kubernetes.io/master
   operator: Exists
 
-# Additional configuration for better debugging
-globalArguments:
+# Traefik proxy CLI flags. Chart 39 dropped the top-level `globalArguments`
+# key from the schema in favor of `additionalArguments`, which passes
+# through to the binary unchanged. The --global.* flags are still valid
+# Traefik proxy flags; only the chart-side wrapper key changed.
+additionalArguments:
 - "--global.checknewversion=false"
 - "--global.sendanonymoususage=false"
 - "--log.level=INFO"
