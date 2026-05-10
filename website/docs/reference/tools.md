@@ -39,6 +39,16 @@ These have install scripts under `provision-host/uis/tools/`. Run `./uis tools i
 | `gcp-cli` | Google Cloud CLI | Command-line interface for Google Cloud Platform | ~500MB | <https://cloud.google.com/sdk/docs/install> |
 | `opentofu` | OpenTofu | Open-source infrastructure-as-code (Terraform fork) | ~30MB | <https://opentofu.org/> |
 
+### Bundles
+
+Meta-installers that install a known-good set of dependencies in one command. Useful when you know what you want to do but not which individual tools are needed.
+
+| ID | Name | Description | Bundles | Size |
+|---|---|---|---|---|
+| `azure-aks` | Azure AKS dependencies | Everything `./uis platform <verb> azure-aks` needs | `azure-cli` + `opentofu` | ~667MB |
+
+Bundles are regular install scripts; re-running an install is idempotent (already-installed components are skipped). To uninstall, run `./uis tools uninstall` on the individual components — the bundle's own uninstall is informational only, to avoid removing a component you still want for other purposes.
+
 ## Installing a tool
 
 ```bash
@@ -64,7 +74,7 @@ Installed tools live inside the running container's writable layer. They survive
 
 | You're doing… | You need… | Install command |
 |---|---|---|
-| Provisioning AKS via `platforms/aks/` | `azure-cli`, `opentofu` | `./uis tools install azure-cli && ./uis tools install opentofu` |
+| Provisioning AKS via `platforms/aks/` | `azure-cli`, `opentofu` | `./uis tools install azure-aks` (bundle) |
 | Working with AWS resources | `aws-cli` | `./uis tools install aws-cli` |
 | Working with Google Cloud | `gcp-cli` | `./uis tools install gcp-cli` |
 | Default UIS deploys (`./uis deploy <service>`) | nothing extra — built-ins are enough | — |
