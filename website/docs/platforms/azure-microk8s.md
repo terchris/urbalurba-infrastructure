@@ -1,7 +1,9 @@
 # Azure MicroK8s Host Documentation
 
-:::caution Not yet migrated to UIS CLI
-This page documents the legacy deployment approach using manual scripts. It has not been updated for the `./uis` CLI workflow. The instructions may be outdated or incomplete.
+:::caution Legacy `hosts/*` path — not yet migrated to UIS CLI
+This platform still runs through the legacy `hosts/azure-microk8s/` scripts; it has not been migrated to the `platforms/*` + `./uis` CLI shape that [Rancher Desktop](./rancher-kubernetes.md) and [Azure AKS](./azure-aks.md) use. The instructions below describe the legacy flow and may be outdated.
+
+The migration is tracked at [INVESTIGATE-migrate-hosts-to-platforms.md](../ai-developer/plans/backlog/INVESTIGATE-migrate-hosts-to-platforms.md). For most use cases, [Azure AKS](./azure-aks.md) (managed Kubernetes) is a better target than self-managed MicroK8s on a VM.
 :::
 **Last Updated**: September 22, 2024
 
