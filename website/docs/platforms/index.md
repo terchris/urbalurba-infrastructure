@@ -1,178 +1,75 @@
-# Hosts Documentation
+---
+title: Platforms
+sidebar_label: Overview
+sidebar_position: 1
+---
 
-**File**: `docs/hosts-readme.md`
-**Purpose**: Comprehensive guide to Urbalurba infrastructure host types and deployment strategies
-**Target Audience**: Infrastructure engineers and developers deploying Urbalurba
-**Last Updated**: September 22, 2024
+# Platforms
 
-## 📋 Overview
+Where you run UIS. The provision-host container is the same everywhere; the cluster underneath swaps. Local development on a laptop, a real cloud cluster on Azure for production, or one of the legacy paths (multipass, Raspberry Pi, Azure VM) for older deployments.
 
-The Urbalurba infrastructure is designed to be highly flexible and can be deployed across various environments and hardware configurations. This document provides a standardized overview of all supported host types and their deployment strategies.
+## Supported (UIS CLI flow)
 
-### **Hardware Support**
-- **Raspberry Pi (ARM architecture)** - Edge computing and development
-- **Standard x86/AMD64 servers** - On-premises and bare metal
-- **Cloud virtual machines** - Azure, AWS, GCP
-- **Local virtualization** - Multipass, Rancher Desktop
+These platforms work end-to-end through the standard `./uis` command line. Cluster setup is automated by `platforms/<provider>/scripts/`; service deployment is identical to local-dev (`./uis deploy <service>`).
 
+| Platform | Use case | Cluster setup | Status |
+|---|---|---|---|
+| [Rancher Desktop](./rancher-kubernetes.md) | Local development. Single-node k3s on your laptop. | Install [Rancher Desktop](https://rancherdesktop.io/) → enable Kubernetes → `./uis start`. No platform script. | ✅ Default |
+| [Azure AKS](./azure-aks.md) | Production cloud cluster. | `platforms/aks/scripts/00-bootstrap-state.sh` → `01-apply.sh` → `02-post-apply.sh`. OpenTofu-driven. | ✅ Verified end-to-end (PR #149) |
 
-The software and programs in the system work consistently across all host types.
-
-## 🚀 Host Provisioning Strategy
-
-Ubuntu-based hosts (Azure MicroK8s, Multipass, Raspberry Pi) use **cloud-init** for automated provisioning, while managed services (Azure AKS, Rancher Desktop) use their own provisioning mechanisms. For detailed information about cloud-init configuration and templates, see [hosts-cloud-init-readme.md](./cloud-init/index.md).
-
-## 🏗️ Host Types
-
-The system supports several types of host configurations:
-
-### 1. Rancher Kubernetes Hosts
-**Documentation**: [hosts-rancher-kubernetes.md](./rancher-kubernetes.md) | **Scripts**: `hosts/rancher-kubernetes/`
-- Deploys Rancher-managed Kubernetes clusters
-- Default local development environment
-- Supports multi-node clusters
-- Includes Rancher-specific configurations
-- Provides cluster management interface
-- No cloud-init required (uses Rancher Desktop)
-
-### 2. Azure AKS Hosts
-**Documentation**: [hosts-azure-aks.md](./azure-aks.md) | **Scripts**: `hosts/azure-aks/`
-- Managed Kubernetes service on Azure
-- Production-ready with Azure integration
-- Cost management and scaling features
-- No cloud-init required (managed service)
-
-### 3. Azure MicroK8s Hosts
-**Documentation**: [hosts-azure-microk8s.md](./azure-microk8s.md) | **Scripts**: `hosts/azure-microk8s/`
-- Deploys MicroK8s on Azure VMs
-- Uses Azure-specific cloud-init configuration ✅
-- Supports automatic scaling
-- Integrates with Azure services
-- Includes Tailscale VPN for secure access
-
-### 4. Raspberry Pi MicroK8s Hosts
-**Documentation**: [hosts-raspberry-microk8s.md](./raspberry-microk8s.md) | **Scripts**: `hosts/raspberry-microk8s/`
-- Uses Raspberry Pi-specific cloud-init configuration ✅
-- Optimized for ARM architecture
-- Resource-efficient configuration
-- Edge computing support
-- Low-power operation
-- Includes WiFi configuration
-
-### 5. Multipass MicroK8s Hosts (LEGACY)
-**Documentation**: [hosts-multipass-microk8s.md](./multipass-microk8s.md) | **Scripts**: `hosts/multipass-microk8s/`
-- **REPLACED BY RANCHER DESKTOP** - Kept for historical reference
-- Deploys MicroK8s using Multipass
-- Uses Multipass-specific cloud-init configuration ✅
-- Previously used for local development
-- Lightweight virtualization
-
-
-## 🚀 Host Setup Commands
-
-Each host type provides Kubernetes cluster setup commands. These are run **from the provision-host container** to prepare different types of Kubernetes clusters.
-
-To set up clusters (and machines that run clusters) log in to `provision-host` container. Then change working directory to 
-
-```bash 
-cd /mnt/urbalurbadisk/hosts
-```
-
-
-### To set up Azure AKS
-
-Read documentation: [hosts-azure-aks.md](./azure-aks.md)
+After cluster setup, deployment is identical:
 
 ```bash
-./install-azure-aks.sh
+./uis deploy postgresql           # any single service
+./uis stack install observability # a coordinated stack
+./uis list                        # what's deployed where
 ```
 
-### To set up a VM in Azure and then prepare microk8s kubernetes on it
+## Legacy (not yet migrated)
 
-Read documentation: [hosts-azure-microk8s.md](./azure-microk8s.md)
+These platforms have working code under `hosts/<provider>/` from earlier UIS iterations, but they haven't been migrated to the `platforms/` + UIS CLI shape yet. Their docs still describe the legacy `hosts/` script flow and carry a "not migrated" caution banner. Use at your own risk; expect rough edges.
+
+| Platform | Use case | Code path | Notes |
+|---|---|---|---|
+| [Azure VM (MicroK8s)](./azure-microk8s.md) | Azure VM with MicroK8s instead of managed AKS. | `hosts/azure-microk8s/` | Pre-UIS-CLI deployment scripts. |
+| [Multipass MicroK8s](./multipass-microk8s.md) | Local virtualised cluster. **Replaced by Rancher Desktop.** | `hosts/multipass-microk8s/` | Kept for historical reference. |
+| [Raspberry Pi MicroK8s](./raspberry-microk8s.md) | Edge / ARM-based deployments. | `hosts/raspberry-microk8s/` | Manual provisioning, requires Tailscale for remote access. |
+
+The migration of these to first-class `platforms/` + UIS CLI support is tracked under [INVESTIGATE-migrate-hosts-to-platforms.md](../ai-developer/plans/backlog/INVESTIGATE-migrate-hosts-to-platforms.md).
+
+## How the UIS provision-host stays the same across platforms
+
+Every platform target — local k3s, AKS, Azure VM, RPi — runs the same `uis-provision-host` container. The container holds:
+
+- **`kubectl` + `helm` + `ansible`** built into the image — these don't change between targets.
+- **A merged kubeconfig** at `/mnt/urbalurbadisk/kubeconfig/kubeconf-all` containing every cluster you've connected. Built by `ansible/playbooks/04-merge-kubeconf.yml` whenever you bring up a new cluster; consumed by every `./uis deploy <service>` invocation. The kubeconfig file lives in-container (not on the bind-mounted `.uis.secrets/` path) so `kubectl config use-context` writes are flock-safe on Rancher Desktop's lima VM.
+- **Cluster-target indirection** via `.uis.extend/cluster-config.sh`. `TARGET_HOST` names the kubectl context that `./uis deploy <service>` will deploy to; AKS's `02-post-apply.sh` flips it to `azure-aks` on apply and back to `rancher-desktop` on destroy.
+- **Optional cloud CLIs** (`azure-cli`, `aws-cli`, `gcp-cli`, `opentofu`) installed on demand via `./uis tools install <id>`. See [Tools](../reference/tools.md).
+
+This is why a UIS service manifest written for Rancher Desktop deploys unchanged on AKS — the cluster differences are absorbed by the storage-class aliases and the merged kubeconfig, not by per-platform service definitions.
+
+## Switching between clusters
+
+Once you have multiple cluster contexts in your merged kubeconfig:
 
 ```bash
-./install-azure-microk8s-v2.sh
+kubectl config get-contexts                 # list every cluster you've connected
+kubectl config use-context rancher-desktop  # switch to local
+kubectl config use-context azure-aks        # switch to cloud
+kubectl config current-context              # show what kubectl is targeting
 ```
 
-### To set up Ubuntu on a Raspberry Pi and then prepare microk8s kubernetes on it
-
-Raspberry Pi (manual setup required)
-
-See documentation: [hosts-raspberry-microk8s.md](./raspberry-microk8s.md)
-
-### Multipass MicroK8s (LEGACY - replaced by Rancher Desktop)
-
-See documentation: [hosts-multipass-microk8s.md](./multipass-microk8s.md)
-
-
-
-
-## **After Cluster Setup: Deploy All Services**
-
-The benefit of Kubernetes is that once you have a cluster running, the application deployment process is identical across all cluster types.
-
-Once your Kubernetes cluster is ready, deploy services using the UIS CLI:
+For UIS commands specifically (`./uis deploy <service>`, `./uis configure <service>`), the target is also gated by `cluster-config.sh`'s `TARGET_HOST`. The supported-platform scripts (`02-post-apply.sh`, `03-destroy.sh`) keep this in sync with `kubectl config current-context` automatically. If you need to flip manually:
 
 ```bash
-# Deploy a single service
-./uis deploy postgresql
-
-# Deploy a full stack
-./uis stack install observability
+sed -i \
+  -e 's|^CLUSTER_TYPE=.*|CLUSTER_TYPE="azure-aks"|' \
+  -e 's|^TARGET_HOST=.*|TARGET_HOST="azure-aks"|' \
+  /mnt/urbalurbadisk/.uis.extend/cluster-config.sh
 ```
 
-The UIS CLI automatically resolves dependencies and deploys services in the correct order.
+## See also
 
-## 🔄 Multi-Cluster Management
-
-When you set up multiple Kubernetes clusters, Urbalurba automatically merges their kubeconfig files for seamless context switching:
-
-### **Automatic Kubeconfig Merging**
-
-Each time a new cluster is added, the system runs:
-```bash
-# From inside provision-host container:
-ansible-playbook ansible/playbooks/04-merge-kubeconf.yml
-```
-
-This merges all `*-kubeconfig` files from `/mnt/urbalurbadisk/kubeconfig/` into a single file: `/mnt/urbalurbadisk/kubeconfig/kubeconf-all`
-
-### **Context Switching Between Clusters**
-
-Once merged, you can easily switch between different Kubernetes environments:
-
-```bash
-# Set the merged kubeconfig
-export KUBECONFIG=/mnt/urbalurbadisk/kubeconfig/kubeconf-all
-
-# Switch between clusters
-kubectl config use-context rancher-desktop  # Local development
-kubectl config use-context azure-aks       # Cloud production
-kubectl config use-context azure-microk8s  # Azure VM
-kubectl config use-context multipass-microk8s # Legacy multipass
-
-# Check current context
-kubectl config current-context
-
-# List all available contexts
-kubectl config get-contexts
-```
-
-### **Benefits of Multi-Cluster Setup**
-- **Development → Production workflow** - Test locally, deploy to cloud
-- **Cross-cloud redundancy** - Multiple cloud providers
-- **Environment isolation** - Separate dev/staging/prod clusters
-- **Unified management** - One kubectl interface for all clusters
-
-## 📚 Detailed Documentation
-
-For comprehensive setup guides, troubleshooting, and configuration details:
-
-- **[hosts-cloud-init-readme.md](./cloud-init/index.md)** - Cloud-init configuration and templates
-- **[hosts-azure-microk8s.md](./azure-microk8s.md)** - Azure MicroK8s deployment guide
-- **[hosts-azure-aks.md](./azure-aks.md)** - Azure AKS deployment guide
-- **[hosts-multipass-microk8s.md](./multipass-microk8s.md)** - Multipass MicroK8s deployment guide
-- **[hosts-raspberry-microk8s.md](./raspberry-microk8s.md)** - Raspberry Pi MicroK8s deployment guide
-- **[hosts-rancher-kubernetes.md](./rancher-kubernetes.md)** - Rancher Kubernetes deployment guide
-
+- **[Provision Host Overview](../advanced/provision-host/index.md)** — the management container that's identical across all platforms.
+- **[Tools](../reference/tools.md)** — built-in vs installable CLIs (`azure-cli`, `opentofu`, etc.).
+- **[How Deployment Works](../advanced/how-deployment-works.md)** — what `./uis deploy <service>` does under the hood.
