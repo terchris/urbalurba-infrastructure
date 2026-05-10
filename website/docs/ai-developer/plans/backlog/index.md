@@ -23,6 +23,7 @@ Investigations and plans waiting for implementation, sorted by last updated date
 | [INVESTIGATE: Remote Deployment Targets & Target Management](INVESTIGATE-remote-deployment-targets.md) | — | 2026-05-10 |
 | [INVESTIGATE: Provision-Host Tools and Provider Authentication](INVESTIGATE-provision-host-tools-and-auth.md) | — | 2026-05-10 |
 | [INVESTIGATE: Platform Provisioning Layer](INVESTIGATE-platform-provisioning-layer.md) | — | 2026-05-10 |
+| [Investigate: migrate `hosts/*` to `platforms/*` (or formally retire)](INVESTIGATE-migrate-hosts-to-platforms.md) | — | 2026-05-10 |
 | [Investigate: Metabase Internal BI / Data Exploration for UIS](INVESTIGATE-metabase.md) | Deploy Metabase as the internal data-exploration and validation tool for UIS-hosted applications, providing visual SQL exploration, ad-hoc questions, and dashboards for development teams — starting with Atlas, with reusability for future apps. | 2026-05-10 |
 | [Investigate: Surface in-cluster service port on `services.json`](INVESTIGATE-in-cluster-port-on-services.md) | Add the primary in-cluster Kubernetes Service port to each service entry in `website/src/data/services.json` so that downstream consumers (documentation generators, template tooling, dashboards) can render accurate `<service>.<namespace>.svc.cluster.local:<port>` references without hardcoding per-service ports or guessing from conventions. | 2026-05-10 |
 | [INVESTIGATE: Migrate Host Documentation to UIS CLI](INVESTIGATE-host-docs-migration.md) | — | 2026-05-10 |
