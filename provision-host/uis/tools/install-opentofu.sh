@@ -2,7 +2,7 @@
 # install-opentofu.sh - OpenTofu installer
 #
 # Installs OpenTofu (open-source Terraform fork) in the UIS container.
-# Required by platforms/aks/ provisioning scripts.
+# Required by platforms/azure-aks/ provisioning scripts.
 
 # === Tool Metadata ===
 TOOL_ID="opentofu"

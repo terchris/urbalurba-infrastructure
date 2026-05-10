@@ -6,7 +6,7 @@
 
 **Created**: 2026-04-09
 **Updated**: 2026-05-07
-**Status**: ACTIVE — AKS Step 1 *drafts* merged to `main` via PR #120 (2026-04-09) but **never run end-to-end**. Production AKS deployments today still go through `hosts/azure-aks/` (the bash + `az aks create` path). Direction (per maintainer, 2026-05-07): make `platforms/aks/` the production path, with helpers.no's Microsoft nonprofit grant as the funding source and atlas-on-AKS as the load-bearing end-state. AKS-only focus; other platforms (gke, eks, microk8s-vm/metal/rpi) deferred until a concrete consumer surfaces.
+**Status**: ACTIVE — AKS Step 1 *drafts* merged to `main` via PR #120 (2026-04-09) but **never run end-to-end**. Production AKS deployments today still go through `hosts/azure-aks/` (the bash + `az aks create` path). Direction (per maintainer, 2026-05-07): make `platforms/azure-aks/` the production path, with helpers.no's Microsoft nonprofit grant as the funding source and atlas-on-AKS as the load-bearing end-state. AKS-only focus; other platforms (gke, eks, microk8s-vm/metal/rpi) deferred until a concrete consumer surfaces.
 
 ---
 
@@ -22,7 +22,7 @@ OpenTofu-based approach for cloud targets and an Ansible/cloud-init approach for
 bare-metal targets. Every platform gets a working Kubernetes cluster that is ready to
 receive UIS services.
 
-The first concrete output of this investigation is `platforms/aks/` (Step 1),
+The first concrete output of this investigation is `platforms/azure-aks/` (Step 1),
 which provisions AKS via OpenTofu with Azure Blob Storage remote state.
 
 ---
@@ -164,7 +164,7 @@ This makes the execution order self-documenting and consistent across all cloud 
 `hosts/` is not deleted. It is kept as a reference and fallback while `platforms/` is built
 out. Migration happens platform by platform:
 
-1. `platforms/aks/` replaces `hosts/azure-aks/` and `hosts/install-azure-aks.sh`
+1. `platforms/azure-aks/` replaces `hosts/azure-aks/` and `hosts/install-azure-aks.sh`
 2. `platforms/microk8s-vm/` replaces `hosts/azure-microk8s/`, `hosts/multipass-microk8s/`
 3. `platforms/microk8s-rpi/` replaces `hosts/raspberry-microk8s/`
 4. `hosts/` is archived or deleted after all platforms are migrated
@@ -193,13 +193,13 @@ Other gap-analysis findings vs `hosts/azure-aks/` (2026-05-07):
 - External-IP curl reachability test is missing from `02-post-apply.sh`. The nginx in-cluster connectivity test (verification bar below) covers the load-bearing case; the curl test is optional polish.
 - `--generate-ssh-keys` is intentionally absent from the tofu — `azurerm_kubernetes_cluster` generates them for Linux node pools by default.
 
-Code lives in `platforms/aks/`. The `feature/platform-aks-opentofu` branch was merged and the stale remote was deleted.
+Code lives in `platforms/azure-aks/`. The `feature/platform-aks-opentofu` branch was merged and the stale remote was deleted.
 
 **Verification bar for "Step 1 done":** a tester runs the four scripts (`00-bootstrap-state.sh` → `01-apply.sh` → `02-post-apply.sh`) end-to-end against a real Azure subscription, then runs `./uis deploy nginx` and the deploy completes successfully — including the built-in connectivity tests in `020-setup-nginx.yml` (steps 13 and 15) which spin up a curl-test pod and fetch the test file + index page via cluster-internal DNS. That single command exercises networking, pod scheduling, storage class aliases, service DNS, and IngressRoute application, so it's a sufficient end-to-end signal without needing additional services for the verification.
 
 ### Step 2: Operational tooling (cost control)
 
-The bash path includes two operational scripts that have no `platforms/aks/` equivalent:
+The bash path includes two operational scripts that have no `platforms/azure-aks/` equivalent:
 
 - `hosts/azure-aks/manage-aks-cluster.sh` (682 lines) — start / stop / scale operations so the cluster only costs money while in use
 - `hosts/azure-aks/toggle-internet-access.sh` — gate the external IP
@@ -272,5 +272,5 @@ referenced from all platform post-apply scripts.
 
 - [INVESTIGATE-remote-deployment-targets.md](INVESTIGATE-remote-deployment-targets.md) — target management UX (`./uis target` commands)
 - [INVESTIGATE-provision-host-tools-and-auth.md](INVESTIGATE-provision-host-tools-and-auth.md) — tool installation and cloud auth inside provision-host
-- `platforms/aks/README.md` — AKS platform documentation
+- `platforms/azure-aks/README.md` — AKS platform documentation
 - `hosts/azure-aks/` — original bash scripts being replaced

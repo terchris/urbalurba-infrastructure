@@ -1,4 +1,4 @@
-# File: platforms/aks/tofu/main.tf
+# File: platforms/azure-aks/tofu/main.tf
 #
 # Step 1: Resource Group + AKS cluster only.
 # Matches the az aks create flags from the original hosts/azure-aks/01-azure-aks-create.sh

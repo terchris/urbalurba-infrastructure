@@ -35,7 +35,7 @@ The meta-installer is a regular `install-*.sh` script that delegates inside its 
 
 ## Out of Scope
 
-- **Adding `kubelogin` to the bundle.** Today's `platforms/aks/tofu/main.tf` uses local-account auth (no AAD-integrated RBAC), so `kubelogin` is not invoked. Adding it would be needed only if we later switch to AAD-integrated AKS; that's a separate architectural decision (see "Out of Scope" in the parent investigation).
+- **Adding `kubelogin` to the bundle.** Today's `platforms/azure-aks/tofu/main.tf` uses local-account auth (no AAD-integrated RBAC), so `kubelogin` is not invoked. Adding it would be needed only if we later switch to AAD-integrated AKS; that's a separate architectural decision (see "Out of Scope" in the parent investigation).
 - **Generalizing meta-tools as a first-class concept** in `tool-installation.sh` (categories, dependency graphs, etc.). Per Q2, we deliberately stay with the regular-script-that-delegates pattern.
 - **Adding `TOOL_CATEGORY=META` grouping to `./uis tools list`'s output rendering**. The metadata is set on the new script so a future polish PR can group; the rendering itself stays flat for this PR.
 - **Refactoring `tool-installation.sh`**. The recursive `install_tool` call from inside a meta-tool's `do_install` works today (the subshell at line 213-221 inherits parent functions). No wrapper changes needed.

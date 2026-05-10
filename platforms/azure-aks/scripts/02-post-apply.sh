@@ -1,5 +1,5 @@
 #!/bin/bash
-# File: platforms/aks/scripts/02-post-apply.sh
+# File: platforms/azure-aks/scripts/02-post-apply.sh
 #
 # Description:
 #   Post-apply cluster configuration:
@@ -178,4 +178,4 @@ echo "  ./uis deploy <service>"
 echo "  ./uis stack install <stack>"
 echo
 echo "Manage cluster:"
-echo "  ./platforms/aks/scripts/03-destroy.sh       # tear down"
+echo "  ./platforms/azure-aks/scripts/03-destroy.sh       # tear down"

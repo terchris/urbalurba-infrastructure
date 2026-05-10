@@ -1,5 +1,5 @@
 #!/bin/bash
-# File: platforms/aks/scripts/03-destroy.sh
+# File: platforms/azure-aks/scripts/03-destroy.sh
 #
 # Description:
 #   Destroys the AKS cluster and all associated resources via OpenTofu.
@@ -197,4 +197,4 @@ echo
 echo "💰 Estimated savings: ~\$5/day (${AZURE_AKS_NODE_SIZE} x $AZURE_AKS_NODE_COUNT)"
 echo
 echo "To recreate the cluster:"
-echo "  ./platforms/aks/scripts/01-apply.sh"
+echo "  ./platforms/azure-aks/scripts/01-apply.sh"

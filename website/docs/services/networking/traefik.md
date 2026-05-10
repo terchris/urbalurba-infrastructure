@@ -15,7 +15,7 @@ Cluster ingress controller and reverse proxy. UIS uses Traefik for `IngressRoute
 | **AKS** | Installed by the shared playbook during `02-post-apply.sh`. | The playbook does helm install/upgrade with a pinned chart. |
 | **GCP / AWS / bare k8s** *(future)* | Same shared playbook, invoked the same way. No platform-specific install logic — that's the whole point of the refactor in #149. | Same. |
 
-The single source of truth is **`ansible/playbooks/003-setup-traefik.yml`**. Every cloud-platform `02-post-apply.sh` should call this playbook (see `platforms/aks/scripts/02-post-apply.sh:99` for the AKS example) instead of re-implementing helm install logic per platform.
+The single source of truth is **`ansible/playbooks/003-setup-traefik.yml`**. Every cloud-platform `02-post-apply.sh` should call this playbook (see `platforms/azure-aks/scripts/02-post-apply.sh:99` for the AKS example) instead of re-implementing helm install logic per platform.
 
 ## Pinned versions
 
@@ -36,7 +36,7 @@ When rancher-desktop's k3s ships v40 (typically 2–4 months after upstream), fi
 
 ## Architectural decision: Traefik is a UIS service, not platform-script logic
 
-Earlier versions of `platforms/aks/scripts/02-post-apply.sh` ran `helm install traefik …` inline. That works for one platform, but creates a fork-and-fix problem the moment a second cloud platform is added:
+Earlier versions of `platforms/azure-aks/scripts/02-post-apply.sh` ran `helm install traefik …` inline. That works for one platform, but creates a fork-and-fix problem the moment a second cloud platform is added:
 
 > Three copies of the same install logic. Three places to bump the chart version. Three places to fix any helm-install bug. Three opportunities for drift between local-dev (rancher-desktop) and the cloud targets.
 

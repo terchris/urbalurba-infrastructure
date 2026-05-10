@@ -6,7 +6,7 @@
 
 ## Status: Backlog
 
-**Goal**: Provide a self-contained runbook for the first manual run-through of `platforms/aks/` against an Azure subscription. Explains every config variable (what it is, where to find it, what changes if you change it), every authentication step, and every script in the order it must run. Companion to [PLAN-001-aks-step1-verification.md](./PLAN-001-aks-step1-verification.md) — that plan's Phase 2 lists the eight scripts to run; this plan is the detailed *how* and *why* for someone doing it for the first time.
+**Goal**: Provide a self-contained runbook for the first manual run-through of `platforms/azure-aks/` against an Azure subscription. Explains every config variable (what it is, where to find it, what changes if you change it), every authentication step, and every script in the order it must run. Companion to [PLAN-001-aks-step1-verification.md](./PLAN-001-aks-step1-verification.md) — that plan's Phase 2 lists the eight scripts to run; this plan is the detailed *how* and *why* for someone doing it for the first time.
 
 **Last Updated**: 2026-05-08
 
@@ -61,7 +61,7 @@ Two CLIs not installed by default. Both via `./uis tools install`. See [Tools](.
   ```
   Validates with: `./uis exec az --version` (any version is fine; >= 2.50 is what current scripts assume).
 
-- [ ] 2.2 **OpenTofu** — needed by `01-apply.sh` and `03-destroy.sh` to run the IaC module in `platforms/aks/tofu/`.
+- [ ] 2.2 **OpenTofu** — needed by `01-apply.sh` and `03-destroy.sh` to run the IaC module in `platforms/azure-aks/tofu/`.
   ```
   ./uis tools install opentofu
   ```
@@ -321,7 +321,7 @@ You can answer for every variable in Phase 4 either *"I have its value"* or *"I'
 
 ## Phase 4: Configuration — what every variable means and where to find it
 
-Per the [secrets architecture doc](../../../contributors/architecture/secrets.md), Azure cloud-account values live at `.uis.secrets/cloud-accounts/azure-default.env` (gitignored, machine-local). This is the same convention the rest of UIS uses — `cloud-accounts/<provider>-default.env` for any cloud-provider config — and the `platforms/aks/scripts/*.sh` scripts source it via the `get_cloud_credentials_path` helper from `provision-host/uis/lib/paths.sh`.
+Per the [secrets architecture doc](../../../contributors/architecture/secrets.md), Azure cloud-account values live at `.uis.secrets/cloud-accounts/azure-default.env` (gitignored, machine-local). This is the same convention the rest of UIS uses — `cloud-accounts/<provider>-default.env` for any cloud-provider config — and the `platforms/azure-aks/scripts/*.sh` scripts source it via the `get_cloud_credentials_path` helper from `provision-host/uis/lib/paths.sh`.
 
 The file does not exist by default. Create it from the committed template:
 
@@ -410,7 +410,7 @@ Run this **once**. The state RG and storage account it creates survive cluster d
 
 - [ ] 5.1 Run the bootstrap:
   ```
-  ./platforms/aks/scripts/00-bootstrap-state.sh
+  ./platforms/azure-aks/scripts/00-bootstrap-state.sh
   ```
 
 - [ ] 5.2 Walk through the prompts. The script:
@@ -446,7 +446,7 @@ This is the big one — creates the AKS cluster. Takes ~5–10 minutes.
 
 - [ ] 6.1 Run the apply script:
   ```
-  ./platforms/aks/scripts/01-apply.sh
+  ./platforms/azure-aks/scripts/01-apply.sh
   ```
 
 - [ ] 6.2 Walk through what it does:
@@ -487,13 +487,13 @@ Cluster's up but bare. This script does the post-provisioning setup.
 
 - [ ] 7.1 Run:
   ```
-  ./platforms/aks/scripts/02-post-apply.sh
+  ./platforms/azure-aks/scripts/02-post-apply.sh
   ```
 
 - [ ] 7.2 What it does, in order:
   - **Merges the AKS kubeconfig** into `kubeconf-all` via `ansible/playbooks/04-merge-kubeconf.yml` so `kubectl config get-contexts` shows both `rancher-desktop` and the new AKS context side by side.
   - **Switches kubectl context** to the AKS cluster.
-  - **Applies storage class aliases** from `platforms/aks/manifests/000-storage-class-azure-alias.yaml` — this maps `local-path` and `microk8s-hostpath` (which UIS service manifests reference) to Azure-Disk-backed storage classes. Without this, every UIS service that requests `local-path` PVCs fails on AKS.
+  - **Applies storage class aliases** from `platforms/azure-aks/manifests/000-storage-class-azure-alias.yaml` — this maps `local-path` and `microk8s-hostpath` (which UIS service manifests reference) to Azure-Disk-backed storage classes. Without this, every UIS service that requests `local-path` PVCs fails on AKS.
   - **(After PLAN-002 ships)** applies `kubernetes-secrets.yml` to the cluster. As of 2026-05-08 this step is still missing — see the *Without PLAN-002* note below.
   - **Installs Traefik via Helm** with values from `manifests/003-traefik-config.yaml`. AKS provisions a public LoadBalancer and gives it an external IP.
   - **Waits for the external IP** (up to 2 min).
@@ -571,7 +571,7 @@ The verification bar from the investigation.
 
 - [ ] 9.1 Run:
   ```
-  ./platforms/aks/scripts/03-destroy.sh
+  ./platforms/azure-aks/scripts/03-destroy.sh
   ```
 
 - [ ] 9.2 What it does:
@@ -634,16 +634,16 @@ az account show >/dev/null 2>&1 || az login --tenant "$TENANT_ID" --use-device-c
 # Phase 5 SKIPPED — state backend persists
 
 # Phase 6 — apply
-./platforms/aks/scripts/01-apply.sh
+./platforms/azure-aks/scripts/01-apply.sh
 
 # Phase 7 — post-apply
-./platforms/aks/scripts/02-post-apply.sh
+./platforms/azure-aks/scripts/02-post-apply.sh
 
 # Phase 8 — verify
 ./uis deploy nginx
 
 # Phase 9 — destroy when done
-./platforms/aks/scripts/03-destroy.sh
+./platforms/azure-aks/scripts/03-destroy.sh
 ```
 
 Roughly 10–15 minutes round trip if everything is healthy.
@@ -699,7 +699,7 @@ Either:
 
 ### `./uis deploy nginx` fails with "no storage class"
 
-`02-post-apply.sh`'s storage-class aliases didn't apply. Check `kubectl get storageclass` — should show `local-path`, `microk8s-hostpath`, and Azure's defaults. If missing, re-apply: `kubectl apply -f platforms/aks/manifests/000-storage-class-azure-alias.yaml`.
+`02-post-apply.sh`'s storage-class aliases didn't apply. Check `kubectl get storageclass` — should show `local-path`, `microk8s-hostpath`, and Azure's defaults. If missing, re-apply: `kubectl apply -f platforms/azure-aks/manifests/000-storage-class-azure-alias.yaml`.
 
 ---
 

@@ -8,7 +8,7 @@
 
 **Last Updated**: 2026-05-10
 
-**Source**: surfaced during the platform-docs refresh (PR #150 + content PR-B). PR #149 shipped `platforms/aks/` as the modern UIS-CLI-driven AKS path. The legacy `hosts/aks/`, `hosts/azure-microk8s/`, `hosts/multipass-microk8s/`, `hosts/raspberry-microk8s/`, and `hosts/rancher-kubernetes/` directories are still in tree, with their own deprecated scripts and "not migrated to UIS CLI" caution banners on the docs site.
+**Source**: surfaced during the platform-docs refresh (PR #150 + content PR-B). PR #149 shipped `platforms/azure-aks/` as the modern UIS-CLI-driven AKS path. The legacy `hosts/aks/`, `hosts/azure-microk8s/`, `hosts/multipass-microk8s/`, `hosts/raspberry-microk8s/`, and `hosts/rancher-kubernetes/` directories are still in tree, with their own deprecated scripts and "not migrated to UIS CLI" caution banners on the docs site.
 
 ---
 
@@ -18,7 +18,7 @@ UIS today has **two parallel platform shapes** that don't share infrastructure:
 
 | Shape | Code | Driven by | Verified |
 |---|---|---|---|
-| **New (`platforms/*`)** | `platforms/aks/scripts/{00-bootstrap,01-apply,02-post-apply,03-destroy}.sh`, `platforms/aks/tofu/`, etc. | `./uis` CLI flow + sourced helpers + ansible playbooks for cross-cluster bits | ✅ AKS Tier A retry №4 (PR #149) |
+| **New (`platforms/*`)** | `platforms/azure-aks/scripts/{00-bootstrap,01-apply,02-post-apply,03-destroy}.sh`, `platforms/azure-aks/tofu/`, etc. | `./uis` CLI flow + sourced helpers + ansible playbooks for cross-cluster bits | ✅ AKS Tier A retry №4 (PR #149) |
 | **Legacy (`hosts/*`)** | `hosts/azure-aks/`, `hosts/azure-microk8s/`, `hosts/multipass-microk8s/`, `hosts/raspberry-microk8s/`, `hosts/rancher-kubernetes/` + `hosts/install-*.sh` driver scripts | Bash scripts invoked manually inside the provision-host container | ❓ Last verified pre-UIS-CLI; current status unknown for each |
 
 The new shape ships per-platform scripts that integrate with `./uis deploy <service>`, the merged kubeconfig, and `cluster-config.sh`. The legacy shape predates all of that — it stands up a cluster but doesn't wire it into UIS's deploy flow consistently.
@@ -31,19 +31,19 @@ The new shape ships per-platform scripts that integrate with `./uis deploy <serv
 
 ```
 hosts/
-├── azure-aks/              # superseded by platforms/aks/ (PR #146 + #149); pure dead code
+├── azure-aks/              # superseded by platforms/azure-aks/ (PR #146 + #149); pure dead code
 ├── azure-microk8s/         # MicroK8s on an Azure VM (instead of managed AKS); CAF-compliant tooling
 ├── multipass-microk8s/     # MicroK8s in Multipass on macOS/Linux; explicitly "replaced by Rancher Desktop"
 ├── raspberry-microk8s/     # MicroK8s on Raspberry Pi 4 + Tailscale; for edge / IoT
 ├── rancher-kubernetes/     # legacy scripts for the Rancher Desktop path; unclear whether actively used
-├── install-azure-aks.sh    # legacy AKS installer; superseded by platforms/aks/
+├── install-azure-aks.sh    # legacy AKS installer; superseded by platforms/azure-aks/
 ├── install-azure-microk8s-v2.sh
 ├── install-multipass-microk8s.sh
 ├── install-rancher-kubernetes.sh
 └── 03-setup-microk8s-v2.sh # shared MicroK8s setup invoked by multiple flavours
 ```
 
-`hosts/azure-aks/` is the clearest case: it's been completely superseded by `platforms/aks/`. The other five each have a different story.
+`hosts/azure-aks/` is the clearest case: it's been completely superseded by `platforms/azure-aks/`. The other five each have a different story.
 
 ---
 
@@ -51,7 +51,7 @@ hosts/
 
 ### `hosts/azure-aks/` — superseded; safe to delete
 
-- ✅ Replaced by `platforms/aks/` (PR #146).
+- ✅ Replaced by `platforms/azure-aks/` (PR #146).
 - ✅ Tier A retry №4 verified the new path end-to-end.
 - ❓ Does any tool / script / CI workflow still reference `hosts/azure-aks/`?
 - 📝 If grep returns clean, **delete the directory and the `install-azure-aks.sh` driver** as a follow-up code-cleanup PR. Pure dead code.
@@ -61,8 +61,8 @@ hosts/
 Use case: an Azure VM running MicroK8s, instead of managed AKS. Trade-offs vs. AKS: cheaper at idle (no AKS control-plane overhead), more manual operations (no cluster autoscaler, no Azure-managed upgrades), CAF-compliant networking via Tailscale.
 
 - ❓ Are there any active users (helpers.no or otherwise) running production workloads on this path?
-- ❓ Does AKS sufficiently cover the use case now that we have `platforms/aks/` working? AKS is roughly ~€1/day for a 1-node test cluster — comparable to a B2s_v2 VM running MicroK8s, but with AKS's autoscaler + managed control plane.
-- 📝 If no active user, deprecate and retire. If yes, scope `platforms/azure-microk8s/` migration: reuse `platforms/aks/`'s shape (00-bootstrap-state.sh equivalent for the Azure VM, 01-apply.sh for OpenTofu-driven VM provisioning + cloud-init, 02-post-apply.sh for the kubeconfig-merge and Traefik install — Traefik playbook already platform-agnostic per PR #149).
+- ❓ Does AKS sufficiently cover the use case now that we have `platforms/azure-aks/` working? AKS is roughly ~€1/day for a 1-node test cluster — comparable to a B2s_v2 VM running MicroK8s, but with AKS's autoscaler + managed control plane.
+- 📝 If no active user, deprecate and retire. If yes, scope `platforms/azure-microk8s/` migration: reuse `platforms/azure-aks/`'s shape (00-bootstrap-state.sh equivalent for the Azure VM, 01-apply.sh for OpenTofu-driven VM provisioning + cloud-init, 02-post-apply.sh for the kubeconfig-merge and Traefik install — Traefik playbook already platform-agnostic per PR #149).
 
 ### `hosts/multipass-microk8s/` — formally retire
 
@@ -115,7 +115,7 @@ A child PLAN per platform that's worth migrating, plus one cleanup PR for the de
 
 ## Out of scope for this investigation
 
-- **Adding new platforms** that don't currently exist (GCP/EKS/etc.) — that's a separate "second cloud" investigation. The shared playbook in `ansible/playbooks/003-setup-traefik.yml` plus the `platforms/aks/` shape gives that work a clean starting point, but it's not the same scope as legacy migration.
+- **Adding new platforms** that don't currently exist (GCP/EKS/etc.) — that's a separate "second cloud" investigation. The shared playbook in `ansible/playbooks/003-setup-traefik.yml` plus the `platforms/azure-aks/` shape gives that work a clean starting point, but it's not the same scope as legacy migration.
 - **Removing `hosts/` entirely.** Until the per-platform decisions are made, `hosts/` stays.
 
 ---
@@ -124,5 +124,5 @@ A child PLAN per platform that's worth migrating, plus one cleanup PR for the de
 
 - [PLAN-aks-destroy-kubeconfig-cleanup.md](./PLAN-aks-destroy-kubeconfig-cleanup.md) — destroy-side kubeconfig cleanup; the `03-destroy.sh` shape that future platforms inherit.
 - [INVESTIGATE-active-cluster-visibility-ux.md](./INVESTIGATE-active-cluster-visibility-ux.md) — once we have multiple platforms, "which cluster am I about to deploy to?" becomes more pressing. Visibility UX is a prerequisite for confidently using multiple `platforms/*` flows.
-- PR #149 — landed `platforms/aks/`, the template every other migrated platform should follow.
+- PR #149 — landed `platforms/azure-aks/`, the template every other migrated platform should follow.
 - PR #150 — promoted "Hosts & Platforms" to top-level "Platforms" sidebar.

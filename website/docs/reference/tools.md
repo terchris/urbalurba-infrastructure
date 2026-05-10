@@ -74,7 +74,7 @@ Installed tools live inside the running container's writable layer. They survive
 
 | You're doing… | You need… | Install command |
 |---|---|---|
-| Provisioning AKS via `platforms/aks/` | `azure-cli`, `opentofu` | `./uis tools install azure-aks` (bundle) |
+| Provisioning AKS via `platforms/azure-aks/` | `azure-cli`, `opentofu` | `./uis tools install azure-aks` (bundle) |
 | Working with AWS resources | `aws-cli` | `./uis tools install aws-cli` |
 | Working with Google Cloud | `gcp-cli` | `./uis tools install gcp-cli` |
 | Default UIS deploys (`./uis deploy <service>`) | nothing extra — built-ins are enough | — |

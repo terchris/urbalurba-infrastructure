@@ -15,7 +15,7 @@ These platforms work end-to-end through the standard `./uis` command line. Clust
 | Platform | Use case | Cluster setup | Status |
 |---|---|---|---|
 | [Rancher Desktop](./rancher-kubernetes.md) | Local development. Single-node k3s on your laptop. | Install [Rancher Desktop](https://rancherdesktop.io/) → enable Kubernetes → `./uis start`. No platform script. | ✅ Default |
-| [Azure AKS](./azure-aks.md) | Production cloud cluster. | `platforms/aks/scripts/00-bootstrap-state.sh` → `01-apply.sh` → `02-post-apply.sh`. OpenTofu-driven. | ✅ Verified end-to-end (PR #149) |
+| [Azure AKS](./azure-aks.md) | Production cloud cluster. | `platforms/azure-aks/scripts/00-bootstrap-state.sh` → `01-apply.sh` → `02-post-apply.sh`. OpenTofu-driven. | ✅ Verified end-to-end (PR #149) |
 
 After cluster setup, deployment is identical:
 

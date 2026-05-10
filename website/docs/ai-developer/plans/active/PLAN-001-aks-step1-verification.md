@@ -6,7 +6,7 @@
 
 ## Status: Active
 
-**Goal**: Take the unverified `platforms/aks/` OpenTofu drafts (merged 2026-04-09 via PR #120) through their first real end-to-end run against an Azure subscription, fix any gaps that surface, and earn the right to call AKS Step 1 *actually* shipped — by deploying `./uis deploy nginx` against the resulting cluster and watching its built-in connectivity tests pass.
+**Goal**: Take the unverified `platforms/azure-aks/` OpenTofu drafts (merged 2026-04-09 via PR #120) through their first real end-to-end run against an Azure subscription, fix any gaps that surface, and earn the right to call AKS Step 1 *actually* shipped — by deploying `./uis deploy nginx` against the resulting cluster and watching its built-in connectivity tests pass.
 
 **Last Updated**: 2026-05-07
 
@@ -16,7 +16,7 @@
 
 ## Problem Summary
 
-`platforms/aks/` contains four scripts (`00-bootstrap-state.sh`, `01-apply.sh`, `02-post-apply.sh`, `03-destroy.sh`) plus an OpenTofu module (`tofu/main.tf` etc.) that have never been run against a real Azure subscription. One known issue from the 2026-05-07 gap analysis must be fixed before the first run can succeed: the `uis-provision-host` container has no `tofu` binary. There's an installer for `azure-cli` at `provision-host/uis/tools/install-azure-cli.sh` but no equivalent for OpenTofu.
+`platforms/azure-aks/` contains four scripts (`00-bootstrap-state.sh`, `01-apply.sh`, `02-post-apply.sh`, `03-destroy.sh`) plus an OpenTofu module (`tofu/main.tf` etc.) that have never been run against a real Azure subscription. One known issue from the 2026-05-07 gap analysis must be fixed before the first run can succeed: the `uis-provision-host` container has no `tofu` binary. There's an installer for `azure-cli` at `provision-host/uis/tools/install-azure-cli.sh` but no equivalent for OpenTofu.
 
 Beyond that, the dominant risk is *un-run risk*: bugs and small omissions only surface when scripts execute against real Azure resources for the first time. This plan reserves a phase for that iterative discovery.
 
@@ -66,25 +66,25 @@ tofu --version
 
 ## Phase 2: First-run verification by tester (against real Azure)
 
-The tester runs the full `platforms/aks/` flow against an Azure subscription and reports results. This is where un-run risk surfaces.
+The tester runs the full `platforms/azure-aks/` flow against an Azure subscription and reports results. This is where un-run risk surfaces.
 
 ### Tasks
 
 - [ ] 2.1 Install tooling: `./uis tools install azure-cli && ./uis tools install opentofu`. Verify `az --version` and `tofu --version` both work.
 
-- [ ] 2.2 Create `platforms/aks/azure-aks-config.sh` from the template (`platforms/aks/azure-aks-config.sh-template`). Copy `TENANT_ID`, `SUBSCRIPTION_ID`, location, and tag values from the existing working `hosts/azure-aks/azure-aks-config.sh`. Pick a globally-unique state storage account name (suggested form: `sahelpersnouistfstate` or similar — must be lowercase, 3-24 chars, available in Azure). Confirm `azure-aks-config.sh` is git-ignored before saving.
+- [ ] 2.2 Create `platforms/azure-aks/azure-aks-config.sh` from the template (`platforms/azure-aks/azure-aks-config.sh-template`). Copy `TENANT_ID`, `SUBSCRIPTION_ID`, location, and tag values from the existing working `hosts/azure-aks/azure-aks-config.sh`. Pick a globally-unique state storage account name (suggested form: `sahelpersnouistfstate` or similar — must be lowercase, 3-24 chars, available in Azure). Confirm `azure-aks-config.sh` is git-ignored before saving.
 
 - [ ] 2.3 Log into Azure: `az login --tenant "$TENANT_ID" --use-device-code` (or reuse an existing session). Confirm `az account show` reports the right subscription and Contributor role is active (PIM activation may be needed via the portal).
 
-- [ ] 2.4 Run `platforms/aks/scripts/00-bootstrap-state.sh`. Expected: state resource group, storage account, blob container, and blob versioning all created. Failure mode to watch for: storage account name collision (someone else owns the global name).
+- [ ] 2.4 Run `platforms/azure-aks/scripts/00-bootstrap-state.sh`. Expected: state resource group, storage account, blob container, and blob versioning all created. Failure mode to watch for: storage account name collision (someone else owns the global name).
 
-- [ ] 2.5 Run `platforms/aks/scripts/01-apply.sh`. Expected: `tofu init` configures the remote backend, `tofu plan` shows resource group + Log Analytics workspace + AKS cluster being created, tester reviews and confirms apply, ~5-10 min later the cluster is up and `kubectl get nodes` (using `$KUBECONFIG_FILE`) shows healthy node(s). Failure modes to watch: subscription-quota errors mid-apply (`hosts/azure-aks/check-aks-quota.sh` is not ported — accept the loud failure and address only if it bites), provider-version drift, or kubeconfig output mismatch.
+- [ ] 2.5 Run `platforms/azure-aks/scripts/01-apply.sh`. Expected: `tofu init` configures the remote backend, `tofu plan` shows resource group + Log Analytics workspace + AKS cluster being created, tester reviews and confirms apply, ~5-10 min later the cluster is up and `kubectl get nodes` (using `$KUBECONFIG_FILE`) shows healthy node(s). Failure modes to watch: subscription-quota errors mid-apply (`hosts/azure-aks/check-aks-quota.sh` is not ported — accept the loud failure and address only if it bites), provider-version drift, or kubeconfig output mismatch.
 
-- [ ] 2.6 Run `platforms/aks/scripts/02-post-apply.sh`. Expected: kubeconfig merge into `kubeconf-all` succeeds, context switches to the AKS cluster, storage class aliases apply, Traefik installs via Helm, external IP eventually assigned. Note: this script does *not* apply `kubernetes-secrets.yml` — that gap is closed in PLAN-002. nginx (the verification target) doesn't need cluster secrets, so this is fine for Step 1's bar. Failure modes: ansible playbook missing/broken, Helm repo unreachable, Traefik external IP stuck pending.
+- [ ] 2.6 Run `platforms/azure-aks/scripts/02-post-apply.sh`. Expected: kubeconfig merge into `kubeconf-all` succeeds, context switches to the AKS cluster, storage class aliases apply, Traefik installs via Helm, external IP eventually assigned. Note: this script does *not* apply `kubernetes-secrets.yml` — that gap is closed in PLAN-002. nginx (the verification target) doesn't need cluster secrets, so this is fine for Step 1's bar. Failure modes: ansible playbook missing/broken, Helm repo unreachable, Traefik external IP stuck pending.
 
 - [ ] 2.7 Verify with `./uis deploy nginx`. Expected: pod scheduled, service reachable, IngressRoute applied, and the in-cluster curl tests in `ansible/playbooks/020-setup-nginx.yml` steps 13 + 15 both succeed (test file + index page fetched via cluster-internal DNS). This is the verification bar from the investigation.
 
-- [ ] 2.8 Tear-down: run `platforms/aks/scripts/03-destroy.sh`. Expected: clean removal of cluster, RG, and managed resources. State storage account survives (per the bootstrap design — it's outside the cluster RG). Confirm by `az group list` afterward that the cluster RG is gone and the state RG is still present.
+- [ ] 2.8 Tear-down: run `platforms/azure-aks/scripts/03-destroy.sh`. Expected: clean removal of cluster, RG, and managed resources. State storage account survives (per the bootstrap design — it's outside the cluster RG). Confirm by `az group list` afterward that the cluster RG is gone and the state RG is still present.
 
 - [ ] 2.9 Capture every observation — what worked, what failed, what was confusing — in a tester report. The report becomes the input to Phase 3.
 
@@ -100,7 +100,7 @@ This phase is intentionally open-ended — until Phase 2 runs, the catalogue of 
 
 ### Tasks (placeholder — to be enumerated as gaps surface)
 
-- [ ] 3.x (per gap) Make the smallest fix that closes the gap — code or config. Prefer fixing in `platforms/aks/` source rather than working around in the config. Update this plan with the gap + fix as a new task entry so the history is visible.
+- [ ] 3.x (per gap) Make the smallest fix that closes the gap — code or config. Prefer fixing in `platforms/azure-aks/` source rather than working around in the config. Update this plan with the gap + fix as a new task entry so the history is visible.
 
 - [ ] 3.y (per gap) Re-run the affected Phase 2 step (and any downstream steps that depend on it) until the gap is closed.
 
@@ -141,11 +141,11 @@ User confirms Step 1 status accurately reflects the verified state.
 ## Files to Modify
 
 - `provision-host/uis/tools/install-opentofu.sh` (new)
-- `platforms/aks/azure-aks-config.sh` (new, git-ignored, tester sets up in Phase 2.2)
+- `platforms/azure-aks/azure-aks-config.sh` (new, git-ignored, tester sets up in Phase 2.2)
 - `website/docs/ai-developer/plans/backlog/INVESTIGATE-platform-provisioning-layer.md` (Phase 4)
 - `website/docs/ai-developer/plans/backlog/1PRIORITY.md` (Phase 4)
 - `website/docs/ai-developer/plans/active/PLAN-001-aks-step1-verification.md` → `completed/` (Phase 4)
-- Additional `platforms/aks/` files only as Phase 3 gaps require.
+- Additional `platforms/azure-aks/` files only as Phase 3 gaps require.
 
 ---
 
