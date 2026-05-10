@@ -44,6 +44,17 @@
 ,
   {
     "@type": "SoftwareApplication",
+    "id": "azure-aks",
+    "name": "Azure AKS dependencies",
+    "description": "Bundle: azure-cli + opentofu (everything ./uis platform <verb> azure-aks needs)",
+    "category": "META",
+    "size": "~667MB (637 + 30)",
+    "website": "https://learn.microsoft.com/azure/aks/",
+    "builtin": false
+  }
+,
+  {
+    "@type": "SoftwareApplication",
     "id": "azure-cli",
     "name": "Azure CLI",
     "description": "Command-line interface for Microsoft Azure",
