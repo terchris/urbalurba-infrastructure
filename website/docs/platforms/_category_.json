@@ -1,8 +1,8 @@
 {
-  "label": "Hosts & Platforms",
+  "label": "Platforms",
   "position": 3,
   "link": {
     "type": "doc",
-    "id": "hosts/index"
+    "id": "platforms/index"
   }
 }
