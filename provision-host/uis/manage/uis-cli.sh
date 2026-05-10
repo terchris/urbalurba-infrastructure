@@ -114,6 +114,11 @@ Tools:
   tools list              List all available tools with status
   tools install <tool>    Install an optional tool
 
+Platform:
+  platform init <provider>    Interactive setup wizard for a cloud platform (e.g. azure-aks)
+  platform up   <provider>    Provision the cluster (PLAN #3 — not yet implemented)
+  platform down <provider>    Tear down the cluster (PLAN #4 — not yet implemented)
+
 Tailscale:
   tailscale expose <service>    Expose a service via Tailscale Funnel
   tailscale unexpose <service>  Remove a service from Tailscale Funnel
@@ -834,6 +839,83 @@ cmd_stack_remove() {
 
 cmd_stacks() {
     cmd_stack_list
+}
+
+# ============================================================
+# Platform Commands
+# ============================================================
+# `uis platform <subcmd> <provider>` — per-cloud lifecycle wrappers.
+# Q8 of INVESTIGATE-aks-novice-onboarding.md: thin dispatcher here delegates
+# to platforms/<provider>/scripts/<verb>.sh; the per-platform script in turn
+# sources shared helpers from provision-host/uis/lib/<cloud>-discovery.sh.
+# init is implemented (PLAN #2); up + down land in PLANs #3 + #4.
+
+cmd_platform() {
+    local subcmd="${1:-}"
+    shift || true
+
+    case "$subcmd" in
+        init)
+            cmd_platform_init "$@"
+            ;;
+        up|down)
+            log_error "'./uis platform $subcmd' is not yet implemented"
+            echo "(PLAN #${3:-3}/#4 follows PLAN #2 from INVESTIGATE-aks-novice-onboarding.md)"
+            echo "For now, run the lifecycle scripts directly:"
+            echo "  ./platforms/<provider>/scripts/00-bootstrap-state.sh"
+            echo "  ./platforms/<provider>/scripts/01-apply.sh"
+            echo "  ./platforms/<provider>/scripts/02-post-apply.sh"
+            echo "  ./platforms/<provider>/scripts/03-destroy.sh"
+            exit "$EXIT_GENERAL_ERROR"
+            ;;
+        "")
+            log_error "Usage: uis platform <subcmd> <provider>"
+            echo "Subcommands: init | up (not impl.) | down (not impl.)"
+            exit "$EXIT_GENERAL_ERROR"
+            ;;
+        *)
+            log_error "Unknown platform subcommand: $subcmd"
+            echo "Usage: uis platform [init|up|down] <provider>"
+            exit "$EXIT_GENERAL_ERROR"
+            ;;
+    esac
+}
+
+cmd_platform_init() {
+    local provider="${1:-}"
+    local repo_root
+    repo_root="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+
+    if [[ -z "$provider" ]]; then
+        log_error "Usage: uis platform init <provider>"
+        echo "Available platforms:"
+        local p script_path
+        for script_path in "$repo_root"/platforms/*/scripts/init.sh; do
+            [[ -f "$script_path" ]] || continue
+            p=$(basename "$(dirname "$(dirname "$script_path")")")
+            echo "  - $p"
+        done
+        exit "$EXIT_GENERAL_ERROR"
+    fi
+
+    local script="$repo_root/platforms/$provider/scripts/init.sh"
+    if [[ ! -f "$script" ]]; then
+        log_error "Unknown platform '$provider' (no init.sh found at $script)"
+        echo "Available platforms:"
+        local p script_path
+        for script_path in "$repo_root"/platforms/*/scripts/init.sh; do
+            [[ -f "$script_path" ]] || continue
+            p=$(basename "$(dirname "$(dirname "$script_path")")")
+            echo "  - $p"
+        done
+        exit "$EXIT_GENERAL_ERROR"
+    fi
+
+    # Pass the repo root explicitly so the per-platform init.sh doesn't have
+    # to re-derive it. Then exec — replaces the current process so signals
+    # (Ctrl-C during interactive prompts) flow directly to the wizard.
+    export UIS_REPO_ROOT="$repo_root"
+    exec "$script"
 }
 
 # ============================================================
@@ -1792,6 +1874,9 @@ main() {
             ;;
         stack)
             cmd_stack "$@"
+            ;;
+        platform)
+            cmd_platform "$@"
             ;;
         deploy)
             cmd_deploy "$@"
