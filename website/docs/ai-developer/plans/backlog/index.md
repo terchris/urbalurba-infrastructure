@@ -38,5 +38,6 @@ Investigations and plans waiting for implementation, sorted by last updated date
 | [Investigate: Backstage Enhancements](INVESTIGATE-backstage-enhancements.md) | Evaluate and prioritize additional Backstage features beyond the initial deployment (PLAN-002) | 2026-05-10 |
 | [Investigate: Backstage Authentik OIDC Authentication](INVESTIGATE-backstage-auth.md) | Investigate adding Authentik OIDC authentication to Backstage (replacing guest access) | 2026-05-10 |
 | [INVESTIGATE: Authentik User Config Migration](INVESTIGATE-authentik-user-config.md) | User-configurable Authentik data (test users, domains, protected services, OAuth apps) is hardcoded in `manifests/` where users shouldn't be editing files. This data should live in `.uis.extend/` so users can customize their setup without touching infrastructure code. | 2026-05-10 |
-| [Investigate: make the active cluster visible everywhere in the UIS shell + commands](INVESTIGATE-active-cluster-visibility-ux.md) | — | 2026-05-10 |
+| [Investigate: compress the AKS novice-onboarding flow with `./uis platform` wrapper commands](INVESTIGATE-aks-novice-onboarding.md) | — | 2026-05-10 |
+| [Investigate: cluster visibility + switching across the UIS shell and commands](INVESTIGATE-active-cluster-visibility-ux.md) | — | 2026-05-10 |
 | [INVESTIGATE backlog — priority view](1PRIORITY.md) | — | 2026-05-10 |
