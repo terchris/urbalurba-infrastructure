@@ -149,14 +149,14 @@ Welcome to the complete documentation for **Urbalurba Infrastructure** — a zer
 
 | Document | Purpose |
 |----------|---------|
-| [Hosts Overview](../advanced/hosts/index.md) | Host types and deployment strategies |
-| [Rancher Kubernetes](../advanced/hosts/rancher-kubernetes.md) | Default local development environment |
-| [Azure AKS](../advanced/hosts/azure-aks.md) | Production Azure Kubernetes Service |
-| [Azure MicroK8s](../advanced/hosts/azure-microk8s.md) | Azure VM with MicroK8s |
-| [Multipass MicroK8s](../advanced/hosts/multipass-microk8s.md) | Legacy Multipass deployment (superseded by Rancher) |
-| [Raspberry Pi MicroK8s](../advanced/hosts/raspberry-microk8s.md) | Edge computing on Raspberry Pi |
-| [Cloud-Init Guide](../advanced/hosts/cloud-init/index.md) | Cloud-init automation for Ubuntu-based hosts |
-| [Cloud-Init Secrets](../advanced/hosts/cloud-init/secrets.md) | SSH key setup for cloud-init and Ansible |
+| [Hosts Overview](../platforms/index.md) | Host types and deployment strategies |
+| [Rancher Kubernetes](../platforms/rancher-kubernetes.md) | Default local development environment |
+| [Azure AKS](../platforms/azure-aks.md) | Production Azure Kubernetes Service |
+| [Azure MicroK8s](../platforms/azure-microk8s.md) | Azure VM with MicroK8s |
+| [Multipass MicroK8s](../platforms/multipass-microk8s.md) | Legacy Multipass deployment (superseded by Rancher) |
+| [Raspberry Pi MicroK8s](../platforms/raspberry-microk8s.md) | Edge computing on Raspberry Pi |
+| [Cloud-Init Guide](../platforms/cloud-init/index.md) | Cloud-init automation for Ubuntu-based hosts |
+| [Cloud-Init Secrets](../platforms/cloud-init/secrets.md) | SSH key setup for cloud-init and Ansible |
 
 ### Provision Host
 
@@ -226,8 +226,8 @@ Welcome to the complete documentation for **Urbalurba Infrastructure** — a zer
 - Authentication: [Identity Overview](../services/identity/index.md)
 
 **Infrastructure Engineers:**
-- Start: [Architecture](../getting-started/architecture.md) → [Hosts](../advanced/hosts/index.md)
-- Production: [Azure AKS](../advanced/hosts/azure-aks.md)
+- Start: [Architecture](../getting-started/architecture.md) → [Hosts](../platforms/index.md)
+- Production: [Azure AKS](../platforms/azure-aks.md)
 - Networking: [Traefik Rules](../contributors/rules/ingress-traefik.md)
 
 **Architects:**
@@ -256,8 +256,8 @@ Welcome to the complete documentation for **Urbalurba Infrastructure** — a zer
 3. [Open WebUI](../services/ai/openwebui.md) — Chat interface
 
 **Production Deployment:**
-1. [Hosts Overview](../advanced/hosts/index.md) — Deployment strategies
-2. [Azure AKS](../advanced/hosts/azure-aks.md) — Azure production
+1. [Hosts Overview](../platforms/index.md) — Deployment strategies
+2. [Azure AKS](../platforms/azure-aks.md) — Azure production
 3. [Networking Overview](../networking/index.md) — External access
 
 **External Access:**

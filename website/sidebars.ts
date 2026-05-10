@@ -188,36 +188,36 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
+      label: 'Platforms',
+      link: {
+        type: 'doc',
+        id: 'platforms/index',
+      },
+      items: [
+        'platforms/rancher-kubernetes',
+        'platforms/azure-aks',
+        'platforms/azure-microk8s',
+        'platforms/multipass-microk8s',
+        'platforms/raspberry-microk8s',
+        {
+          type: 'category',
+          label: 'Cloud Init',
+          items: [
+            'platforms/cloud-init/index',
+            'platforms/cloud-init/secrets',
+          ],
+        },
+      ],
+    },
+    {
+      type: 'category',
       label: 'Advanced',
       link: {
         type: 'generated-index',
-        description: 'Host configuration, platform setup, and infrastructure details.',
+        description: 'Provision-host details, deployment internals, and infrastructure deep-dives.',
       },
       items: [
         'advanced/how-deployment-works',
-        {
-          type: 'category',
-          label: 'Hosts & Platforms',
-          link: {
-            type: 'doc',
-            id: 'advanced/hosts/index',
-          },
-          items: [
-            'advanced/hosts/rancher-kubernetes',
-            'advanced/hosts/azure-aks',
-            'advanced/hosts/azure-microk8s',
-            'advanced/hosts/multipass-microk8s',
-            'advanced/hosts/raspberry-microk8s',
-            {
-              type: 'category',
-              label: 'Cloud Init',
-              items: [
-                'advanced/hosts/cloud-init/index',
-                'advanced/hosts/cloud-init/secrets',
-              ],
-            },
-          ],
-        },
         {
           type: 'category',
           label: 'Provision Host',
