@@ -109,7 +109,7 @@ NODE_SIZE="Standard_B2ms"
 2. ✅ **Enter container**: `docker exec -it provision-host bash`
 3. ✅ **Configure Azure**: Edit `azure-aks-config.sh` with your Azure details
 4. ✅ **Deploy cluster**: `./hosts/install-azure-aks.sh` (fully automated)
-5. ⏳ **Deploy services**: Remote deployment support pending — see [Remote Deployment Targets](../../ai-developer/plans/backlog/INVESTIGATE-remote-deployment-targets.md)
+5. ⏳ **Deploy services**: Remote deployment support pending — see [Remote Deployment Targets](../ai-developer/plans/backlog/INVESTIGATE-remote-deployment-targets.md)
 6. ✅ **Manage cluster**: `./hosts/azure-aks/manage-aks-cluster.sh [command]`
 
 ## Cluster Management
@@ -148,7 +148,7 @@ kubectl get nodes
 ### Service Deployment
 
 :::note Remote deployment support pending
-Service deployment to remote AKS clusters is being reworked to use the UIS CLI. See [Remote Deployment Targets](../../ai-developer/plans/backlog/INVESTIGATE-remote-deployment-targets.md) for status.
+Service deployment to remote AKS clusters is being reworked to use the UIS CLI. See [Remote Deployment Targets](../ai-developer/plans/backlog/INVESTIGATE-remote-deployment-targets.md) for status.
 :::
 
 ```bash

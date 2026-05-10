@@ -43,6 +43,6 @@ kubectl get storageclass microk8s-hostpath
 
 ## Related Documentation
 
-- **[Rancher Desktop Host](../hosts/rancher-kubernetes.md)** — Full Rancher Desktop setup guide
+- **[Rancher Desktop Host](../../platforms/rancher-kubernetes.md)** — Full Rancher Desktop setup guide
 - **[Tools](../../reference/tools.md)** — Tools available in the container
 - **[Kubernetes Deployment](../../contributors/architecture/deploy-system.md)** — How services are deployed

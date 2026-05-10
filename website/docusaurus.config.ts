@@ -110,8 +110,8 @@ const config: Config = {
               to: '/docs/services/ai',
             },
             {
-              label: 'Hosts',
-              to: '/docs/advanced/hosts',
+              label: 'Platforms',
+              to: '/docs/platforms',
             },
           ],
         },
