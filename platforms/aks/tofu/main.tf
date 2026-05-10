@@ -10,13 +10,23 @@ terraform {
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
-      version = "~> 3.100"
+      version = "~> 4.0"
     }
   }
 }
 
 provider "azurerm" {
-  features {}
+  features {
+    # AKS auto-creates a Microsoft.OperationsManagement/solutions resource
+    # (ContainerInsights) in the cluster RG for OMS agent monitoring. It's
+    # not in our tofu state, so destroy can't remove it; without this flag
+    # the RG delete refuses because the RG still contains an unmanaged
+    # resource. With this flag, the provider deletes the RG and Azure
+    # cleans up the orphan solution as part of the RG cascade.
+    resource_group {
+      prevent_deletion_if_contains_resources = false
+    }
+  }
   tenant_id       = var.tenant_id
   subscription_id = var.subscription_id
 }

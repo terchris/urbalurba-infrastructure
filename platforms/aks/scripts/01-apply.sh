@@ -62,7 +62,8 @@ source "$CONFIG_FILE"
 AZURE_AKS_LOCATION="${AZURE_AKS_LOCATION:-westeurope}"
 AZURE_AKS_RESOURCE_GROUP="${AZURE_AKS_RESOURCE_GROUP:-rg-urbalurba-aks-weu}"
 AZURE_AKS_CLUSTER_NAME="${AZURE_AKS_CLUSTER_NAME:-azure-aks}"
-AZURE_AKS_NODE_SIZE="${AZURE_AKS_NODE_SIZE:-Standard_B2ms}"
+# B2ms is gone in many regions/subscriptions; B2s_v2 is broadly allowed and similarly priced.
+AZURE_AKS_NODE_SIZE="${AZURE_AKS_NODE_SIZE:-Standard_B2s_v2}"
 AZURE_AKS_NODE_COUNT="${AZURE_AKS_NODE_COUNT:-1}"
 AZURE_AKS_MIN_COUNT="${AZURE_AKS_MIN_COUNT:-1}"
 AZURE_AKS_MAX_COUNT="${AZURE_AKS_MAX_COUNT:-3}"
@@ -72,8 +73,12 @@ AZURE_AKS_STATE_CONTAINER="${AZURE_AKS_STATE_CONTAINER:-tfstate}"
 AZURE_AKS_STATE_KEY="${AZURE_AKS_STATE_KEY:-aks/terraform.tfstate}"
 AZURE_TAG_COST_CENTER="${AZURE_TAG_COST_CENTER:-helpers-no}"
 
-# Derived
-KUBECONFIG_FILE="/mnt/urbalurbadisk/kubeconfig/${AZURE_AKS_CLUSTER_NAME}-kubeconf"
+# Derived. Kubeconfig dir is /mnt/urbalurbadisk/kubeconfig/ (in-container,
+# NOT bind-mounted). The .uis.secrets/.../kubeconfig path returned by
+# get_kubeconfig_path() is bind-mounted and breaks kubectl's flock on
+# Rancher Desktop's lima VM. 04-merge-kubeconf.yml uses the same path.
+KUBECONFIG_DIR="/mnt/urbalurbadisk/kubeconfig"
+KUBECONFIG_FILE="${KUBECONFIG_DIR}/${AZURE_AKS_CLUSTER_NAME}-kubeconf"
 
 print_section "AKS PLATFORM — OPENTOFU APPLY"
 
@@ -90,17 +95,20 @@ _SIGNED_IN_EMAIL=$(az ad signed-in-user show --query userPrincipalName -o tsv 2>
 AZURE_TAG_BUSINESS_OWNER="${AZURE_TAG_BUSINESS_OWNER:-${_SIGNED_IN_EMAIL}}"
 AZURE_TAG_IT_OWNER="${AZURE_TAG_IT_OWNER:-${_SIGNED_IN_EMAIL}}"
 
-# ─── PIM check ────────────────────────────────────────────────────────────────
-print_status "Checking Contributor role..."
+# ─── Role check (Owner or Contributor — either can manage AKS) ────────────────
+print_status "Checking cluster-admin role (Owner or Contributor)..."
 if ! az role assignment list \
     --scope "/subscriptions/$AZURE_SUBSCRIPTION_ID" \
-    --query "[?roleDefinitionName=='Contributor' && principalType=='User']" \
+    --include-inherited --include-groups \
+    --query "[?roleDefinitionName=='Owner' || roleDefinitionName=='Contributor']" \
     -o tsv 2>/dev/null | grep -q .; then
-    print_warning "Contributor role not active"
+    print_warning "Neither Owner nor Contributor role active"
     echo "  Activate at: https://portal.azure.com/?feature.msaljs=true#view/Microsoft_Azure_PIMCommon/ActivationMenuBlade/~/azurerbac"
-    read -p "  Press Enter after activating..."
+    if [[ -t 0 ]] && [[ "${UIS_NONINTERACTIVE:-0}" != "1" ]]; then
+        read -p "  Press Enter after activating..."
+    fi
 fi
-print_success "Contributor role active"
+print_success "Cluster-admin role active"
 
 # ─── Get storage account key for backend ──────────────────────────────────────
 print_status "Fetching state storage account key..."
@@ -148,12 +156,16 @@ print_success "terraform.tfvars generated"
 print_section "Step 1: tofu init"
 cd "$TOFU_DIR"
 
+# -upgrade lets tofu refresh providers when the constraint in main.tf changes.
+# Without it, an existing .terraform.lock.hcl pinned to the old major rejects
+# the new constraint (we hit this when bumping azurerm 3.x → 4.x).
 tofu init \
     -backend-config="resource_group_name=$AZURE_AKS_STATE_RESOURCE_GROUP" \
     -backend-config="storage_account_name=$AZURE_STATE_STORAGE_ACCOUNT" \
     -backend-config="container_name=$AZURE_AKS_STATE_CONTAINER" \
     -backend-config="key=$AZURE_AKS_STATE_KEY" \
-    -reconfigure
+    -reconfigure \
+    -upgrade
 
 print_success "tofu init complete"
 
@@ -163,7 +175,15 @@ tofu plan -out=tfplan
 print_success "Plan saved to tfplan"
 
 echo
-read -p "Review the plan above. Apply? (y/N): " confirm
+if [[ "${UIS_NONINTERACTIVE:-0}" == "1" ]]; then
+    print_status "UIS_NONINTERACTIVE=1 — skipping apply prompt"
+    confirm="y"
+elif [[ -t 0 ]]; then
+    read -p "Review the plan above. Apply? (y/N): " confirm
+else
+    # No TTY — read from piped stdin (e.g. `printf 'y\n' | docker exec -i …`)
+    read -r confirm
+fi
 [[ "${confirm,,}" != "y" ]] && { print_warning "Aborted — no changes made"; exit 0; }
 
 # ─── tofu apply ───────────────────────────────────────────────────────────────
@@ -174,8 +194,12 @@ tofu apply tfplan
 print_success "tofu apply complete"
 
 # ─── Write kubeconfig ─────────────────────────────────────────────────────────
+# Writes to /mnt/urbalurbadisk/kubeconfig/ (in-container, non-bind-mount),
+# which is also where 04-merge-kubeconf.yml looks for *-kubeconf files.
+# 02-post-apply.sh runs the merge playbook next, producing kubeconf-all in
+# the same directory.
 print_section "Step 4: Save kubeconfig"
-mkdir -p "$(dirname "$KUBECONFIG_FILE")"
+mkdir -p "$KUBECONFIG_DIR"
 
 tofu output -raw kube_config_raw > "$KUBECONFIG_FILE"
 chmod 600 "$KUBECONFIG_FILE"

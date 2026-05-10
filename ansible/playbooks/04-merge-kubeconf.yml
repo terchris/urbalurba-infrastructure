@@ -30,7 +30,19 @@
   gather_facts: true
   become: false
   vars:
-    kubernetes_files_path: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/"
+    # All kubectl write paths must stay off the bind mount: .uis.secrets/...
+    # is bind-mounted from the host on Rancher Desktop's lima VM, where
+    # kubectl's flock against kubeconf-all.lock writes a mode-0 phantom
+    # file that even root can't remove. /mnt/urbalurbadisk/kubeconfig/ is
+    # in-container only — safe for kubectl writes (config use-context, etc.).
+    #
+    # But ~100 consumer playbooks/scripts across the repo hardcode the
+    # .uis.secrets/.../kubeconf-all path. So after merging, we copy the
+    # merged result to that legacy/canonical bind-mount path too, keeping
+    # both in sync. Consumers (read-only kubectl --context X) see the right
+    # content; the merge step's writes never touch the bind mount.
+    kubernetes_files_path: "/mnt/urbalurbadisk/kubeconfig/"
+    legacy_kubeconf_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
     temp_dir: "{{ kubernetes_files_path }}tmp"
     merged_kubeconf_file: "{{ kubernetes_files_path }}kubeconf-all"
     kubeconfig_owner: "ansible"
@@ -51,8 +63,11 @@
 
   tasks:
     - name: 1. Playbook running as user
+      # ansible_env.USER is unset when ansible-playbook is invoked via `docker
+      # exec` without `-i` (no controlling tty → no USER inherited). Fall back
+      # to ansible_user_id (which uses `id -un`) so the diagnostic still works.
       ansible.builtin.debug:
-        msg: "Playbook running as user: {{ ansible_env.USER }}, Ansible connecting as: {{ ansible_user_id }}, Using kubeconfig path: {{ kubernetes_files_path }}"
+        msg: "Playbook running as user: {{ ansible_env.USER | default(ansible_user_id) }}, Ansible connecting as: {{ ansible_user_id }}, Using kubeconfig path: {{ kubernetes_files_path }}"
 
     - name: 2. Check if kubectl is available
       ansible.builtin.command: which kubectl
@@ -232,3 +247,28 @@
       ansible.builtin.debug:
         var: pods_output.stdout_lines
       when: merge_result is success and pods_output.stdout_lines is defined and pods_output.stdout_lines | length > 0
+
+    - name: 29. Ensure legacy kubeconfig directory exists (.uis.secrets/.../kubeconfig)
+      ansible.builtin.file:
+        path: "{{ legacy_kubeconf_file | dirname }}"
+        state: directory
+        mode: '0700'
+      when: merge_result is success
+
+    - name: 30. Sync merged kubeconfig to legacy .uis.secrets path (used by ~100 consumer playbooks)
+      # ansible.builtin.copy with remote_src=yes is a plain `cp`, not a
+      # kubectl write — no flock involved, safe across the lima/9P bind mount.
+      ansible.builtin.copy:
+        src: "{{ merged_kubeconf_file }}"
+        dest: "{{ legacy_kubeconf_file }}"
+        remote_src: true
+        mode: '0600'
+      when: merge_result is success
+
+    - name: 31. Verify both kubeconf-all files have identical content
+      ansible.builtin.command:
+        cmd: cmp -s "{{ merged_kubeconf_file }}" "{{ legacy_kubeconf_file }}"
+      register: kubeconf_sync_check
+      changed_when: false
+      failed_when: kubeconf_sync_check.rc != 0
+      when: merge_result is success

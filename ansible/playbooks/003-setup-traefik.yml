@@ -1,0 +1,121 @@
+---
+# File: ansible/playbooks/003-setup-traefik.yml
+# Description: Install/upgrade the Traefik ingress controller.
+#              Single source of truth across all UIS platforms (rancher-desktop, AKS, future GCP/AWS).
+# Usage: ansible-playbook 003-setup-traefik.yml -e "target_host=rancher-desktop"
+#
+# Behaviour by cluster type:
+#   - rancher-desktop (k3s): k3s already manages Traefik via a HelmChart CR.
+#     This playbook detects that and skips the helm install.
+#   - AKS / GCP / AWS / bare k8s: helm install/upgrade traefik/traefik chart
+#     pinned to {{ traefik_chart_version }} (rancher-desktop k3s parity).
+#
+# Pinning strategy (see docs/services/networking/traefik.md):
+#   - Chart 39.0.7 matches the chart that rancher-desktop's k3s ships
+#     (traefik-39.0.701+up39.0.7), giving local-dev ↔ cloud parity.
+#   - Proxy v3.6.13 (from the values file's image.tag) matches k3s's
+#     rancher/mirrored-library-traefik:3.6.13.
+#   - When rancher-desktop's k3s upgrades to chart v40, both sides
+#     migrate together as one coordinated change.
+
+- name: Deploy Traefik ingress controller for Urbalurba Infrastructure
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    _target: "{{ target_host | default('rancher-desktop') }}"
+    namespace: "kube-system"
+    component_name: "traefik"
+    manifests_folder: "/mnt/urbalurbadisk/manifests"
+    traefik_values_file: "{{ manifests_folder }}/003-traefik-config.yaml"
+    traefik_chart_version: "39.0.7"
+
+    helm_repos:
+      - name: traefik
+        url: https://traefik.github.io/charts
+
+  tasks:
+    - name: 1. Display deployment information
+      ansible.builtin.debug:
+        msg:
+          - "====================================="
+          - "Traefik Deployment"
+          - "====================================="
+          - "Target host:   {{ _target }}"
+          - "Namespace:     {{ namespace }}"
+          - "Chart version: {{ traefik_chart_version }} (rancher-desktop k3s parity)"
+          - "Values file:   {{ traefik_values_file }}"
+
+    - name: 2. Detect k3s-managed Traefik (HelmChart CR)
+      ansible.builtin.command: >
+        kubectl get helmcharts.helm.cattle.io {{ component_name }}
+        -n {{ namespace }} --context {{ _target }}
+        -o name
+      register: k3s_traefik
+      changed_when: false
+      failed_when: false
+
+    - name: 3. Note when k3s manages Traefik (skip helm install)
+      ansible.builtin.debug:
+        msg:
+          - "✅ Traefik is managed by k3s on context '{{ _target }}'."
+          - "    HelmChart CR: {{ k3s_traefik.stdout }}"
+          - "    Skipping helm install — k3s reconciles the chart on its own."
+      when: k3s_traefik.rc == 0 and k3s_traefik.stdout != ""
+
+    - name: 4. Add/update Helm repositories
+      kubernetes.core.helm_repository:
+        name: "{{ item.name }}"
+        repo_url: "{{ item.url }}"
+      loop: "{{ helm_repos }}"
+      when: k3s_traefik.rc != 0 or k3s_traefik.stdout == ""
+
+    - name: 5. Install/upgrade Traefik via Helm (pinned chart version)
+      ansible.builtin.command: >
+        helm upgrade --install {{ component_name }} traefik/traefik
+        --version {{ traefik_chart_version }}
+        -f {{ traefik_values_file }}
+        --namespace {{ namespace }}
+        --create-namespace
+        --timeout 300s
+        --kube-context {{ _target }}
+      register: traefik_helm_result
+      changed_when: true
+      when: k3s_traefik.rc != 0 or k3s_traefik.stdout == ""
+
+    - name: 6. Wait for Traefik pod to be ready
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: "{{ namespace }}"
+        label_selectors:
+          - app.kubernetes.io/name=traefik
+        context: "{{ _target }}"
+      register: traefik_pods
+      retries: 20
+      delay: 15
+      until: >
+        traefik_pods.resources | length > 0 and
+        traefik_pods.resources[0].status.phase == "Running" and
+        (traefik_pods.resources[0].status.containerStatuses | default([]))
+          | selectattr('ready', 'equalto', true) | list | length > 0
+
+    - name: 7. Inspect Traefik service (LoadBalancer external IP, etc.)
+      kubernetes.core.k8s_info:
+        kind: Service
+        name: "{{ component_name }}"
+        namespace: "{{ namespace }}"
+        context: "{{ _target }}"
+      register: traefik_service
+
+    - name: 8. Display deployment status
+      ansible.builtin.debug:
+        msg:
+          - "✅ Traefik ready on context '{{ _target }}'."
+          - ""
+          - "Service:"
+          - "  Type:        {{ traefik_service.resources[0].spec.type | default('unknown') }}"
+          - "  External IP: {{ (traefik_service.resources[0].status.loadBalancer.ingress[0].ip | default(traefik_service.resources[0].status.loadBalancer.ingress[0].hostname | default('pending'))) if (traefik_service.resources[0].status.loadBalancer is defined and traefik_service.resources[0].status.loadBalancer.ingress is defined) else 'n/a' }}"
+          - ""
+          - "Manual verification:"
+          - "  kubectl get pods -n {{ namespace }} -l app.kubernetes.io/name=traefik --context={{ _target }}"
+          - "  kubectl get svc {{ component_name }} -n {{ namespace }} --context={{ _target }}"
