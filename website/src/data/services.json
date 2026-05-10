@@ -553,6 +553,27 @@
 ,
   {
     "@type": "SoftwareApplication",
+    "id": "traefik",
+    "name": "Traefik",
+    "description": "Cluster ingress controller and reverse proxy",
+    "category": "NETWORKING",
+    "tags": ["ingress", "reverse-proxy", "traefik", "networking", "ingressroute"],
+    "abstract": "IngressRoute-driven cluster ingress, pinned to chart v39.0.7 + proxy v3.6.13 for rancher-desktop k3s parity",
+    "logo": "traefik-logo.svg",
+    "website": "https://traefik.io/"
+    ,"summary": "Traefik is a cloud-native edge router that exposes services via Kubernetes Ingress and the IngressRoute CRD. UIS pins the chart and proxy versions to match the bundled k3s chart that rancher-desktop ships, so local-dev and cloud clusters run the same Traefik."
+    ,"docs": "/docs/services/networking/traefik"
+    ,"playbook": "003-setup-traefik.yml"
+    ,"priority": 3
+    ,"checkCommand": "kubectl get pods -n kube-system -l app.kubernetes.io/name=traefik --no-headers 2>/dev/null | grep -q Running"
+    ,"removePlaybook": "003-remove-traefik.yml"
+    ,"helmChart": "traefik/traefik"
+    ,"namespace": "kube-system"
+    ,"image": "traefik:v3.6.13"
+  }
+,
+  {
+    "@type": "SoftwareApplication",
     "id": "grafana",
     "name": "Grafana",
     "description": "Visualization and dashboards for observability",
