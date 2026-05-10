@@ -12,8 +12,14 @@ TOOL_CHECK_COMMAND="command -v gcloud"
 TOOL_SIZE="~500MB"
 TOOL_WEBSITE="https://cloud.google.com/sdk/docs/install"
 
+# Contract:
+#   - do_install MUST exit non-zero on any failure (set -euo pipefail).
+#   - Idempotency is enforced by the wrapper (tool-installation.sh:194) via
+#     TOOL_CHECK_COMMAND — do not add an "already installed" guard here.
+
 # Install the tool
 do_install() {
+    set -euo pipefail
     echo "Installing Google Cloud CLI..."
     echo "This may take several minutes (~500MB download)"
 
@@ -23,7 +29,7 @@ do_install() {
         apt-get install -y apt-transport-https ca-certificates gnupg curl
 
         # Add Google Cloud GPG key
-        curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg
+        curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg
 
         # Add repository
         echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | tee /etc/apt/sources.list.d/google-cloud-sdk.list
@@ -36,19 +42,18 @@ do_install() {
         sudo apt-get update
         sudo apt-get install -y apt-transport-https ca-certificates gnupg curl
 
-        curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg
+        curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg
 
         echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | sudo tee /etc/apt/sources.list.d/google-cloud-sdk.list
 
         sudo apt-get update
         sudo apt-get install -y google-cloud-cli
     fi
-
-    return $?
 }
 
 # Uninstall the tool (if possible)
 do_uninstall() {
+    set -euo pipefail
     echo "Removing Google Cloud CLI..."
     if [[ $EUID -eq 0 ]]; then
         apt-get remove -y google-cloud-cli
@@ -57,5 +62,4 @@ do_uninstall() {
         sudo apt-get remove -y google-cloud-cli
         sudo rm -f /etc/apt/sources.list.d/google-cloud-sdk.list
     fi
-    return $?
 }

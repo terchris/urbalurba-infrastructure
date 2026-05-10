@@ -13,8 +13,14 @@ TOOL_CHECK_COMMAND="command -v tofu"
 TOOL_SIZE="~30MB"
 TOOL_WEBSITE="https://opentofu.org/"
 
+# Contract:
+#   - do_install MUST exit non-zero on any failure (set -euo pipefail).
+#   - Idempotency is enforced by the wrapper (tool-installation.sh:194) via
+#     TOOL_CHECK_COMMAND — do not add an "already installed" guard here.
+
 # Install the tool
 do_install() {
+    set -euo pipefail
     echo "Installing OpenTofu..."
     echo "Uses the official installer with --install-method deb (sets up apt repo, then installs system-wide)"
 
@@ -27,12 +33,11 @@ do_install() {
         echo "Installing OpenTofu (requires sudo)..."
         curl --proto '=https' --tlsv1.2 -fsSL https://get.opentofu.org/install-opentofu.sh | sudo DEBIAN_FRONTEND=noninteractive bash -s -- --install-method deb
     fi
-
-    return $?
 }
 
 # Uninstall the tool
 do_uninstall() {
+    set -euo pipefail
     echo "Removing OpenTofu..."
     if [[ $EUID -eq 0 ]]; then
         apt-get remove -y tofu
@@ -41,5 +46,4 @@ do_uninstall() {
         sudo apt-get remove -y tofu
         sudo rm -f /etc/apt/sources.list.d/opentofu.list /etc/apt/keyrings/opentofu.gpg
     fi
-    return $?
 }
