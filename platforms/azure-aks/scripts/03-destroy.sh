@@ -109,7 +109,10 @@ else
 fi
 if [[ "$typed" != "$AZURE_AKS_CLUSTER_NAME" ]]; then
     print_warning "Name did not match — aborted"
-    exit 0
+    # Exit non-zero so callers (especially `uis platform down`) know the
+    # destroy did NOT happen and can show the correct "aborted" banner instead
+    # of a false "✓ destroyed" success message (F9 from talk45).
+    exit 1
 fi
 
 # ─── Azure login ──────────────────────────────────────────────────────────────

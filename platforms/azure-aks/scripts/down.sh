@@ -50,9 +50,22 @@ echo
 
 # ----- Delegate to 03-destroy.sh -----
 # It owns the typed-name confirmation prompt + UIS_DESTROY_CONFIRM env-var
-# escape hatch for non-interactive flows. Not exec'd because we want to
-# print the config-preservation pointer below on success.
-"$SCRIPT_DIR/03-destroy.sh"
+# escape hatch for non-interactive flows. Defensive: explicit if-check on the
+# exit code so the success banner below cannot fire if the inner script
+# aborted (F9 from talk45 — wrapper had been falsely claiming '✓ destroyed'
+# when the user mistyped the cluster name and 03-destroy.sh bailed).
+if ! "$SCRIPT_DIR/03-destroy.sh"; then
+    echo
+    echo "═══════════════════════════════════════════════════════════"
+    echo " ✗ Tear-down aborted or failed"
+    echo "═══════════════════════════════════════════════════════════"
+    echo "  The AKS cluster may still be running and incurring cost."
+    echo "  Check current state with:"
+    echo "    az aks list -o table"
+    echo "  Re-run when ready:"
+    echo "    uis platform down azure-aks"
+    exit 1
+fi
 
 # ----- Summary (Q12 — config preservation) -----
 echo
