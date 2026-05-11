@@ -21,6 +21,13 @@ if [[ ! -f "$ENV_FILE" ]]; then
     exit 1
 fi
 
+# ----- Preflight: az is required (kubectl is best-effort below) -----
+if ! command -v az >/dev/null 2>&1; then
+    echo "✗ Azure CLI (az) is required for 'uis platform status azure-aks'." >&2
+    echo "  Run 'uis tools install azure-aks' to install it." >&2
+    exit 1
+fi
+
 set -a
 # shellcheck source=/dev/null
 source "$ENV_FILE"
