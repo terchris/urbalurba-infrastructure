@@ -24,8 +24,9 @@ source "$UIS_LIB/azure-discovery.sh"
 
 # ----- Banner -----
 echo "═══════════════════════════════════════════════════════════"
-echo " AKS cluster setup wizard"
-echo " (./uis platform init azure-aks)"
+echo " AKS account setup wizard"
+echo " (uis platform init azure-aks)"
+echo " Registers Azure providers + writes config. No cluster is created."
 echo "═══════════════════════════════════════════════════════════"
 echo
 
@@ -59,4 +60,4 @@ echo "  Tenant:       $AZURE_TENANT_ID"
 echo "  Region:       $AZURE_REGION"
 echo "  Config:       $ENV_FILE"
 echo
-echo "Next: ./uis platform up azure-aks"
+echo "Next: uis platform up azure-aks"

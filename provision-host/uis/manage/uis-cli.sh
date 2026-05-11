@@ -859,13 +859,15 @@ cmd_platform() {
             cmd_platform_init "$@"
             ;;
         up|down)
-            log_error "'./uis platform $subcmd' is not yet implemented"
-            echo "(PLAN #${3:-3}/#4 follows PLAN #2 from INVESTIGATE-aks-novice-onboarding.md)"
-            echo "For now, run the lifecycle scripts directly:"
-            echo "  ./platforms/<provider>/scripts/00-bootstrap-state.sh"
-            echo "  ./platforms/<provider>/scripts/01-apply.sh"
-            echo "  ./platforms/<provider>/scripts/02-post-apply.sh"
-            echo "  ./platforms/<provider>/scripts/03-destroy.sh"
+            log_error "'uis platform $subcmd' is not yet implemented"
+            {
+                echo "(PLAN #3/#4 follows PLAN #2 from INVESTIGATE-aks-novice-onboarding.md)"
+                echo "For now, run the lifecycle scripts directly:"
+                echo "  ./platforms/<provider>/scripts/00-bootstrap-state.sh"
+                echo "  ./platforms/<provider>/scripts/01-apply.sh"
+                echo "  ./platforms/<provider>/scripts/02-post-apply.sh"
+                echo "  ./platforms/<provider>/scripts/03-destroy.sh"
+            } >&2
             exit "$EXIT_GENERAL_ERROR"
             ;;
         "")
@@ -888,26 +890,33 @@ cmd_platform_init() {
 
     if [[ -z "$provider" ]]; then
         log_error "Usage: uis platform init <provider>"
-        echo "Available platforms:"
-        local p script_path
-        for script_path in "$repo_root"/platforms/*/scripts/init.sh; do
-            [[ -f "$script_path" ]] || continue
-            p=$(basename "$(dirname "$(dirname "$script_path")")")
-            echo "  - $p"
-        done
+        # Send suggestion to stderr so it lands in the same stream as log_error;
+        # otherwise the terminal may interleave stdout/stderr in an order that
+        # puts the suggestion before the error.
+        {
+            echo "Available platforms:"
+            local p script_path
+            for script_path in "$repo_root"/platforms/*/scripts/init.sh; do
+                [[ -f "$script_path" ]] || continue
+                p=$(basename "$(dirname "$(dirname "$script_path")")")
+                echo "  - $p"
+            done
+        } >&2
         exit "$EXIT_GENERAL_ERROR"
     fi
 
     local script="$repo_root/platforms/$provider/scripts/init.sh"
     if [[ ! -f "$script" ]]; then
         log_error "Unknown platform '$provider' (no init.sh found at $script)"
-        echo "Available platforms:"
-        local p script_path
-        for script_path in "$repo_root"/platforms/*/scripts/init.sh; do
-            [[ -f "$script_path" ]] || continue
-            p=$(basename "$(dirname "$(dirname "$script_path")")")
-            echo "  - $p"
-        done
+        {
+            echo "Available platforms:"
+            local p script_path
+            for script_path in "$repo_root"/platforms/*/scripts/init.sh; do
+                [[ -f "$script_path" ]] || continue
+                p=$(basename "$(dirname "$(dirname "$script_path")")")
+                echo "  - $p"
+            done
+        } >&2
         exit "$EXIT_GENERAL_ERROR"
     fi
 
