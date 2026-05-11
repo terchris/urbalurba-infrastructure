@@ -43,6 +43,16 @@ AZURE_AKS_LOCATION="${AZURE_AKS_LOCATION:-${AZURE_REGION:-westeurope}}"
 CLUSTER_NAME="${AZURE_AKS_CLUSTER_NAME:-azure-aks}"
 RG="${AZURE_AKS_RESOURCE_GROUP:-rg-urbalurba-aks-weu}"
 
+# F10 — Preflight: must be logged in. The R0 testing protocol (./uis pull &&
+# docker rm && ./uis start) wipes ~/.azure, so this is the first thing the
+# user hits after every image refresh. Without it, `az account set` errors
+# with a misleading "subscription doesn't exist in cloud 'AzureCloud'".
+if ! az account show >/dev/null 2>&1; then
+    echo "✗ Not signed in to Azure." >&2
+    echo "  Run 'az login' (or re-run 'uis platform init azure-aks') first." >&2
+    exit 1
+fi
+
 # Make subsequent az calls target the right subscription
 az account set --subscription "$AZURE_SUBSCRIPTION_ID" >/dev/null
 
@@ -121,19 +131,37 @@ fi
 
 
 # ----- Pull cluster facts ------------------------------------------------------
-# Single az call, multi-projection via JMESPath. Returns tab-separated values.
-_facts=$(az aks show -g "$RG" -n "$CLUSTER_NAME" \
+# Single az call, multi-projection via JMESPath. `-o tsv` over an array
+# projection emits one value per LINE (not tab-separated despite the name),
+# so we read with mapfile and index by position.
+mapfile -t _facts < <(az aks show -g "$RG" -n "$CLUSTER_NAME" \
     --query "[provisioningState, kubernetesVersion, agentPoolProfiles[0].vmSize, agentPoolProfiles[0].count, systemData.createdAt]" \
     -o tsv 2>/dev/null)
-IFS=$'\t' read -r STATE K8S NODE_SIZE NODE_COUNT CREATED <<<"$_facts"
+STATE="${_facts[0]:-}"
+K8S="${_facts[1]:-}"
+NODE_SIZE="${_facts[2]:-}"
+NODE_COUNT="${_facts[3]:-}"
+CREATED="${_facts[4]:-}"
+# az renders JSON null as literal "None" in TSV — coerce to empty so the
+# downstream `unknown` fallback fires and the `Running since:` line is
+# correctly suppressed.
+[[ "$CREATED" == "None" ]] && CREATED=""
 CREATED="${CREATED:-unknown}"
 
 
 # ----- Look up Traefik external IP (best effort) -------------------------------
-# Matches the kube-system/traefik install from 02-post-apply.sh:147.
+# Matches the kube-system/traefik install from 02-post-apply.sh:147. Must
+# explicitly target the UIS merged kubeconfig + the AKS context — otherwise
+# kubectl falls through to ~/.kube/config (bind-mounted from the host, only
+# contains rancher-desktop) and silently returns rancher-desktop's k3s
+# Traefik IP because the service names happen to collide.
 EXT_IP=""
-if kubectl get svc traefik -n kube-system >/dev/null 2>&1; then
-    EXT_IP=$(kubectl get svc traefik -n kube-system \
+_kubeconfig="${UIS_KUBECONFIG:-/mnt/urbalurbadisk/kubeconfig/kubeconf-all}"
+if [[ -f "$_kubeconfig" ]] && \
+   KUBECONFIG="$_kubeconfig" kubectl --context "$CLUSTER_NAME" \
+       get svc traefik -n kube-system >/dev/null 2>&1; then
+    EXT_IP=$(KUBECONFIG="$_kubeconfig" kubectl --context "$CLUSTER_NAME" \
+        get svc traefik -n kube-system \
         -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "")
 fi
 EXT_IP="${EXT_IP:-not yet provisioned}"
