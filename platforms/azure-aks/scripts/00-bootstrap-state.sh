@@ -92,8 +92,12 @@ if [[ "${UIS_NONINTERACTIVE:-0}" == "1" ]]; then
 elif [[ -t 0 ]]; then
     read -p "Continue? (y/N): " confirm
 else
-    # No TTY — read from piped stdin (e.g. `printf 'y\n' | docker exec -i …`)
-    read -r confirm
+    # No TTY — read from piped stdin (e.g. `printf 'y\n' | docker exec -i …`).
+    # `|| confirm=""` is load-bearing: with `set -euo pipefail`, a bare
+    # `read -r` on closed stdin (no `-i` and no env var) exits 1 *before*
+    # the friendly "Aborted" line below ever runs, leaving the user staring
+    # at a silent exit-1.
+    read -r confirm || confirm=""
 fi
 [[ "${confirm,,}" != "y" ]] && { print_warning "Aborted"; exit 0; }
 
