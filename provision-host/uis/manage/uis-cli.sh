@@ -914,6 +914,10 @@ cmd_platform() {
 _uis_cluster_banner() {
     type pf_banner >/dev/null 2>&1 || return 0
     command -v kubectl >/dev/null 2>&1 || return 0
+    # F15 — seed kubeconf-all from /home/ansible/.kube/config on first run so
+    # the existence guard below doesn't no-op on a fresh container that DOES
+    # have rancher-desktop reachable.
+    type pf_ensure_kubeconf_seeded >/dev/null 2>&1 && pf_ensure_kubeconf_seeded
     [[ -f "${PF_KUBECONFIG:-/mnt/urbalurbadisk/kubeconfig/kubeconf-all}" ]] || return 0
     pf_banner --silent-if-set --check-reachable || exit "$EXIT_GENERAL_ERROR"
 }
