@@ -115,9 +115,10 @@ Tools:
   tools install <tool>    Install an optional tool
 
 Platform:
-  platform init <provider>    Interactive setup wizard for a cloud platform (e.g. azure-aks)
-  platform up   <provider>    Provision the cluster end-to-end (bootstrap + apply + post-apply)
-  platform down <provider>    Tear down the cluster (delegates to 03-destroy.sh)
+  platform init   <provider>  Interactive setup wizard for a cloud platform (e.g. azure-aks)
+  platform up     <provider>  Provision the cluster end-to-end (bootstrap + apply + post-apply)
+  platform status <provider>  Show cluster state, external IP, and cost estimate
+  platform down   <provider>  Tear down the cluster (delegates to 03-destroy.sh)
 
 Tailscale:
   tailscale expose <service>    Expose a service via Tailscale Funnel
@@ -861,17 +862,20 @@ cmd_platform() {
         up)
             cmd_platform_up "$@"
             ;;
+        status)
+            cmd_platform_status "$@"
+            ;;
         down)
             cmd_platform_down "$@"
             ;;
         "")
             log_error "Usage: uis platform <subcmd> <provider>"
-            echo "Subcommands: init | up | down" >&2
+            echo "Subcommands: init | up | status | down" >&2
             exit "$EXIT_GENERAL_ERROR"
             ;;
         *)
             log_error "Unknown platform subcommand: $subcmd"
-            echo "Usage: uis platform [init|up|down] <provider>" >&2
+            echo "Usage: uis platform [init|up|status|down] <provider>" >&2
             exit "$EXIT_GENERAL_ERROR"
             ;;
     esac
@@ -962,6 +966,31 @@ cmd_platform_down() {
     if [[ ! -f "$script" ]]; then
         log_error "Platform '$provider' has no down.sh (looked at $script)"
         { _list_available_platforms_with_script down.sh "$repo_root"; } >&2
+        exit "$EXIT_GENERAL_ERROR"
+    fi
+
+    export UIS_REPO_ROOT="$repo_root"
+    exec "$script"
+}
+
+# cmd_platform_status — same shape as cmd_platform_up/down. The per-platform
+# status.sh answers "is the cluster running and how much is it costing me?"
+# in a single command (F8 from talk45).
+cmd_platform_status() {
+    local provider="${1:-}"
+    local repo_root
+    repo_root="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+
+    if [[ -z "$provider" ]]; then
+        log_error "Usage: uis platform status <provider>"
+        { _list_available_platforms_with_script status.sh "$repo_root"; } >&2
+        exit "$EXIT_GENERAL_ERROR"
+    fi
+
+    local script="$repo_root/platforms/$provider/scripts/status.sh"
+    if [[ ! -f "$script" ]]; then
+        log_error "Platform '$provider' has no status.sh (looked at $script)"
+        { _list_available_platforms_with_script status.sh "$repo_root"; } >&2
         exit "$EXIT_GENERAL_ERROR"
     fi
 

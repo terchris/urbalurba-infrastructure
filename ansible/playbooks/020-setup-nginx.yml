@@ -161,24 +161,53 @@
       ansible.builtin.debug:
         var: ingressroute_check.stdout_lines
 
+    # F7 from talk45: the "To test" hint must be cluster-aware. On rancher-desktop
+    # Traefik responds on localhost; on AKS/GKE/EKS the external LB IP is the
+    # right address and the user needs a curl --resolve hint for hostname-based
+    # routes. Look up the Traefik LoadBalancer IP best-effort (same lookup as
+    # platforms/azure-aks/scripts/02-post-apply.sh:147), then branch the banner.
+    - name: 18b. Look up Traefik LoadBalancer external IP (best effort)
+      ansible.builtin.shell: |
+        kubectl get svc traefik -n kube-system --context {{ kube_context }} \
+          -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true
+      environment:
+        KUBECONFIG: "{{ merged_kubeconf_file }}"
+      register: traefik_lb_ip
+      changed_when: false
+      failed_when: false
+
     - name: 19. Success message
       ansible.builtin.debug:
         msg: |
           NGINX SETUP COMPLETE
-          
+
           Pod name: {{ nginx_pod.stdout }}
-          Service endpoint: {{ nginx_endpoint.stdout }}
+          Cluster: {{ kube_context }}
+          Internal endpoint: {{ nginx_endpoint.stdout }} (in-cluster ClusterIP — not externally reachable)
           IngressRoute: nginx-root-catch-all (catch-all routing with priority 1)
-          
+
           Nginx is now running and serving the web content from the PVC.
           The IngressRoute follows cluster ingress standards (traefik.io/v1alpha1).
-          
+
           Routing behavior:
           - Specific domain routes (like whoami.localhost) take precedence
           - Catch-all routing serves nginx content for unmatched requests
-          
-          To test:
+
+          {% if kube_context == 'rancher-desktop' %}
+          To test (rancher-desktop / local):
           curl http://[any-undefined-domain].localhost  # Should show nginx content
+          # or open http://nginx.localhost/ in a browser
+          {% elif traefik_lb_ip.stdout | trim | length > 0 %}
+          To test ({{ kube_context }}, Traefik LoadBalancer at {{ traefik_lb_ip.stdout | trim }}):
+          curl http://{{ traefik_lb_ip.stdout | trim }}/                                    # catch-all → nginx
+          curl --resolve nginx.localhost:80:{{ traefik_lb_ip.stdout | trim }} http://nginx.localhost/   # hostname-routed → nginx
+          # or open http://{{ traefik_lb_ip.stdout | trim }}/ in a browser
+          {% else %}
+          To test ({{ kube_context }}):
+          # Traefik LoadBalancer IP not yet provisioned. Check with:
+          kubectl get svc traefik -n kube-system --context {{ kube_context }}
+          # Once an external IP is assigned, hit: curl http://<external-ip>/
+          {% endif %}
           
           To reload the website content without redeploying Nginx:
           ansible-playbook playbooks/020-setup-web-files.yml -e kube_context={{ kube_context }}

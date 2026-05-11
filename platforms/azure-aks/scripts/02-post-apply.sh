@@ -178,4 +178,5 @@ echo "  ./uis deploy <service>"
 echo "  ./uis stack install <stack>"
 echo
 echo "Manage cluster:"
-echo "  ./platforms/azure-aks/scripts/03-destroy.sh       # tear down"
+echo "  uis platform status azure-aks                     # state, external IP, cost"
+echo "  uis platform down   azure-aks                     # tear down"
