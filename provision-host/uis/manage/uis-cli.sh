@@ -116,8 +116,8 @@ Tools:
 
 Platform:
   platform init <provider>    Interactive setup wizard for a cloud platform (e.g. azure-aks)
-  platform up   <provider>    Provision the cluster (PLAN #3 — not yet implemented)
-  platform down <provider>    Tear down the cluster (PLAN #4 — not yet implemented)
+  platform up   <provider>    Provision the cluster end-to-end (bootstrap + apply + post-apply)
+  platform down <provider>    Tear down the cluster (delegates to 03-destroy.sh)
 
 Tailscale:
   tailscale expose <service>    Expose a service via Tailscale Funnel
@@ -858,29 +858,39 @@ cmd_platform() {
         init)
             cmd_platform_init "$@"
             ;;
-        up|down)
-            log_error "'uis platform $subcmd' is not yet implemented"
-            {
-                echo "(PLAN #3/#4 follows PLAN #2 from INVESTIGATE-aks-novice-onboarding.md)"
-                echo "For now, run the lifecycle scripts directly:"
-                echo "  ./platforms/<provider>/scripts/00-bootstrap-state.sh"
-                echo "  ./platforms/<provider>/scripts/01-apply.sh"
-                echo "  ./platforms/<provider>/scripts/02-post-apply.sh"
-                echo "  ./platforms/<provider>/scripts/03-destroy.sh"
-            } >&2
-            exit "$EXIT_GENERAL_ERROR"
+        up)
+            cmd_platform_up "$@"
+            ;;
+        down)
+            cmd_platform_down "$@"
             ;;
         "")
             log_error "Usage: uis platform <subcmd> <provider>"
-            echo "Subcommands: init | up (not impl.) | down (not impl.)"
+            echo "Subcommands: init | up | down" >&2
             exit "$EXIT_GENERAL_ERROR"
             ;;
         *)
             log_error "Unknown platform subcommand: $subcmd"
-            echo "Usage: uis platform [init|up|down] <provider>"
+            echo "Usage: uis platform [init|up|down] <provider>" >&2
             exit "$EXIT_GENERAL_ERROR"
             ;;
     esac
+}
+
+# Internal helper: list platforms that have a given script name under
+# platforms/*/scripts/. Used by cmd_platform_init (looks for init.sh) and
+# cmd_platform_up (looks for up.sh). Writes to stdout; callers redirect to
+# stderr if pairing with log_error to avoid stream-interleave ordering.
+_list_available_platforms_with_script() {
+    local target_script="$1"
+    local repo_root="$2"
+    echo "Available platforms:"
+    local p script_path
+    for script_path in "$repo_root"/platforms/*/scripts/"$target_script"; do
+        [[ -f "$script_path" ]] || continue
+        p=$(basename "$(dirname "$(dirname "$script_path")")")
+        echo "  - $p"
+    done
 }
 
 cmd_platform_init() {
@@ -890,39 +900,71 @@ cmd_platform_init() {
 
     if [[ -z "$provider" ]]; then
         log_error "Usage: uis platform init <provider>"
-        # Send suggestion to stderr so it lands in the same stream as log_error;
-        # otherwise the terminal may interleave stdout/stderr in an order that
-        # puts the suggestion before the error.
-        {
-            echo "Available platforms:"
-            local p script_path
-            for script_path in "$repo_root"/platforms/*/scripts/init.sh; do
-                [[ -f "$script_path" ]] || continue
-                p=$(basename "$(dirname "$(dirname "$script_path")")")
-                echo "  - $p"
-            done
-        } >&2
+        { _list_available_platforms_with_script init.sh "$repo_root"; } >&2
         exit "$EXIT_GENERAL_ERROR"
     fi
 
     local script="$repo_root/platforms/$provider/scripts/init.sh"
     if [[ ! -f "$script" ]]; then
         log_error "Unknown platform '$provider' (no init.sh found at $script)"
-        {
-            echo "Available platforms:"
-            local p script_path
-            for script_path in "$repo_root"/platforms/*/scripts/init.sh; do
-                [[ -f "$script_path" ]] || continue
-                p=$(basename "$(dirname "$(dirname "$script_path")")")
-                echo "  - $p"
-            done
-        } >&2
+        { _list_available_platforms_with_script init.sh "$repo_root"; } >&2
         exit "$EXIT_GENERAL_ERROR"
     fi
 
     # Pass the repo root explicitly so the per-platform init.sh doesn't have
     # to re-derive it. Then exec — replaces the current process so signals
     # (Ctrl-C during interactive prompts) flow directly to the wizard.
+    export UIS_REPO_ROOT="$repo_root"
+    exec "$script"
+}
+
+# cmd_platform_up — same shape as cmd_platform_init but dispatches to up.sh.
+# The per-platform up.sh handles env-file presence (Q11 refuse-with-pointer)
+# and chains the lifecycle scripts.
+cmd_platform_up() {
+    local provider="${1:-}"
+    local repo_root
+    repo_root="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+
+    if [[ -z "$provider" ]]; then
+        log_error "Usage: uis platform up <provider>"
+        { _list_available_platforms_with_script up.sh "$repo_root"; } >&2
+        exit "$EXIT_GENERAL_ERROR"
+    fi
+
+    local script="$repo_root/platforms/$provider/scripts/up.sh"
+    if [[ ! -f "$script" ]]; then
+        log_error "Platform '$provider' has no up.sh (looked at $script)"
+        { _list_available_platforms_with_script up.sh "$repo_root"; } >&2
+        exit "$EXIT_GENERAL_ERROR"
+    fi
+
+    export UIS_REPO_ROOT="$repo_root"
+    exec "$script"
+}
+
+# cmd_platform_down — same shape as cmd_platform_up but dispatches to down.sh.
+# The per-platform down.sh delegates to 03-destroy.sh (which owns the typed-name
+# confirmation prompt + UIS_DESTROY_CONFIRM env-var escape hatch), then prints
+# the config-preservation pointer per Q12.
+cmd_platform_down() {
+    local provider="${1:-}"
+    local repo_root
+    repo_root="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+
+    if [[ -z "$provider" ]]; then
+        log_error "Usage: uis platform down <provider>"
+        { _list_available_platforms_with_script down.sh "$repo_root"; } >&2
+        exit "$EXIT_GENERAL_ERROR"
+    fi
+
+    local script="$repo_root/platforms/$provider/scripts/down.sh"
+    if [[ ! -f "$script" ]]; then
+        log_error "Platform '$provider' has no down.sh (looked at $script)"
+        { _list_available_platforms_with_script down.sh "$repo_root"; } >&2
+        exit "$EXIT_GENERAL_ERROR"
+    fi
+
     export UIS_REPO_ROOT="$repo_root"
     exec "$script"
 }

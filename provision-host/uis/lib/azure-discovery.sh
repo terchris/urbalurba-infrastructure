@@ -365,6 +365,15 @@ write_env_atomically() {
     : "${AZURE_SUBSCRIPTION_NAME:?AZURE_SUBSCRIPTION_NAME must be set}"
     : "${AZURE_REGION:?AZURE_REGION must be set}"
 
+    # Derive the OpenTofu state storage account name from the subscription ID.
+    # Azure storage account names must be 3-24 chars, lowercase alphanumeric only,
+    # and globally unique. Stripping the sub-id UUID's hyphens and prefixing with
+    # 'sa' / suffixing with 'tf' yields a 20-char name that's deterministic per
+    # subscription (re-running init produces the same name → idempotent) and
+    # globally unique by UUID construction.
+    local stripped_sub="${AZURE_SUBSCRIPTION_ID//-/}"
+    local AZURE_STATE_STORAGE_ACCOUNT="sa${stripped_sub:0:16}tf"
+
     mkdir -p "$(dirname "$target")"
     local tmp="${target}.tmp.$$"
     cat > "$tmp" <<EOF
@@ -380,7 +389,14 @@ AZURE_SUBSCRIPTION_ID="$AZURE_SUBSCRIPTION_ID"
 
 # === Default region ===
 AZURE_REGION="$AZURE_REGION"
+
+# === OpenTofu remote state ===
+# Storage account name is derived from the subscription ID and must be globally
+# unique within Azure. Override only if you already have a state account you
+# want to reuse for this subscription.
+AZURE_STATE_STORAGE_ACCOUNT="$AZURE_STATE_STORAGE_ACCOUNT"
 EOF
     mv "$tmp" "$target"
     echo "✓ Wrote $target"
+    echo "  Derived state storage account name: $AZURE_STATE_STORAGE_ACCOUNT"
 }

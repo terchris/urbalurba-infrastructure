@@ -55,10 +55,21 @@ source "$CONFIG_FILE"
 # Validate required values
 : "${AZURE_TENANT_ID:?Required in $CONFIG_FILE}"
 : "${AZURE_SUBSCRIPTION_ID:?Required in $CONFIG_FILE}"
-: "${AZURE_STATE_STORAGE_ACCOUNT:?Required in $CONFIG_FILE}"
 
-# Inline defaults for optional values
-AZURE_AKS_LOCATION="${AZURE_AKS_LOCATION:-westeurope}"
+# Defensive default for AZURE_STATE_STORAGE_ACCOUNT — derived from the sub ID
+# the same way `uis platform init azure-aks`'s write_env_atomically derives it
+# (provision-host/uis/lib/azure-discovery.sh). Keeps pre-PR-#156 env files (which
+# only had TENANT/SUBSCRIPTION/REGION) working without a manual edit.
+if [[ -z "${AZURE_STATE_STORAGE_ACCOUNT:-}" ]]; then
+    _stripped_sub="${AZURE_SUBSCRIPTION_ID//-/}"
+    AZURE_STATE_STORAGE_ACCOUNT="sa${_stripped_sub:0:16}tf"
+    unset _stripped_sub
+fi
+
+# Inline defaults for optional values. AZURE_AKS_LOCATION falls back through
+# AZURE_REGION (the wizard's region pick) before reaching the hard-coded
+# westeurope default — so the user's wizard choice is respected end-to-end.
+AZURE_AKS_LOCATION="${AZURE_AKS_LOCATION:-${AZURE_REGION:-westeurope}}"
 AZURE_AKS_STATE_RESOURCE_GROUP="${AZURE_AKS_STATE_RESOURCE_GROUP:-rg-urbalurba-tfstate}"
 AZURE_AKS_STATE_CONTAINER="${AZURE_AKS_STATE_CONTAINER:-tfstate}"
 AZURE_AKS_STATE_KEY="${AZURE_AKS_STATE_KEY:-aks/terraform.tfstate}"
