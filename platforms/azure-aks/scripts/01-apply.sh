@@ -56,10 +56,21 @@ source "$CONFIG_FILE"
 # Validate required values
 : "${AZURE_TENANT_ID:?Required in $CONFIG_FILE}"
 : "${AZURE_SUBSCRIPTION_ID:?Required in $CONFIG_FILE}"
-: "${AZURE_STATE_STORAGE_ACCOUNT:?Required in $CONFIG_FILE}"
 
-# Inline defaults for optional cluster-shape values
-AZURE_AKS_LOCATION="${AZURE_AKS_LOCATION:-westeurope}"
+# Defensive default for AZURE_STATE_STORAGE_ACCOUNT — derived from the sub ID
+# the same way `uis platform init azure-aks`'s write_env_atomically does
+# (provision-host/uis/lib/azure-discovery.sh). Keeps pre-PR-#156 env files (3
+# vars: TENANT/SUBSCRIPTION/REGION) working without a manual edit.
+if [[ -z "${AZURE_STATE_STORAGE_ACCOUNT:-}" ]]; then
+    _stripped_sub="${AZURE_SUBSCRIPTION_ID//-/}"
+    AZURE_STATE_STORAGE_ACCOUNT="sa${_stripped_sub:0:16}tf"
+    unset _stripped_sub
+fi
+
+# Inline defaults for optional cluster-shape values. AZURE_AKS_LOCATION falls
+# back through AZURE_REGION (the wizard's region pick) before the hard-coded
+# westeurope default.
+AZURE_AKS_LOCATION="${AZURE_AKS_LOCATION:-${AZURE_REGION:-westeurope}}"
 AZURE_AKS_RESOURCE_GROUP="${AZURE_AKS_RESOURCE_GROUP:-rg-urbalurba-aks-weu}"
 AZURE_AKS_CLUSTER_NAME="${AZURE_AKS_CLUSTER_NAME:-azure-aks}"
 # B2ms is gone in many regions/subscriptions; B2s_v2 is broadly allowed and similarly priced.

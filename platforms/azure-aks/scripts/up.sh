@@ -42,7 +42,6 @@ echo "════════════════════════�
 echo
 echo "⚠  This will create or update Azure resources and may incur cost (~€1/day)."
 echo "   Run 'uis platform down azure-aks' to tear down when finished."
-echo "   (PLAN #4 not yet shipped; fall back to './platforms/azure-aks/scripts/03-destroy.sh' for now.)"
 echo
 
 # ----- 1/3 Bootstrap remote tofu state -----
@@ -67,5 +66,4 @@ echo "════════════════════════�
 echo "  Try: kubectl get nodes"
 echo "       uis deploy nginx"
 echo
-echo "  Tear down (manual until PLAN #4 ships):"
-echo "       ./platforms/azure-aks/scripts/03-destroy.sh"
+echo "  Tear down: uis platform down azure-aks"
