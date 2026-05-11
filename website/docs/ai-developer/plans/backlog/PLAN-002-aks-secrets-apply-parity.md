@@ -6,7 +6,7 @@
 
 ## Status: Backlog
 
-**Goal**: Add a `kubernetes-secrets.yml` apply step to `platforms/aks/scripts/02-post-apply.sh` so that an AKS cluster provisioned via `platforms/aks/` is ready to receive the full UIS service catalogue (postgresql, authentik, openwebui, postgrest, etc.) — not just nginx. Brings the OpenTofu post-apply script into parity with the working bash precedent at `hosts/azure-aks/02-azure-aks-setup.sh:125-141`.
+**Goal**: Add a `kubernetes-secrets.yml` apply step to `platforms/azure-aks/scripts/02-post-apply.sh` so that an AKS cluster provisioned via `platforms/azure-aks/` is ready to receive the full UIS service catalogue (postgresql, authentik, openwebui, postgrest, etc.) — not just nginx. Brings the OpenTofu post-apply script into parity with the working bash precedent at `hosts/azure-aks/02-azure-aks-setup.sh:125-141`.
 
 **Last Updated**: 2026-05-07
 
@@ -18,7 +18,7 @@
 
 ## Problem Summary
 
-`platforms/aks/scripts/02-post-apply.sh` does five things today: merge kubeconfig, switch context, apply storage class aliases, install Traefik, wait for external IP. It does *not* apply `kubernetes-secrets.yml` to the cluster.
+`platforms/azure-aks/scripts/02-post-apply.sh` does five things today: merge kubeconfig, switch context, apply storage class aliases, install Traefik, wait for external IP. It does *not* apply `kubernetes-secrets.yml` to the cluster.
 
 The bash precedent (`hosts/azure-aks/02-azure-aks-setup.sh:125-141`) does apply it, between storage classes and Traefik install. Without that step, almost every UIS service fails at deploy time on the AKS cluster — they expect the `urbalurba-secrets` secret object to exist in their target namespace.
 
@@ -30,7 +30,7 @@ The fix is mechanical: insert a parallel block in the OpenTofu post-apply script
 
 ### Tasks
 
-- [ ] 1.1 Edit `platforms/aks/scripts/02-post-apply.sh`:
+- [ ] 1.1 Edit `platforms/azure-aks/scripts/02-post-apply.sh`:
   - Near the top of the script (after `source "$CONFIG_FILE"` at ~line 48), add: `source "/mnt/urbalurbadisk/provision-host/uis/lib/paths.sh"` — guarded with `[[ -f ... ]]` so a missing paths.sh doesn't break the script. (Bash version at `02-azure-aks-setup.sh:54-56` uses the same guard.)
   - Insert a new section between the existing storage-class section (ends ~line 88) and the Traefik install section (starts ~line 91). The new section mirrors `02-azure-aks-setup.sh:125-141`:
     ```bash
@@ -54,11 +54,11 @@ The fix is mechanical: insert a parallel block in the OpenTofu post-apply script
     ```
   - Renumber the subsequent section headers so Traefik becomes "Step 4" and external IP becomes "Step 5" (currently labelled "Step 3" and "Step 4"). Keep the existing `print_section` style.
 
-- [ ] 1.2 Static check: `shellcheck platforms/aks/scripts/02-post-apply.sh` parses clean.
+- [ ] 1.2 Static check: `shellcheck platforms/azure-aks/scripts/02-post-apply.sh` parses clean.
 
 ### Validation
 
-`grep -n "kubernetes-secrets.yml" platforms/aks/scripts/02-post-apply.sh` shows the new block. `shellcheck` returns no errors.
+`grep -n "kubernetes-secrets.yml" platforms/azure-aks/scripts/02-post-apply.sh` shows the new block. `shellcheck` returns no errors.
 
 ---
 
@@ -79,7 +79,7 @@ The fix only matters on a real AKS cluster, so the validation has to run there. 
 
 ### Validation
 
-A secret-using UIS service (postgresql or equivalent) deploys cleanly on a fresh AKS cluster provisioned via `platforms/aks/`, with no manual `kubectl apply -f kubernetes-secrets.yml` step.
+A secret-using UIS service (postgresql or equivalent) deploys cleanly on a fresh AKS cluster provisioned via `platforms/azure-aks/`, with no manual `kubectl apply -f kubernetes-secrets.yml` step.
 
 ---
 
@@ -99,9 +99,9 @@ Investigation no longer flags the secrets-apply gap as outstanding.
 
 ## Acceptance Criteria
 
-- [ ] `platforms/aks/scripts/02-post-apply.sh` applies `kubernetes-secrets.yml` between storage classes and Traefik install, mirroring `hosts/azure-aks/02-azure-aks-setup.sh:125-141`. Soft-fails when the file is absent.
+- [ ] `platforms/azure-aks/scripts/02-post-apply.sh` applies `kubernetes-secrets.yml` between storage classes and Traefik install, mirroring `hosts/azure-aks/02-azure-aks-setup.sh:125-141`. Soft-fails when the file is absent.
 - [ ] `shellcheck` passes on the modified script.
-- [ ] A secret-using UIS service deploys on a fresh AKS cluster provisioned via `platforms/aks/`.
+- [ ] A secret-using UIS service deploys on a fresh AKS cluster provisioned via `platforms/azure-aks/`.
 - [ ] `INVESTIGATE-platform-provisioning-layer.md` no longer flags this gap as outstanding.
 - [ ] This plan is in `completed/`.
 
@@ -109,7 +109,7 @@ Investigation no longer flags the secrets-apply gap as outstanding.
 
 ## Files to Modify
 
-- `platforms/aks/scripts/02-post-apply.sh`
+- `platforms/azure-aks/scripts/02-post-apply.sh`
 - `website/docs/ai-developer/plans/backlog/INVESTIGATE-platform-provisioning-layer.md` (Phase 3)
 - `website/docs/ai-developer/plans/active/PLAN-002-aks-secrets-apply-parity.md` → `completed/` (Phase 3)
 

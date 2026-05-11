@@ -1,4 +1,4 @@
-# File: platforms/aks/manifests/000-storage-class-azure-alias.yaml
+# File: platforms/azure-aks/manifests/000-storage-class-azure-alias.yaml
 # Description: Creates storage class aliases to ensure storage compatibility between local and AKS deployments
 #
 # TODO: we should stop using the name microk8s-hostpath and local-path But this requires changing manifests that reference them. So for now we just create the same.
@@ -8,7 +8,7 @@
 # - Must be applied before any other manifests that use storage
 #
 # Usage:
-# kubectl apply -f platforms/aks/manifests/000-storage-class-azure-alias.yaml
+# kubectl apply -f platforms/azure-aks/manifests/000-storage-class-azure-alias.yaml
 # Verify: kubectl get storageclasses microk8s-hostpath
 #
 # Note: This manifest should be applied after AKS cluster creation and before service deployment

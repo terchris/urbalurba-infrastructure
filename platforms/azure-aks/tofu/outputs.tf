@@ -1,4 +1,4 @@
-# File: platforms/aks/tofu/outputs.tf
+# File: platforms/azure-aks/tofu/outputs.tf
 
 output "cluster_name" {
   description = "AKS cluster name"

@@ -12,10 +12,10 @@ Run UIS on Azure Kubernetes Service — Microsoft's managed Kubernetes offering.
 
 UIS provisions AKS via [OpenTofu](https://opentofu.org/) (the open-source Terraform fork). The shape that ships:
 
-- **`platforms/aks/scripts/`** — the four scripts you run, in order: `00-bootstrap-state.sh`, `01-apply.sh`, `02-post-apply.sh`, `03-destroy.sh`.
-- **`platforms/aks/tofu/`** — the IaC module (~92 lines). One Resource Group, one Log Analytics workspace, one AKS cluster with autoscaler enabled.
+- **`platforms/azure-aks/scripts/`** — the four scripts you run, in order: `00-bootstrap-state.sh`, `01-apply.sh`, `02-post-apply.sh`, `03-destroy.sh`.
+- **`platforms/azure-aks/tofu/`** — the IaC module (~92 lines). One Resource Group, one Log Analytics workspace, one AKS cluster with autoscaler enabled.
 - **`manifests/003-traefik-config.yaml`** — Helm values for the Traefik ingress controller, pinned to chart v39.0.7 + proxy v3.6.13 (matches Rancher Desktop's bundled k3s — local-dev ↔ cloud parity).
-- **`platforms/aks/manifests/000-storage-class-azure-alias.yaml`** — aliases `local-path` and `microk8s-hostpath` (which UIS service manifests reference) to Azure Disk CSI, so service manifests work unchanged across rancher-desktop and AKS.
+- **`platforms/azure-aks/manifests/000-storage-class-azure-alias.yaml`** — aliases `local-path` and `microk8s-hostpath` (which UIS service manifests reference) to Azure Disk CSI, so service manifests work unchanged across rancher-desktop and AKS.
 
 State (the OpenTofu `terraform.tfstate` blob) lives in an Azure Storage Account, separate Resource Group from the cluster. State persists across destroy/recreate cycles by design.
 
@@ -71,7 +71,7 @@ Creates the state Resource Group + storage account + blob container. Idempotent 
 ./uis shell
 cd /mnt/urbalurbadisk
 az login --use-device-code
-./platforms/aks/scripts/00-bootstrap-state.sh
+./platforms/azure-aks/scripts/00-bootstrap-state.sh
 ```
 
 ~30–60 seconds. Storage costs a few cents per month; survives cluster destroys.
@@ -79,7 +79,7 @@ az login --use-device-code
 ### 4. Provision the cluster
 
 ```bash
-./platforms/aks/scripts/01-apply.sh
+./platforms/azure-aks/scripts/01-apply.sh
 ```
 
 The script generates `terraform.tfvars` from your `.uis.secrets/cloud-accounts/azure-default.env`, runs `tofu init -upgrade -reconfigure` against the remote backend, prints the plan for review, and applies on `y`. Cluster comes up in 5–10 minutes.
@@ -87,14 +87,14 @@ The script generates `terraform.tfvars` from your `.uis.secrets/cloud-accounts/a
 ### 5. Configure the cluster + verify
 
 ```bash
-./platforms/aks/scripts/02-post-apply.sh    # merges kubeconfig, flips UIS target, applies storage-class aliases, installs Traefik
+./platforms/azure-aks/scripts/02-post-apply.sh    # merges kubeconfig, flips UIS target, applies storage-class aliases, installs Traefik
 ./uis deploy nginx                           # the verification bar — in-cluster curl tests pass on a real AKS cluster
 ```
 
 When done:
 
 ```bash
-./platforms/aks/scripts/03-destroy.sh
+./platforms/azure-aks/scripts/03-destroy.sh
 ```
 
 `03-destroy.sh` removes the cluster, its Resource Group, the Log Analytics workspace, and the LoadBalancer's public IP. The state Resource Group survives by design.
@@ -174,7 +174,7 @@ After `01-apply.sh` provisions the cluster, post-apply gets it ready for UIS ser
 1. **Merge kubeconfig** via `ansible/playbooks/04-merge-kubeconf.yml` — adds the new AKS context to the merged `kubeconf-all` so `kubectl config get-contexts` shows it alongside `rancher-desktop`. The merge writes to `/mnt/urbalurbadisk/kubeconfig/` (in-container, kubectl-flock-safe) and copies to the bind-mounted legacy path that ~100 consumer playbooks read from.
 2. **Switch kubectl context** to the new AKS cluster.
 3. **Switch UIS target** — sed-flips `cluster-config.sh` to `CLUSTER_TYPE=azure-aks`, `TARGET_HOST=$AZURE_AKS_CLUSTER_NAME` so subsequent `./uis deploy <service>` targets the AKS cluster instead of rancher-desktop.
-4. **Apply storage-class aliases** from `platforms/aks/manifests/000-storage-class-azure-alias.yaml`. Maps `local-path` and `microk8s-hostpath` to Azure Disk CSI. Without this, every UIS service that requests a `local-path` PVC would fail on AKS.
+4. **Apply storage-class aliases** from `platforms/azure-aks/manifests/000-storage-class-azure-alias.yaml`. Maps `local-path` and `microk8s-hostpath` to Azure Disk CSI. Without this, every UIS service that requests a `local-path` PVC would fail on AKS.
 5. **Install Traefik** via the shared playbook `ansible/playbooks/003-setup-traefik.yml`. Pinned chart v39.0.7 + proxy v3.6.13 (matches the bundled k3s on Rancher Desktop, so local-dev tests map directly to cloud tests). The same playbook detects k3s-managed Traefik on rancher-desktop and skips the helm install — single source of truth across all UIS platforms.
 6. **Wait for the LoadBalancer external IP** (up to 2 min).
 

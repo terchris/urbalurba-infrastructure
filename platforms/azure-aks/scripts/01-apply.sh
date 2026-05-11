@@ -1,5 +1,5 @@
 #!/bin/bash
-# File: platforms/aks/scripts/01-apply.sh
+# File: platforms/azure-aks/scripts/01-apply.sh
 #
 # Description:
 #   Runs OpenTofu init → plan → apply for the AKS platform.
@@ -225,4 +225,4 @@ echo "Location:     $AZURE_AKS_LOCATION"
 echo "Kubeconfig:   $KUBECONFIG_FILE"
 echo
 echo "Next step:"
-echo "  ./platforms/aks/scripts/02-post-apply.sh"
+echo "  ./platforms/azure-aks/scripts/02-post-apply.sh"

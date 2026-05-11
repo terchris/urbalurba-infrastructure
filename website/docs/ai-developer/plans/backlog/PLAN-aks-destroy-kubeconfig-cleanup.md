@@ -6,7 +6,7 @@
 
 ## Status: Backlog
 
-**Goal**: When `platforms/aks/scripts/03-destroy.sh` tears down an AKS cluster, also remove that cluster's stale `clusters:` / `contexts:` / `users:` entries from the merged `kubeconf-all`, and re-point `current-context` to `rancher-desktop`. Symmetric counterpart to `02-post-apply.sh`'s flip-on-apply.
+**Goal**: When `platforms/azure-aks/scripts/03-destroy.sh` tears down an AKS cluster, also remove that cluster's stale `clusters:` / `contexts:` / `users:` entries from the merged `kubeconf-all`, and re-point `current-context` to `rancher-desktop`. Symmetric counterpart to `02-post-apply.sh`'s flip-on-apply.
 
 **Last Updated**: 2026-05-10
 
@@ -35,7 +35,7 @@ The destroy already removes the per-cluster `${cluster}-kubeconf` file and the `
 
 ### Tasks
 
-- [ ] 1.1 In `platforms/aks/scripts/03-destroy.sh`, add a new section between the existing "Cleaning up kubeconfig" block (per-cluster file removal) and "Reset UIS target to rancher-desktop" (cluster-config flip):
+- [ ] 1.1 In `platforms/azure-aks/scripts/03-destroy.sh`, add a new section between the existing "Cleaning up kubeconfig" block (per-cluster file removal) and "Reset UIS target to rancher-desktop" (cluster-config flip):
 
   ```bash
   print_status "Removing $AZURE_AKS_CLUSTER_NAME entries from merged kubeconfig..."
@@ -87,7 +87,7 @@ The verbatim acceptance check from the tester's reply:
 
 ## Files to Modify
 
-- `platforms/aks/scripts/03-destroy.sh` (add the cleanup section)
+- `platforms/azure-aks/scripts/03-destroy.sh` (add the cleanup section)
 - `website/docs/ai-developer/plans/active/PLAN-aks-destroy-kubeconfig-cleanup.md` ← move from `backlog/` to `active/` when work starts
 
 ## Acceptance Criteria

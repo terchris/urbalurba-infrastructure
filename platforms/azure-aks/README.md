@@ -37,13 +37,13 @@ cp provision-host/uis/templates/uis.secrets/cloud-accounts/azure.env.template \
 # All AZURE_AKS_* cluster-shape values are optional (defaults applied if commented).
 
 # 2. Bootstrap the state storage (one-time, survives cluster destroy/recreate)
-./platforms/aks/scripts/00-bootstrap-state.sh
+./platforms/azure-aks/scripts/00-bootstrap-state.sh
 
 # 3. Create the cluster
-./platforms/aks/scripts/01-apply.sh
+./platforms/azure-aks/scripts/01-apply.sh
 
 # 4. Configure the cluster (storage classes, Traefik)
-./platforms/aks/scripts/02-post-apply.sh
+./platforms/azure-aks/scripts/02-post-apply.sh
 ```
 
 For a step-by-step walkthrough including how to discover your Azure values, see
@@ -60,16 +60,16 @@ kubectl config use-context azure-aks
 ./uis stack install <stack>
 
 # Tear down cluster (saves ~$5/day)
-./platforms/aks/scripts/03-destroy.sh
+./platforms/azure-aks/scripts/03-destroy.sh
 
 # Recreate from state
-./platforms/aks/scripts/01-apply.sh
+./platforms/azure-aks/scripts/01-apply.sh
 ```
 
 ## File structure
 
 ```
-platforms/aks/
+platforms/azure-aks/
 ├── README.md
 ├── tofu/
 │   ├── backend.tf                 # Remote state in Azure Blob Storage
@@ -86,7 +86,7 @@ platforms/aks/
     └── 03-destroy.sh              # tofu destroy + kubeconfig cleanup
 ```
 
-Configuration lives outside `platforms/aks/` (per the secrets architecture):
+Configuration lives outside `platforms/azure-aks/` (per the secrets architecture):
 
 - **Template**: `provision-host/uis/templates/uis.secrets/cloud-accounts/azure.env.template` (committed)
 - **Your values**: `.uis.secrets/cloud-accounts/azure-default.env` (gitignored)
@@ -101,10 +101,10 @@ enabled — previous state versions are recoverable.
 ## .gitignore
 
 `.uis.secrets/` is already covered by the top-level `.gitignore`. AKS-specific
-generated files inside `platforms/aks/tofu/` to keep ignored:
+generated files inside `platforms/azure-aks/tofu/` to keep ignored:
 
 ```
-platforms/aks/tofu/terraform.tfvars
-platforms/aks/tofu/tfplan
-platforms/aks/tofu/.terraform/
+platforms/azure-aks/tofu/terraform.tfvars
+platforms/azure-aks/tofu/tfplan
+platforms/azure-aks/tofu/.terraform/
 ```

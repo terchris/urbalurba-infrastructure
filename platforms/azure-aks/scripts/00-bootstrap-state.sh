@@ -1,5 +1,5 @@
 #!/bin/bash
-# File: platforms/aks/scripts/00-bootstrap-state.sh
+# File: platforms/azure-aks/scripts/00-bootstrap-state.sh
 #
 # Description:
 #   One-time setup of Azure Storage Account for OpenTofu remote state.
@@ -33,7 +33,7 @@ print_section() { echo; echo -e "${GREEN}=======================================
 if [[ ! -f /.dockerenv ]] || [[ ! -d /mnt/urbalurbadisk ]]; then
     print_error "This script must run inside the provision-host container"
     echo "  docker exec -it provision-host bash"
-    echo "  cd /mnt/urbalurbadisk && ./platforms/aks/scripts/00-bootstrap-state.sh"
+    echo "  cd /mnt/urbalurbadisk && ./platforms/azure-aks/scripts/00-bootstrap-state.sh"
     exit 1
 fi
 

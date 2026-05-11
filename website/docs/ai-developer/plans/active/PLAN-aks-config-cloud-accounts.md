@@ -6,7 +6,7 @@
 
 ## Status: Active
 
-**Goal**: Replace the bash-file-in-tree config (`platforms/aks/azure-aks-config.sh`) with the documented `.uis.secrets/cloud-accounts/azure-default.env` convention. Single user-edited file; defaults visible inline as commented overrides; scripts use `${VAR:-default}` shell fallback. Aligns AKS with the cluster-secret pattern that `secrets.md` already documents.
+**Goal**: Replace the bash-file-in-tree config (`platforms/azure-aks/azure-aks-config.sh`) with the documented `.uis.secrets/cloud-accounts/azure-default.env` convention. Single user-edited file; defaults visible inline as commented overrides; scripts use `${VAR:-default}` shell fallback. Aligns AKS with the cluster-secret pattern that `secrets.md` already documents.
 
 **Last Updated**: 2026-05-08
 
@@ -22,7 +22,7 @@
 
 ## Problem Summary
 
-`platforms/aks/azure-aks-config.sh` is a bash file the operator copies from `azure-aks-config.sh-template`, fills in, and saves in-tree (gitignored at the platform-aks level only). It mixes Azure-account identity (tenant/subscription IDs that should sit alongside cluster-secret overrides under `.uis.secrets/`) with cluster-shape defaults (node size, autoscaler bounds), and uses unprefixed variable names (`TENANT_ID`) that don't match the `AZURE_*` convention the existing `cloud-accounts/azure.env.template` already uses.
+`platforms/azure-aks/azure-aks-config.sh` is a bash file the operator copies from `azure-aks-config.sh-template`, fills in, and saves in-tree (gitignored at the platform-aks level only). It mixes Azure-account identity (tenant/subscription IDs that should sit alongside cluster-secret overrides under `.uis.secrets/`) with cluster-shape defaults (node size, autoscaler bounds), and uses unprefixed variable names (`TENANT_ID`) that don't match the `AZURE_*` convention the existing `cloud-accounts/azure.env.template` already uses.
 
 The secrets architecture doc (`website/docs/contributors/architecture/secrets.md`) documents `cloud-accounts/azure-default.env` as the canonical home for Azure cloud-account values, complete with a path helper (`get_cloud_credentials_path "azure"`). AKS is the first concrete consumer of that pattern; this PLAN slots it in.
 
@@ -74,11 +74,11 @@ The existing template at `provision-host/uis/templates/uis.secrets/cloud-account
 
 ### Validation
 
-Static check: `bash -n provision-host/uis/templates/uis.secrets/cloud-accounts/azure.env.template` parses clean. Visual review: every AKS variable from the current `platforms/aks/azure-aks-config.sh-template` has a counterpart with `AZURE_AKS_` prefix (or `AZURE_` for genuinely account-scoped ones).
+Static check: `bash -n provision-host/uis/templates/uis.secrets/cloud-accounts/azure.env.template` parses clean. Visual review: every AKS variable from the current `platforms/azure-aks/azure-aks-config.sh-template` has a counterpart with `AZURE_AKS_` prefix (or `AZURE_` for genuinely account-scoped ones).
 
 ---
 
-## Phase 2: Update `platforms/aks/scripts/*.sh` to source from `cloud-accounts/`
+## Phase 2: Update `platforms/azure-aks/scripts/*.sh` to source from `cloud-accounts/`
 
 All four scripts currently source `$SCRIPT_DIR/../azure-aks-config.sh`. Replace with the path-helper-resolved location plus inline defaults.
 
@@ -137,7 +137,7 @@ All four scripts currently source `$SCRIPT_DIR/../azure-aks-config.sh`. Replace 
 
 ### Validation
 
-`shellcheck platforms/aks/scripts/*.sh` parses clean. `grep -nE "\\\$(TENANT_ID|SUBSCRIPTION_ID|CLUSTER_NAME|RESOURCE_GROUP|NODE_SIZE|MIN_COUNT|MAX_COUNT|OS_DISK_SIZE|STATE_(RESOURCE_GROUP|STORAGE_ACCOUNT|CONTAINER|KEY)|TAG_)" platforms/aks/scripts/` returns no hits — every var is now `AZURE_*`-prefixed.
+`shellcheck platforms/azure-aks/scripts/*.sh` parses clean. `grep -nE "\\\$(TENANT_ID|SUBSCRIPTION_ID|CLUSTER_NAME|RESOURCE_GROUP|NODE_SIZE|MIN_COUNT|MAX_COUNT|OS_DISK_SIZE|STATE_(RESOURCE_GROUP|STORAGE_ACCOUNT|CONTAINER|KEY)|TAG_)" platforms/azure-aks/scripts/` returns no hits — every var is now `AZURE_*`-prefixed.
 
 ---
 
@@ -193,19 +193,19 @@ All four scripts currently source `$SCRIPT_DIR/../azure-aks-config.sh`. Replace 
 
 ### Validation
 
-`shellcheck platforms/aks/scripts/01-apply.sh` parses clean. The generated `tofu/terraform.tfvars` (after a dry run sourcing a sample config) has unprefixed keys, matching `tofu/variables.tf`.
+`shellcheck platforms/azure-aks/scripts/01-apply.sh` parses clean. The generated `tofu/terraform.tfvars` (after a dry run sourcing a sample config) has unprefixed keys, matching `tofu/variables.tf`.
 
 ---
 
 ## Phase 4: Delete the obsolete `azure-aks-config.sh-template`
 
-Once Phases 1–3 ship, `platforms/aks/azure-aks-config.sh-template` is unused. Delete it so contributors don't accidentally edit the wrong file.
+Once Phases 1–3 ship, `platforms/azure-aks/azure-aks-config.sh-template` is unused. Delete it so contributors don't accidentally edit the wrong file.
 
 ### Tasks
 
-- [x] 4.1 `git rm platforms/aks/azure-aks-config.sh-template`.
+- [x] 4.1 `git rm platforms/azure-aks/azure-aks-config.sh-template`.
 
-- [x] 4.2 Update `platforms/aks/README.md` (if it references the old template) to point at `.uis.secrets/cloud-accounts/azure-default.env` and the new template under `provision-host/uis/templates/uis.secrets/cloud-accounts/azure.env.template`.
+- [x] 4.2 Update `platforms/azure-aks/README.md` (if it references the old template) to point at `.uis.secrets/cloud-accounts/azure-default.env` and the new template under `provision-host/uis/templates/uis.secrets/cloud-accounts/azure.env.template`.
 
 - [x] 4.3 Search-and-replace any other in-tree references: `grep -rn "azure-aks-config\.sh" --include="*.sh" --include="*.md"` — every hit becomes a reference to either the new template path or the new user-file path.
 
@@ -217,7 +217,7 @@ Once Phases 1–3 ship, `platforms/aks/azure-aks-config.sh-template` is unused. 
 
 ## Phase 5: Update PLAN-001b Phase 4 + variable-mapping table
 
-PLAN-001b's Phase 4 ("Configuration") still describes the old `platforms/aks/azure-aks-config.sh` flow. Update it to reflect the new file location and prefixed variable names. The variable-mapping table in Phase 3 (where each Phase 3 step's output maps to a Phase 4 variable) also needs the `AZURE_*` rename.
+PLAN-001b's Phase 4 ("Configuration") still describes the old `platforms/azure-aks/azure-aks-config.sh` flow. Update it to reflect the new file location and prefixed variable names. The variable-mapping table in Phase 3 (where each Phase 3 step's output maps to a Phase 4 variable) also needs the `AZURE_*` rename.
 
 ### Tasks
 
@@ -225,7 +225,7 @@ PLAN-001b's Phase 4 ("Configuration") still describes the old `platforms/aks/azu
 
 - [x] 5.2 In Phase 3's "What you should now have written down" table, rename the variable column entries (`TENANT_ID` → `AZURE_TENANT_ID`, `SUBSCRIPTION_ID` → `AZURE_SUBSCRIPTION_ID`, `LOCATION` → `AZURE_AKS_LOCATION`, `NODE_SIZE` → `AZURE_AKS_NODE_SIZE`, `STATE_STORAGE_ACCOUNT` → `AZURE_STATE_STORAGE_ACCOUNT`, `TAG_*` → `AZURE_TAG_*`).
 
-- [x] 5.3 In Phase 4's git-ignore check, replace `git check-ignore -v platforms/aks/azure-aks-config.sh` with `git check-ignore -v .uis.secrets/cloud-accounts/azure-default.env` (which is gitignored as part of the whole `.uis.secrets/` tree).
+- [x] 5.3 In Phase 4's git-ignore check, replace `git check-ignore -v platforms/azure-aks/azure-aks-config.sh` with `git check-ignore -v .uis.secrets/cloud-accounts/azure-default.env` (which is gitignored as part of the whole `.uis.secrets/` tree).
 
 ### Validation
 
@@ -276,16 +276,16 @@ This is faster than waiting for CI to publish to GHCR (CI build + push takes ~12
 
 - [ ] 6.6 **Run the AKS provisioning chain end-to-end** (PLAN-001 Phase 2.4–2.7):
   ```
-  ./platforms/aks/scripts/00-bootstrap-state.sh
-  ./platforms/aks/scripts/01-apply.sh
-  ./platforms/aks/scripts/02-post-apply.sh
+  ./platforms/azure-aks/scripts/00-bootstrap-state.sh
+  ./platforms/azure-aks/scripts/01-apply.sh
+  ./platforms/azure-aks/scripts/02-post-apply.sh
   ./uis deploy nginx
   ```
   Expected: nginx playbook's in-cluster connectivity tests (steps 13 + 15) succeed against the AKS cluster.
 
 - [ ] 6.7 **Tear down** to close the cost gate (PLAN-001 Phase 2.8):
   ```
-  ./platforms/aks/scripts/03-destroy.sh
+  ./platforms/azure-aks/scripts/03-destroy.sh
   ```
 
 - [ ] 6.8 **If anything in 6.4–6.6 fails** — fix on this same feature branch (no separate branch), `./uis build` again, `./uis restart`, re-run from the failing step. Each gap fix is a small commit on `feature/aks-config-cloud-accounts`. The PR's history will show the iteration before squash-merge.
@@ -305,9 +305,9 @@ This is faster than waiting for CI to publish to GHCR (CI build + push takes ~12
 ## Acceptance Criteria
 
 - [x] `provision-host/uis/templates/uis.secrets/cloud-accounts/azure.env.template` extended with the AKS-specific sections.
-- [x] All four `platforms/aks/scripts/*.sh` source `$(get_cloud_credentials_path azure)` and use `${VAR:-default}` for optional values.
+- [x] All four `platforms/azure-aks/scripts/*.sh` source `$(get_cloud_credentials_path azure)` and use `${VAR:-default}` for optional values.
 - [x] `tofu/terraform.tfvars` generation maps prefixed bash → unprefixed tofu names; `tofu/variables.tf` and `tofu/main.tf` unchanged.
-- [x] `platforms/aks/azure-aks-config.sh-template` is deleted; no in-tree references remain.
+- [x] `platforms/azure-aks/azure-aks-config.sh-template` is deleted; no in-tree references remain.
 - [x] `PLAN-001b-aks-manual-setup.md` Phase 3 + Phase 4 reflect the new location and variable names.
 - [ ] Tester can complete PLAN-001 Phase 2 (the AKS run-through) end-to-end against the new structure.
 - [ ] This plan is in `completed/`.
@@ -317,12 +317,12 @@ This is faster than waiting for CI to publish to GHCR (CI build + push takes ~12
 ## Files to Modify
 
 - `provision-host/uis/templates/uis.secrets/cloud-accounts/azure.env.template` (extend)
-- `platforms/aks/scripts/00-bootstrap-state.sh`
-- `platforms/aks/scripts/01-apply.sh`
-- `platforms/aks/scripts/02-post-apply.sh`
-- `platforms/aks/scripts/03-destroy.sh`
-- `platforms/aks/azure-aks-config.sh-template` (delete)
-- `platforms/aks/README.md` (if it cites the old template)
+- `platforms/azure-aks/scripts/00-bootstrap-state.sh`
+- `platforms/azure-aks/scripts/01-apply.sh`
+- `platforms/azure-aks/scripts/02-post-apply.sh`
+- `platforms/azure-aks/scripts/03-destroy.sh`
+- `platforms/azure-aks/azure-aks-config.sh-template` (delete)
+- `platforms/azure-aks/README.md` (if it cites the old template)
 - `website/docs/ai-developer/plans/backlog/PLAN-001b-aks-manual-setup.md`
 - `website/docs/ai-developer/plans/active/PLAN-aks-config-cloud-accounts.md` → `completed/` (Phase 6)
 
@@ -330,7 +330,7 @@ This is faster than waiting for CI to publish to GHCR (CI build + push takes ~12
 
 ## Implementation Notes
 
-- **Why no `platforms/aks/defaults.env`.** Per the discussion that produced this PLAN: a separate "platform defaults" file added a layer without a load-bearing reason. Defaults live commented-inline in the template (so the operator sees them at the point of editing) and as `${VAR:-default}` in the scripts (so they apply when the operator leaves things out). One file for the operator to read, one place per script for the fallback.
+- **Why no `platforms/azure-aks/defaults.env`.** Per the discussion that produced this PLAN: a separate "platform defaults" file added a layer without a load-bearing reason. Defaults live commented-inline in the template (so the operator sees them at the point of editing) and as `${VAR:-default}` in the scripts (so they apply when the operator leaves things out). One file for the operator to read, one place per script for the fallback.
 - **Why `AZURE_AKS_*` prefix on AKS-specific values.** The single-file-per-provider model means future Azure-but-not-AKS work (e.g. Azure Container Apps if anyone needs them) would also live in `azure-default.env`. Distinct prefixes keep the namespaces clean. Account-level values (tenant/subscription/state-SA-name/tags) keep the shorter `AZURE_*` prefix since they're shared across any Azure work.
 - **Why no tofu rename.** `tofu/variables.tf` is internal to the OpenTofu module; it has its own namespace. The bash-to-tofu translation already happens via `terraform.tfvars` generation; renaming inside tofu would be churn without payoff.
 - **Why `KUBECONFIG_FILE` derives from `$AZURE_AKS_CLUSTER_NAME`.** Old template hard-coded `azure-aks-kubeconf`. New form accommodates a contributor running multiple clusters with different `AZURE_AKS_CLUSTER_NAME` values without overwriting kubeconfigs. Path stays under `/mnt/urbalurbadisk/kubeconfig/` (unchanged) — moving to `.uis.secrets/generated/kubeconfig/` is a separate concern tied to the kubeconfig-merge work flagged in `secrets.md`.

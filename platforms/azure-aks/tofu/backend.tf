@@ -1,4 +1,4 @@
-# File: platforms/aks/tofu/backend.tf
+# File: platforms/azure-aks/tofu/backend.tf
 #
 # Remote state stored in Azure Blob Storage.
 # The storage account is created by scripts/00-bootstrap-state.sh

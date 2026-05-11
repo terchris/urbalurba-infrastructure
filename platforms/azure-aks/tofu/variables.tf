@@ -1,4 +1,4 @@
-# File: platforms/aks/tofu/variables.tf
+# File: platforms/azure-aks/tofu/variables.tf
 
 # ─── Azure Identity ────────────────────────────────────────────────────────────
 variable "tenant_id" {

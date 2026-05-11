@@ -62,7 +62,7 @@ INVESTIGATEs that still live in `backlog/` because their work isn't fully shippe
 
 | # | Investigation | State |
 |---|---|---|
-| — | [platform-provisioning-layer](INVESTIGATE-platform-provisioning-layer.md) | Status: ACTIVE, AKS-focused. Step 1 *drafts* merged but never run end-to-end; production still uses `hosts/azure-aks/`. Direction: make `platforms/aks/` the production path. Other clouds deferred. |
+| — | [platform-provisioning-layer](INVESTIGATE-platform-provisioning-layer.md) | Status: ACTIVE, AKS-focused. Step 1 *drafts* merged but never run end-to-end; production still uses `hosts/azure-aks/`. Direction: make `platforms/azure-aks/` the production path. Other clouds deferred. |
 | — | [remote-deployment-targets](INVESTIGATE-remote-deployment-targets.md) | Status: Investigation Complete. Child PLAN drafting next; do not open as new investigation work. |
 | — | [authentik-user-config](INVESTIGATE-authentik-user-config.md) | Status: Investigation Complete — Ready for PLAN. Child PLAN drafting next. Unblocks #12. |
 
