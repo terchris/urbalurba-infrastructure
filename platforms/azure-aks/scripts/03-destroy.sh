@@ -209,4 +209,4 @@ echo
 echo "💰 Estimated savings: ~€1/day (${AZURE_AKS_NODE_SIZE} x $AZURE_AKS_NODE_COUNT)"
 echo
 echo "To recreate the cluster:"
-echo "  uis platform up azure-aks"
+echo "  ./uis platform up azure-aks"

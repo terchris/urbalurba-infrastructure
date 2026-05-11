@@ -192,8 +192,14 @@ if [[ "${UIS_NONINTERACTIVE:-0}" == "1" ]]; then
 elif [[ -t 0 ]]; then
     read -p "Review the plan above. Apply? (y/N): " confirm
 else
-    # No TTY — read from piped stdin (e.g. `printf 'y\n' | docker exec -i …`)
-    read -r confirm
+    # No TTY — read from piped stdin (e.g. `printf 'y\n' | docker exec -i …`).
+    # `|| confirm=""` is load-bearing: with `set -euo pipefail`, a bare
+    # `read -r` on closed stdin (no `-i` and no env var) exits 1 *before*
+    # the friendly "Aborted" line below ever runs. This bites the chained
+    # `uis platform up azure-aks` flow when bootstrap consumes the first
+    # piped `y` and apply then sees EOF — exact F14 from talk47. Same
+    # shape as the F13 fix in 00-bootstrap-state.sh.
+    read -r confirm || confirm=""
 fi
 [[ "${confirm,,}" != "y" ]] && { print_warning "Aborted — no changes made"; exit 0; }
 

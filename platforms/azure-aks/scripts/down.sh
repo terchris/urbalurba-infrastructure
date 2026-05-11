@@ -23,7 +23,7 @@ ENV_FILE="$REPO_ROOT/.uis.secrets/cloud-accounts/azure-default.env"
 
 # ----- Refuse with a pointer if there's no config -----
 if [[ ! -f "$ENV_FILE" ]]; then
-    echo "✗ No config file found at $ENV_FILE" >&2
+    echo "✗ No config file found at ${ENV_FILE#$REPO_ROOT/}" >&2
     echo "  No AKS cluster appears to be configured. Nothing to tear down." >&2
     echo "  (If you have a cluster from a manual run, fall back to" >&2
     echo "  './platforms/azure-aks/scripts/03-destroy.sh' directly.)" >&2
@@ -63,20 +63,23 @@ if ! "$SCRIPT_DIR/03-destroy.sh"; then
     echo "  Check current state with:"
     echo "    az aks list -o table"
     echo "  Re-run when ready:"
-    echo "    uis platform down azure-aks"
+    echo "    ./uis platform down azure-aks"
     exit 1
 fi
 
 # ----- Summary (Q12 — config preservation) -----
+# Display env path as host-relative (same file via the bind mount — the
+# /mnt/urbalurbadisk/ prefix is in-container noise for the novice).
+ENV_FILE_DISPLAY="${ENV_FILE#$REPO_ROOT/}"
 echo
 echo "═══════════════════════════════════════════════════════════"
 echo " ✓ AKS cluster destroyed"
 echo "═══════════════════════════════════════════════════════════"
 echo "  Cluster cost stopped. The config file is preserved:"
-echo "    $ENV_FILE"
+echo "    $ENV_FILE_DISPLAY"
 echo
 echo "  To recreate the cluster with the same subscription + region:"
-echo "    uis platform up azure-aks"
+echo "    ./uis platform up azure-aks"
 echo
 echo "  To fully reset (e.g. before switching tenants), delete the file:"
-echo "    rm $ENV_FILE"
+echo "    rm $ENV_FILE_DISPLAY"
