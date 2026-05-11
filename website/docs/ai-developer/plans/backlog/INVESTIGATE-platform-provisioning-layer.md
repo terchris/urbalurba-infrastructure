@@ -5,8 +5,8 @@
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
 **Created**: 2026-04-09
-**Updated**: 2026-05-07
-**Status**: ACTIVE — AKS Step 1 *drafts* merged to `main` via PR #120 (2026-04-09) but **never run end-to-end**. Production AKS deployments today still go through `hosts/azure-aks/` (the bash + `az aks create` path). Direction (per maintainer, 2026-05-07): make `platforms/azure-aks/` the production path, with helpers.no's Microsoft nonprofit grant as the funding source and atlas-on-AKS as the load-bearing end-state. AKS-only focus; other platforms (gke, eks, microk8s-vm/metal/rpi) deferred until a concrete consumer surfaces.
+**Updated**: 2026-05-11
+**Status**: ACTIVE — **AKS Step 1 verified end-to-end 2026-05-11**. PLAN-002 (secrets parity) closed via PR #149; the four-PLAN AKS novice-onboarding sequence shipped via PRs #154/#155/#156, hardened in #157/#158. `platforms/azure-aks/` is now the production AKS path. Direction (per maintainer, 2026-05-07): helpers.no's Microsoft nonprofit grant funds atlas-on-AKS as the load-bearing end-state. AKS-only focus; other platforms (gke, eks, microk8s-vm/metal/rpi) deferred until a concrete consumer surfaces. Next concrete work: Step 2 (operational tooling — start/stop/scale wrappers so the cluster doesn't bill 24/7).
 
 ---
 
@@ -54,7 +54,7 @@ perspective regardless of what created it.
 
 | Target | Type | Tooling | Status |
 |--------|------|---------|--------|
-| `aks` | Azure managed K8s | OpenTofu + bash | Step 1 in progress |
+| `azure-aks` | Azure managed K8s | OpenTofu + bash | ✅ Step 1 shipped 2026-05-11 |
 | `gke` | GCP managed K8s | OpenTofu + bash | Not started |
 | `eks` | AWS managed K8s | OpenTofu + bash | Not started |
 | `microk8s-vm` | Ubuntu VM (any cloud) | cloud-init + Ansible | Exists in `hosts/` — needs migration |
@@ -175,7 +175,7 @@ out. Migration happens platform by platform:
 
 AKS is the first platform. The current scope is deliberately minimal: get an AKS cluster up that behaves like the Rancher Desktop substrate UIS already targets, so atlas-on-AKS can run with no Azure-specific add-ons. Anything that doesn't have a Rancher-Desktop equivalent is deferred until there's a concrete need (see *Future hardening* below).
 
-### Step 1: Minimal working cluster — drafts merged 2026-04-09, **not yet verified end-to-end**
+### Step 1: Minimal working cluster — ✅ Shipped (verified end-to-end 2026-05-11)
 
 Scope:
 
@@ -196,6 +196,29 @@ Other gap-analysis findings vs `hosts/azure-aks/` (2026-05-07):
 Code lives in `platforms/azure-aks/`. The `feature/platform-aks-opentofu` branch was merged and the stale remote was deleted.
 
 **Verification bar for "Step 1 done":** a tester runs the four scripts (`00-bootstrap-state.sh` → `01-apply.sh` → `02-post-apply.sh`) end-to-end against a real Azure subscription, then runs `./uis deploy nginx` and the deploy completes successfully — including the built-in connectivity tests in `020-setup-nginx.yml` (steps 13 and 15) which spin up a curl-test pod and fetch the test file + index page via cluster-internal DNS. That single command exercises networking, pod scheduling, storage class aliases, service DNS, and IngressRoute application, so it's a sufficient end-to-end signal without needing additional services for the verification.
+
+#### Findings from first-run verification (closed 2026-05-11)
+
+The first-run actually went considerably beyond the originally-planned "manual four-script walkthrough" — by the time verification happened, the four-PLAN AKS novice-onboarding sequence ([INVESTIGATE-aks-novice-onboarding.md](INVESTIGATE-aks-novice-onboarding.md)) had also shipped, so verification ran through `uis platform up azure-aks` + `uis deploy nginx` + `uis platform down azure-aks` instead. The verification bar above was met regardless: nginx's in-cluster connectivity tests passed against the AKS cluster, and the cluster was cleanly destroyed afterward.
+
+Addressed during verification (chronological):
+
+- **OpenTofu installer** — was the one known gap at the time of the 2026-05-07 analysis. Shipped as `install-opentofu.sh` (PR #149-ish), later bundled into `install-azure-aks.sh` (PR #154). Phase 1 of [PLAN-001-aks-step1-verification.md](../completed/PLAN-001-aks-step1-verification.md).
+- **F1 — wizard wrote a 3-var env file missing AZURE_STATE_STORAGE_ACCOUNT** — bootstrap failed without it. Wizard now derives the name deterministically from the subscription UUID (`sa<stripped-16>tf`). Fix in PR #156; lifecycle scripts also got defensive fallbacks so older 3-var env files keep working.
+- **F2–F5 cosmetic banner issues** in `up.sh` / `03-destroy.sh` (stale "PLAN #4 not yet shipped" line, script-path tear-down hints instead of `uis platform down azure-aks`, `~$5/day` vs `~€1/day` mismatch) — all fixed in PR #156 before merge.
+- **F7 deploy-nginx banner non-cluster-aware** — printed `*.localhost` hints on AKS where Traefik has a real LoadBalancer external IP. Now branches on `kube_context` and shows the actual LB IP + a `curl --resolve` hint for hostname-routed services. PR #157.
+- **F8 missing `uis platform status azure-aks`** — first thing a novice asks after `up` is "is the meter running, and what will this cost overnight?". Shipped as a new wrapper that renders cluster state, external IP, age, estimated daily €, and spent-so-far. PR #157.
+- **F9 down-wrapper false-success on aborted destroy** — serious safety bug: mistyping the cluster name at the destroy confirmation prompt printed `✓ destroyed` but left the cluster running. Now `03-destroy.sh` exits 1 on mismatch, and the wrapper explicitly branches on it. PR #157.
+- **F10/F11/F12/F13 in status / bootstrap** — full-panel data correctness (`mapfile -t` over `IFS=$'\t' read`, explicit kubeconfig + context, `az login` preflight, bootstrap `read -r confirm || confirm=""` for no-TTY safety). PR #158.
+
+Intentionally deferred:
+
+- **`kubernetes-secrets.yml` apply in `02-post-apply.sh`** — split out to [PLAN-002-aks-secrets-apply-parity.md](PLAN-002-aks-secrets-apply-parity.md) (PR #149). The verification bar above (nginx) doesn't need cluster secrets, so this gap didn't block Step 1. Closed via PLAN-002.
+- **Quota pre-flight check (`hosts/azure-aks/check-aks-quota.sh`)** — *not* deferred. Ported into the new wizard library (`azure-discovery.sh::check_quota`) so the cold cycle's first error is "you don't have enough vCPU quota" with the increase-link, not a partial-create failure 10 minutes into `tofu apply`. Stronger than the originally-deferred plan.
+- **PIM retry loop** — *not* weakened. The legacy 3-attempt loop is preserved in `azure-discovery.sh::check_owner_or_contributor` because PIM activation is a normal recovery path, not an error edge case (preserve-legacy-retry-paths memory).
+- **External-IP curl reachability test in 02-post-apply.sh** — still deferred. The nginx deploy hits Traefik end-to-end so the load-bearing path is covered; a dedicated curl-the-LB test would be polish.
+
+The `feature/platform-aks-opentofu` branch was merged 2026-04-09 (PR #120). Step 1 closed 2026-05-11.
 
 ### Step 2: Operational tooling (cost control)
 

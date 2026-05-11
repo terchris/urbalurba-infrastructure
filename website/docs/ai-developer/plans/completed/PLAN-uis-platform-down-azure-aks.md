@@ -4,7 +4,10 @@
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Active
+## Status: ✅ Completed (2026-05-11)
+
+**Shipped in**: PR #156 (the `up` + `down` bundle).
+**Verified end-to-end**: talk45 + talk46 — F9 safety branch later hardened in PR #157, all tester rounds green on CI-built `:latest`.
 
 **Goal**: Add `./uis platform down azure-aks` — a thin pass-through to the existing `03-destroy.sh` lifecycle script. **This is PLAN #4 of 4** spawned by [INVESTIGATE-aks-novice-onboarding.md](../backlog/INVESTIGATE-aks-novice-onboarding.md) — the last and most trivial. Closes the AKS novice-onboarding sequence (`tools install` + `platform init` + `platform up` + `platform down`).
 
@@ -187,7 +190,7 @@ PLAN #4 is low-risk regardless:
 ### Tasks
 
 - [x] 3.1 Update the bundled PLAN #3 talk.md (`testing/uis1/talk/talk.md`) so R5's tear-down uses `uis platform down azure-aks` rather than the manual `./platforms/azure-aks/scripts/03-destroy.sh`. Also add a small R1 sub-case for `uis platform down` dispatcher error paths (no Azure cost).
-- [ ] 3.2 Tester verification (riding on PLAN #3's round):
+- [x] 3.2 Tester verification (riding on PLAN #3's round):
   - **R1.down** — dispatcher errors: `uis platform down` (no provider), `uis platform down nonexistent`, `uis platform down azure-aks` with the env file deleted. All exit non-zero with expected messages. No Azure call.
   - **R5** (PLAN #3's existing round, retargeted at the wrapper) — real tear-down via `uis platform down azure-aks`. Pre-condition: an AKS cluster exists from R2/R4 of PLAN #3. Verify:
     - Banner prints with sub + region from env.
@@ -198,7 +201,7 @@ PLAN #4 is low-risk regardless:
 
 ### Validation (Phase 3)
 
-- [ ] 3.3 Tester closes R5 (the load-bearing path, replaces what was the manual cleanup step).
+- [x] 3.3 Tester closes R5 (the load-bearing path, replaces what was the manual cleanup step). — talk46 R3 ran real tear-down via `uis platform down azure-aks`, exit 0, cluster destroyed, state RG preserved.
 
 ---
 
@@ -206,10 +209,10 @@ PLAN #4 is low-risk regardless:
 
 - [x] All Phase 1/2 `bash -n` checks pass.
 - [x] Phase 2 dispatcher self-tested inside the contributor's locally-rebuilt container (no-provider, nonexistent, env-missing, help banner).
-- [ ] Local Docusaurus build clean for this PLAN file.
-- [ ] PR description notes the testing-flow shift (verification on CI `:latest`, post-merge) and the rationale.
-- [ ] CI green on push (Test UIS Scripts, Generate UIS Documentation, Deploy Documentation, Build UIS Container).
-- [ ] **Post-merge**: tester closes R0–R3 on the CI-built `:latest` image. Any bugs surface as a fix-up PR.
+- [x] Local Docusaurus build clean for this PLAN file.
+- [x] PR description notes the testing-flow shift (verification on CI `:latest`, post-merge) and the rationale.
+- [x] CI green on push (Test UIS Scripts, Generate UIS Documentation, Deploy Documentation, Build UIS Container).
+- [x] **Post-merge**: tester closes R0–R3 on the CI-built `:latest` image. — talk45 closed Tier 1 + Tier 2 on `:latest`. F1–F5 + F9 surfaced as fix-up PRs #156/#157.
 
 ---
 

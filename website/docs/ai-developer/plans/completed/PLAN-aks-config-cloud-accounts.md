@@ -4,16 +4,19 @@
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Active
+## Status: ✅ Completed (2026-05-08, verification reframed 2026-05-11)
+
+**Shipped in**: PR #146 (Phases 1–5 — the file-structure restructure).
+**Verified end-to-end**: talk46 R3 (2026-05-11) ran `uis platform up azure-aks` → `uis deploy nginx` → `uis platform down azure-aks` against the post-restructure file layout. The wizard ([PLAN-uis-platform-init-azure-aks.md](./PLAN-uis-platform-init-azure-aks.md), PR #155) writes `.uis.secrets/cloud-accounts/azure-default.env` directly, replacing this PLAN's originally-manual `cp + nano` flow in Phase 6.
 
 **Goal**: Replace the bash-file-in-tree config (`platforms/azure-aks/azure-aks-config.sh`) with the documented `.uis.secrets/cloud-accounts/azure-default.env` convention. Single user-edited file; defaults visible inline as commented overrides; scripts use `${VAR:-default}` shell fallback. Aligns AKS with the cluster-secret pattern that `secrets.md` already documents.
 
-**Last Updated**: 2026-05-08
+**Last Updated**: 2026-05-11
 
 **Related**:
-- [INVESTIGATE-platform-provisioning-layer.md](./INVESTIGATE-platform-provisioning-layer.md) — Step 1 scope.
-- [PLAN-001-aks-step1-verification.md](../active/PLAN-001-aks-step1-verification.md) — currently in Phase 2 (manual run-through). This restructure ships before that Phase 2 finishes; the operator switches to the new file location mid-walkthrough.
-- [PLAN-001b-aks-manual-setup.md](./PLAN-001b-aks-manual-setup.md) — Phase 4 references the bash file; this PLAN updates it.
+- [INVESTIGATE-platform-provisioning-layer.md](../backlog/INVESTIGATE-platform-provisioning-layer.md) — Step 1 scope.
+- [PLAN-001-aks-step1-verification.md](./PLAN-001-aks-step1-verification.md) — sibling PLAN, both shipped 2026-05-11. PLAN-001's Phase 2 verified the new file structure end-to-end.
+- [PLAN-001b-aks-manual-setup.md](../backlog/PLAN-001b-aks-manual-setup.md) — Phase 4 references the bash file; this PLAN updated it.
 - [Secrets architecture doc](../../../contributors/architecture/secrets.md) — names `cloud-accounts/azure-default.env` as the existing pattern.
 
 **Sequence**: this PLAN is the *small* restructure that lands first. The follow-up wizard (`./uis target add aks`) is a separate larger PLAN that builds on top of the file structure this PLAN locks in.
@@ -241,24 +244,24 @@ This is faster than waiting for CI to publish to GHCR (CI build + push takes ~12
 
 ### Tasks
 
-- [ ] 6.1 **Switch the host checkout to the feature branch** so `./uis build` picks up the new code:
+- [x] 6.1 **Switch the host checkout to the feature branch** so `./uis build` picks up the new code. — done before PR #146 merge.
   ```
   git fetch && git checkout feature/aks-config-cloud-accounts
   ```
 
-- [ ] 6.2 **Build the local image** with the updated scripts + template baked in:
+- [x] 6.2 **Build the local image** with the updated scripts + template baked in. — done before PR #146 merge; subsequent talk44/46 rounds also rebuilt against `:latest` after every fix.
   ```
   ./uis build
   ```
   Produces `uis-provision-host:local`.
 
-- [ ] 6.3 **Recycle the running container against the new image**:
+- [x] 6.3 **Recycle the running container against the new image**. — done.
   ```
   UIS_IMAGE=uis-provision-host:local ./uis restart
   ```
   `./uis restart` is `stop` + `start`; `start_container` does `docker rm -f` first, so the container is freshly created from `:local` (not the cached old `:latest`). The Azure CLI token in `~/.azure/` is wiped — re-login in step 6.4.
 
-- [ ] 6.4 **Re-login to Azure** inside the new container:
+- [x] 6.4 **Re-login to Azure** inside the new container. — manual `az login --use-device-code` flow used in talk44; subsequently absorbed into `uis platform init azure-aks` (PR #155) which handles login + sub-select + role-check + region-pick + provider-register + env-file write in one wizard.
   ```
   ./uis shell
   cd /mnt/urbalurbadisk
@@ -266,7 +269,7 @@ This is faster than waiting for CI to publish to GHCR (CI build + push takes ~12
   az account set --subscription <YOUR_SUBSCRIPTION_ID>
   ```
 
-- [ ] 6.5 **Set up the new config file** (PLAN-001 Phase 2.2 against the updated PLAN-001b):
+- [x] 6.5 **Set up the new config file**. — the manual `cp` + `nano` workflow specified here was the original Phase 6 plan, but by talk46 it was fully replaced by the `uis platform init azure-aks` wizard ([PLAN-uis-platform-init-azure-aks.md](./PLAN-uis-platform-init-azure-aks.md)), which writes `.uis.secrets/cloud-accounts/azure-default.env` directly. Outcome (a populated env file with `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_STATE_STORAGE_ACCOUNT`, `AZURE_REGION`) matches.
   ```
   cp provision-host/uis/templates/uis.secrets/cloud-accounts/azure.env.template \
      .uis.secrets/cloud-accounts/azure-default.env
@@ -274,7 +277,7 @@ This is faster than waiting for CI to publish to GHCR (CI build + push takes ~12
   ```
   Fill in the three required values: `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_STATE_STORAGE_ACCOUNT`. Leave optional sections commented unless overriding.
 
-- [ ] 6.6 **Run the AKS provisioning chain end-to-end** (PLAN-001 Phase 2.4–2.7):
+- [x] 6.6 **Run the AKS provisioning chain end-to-end**. — talk46 R3 ran `uis platform up azure-aks` (which chains the same three scripts) and `uis deploy nginx` against the resulting AKS cluster. Nginx's in-cluster connectivity tests passed.
   ```
   ./platforms/azure-aks/scripts/00-bootstrap-state.sh
   ./platforms/azure-aks/scripts/01-apply.sh
@@ -283,14 +286,14 @@ This is faster than waiting for CI to publish to GHCR (CI build + push takes ~12
   ```
   Expected: nginx playbook's in-cluster connectivity tests (steps 13 + 15) succeed against the AKS cluster.
 
-- [ ] 6.7 **Tear down** to close the cost gate (PLAN-001 Phase 2.8):
+- [x] 6.7 **Tear down** to close the cost gate. — talk46 R3 closed via `uis platform down azure-aks`. `az aks list -o table` empty afterward; state RG preserved as designed.
   ```
   ./platforms/azure-aks/scripts/03-destroy.sh
   ```
 
-- [ ] 6.8 **If anything in 6.4–6.6 fails** — fix on this same feature branch (no separate branch), `./uis build` again, `./uis restart`, re-run from the failing step. Each gap fix is a small commit on `feature/aks-config-cloud-accounts`. The PR's history will show the iteration before squash-merge.
+- [x] 6.8 **If anything in 6.4–6.6 fails** — fix on this same feature branch. — gaps that surfaced later (F1–F13) went into follow-up PRs (#155–#158) rather than `feature/aks-config-cloud-accounts` because they belonged to different scopes (wizard, wrappers, status command).
 
-- [ ] 6.9 **Once the run completes cleanly** — squash-merge the PR:
+- [x] 6.9 **Once the run completes cleanly** — squash-merge PR #146. — done.
   ```
   gh pr merge 146 --squash --delete-branch
   ```
@@ -309,8 +312,8 @@ This is faster than waiting for CI to publish to GHCR (CI build + push takes ~12
 - [x] `tofu/terraform.tfvars` generation maps prefixed bash → unprefixed tofu names; `tofu/variables.tf` and `tofu/main.tf` unchanged.
 - [x] `platforms/azure-aks/azure-aks-config.sh-template` is deleted; no in-tree references remain.
 - [x] `PLAN-001b-aks-manual-setup.md` Phase 3 + Phase 4 reflect the new location and variable names.
-- [ ] Tester can complete PLAN-001 Phase 2 (the AKS run-through) end-to-end against the new structure.
-- [ ] This plan is in `completed/`.
+- [x] Tester can complete PLAN-001 Phase 2 (the AKS run-through) end-to-end against the new structure. — talk46 R3.
+- [x] This plan is in `completed/`. — done 2026-05-11.
 
 ---
 

@@ -4,11 +4,14 @@
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Active
+## Status: ✅ Completed (2026-05-10, hardened through 2026-05-11)
+
+**Shipped in**: PR #155. Hardening fixes in PR #156 (F1 — env-file 4th var, write_env_atomically derives state-storage-account name) and PR #158 (F10 — `az` logged-in preflight in status; not strictly an `init` bug, surfaced in the same login path).
+**Verified end-to-end**: talk43 (`UIS_IMAGE=:local` cold run), talk44 (post-merge against `:latest`, F1 surfaced + fixed in #156), talk46 R3 (final cold run on the patched wizard, env file written correctly, end-to-end through up + deploy + down).
 
 **Goal**: Add an interactive `./uis platform init azure-aks` wizard that compresses today's most novice-hostile steps (sub discovery + role check + region pick + provider registration + env-file write) into one command. This is **PLAN #2 of 4** spawned by [INVESTIGATE-aks-novice-onboarding.md](../backlog/INVESTIGATE-aks-novice-onboarding.md) — the big one. PLANs #3 (`up`) and #4 (`down`) follow once this lands.
 
-**Last Updated**: 2026-05-10
+**Last Updated**: 2026-05-11
 
 **Source**: [INVESTIGATE-aks-novice-onboarding.md](../backlog/INVESTIGATE-aks-novice-onboarding.md) — all 15 design questions decided 2026-05-10. This PLAN implements Q1 (name `azure-aks`), Q4 (overwrite prompt y/N), Q5 (interactive only), Q6 (block on provider registration with per-poll output), Q7 (fail-fast role check inside `init`), Q8 (three-layer split), Q10 (always have output), Q13 (top-level `./uis platform` subcommand). Mines the legacy `hosts/azure-aks/` + `hosts/azure-microk8s/` per the investigation's "Mining the legacy scripts" section.
 
@@ -64,7 +67,7 @@ The per-target naming convention (settled in the parent investigation: meta-tool
   - Internal cross-references inside `platforms/azure-aks/scripts/*.sh` (e.g. `00-bootstrap-state.sh` may reference `../tofu/`).
   - Internal references inside `platforms/azure-aks/tofu/main.tf` / `backend.tf` (relative paths).
 - [x] 0.3 Run all platform scripts in dry-run mode (`bash -n`) to verify no parse-time path failures.
-- [ ] 0.4 Confirm `./uis deploy nginx` still works against a rancher-desktop cluster (no AKS path triggered, but verifies generic UIS still functions). **(deferred to tester)**
+- [x] 0.4 Confirm `./uis deploy nginx` still works against a rancher-desktop cluster (no AKS path triggered, but verifies generic UIS still functions). — verified across tester rounds on rancher-desktop both before and after the rename; the F7 cluster-aware nginx banner work in PR #157 specifically exercises the rancher-desktop branch.
 
 ### Validation (Phase 0)
 
@@ -242,7 +245,7 @@ Each function:
 ### Validation (Phase 1)
 
 - [x] 1.10 `bash -n provision-host/uis/lib/azure-discovery.sh` parses cleanly.
-- [ ] 1.11 Each function can be sourced standalone and invoked with mocked `az` if needed (smoke test, not a full unit-test suite).
+- [x] 1.11 Each function can be sourced standalone and invoked with mocked `az` if needed (smoke test, not a full unit-test suite). — verified 2026-05-11 in the running container: `source azure-discovery.sh` succeeds and `type require_tools_or_die` resolves the function.
 - [x] 1.12 No `|| true` masking, no regex on JSON output (uses `--query` + `-o tsv` exclusively) — per the parent investigation's "Anti-patterns to NOT carry forward" list.
 
 ---
@@ -303,7 +306,7 @@ Each function:
 ### Validation (Phase 2)
 
 - [x] 2.3 `bash -n platforms/azure-aks/scripts/init.sh` parses cleanly.
-- [ ] 2.4 Script can be invoked directly (without the dispatcher) for debugging — verify it sources `azure-discovery.sh` cleanly with `UIS_LIB` defaulting correctly.
+- [x] 2.4 Script can be invoked directly (without the dispatcher) for debugging — verify it sources `azure-discovery.sh` cleanly with `UIS_LIB` defaulting correctly. — verified 2026-05-11: direct invocation prints the banner and reaches `require_interactive_or_die` (proves library sourced, default `UIS_LIB` resolved).
 
 ---
 
@@ -372,10 +375,10 @@ Q8's outer layer — thin dispatcher in `provision-host/uis/manage/uis-cli.sh`. 
 
 ### Validation (Phase 3)
 
-- [ ] 3.5 `./uis platform` (no args) prints usage with the available platforms list.
-- [ ] 3.6 `./uis platform init` (no provider) prints usage + the platforms list discovered from `platforms/*/scripts/init.sh`.
-- [ ] 3.7 `./uis platform init nonexistent` exits with `Unknown platform 'nonexistent'...`.
-- [ ] 3.8 `./uis platform up azure-aks` and `./uis platform down azure-aks` print the "not yet implemented" message and exit non-zero (placeholders for PLANs #3 and #4).
+- [x] 3.5 `./uis platform` (no args) prints usage with the available platforms list. — verified 2026-05-11: `Usage: uis platform <subcmd> <provider>` + `Subcommands: init | up | status | down`, exit 1.
+- [x] 3.6 `./uis platform init` (no provider) prints usage + the platforms list discovered from `platforms/*/scripts/init.sh`. — verified 2026-05-11: `Available platforms: - azure-aks`, exit 1.
+- [x] 3.7 `./uis platform init nonexistent` exits with `Unknown platform 'nonexistent'...`. — verified 2026-05-11.
+- [x] 3.8 ~~`./uis platform up azure-aks` and `./uis platform down azure-aks` print the "not yet implemented" message and exit non-zero (placeholders for PLANs #3 and #4).~~ **Superseded** — PR #156 shipped both `up` and `down`. The placeholders were intentionally short-lived; today both commands work end-to-end (verified talk44 + talk46 R3).
 
 ---
 
@@ -386,7 +389,7 @@ End-to-end test against a real Azure subscription. The tester drives this since 
 ### Tasks
 
 - [x] 4.1 File the verification round at `testing/uis1/talk/talk.md`, archiving the current talk.md (the meta-tool round) as the next sequential `talk*.md`.
-- [ ] 4.2 Tester rounds to cover:
+- [x] 4.2 Tester rounds to cover (closed in talk43):
   - **R0** — local image preflight, confirm `platforms/azure-aks/scripts/init.sh` is present.
   - **R1** — `./uis platform` and `./uis platform init` with no args; verify usage + platforms list rendering.
   - **R2** — `./uis platform init azure-aks` happy path against a real Azure sub. Verify: az login prompt, sub picker, role check pass, region picker (westeurope default), quota check pass, all four providers go from Registered/Registering → Registered with annotated per-poll output, env file written atomically. Paste the full transcript.
@@ -396,17 +399,17 @@ End-to-end test against a real Azure subscription. The tester drives this since 
 
 ### Validation (Phase 4)
 
-- [ ] 4.3 Tester closes Rounds 0–3 green. Rounds 4 and 5 are optional but valuable.
+- [x] 4.3 Tester closes Rounds 0–3 green. Rounds 4 and 5 are optional but valuable. — talk43 closed R0–R3; R5 was retired by PR #156 (no more "not yet implemented" placeholders to verify).
 
 ---
 
 ## Verification gate before merge
 
-- [ ] All Phase 0/1/2/3 `bash -n` checks pass.
-- [ ] `grep -rn "platforms/aks/" --include="*.sh" --include="*.yml" --include="*.md"` returns no stale references (Phase 0 complete).
-- [ ] Tester closes Phase 4 Round 2 (happy path) at minimum. Rounds 3, 4, 5 nice-to-have but not blocking.
-- [ ] Local Docusaurus build clean for the PLAN file.
-- [ ] PR description includes the cold-run transcript from R2 (proves the wizard works end-to-end against a real Azure subscription).
+- [x] All Phase 0/1/2/3 `bash -n` checks pass.
+- [x] `grep -rn "platforms/aks/" --include="*.sh" --include="*.yml" --include="*.md"` returns no stale references (Phase 0 complete).
+- [x] Tester closes Phase 4 Round 2 (happy path) at minimum. Rounds 3, 4, 5 nice-to-have but not blocking. — talk43 R2 cold run cleared.
+- [x] Local Docusaurus build clean for the PLAN file.
+- [x] PR description includes the cold-run transcript from R2 (proves the wizard works end-to-end against a real Azure subscription).
 
 ---
 
@@ -425,7 +428,7 @@ End-to-end test against a real Azure subscription. The tester drives this since 
 
 - [INVESTIGATE-aks-novice-onboarding.md](../backlog/INVESTIGATE-aks-novice-onboarding.md) — parent investigation. All 15 design questions decided 2026-05-10.
 - [PLAN-uis-tools-install-azure-aks.md](./PLAN-uis-tools-install-azure-aks.md) — PLAN #1 (PR #154, merged 2026-05-10). Provides `./uis tools install azure-aks` which `require_tools_or_die()` points the user at.
-- [PLAN-tool-installer-error-handling.md](./PLAN-tool-installer-error-handling.md) — PR #152, merged 2026-05-10. Establishes the `set -euo pipefail` + contract-block pattern this PLAN's library functions follow.
+- [PLAN-tool-installer-error-handling.md](../active/PLAN-tool-installer-error-handling.md) — PR #152, merged 2026-05-10. Establishes the `set -euo pipefail` + contract-block pattern this PLAN's library functions follow.
 - `hosts/azure-aks/01-azure-aks-create.sh:128-140` — `az login` + device-code fallback pattern that `az_login_if_needed()` mines.
 - `hosts/azure-aks/check-aks-quota.sh:56-170` — quota-validation pattern that `check_quota()` mines.
 - `hosts/azure-microk8s/01-azure-vm-create-redcross-v2.sh:36-83` — PIM portal link that the role-check failure message reuses (without the retry loop).

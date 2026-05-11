@@ -4,7 +4,10 @@
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Active
+## Status: ✅ Completed (2026-05-11)
+
+**Shipped in**: PR #156 (bundled with PLAN #4).
+**Verified end-to-end**: talk44 (`UIS_IMAGE=:local`), talk45 + talk46 (post-merge against CI-built `:latest`) — cold cycle ran 00→01→02 successfully, F1–F5 surfaced and fixed in the same PR before merge, F11/F12 in the follow-on status command fixed in PR #158.
 
 **Goal**: Add `./uis platform up azure-aks` — a thin chain wrapper that runs the three existing lifecycle scripts (`00-bootstrap-state.sh` → `01-apply.sh` → `02-post-apply.sh`) in order with visible inter-step banners. This is **PLAN #3 of 4** spawned by [INVESTIGATE-aks-novice-onboarding.md](../backlog/INVESTIGATE-aks-novice-onboarding.md). Trivial once PLAN #2's `init` ships — the heavy lifting (sub discovery, role check, region pick, provider registration, env-file write) is done; `up` just executes the IaC.
 
@@ -121,7 +124,7 @@ The chain orchestrator. Mirrors `init.sh`'s shape (banner + preflight + delegate
 ### Validation (Phase 1)
 
 - [x] 1.3 `bash -n platforms/azure-aks/scripts/up.sh` parses cleanly.
-- [ ] 1.4 Script runs the three lifecycle scripts in order. Verified at Phase 3 by the tester.
+- [x] 1.4 Script runs the three lifecycle scripts in order. Verified at Phase 3 by the tester. — talk46 R3 `▶ 1/3 / ▶ 2/3 / ▶ 3/3` banners fired in order, cluster came up successfully.
 
 ---
 
@@ -206,7 +209,7 @@ The chain orchestrator. Mirrors `init.sh`'s shape (banner + preflight + delegate
 ### Tasks
 
 - [x] 3.1 File the verification round at `testing/uis1/talk/talk.md`, archiving the current talk.md (the `init` round) as `talk43.md`.
-- [ ] 3.2 Tester rounds:
+- [x] 3.2 Tester rounds (talk44 pre-merge against `:local`, talk45/talk46 post-merge against `:latest`):
   - **R0** — local image preflight; confirm `platforms/azure-aks/scripts/up.sh` is in the running container.
   - **R1** — dispatcher error paths: `uis platform up` (no provider), `uis platform up nonexistent`, `uis platform up azure-aks` with the env file deleted (Q11 refusal). All non-zero exits with the expected messages.
   - **R2** — **cold run** against a real Azure subscription. Run `uis platform up azure-aks`. Expect ~10–15 minutes:
@@ -227,17 +230,17 @@ The chain orchestrator. Mirrors `init.sh`'s shape (banner + preflight + delegate
 
 ### Validation (Phase 3)
 
-- [ ] 3.3 Tester closes R0–R3 green (R2 is the load-bearing one). R4 + R5 nice-to-have.
+- [x] 3.3 Tester closes R0–R3 green (R2 is the load-bearing one). R4 + R5 nice-to-have. — All closed across talk44/45/46; talk46 R3 ran R2 (cold cycle) + R4 (`uis deploy nginx` on AKS) + R5 (real tear-down).
 
 ---
 
 ## Verification gate before merge
 
-- [ ] All Phase 1/2 `bash -n` checks pass.
-- [ ] Tester closes Phase 3 R2 (cold run end-to-end against real Azure) at minimum.
-- [ ] Local Docusaurus build clean for this PLAN file.
-- [ ] PR description includes the cold-run transcript from R2 (proves the chain works end-to-end).
-- [ ] PR description includes the tear-down output from R5 (proves the verification environment is clean — no cluster left running and incurring cost).
+- [x] All Phase 1/2 `bash -n` checks pass.
+- [x] Tester closes Phase 3 R2 (cold run end-to-end against real Azure) at minimum. — talk46 R3.
+- [x] Local Docusaurus build clean for this PLAN file.
+- [x] PR description includes the cold-run transcript from R2 (proves the chain works end-to-end).
+- [x] PR description includes the tear-down output from R5 (proves the verification environment is clean — no cluster left running and incurring cost).
 
 ---
 
