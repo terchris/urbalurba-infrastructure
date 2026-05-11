@@ -907,8 +907,14 @@ cmd_platform() {
 # Defensive against pf_banner being unavailable (platform-switching.sh failed
 # to source, e.g. during early-init harness runs) — silently no-ops in that
 # case so cluster-touching commands still work.
+#
+# Also no-ops when there's no kubectl or no kubeconf-all file at all — that's
+# the host-side test harness running uis-cli.sh on ubuntu-latest CI, not a
+# real cluster-touching context. In the container these always exist.
 _uis_cluster_banner() {
     type pf_banner >/dev/null 2>&1 || return 0
+    command -v kubectl >/dev/null 2>&1 || return 0
+    [[ -f "${PF_KUBECONFIG:-/mnt/urbalurbadisk/kubeconfig/kubeconf-all}" ]] || return 0
     pf_banner --silent-if-set --check-reachable || exit "$EXIT_GENERAL_ERROR"
 }
 
@@ -1298,7 +1304,7 @@ _cmd_platform_use_picker() {
         if [[ "$pf_state" == "running" ]]; then
             printf "[%d] %-${maxw}s  ✓ running%s    %s\n" "$idx" "$pf" "$active_tag" "$pf_hint"
             selectable+=("$pf")
-            ((idx++))
+            ((++idx))
         else
             local icon state_label
             case "$pf_state" in
