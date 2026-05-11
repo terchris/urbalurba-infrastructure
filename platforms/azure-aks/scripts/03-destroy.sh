@@ -185,19 +185,17 @@ fi
 # Symmetric to 02-post-apply.sh's auto-flip: after the AKS cluster is gone,
 # restore the local default so the next `./uis deploy <service>` doesn't
 # target a context that no longer exists.
+#
+# Lockstep flip (Q4 of INVESTIGATE-active-cluster-visibility-ux.md): goes
+# through the same shared writer as 02-post-apply.sh and cmd_platform_use.
+# Single writer means cluster-config.sh can never silently diverge from the
+# kubectl context.
 print_section "Reset UIS target to rancher-desktop"
 
-CLUSTER_CONFIG="/mnt/urbalurbadisk/.uis.extend/cluster-config.sh"
-if [[ -f "$CLUSTER_CONFIG" ]]; then
-    sed -i.bak \
-        -e "s|^CLUSTER_TYPE=.*|CLUSTER_TYPE=\"rancher-desktop\"|" \
-        -e "s|^TARGET_HOST=.*|TARGET_HOST=\"rancher-desktop\"|" \
-        "$CLUSTER_CONFIG"
-    rm -f "${CLUSTER_CONFIG}.bak"
-    print_success "cluster-config.sh reset to: CLUSTER_TYPE=rancher-desktop, TARGET_HOST=rancher-desktop"
-else
-    print_warning "cluster-config.sh not found — skipping reset"
-fi
+# shellcheck source=/dev/null
+source "/mnt/urbalurbadisk/provision-host/uis/lib/platform-switching.sh"
+pf_lockstep_flip "rancher-desktop"
+print_success "cluster-config.sh + kubectl context reset to: rancher-desktop"
 
 # ─── Summary ──────────────────────────────────────────────────────────────────
 print_section "DESTROY COMPLETE"

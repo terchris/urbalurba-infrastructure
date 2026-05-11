@@ -29,6 +29,7 @@ source "$LIB_DIR/uis-hosts.sh" 2>/dev/null || true
 source "$LIB_DIR/integration-testing.sh" 2>/dev/null || true
 source "$LIB_DIR/expose.sh" 2>/dev/null || true
 source "$LIB_DIR/configure.sh" 2>/dev/null || true
+source "$LIB_DIR/platform-switching.sh" 2>/dev/null || true
 source "$LIB_DIR/template.sh" 2>/dev/null || true
 source "$LIB_DIR/connect.sh" 2>/dev/null || true
 
@@ -116,8 +117,10 @@ Tools:
 
 Platform:
   platform init   <provider>  Interactive setup wizard for a cloud platform (e.g. azure-aks)
+  platform list               Show all potential platforms and their current state
   platform up     <provider>  Provision the cluster end-to-end (bootstrap + apply + post-apply)
   platform status <provider>  Show cluster state, external IP, and cost estimate
+  platform use    [<provider>]   Switch the active platform (interactive picker if no arg)
   platform down   <provider>  Tear down the cluster (delegates to 03-destroy.sh)
 
 Tailscale:
@@ -186,6 +189,7 @@ EOF
 }
 
 cmd_list() {
+    _uis_cluster_banner
     local show_all=false
     local filter_category=""
 
@@ -252,6 +256,7 @@ cmd_list() {
 }
 
 cmd_status() {
+    _uis_cluster_banner
     print_section "Deployed Services Status"
 
     # Show current kubectl context (target cluster)
@@ -301,6 +306,7 @@ cmd_categories() {
 }
 
 cmd_deploy() {
+    _uis_cluster_banner
     local service_id=""
     local app_name=""
     local url_prefix=""
@@ -377,6 +383,7 @@ cmd_deploy() {
 }
 
 cmd_undeploy() {
+    _uis_cluster_banner
     local service_id=""
     local app_name=""
     local purge="false"
@@ -683,6 +690,10 @@ cmd_stack_info() {
 }
 
 cmd_stack_install() {
+    _uis_cluster_banner
+    # C-4 — children (./uis deploy <service> fired by the stack walker) MUST
+    # NOT re-print the banner. Set the env var the helper reads.
+    export UIS_BANNER_PRINTED=1
     local stack_id="${1:-}"
     local skip_optional=false
 
@@ -859,26 +870,46 @@ cmd_platform() {
         init)
             cmd_platform_init "$@"
             ;;
+        list)
+            cmd_platform_list "$@"
+            ;;
         up)
             cmd_platform_up "$@"
             ;;
         status)
             cmd_platform_status "$@"
             ;;
+        use)
+            cmd_platform_use "$@"
+            ;;
         down)
             cmd_platform_down "$@"
             ;;
         "")
-            log_error "Usage: uis platform <subcmd> <provider>"
-            echo "Subcommands: init | up | status | down" >&2
+            log_error "Usage: uis platform <subcmd> [<provider>]"
+            echo "Subcommands: init | list | up | status | use | down" >&2
             exit "$EXIT_GENERAL_ERROR"
             ;;
         *)
             log_error "Unknown platform subcommand: $subcmd"
-            echo "Usage: uis platform [init|up|status|down] <provider>" >&2
+            echo "Usage: uis platform [init|list|up|status|use|down] [<provider>]" >&2
             exit "$EXIT_GENERAL_ERROR"
             ;;
     esac
+}
+
+# Internal helper: emit the Layer 1 platform banner to stderr and abort on
+# unreachable / unset-context cases (per C-9 of INVESTIGATE-active-cluster-
+# visibility-ux.md). Called at the top of every cluster-touching cmd_<verb>
+# function. Honors UIS_BANNER_PRINTED=1 (set by parent invocations like
+# cmd_stack_install before fanning out to child deploys, per C-4).
+#
+# Defensive against pf_banner being unavailable (platform-switching.sh failed
+# to source, e.g. during early-init harness runs) — silently no-ops in that
+# case so cluster-touching commands still work.
+_uis_cluster_banner() {
+    type pf_banner >/dev/null 2>&1 || return 0
+    pf_banner --silent-if-set --check-reachable || exit "$EXIT_GENERAL_ERROR"
 }
 
 # Internal helper: list platforms that have a given script name under
@@ -926,6 +957,10 @@ cmd_platform_init() {
 # The per-platform up.sh handles env-file presence (Q11 refuse-with-pointer)
 # and chains the lifecycle scripts.
 cmd_platform_up() {
+    # No banner — `up` takes an explicit <provider>, doesn't act on the current
+    # kubectl context. Showing the active platform before a `up azure-aks`
+    # invocation would be misleading (the active might be rancher-desktop;
+    # `up` is going to change it).
     local provider="${1:-}"
     local repo_root
     repo_root="$(cd "$SCRIPT_DIR/../../.." && pwd)"
@@ -952,6 +987,7 @@ cmd_platform_up() {
 # confirmation prompt + UIS_DESTROY_CONFIRM env-var escape hatch), then prints
 # the config-preservation pointer per Q12.
 cmd_platform_down() {
+    # No banner — explicit <provider>, doesn't act on current kubectl context.
     local provider="${1:-}"
     local repo_root
     repo_root="$(cd "$SCRIPT_DIR/../../.." && pwd)"
@@ -977,6 +1013,8 @@ cmd_platform_down() {
 # status.sh answers "is the cluster running and how much is it costing me?"
 # in a single command (F8 from talk45).
 cmd_platform_status() {
+    # No banner — explicit <provider>, this command reports on the named
+    # platform regardless of which is currently active.
     local provider="${1:-}"
     local repo_root
     repo_root="$(cd "$SCRIPT_DIR/../../.." && pwd)"
@@ -996,6 +1034,300 @@ cmd_platform_status() {
 
     export UIS_REPO_ROOT="$repo_root"
     exec "$script"
+}
+
+# cmd_platform_list — enumerate potential platforms + their states.
+# Implements Layer 4 of INVESTIGATE-active-cluster-visibility-ux.md.
+# Inventory: pf_list_platforms (platforms/*/scripts/init.sh dirs + rancher-desktop).
+# Per-row status: each platform's status.sh --summary (C-1 contract) called in
+# parallel for the under-500ms budget (C-6).
+cmd_platform_list() {
+    # No banner — `list` IS the discovery command, expected to work even when
+    # no active context is set (helps the user find a platform to switch to).
+    # shellcheck source=/dev/null
+    source "/mnt/urbalurbadisk/provision-host/uis/lib/platform-switching.sh"
+
+    # Flag parsing — --offline / --deep mirror status.sh --summary's modes.
+    local offline=0 deep=0
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --offline) offline=1; shift ;;
+            --deep)    deep=1;    shift ;;
+            *) shift ;;
+        esac
+    done
+    local summary_args=()
+    (( offline )) && summary_args+=("--offline")
+    (( deep ))    && summary_args+=("--deep")
+
+    # Header — `Active: <name>` per C-2 (three cases for kubectl current-context).
+    local active is_uis_platform=0
+    active="$(pf_active_platform)"
+    if [[ -z "$active" ]]; then
+        echo "Active: (none — run './uis platform use <name>' to pick one)"
+    else
+        if [[ "$active" == "rancher-desktop" ]] || \
+           [[ -f "/mnt/urbalurbadisk/platforms/$active/scripts/init.sh" ]]; then
+            is_uis_platform=1
+            echo "Active: $active"
+        else
+            echo "Active: $active (not a UIS platform — use './uis platform use <name>' to switch to one)"
+        fi
+    fi
+    echo
+
+    # Gather summaries in parallel — one background process per platform,
+    # output collected into a tmpdir then read in inventory order. Keeps the
+    # default `list` under 500ms with up to ~8 platforms (C-6).
+    local tmpdir
+    tmpdir="$(mktemp -d)"
+    trap 'rm -rf "$tmpdir"' RETURN
+    local platforms=() pf
+    while IFS= read -r pf; do
+        platforms+=("$pf")
+    done < <(pf_list_platforms)
+    local pid
+    for pf in "${platforms[@]}"; do
+        ( pf_platform_summary "$pf" "${summary_args[@]}" 2>/dev/null > "$tmpdir/$pf" ) &
+    done
+    wait
+
+    # Compute max platform-name width for table alignment.
+    local maxw=0 w
+    for pf in "${platforms[@]}"; do
+        w=${#pf}
+        (( w > maxw )) && maxw=$w
+    done
+    (( maxw < 16 )) && maxw=16
+
+    printf "%-${maxw}s  %s\n" "PLATFORM" "STATUS"
+    local row_state row_hint icon state_label
+    for pf in "${platforms[@]}"; do
+        if [[ ! -s "$tmpdir/$pf" ]]; then
+            printf "%-${maxw}s  ? error                       (status.sh --summary failed; run './uis platform status %s' for details)\n" "$pf" "$pf"
+            continue
+        fi
+        # tab-separated <state>\t<hint>
+        IFS=$'\t' read -r row_state row_hint < "$tmpdir/$pf"
+        case "$row_state" in
+            running)
+                icon="✓"
+                state_label="running"
+                ;;
+            configured-not-running)
+                icon="·"
+                state_label="configured, not running"
+                ;;
+            not-initialized)
+                icon="·"
+                state_label="not initialized"
+                ;;
+            unreachable)
+                icon="✗"
+                state_label="unreachable"
+                ;;
+            *)
+                icon="?"
+                state_label="$row_state"
+                ;;
+        esac
+        # Active annotation if this row matches the kubectl current-context (only
+        # when active is a UIS platform; per C-2 external/unset contexts don't
+        # decorate any row).
+        local active_tag=""
+        if (( is_uis_platform )) && [[ "$pf" == "$active" ]]; then
+            active_tag="  (active)"
+        fi
+        # Display hint: for running rows, the hint is descriptive; for non-running
+        # rows, prefix with "run '...' " — but the status.sh already emits the
+        # right text in field 2 per C-1, so we just print it.
+        if [[ "$row_state" == "running" ]]; then
+            printf "%-${maxw}s  %s %s%s    %s\n" \
+                "$pf" "$icon" "$state_label" "$active_tag" "$row_hint"
+        else
+            printf "%-${maxw}s  %s %-23s  (%s)\n" \
+                "$pf" "$icon" "$state_label" "$row_hint"
+        fi
+    done
+}
+
+# cmd_platform_use — switch the active platform with lockstep flip.
+# Implements Q4 (lockstep) + Q5 (refuse-unless-initialized-and-reachable).
+# State decision via pf_platform_summary (the C-1 contract); flip via
+# pf_lockstep_flip (the shared writer 02-post-apply.sh + 03-destroy.sh
+# converge on after Phase 6).
+cmd_platform_use() {
+    # No banner — `use` is the *fix* for the "no active context" abort path
+    # that fires on cluster-touching commands. Banner-then-abort here would
+    # be catch-22.
+    # shellcheck source=/dev/null
+    source "/mnt/urbalurbadisk/provision-host/uis/lib/platform-switching.sh"
+
+    local force_offline=0 target=""
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --offline) force_offline=1; shift ;;
+            -*)        shift ;;  # ignore unknown flags
+            *)         target="$1"; shift ;;
+        esac
+    done
+
+    # No arg → interactive picker over the running rows.
+    if [[ -z "$target" ]]; then
+        _cmd_platform_use_picker
+        return
+    fi
+
+    # Validate that the platform exists (special-case rancher-desktop).
+    if [[ "$target" != "rancher-desktop" ]] && \
+       [[ ! -f "/mnt/urbalurbadisk/platforms/$target/scripts/init.sh" ]]; then
+        log_error "Unknown platform '$target' (no init.sh found at /mnt/urbalurbadisk/platforms/$target/scripts/init.sh)"
+        { _list_available_platforms_with_script init.sh "/mnt/urbalurbadisk"; } >&2
+        echo "  - rancher-desktop" >&2  # not in the init.sh enumeration; mention explicitly
+        exit "$EXIT_GENERAL_ERROR"
+    fi
+
+    # Ask status.sh --summary what state the target is in.
+    local summary state hint
+    if ! summary="$(pf_platform_summary "$target")"; then
+        log_error "Could not query status for '$target' (status.sh --summary errored or emitted invalid output)"
+        echo "  Try: ./uis platform status $target" >&2
+        exit "$EXIT_GENERAL_ERROR"
+    fi
+    state="${summary%%	*}"
+    hint="${summary#*	}"
+
+    # Capture current active for the success-line "from → to" wording.
+    local previous
+    previous="$(pf_active_platform)"
+
+    case "$state" in
+        not-initialized)
+            # Use the hint from status.sh --summary verbatim — the per-platform
+            # script knows what action is needed. Rancher-desktop's hint says
+            # "install Rancher Desktop and start it" (no `platform init` exists
+            # for it), while azure-aks's would say "run './uis platform init …'".
+            echo "✗ $target is not initialized." >&2
+            echo "  $hint" >&2
+            exit "$EXIT_GENERAL_ERROR"
+            ;;
+        configured-not-running)
+            echo "✗ $target is configured but not running." >&2
+            echo "  $hint" >&2
+            exit "$EXIT_GENERAL_ERROR"
+            ;;
+        running)
+            # Already active? No-op + re-probe (per C-8 / Q5 no-op semantics).
+            if [[ "$previous" == "$target" ]]; then
+                if pf_probe_reachable "$target"; then
+                    echo "ℹ  Already active: $target. Re-probing... ✓ still reachable."
+                    exit 0
+                else
+                    echo "✗ $target is no longer reachable (API server timeout after 3s)." >&2
+                    echo "  Check the cluster state with './uis platform status $target'." >&2
+                    exit "$EXIT_GENERAL_ERROR"
+                fi
+            fi
+            pf_lockstep_flip "$target"
+            if [[ -n "$previous" ]]; then
+                echo "✓ Switched: $previous → $target"
+            else
+                echo "✓ Switched to: $target"
+            fi
+            exit 0
+            ;;
+        unreachable)
+            if (( force_offline )); then
+                # User explicitly opted in to switching despite unreachable.
+                pf_lockstep_flip "$target"
+                if [[ -n "$previous" ]]; then
+                    echo "✓ Switched: $previous → $target  (forced; cluster not reachable)"
+                else
+                    echo "✓ Switched to: $target  (forced; cluster not reachable)"
+                fi
+                exit 0
+            fi
+            echo "✗ $target is unreachable (API server timeout after 3s)." >&2
+            echo "  Check the cluster state with './uis platform status $target'." >&2
+            echo "  To switch anyway (e.g. to clean up stale kubectl state), use --offline." >&2
+            exit "$EXIT_GENERAL_ERROR"
+            ;;
+        *)
+            log_error "Unexpected state '$state' from $target's status.sh --summary"
+            exit "$EXIT_GENERAL_ERROR"
+            ;;
+    esac
+}
+
+# Interactive picker for `./uis platform use` with no argument.
+# Per C-8: only running rows get [N] selectors; non-selectable rows appear
+# without selectors with their inline pointer. Plain read -p; no fzf dep.
+_cmd_platform_use_picker() {
+    # shellcheck source=/dev/null
+    source "/mnt/urbalurbadisk/provision-host/uis/lib/platform-switching.sh"
+
+    local platforms=() pf
+    while IFS= read -r pf; do
+        platforms+=("$pf")
+    done < <(pf_list_platforms)
+
+    # Gather summaries (sequential is fine for the picker; the user is going
+    # to type a number anyway, the parallel optimization isn't load-bearing).
+    local active selectable=() pf_state pf_hint summary
+    active="$(pf_active_platform)"
+
+    local maxw=0 w
+    for pf in "${platforms[@]}"; do
+        w=${#pf}; (( w > maxw )) && maxw=$w
+    done
+    (( maxw < 16 )) && maxw=16
+
+    echo
+    printf "%-4s %-${maxw}s  %s\n" " " "PLATFORM" "STATUS"
+    local idx=1
+    for pf in "${platforms[@]}"; do
+        if summary="$(pf_platform_summary "$pf" 2>/dev/null)"; then
+            pf_state="${summary%%	*}"
+            pf_hint="${summary#*	}"
+        else
+            pf_state="error"
+            pf_hint="status.sh --summary failed"
+        fi
+        local active_tag=""
+        [[ "$pf" == "$active" ]] && active_tag="  (currently active)"
+        if [[ "$pf_state" == "running" ]]; then
+            printf "[%d] %-${maxw}s  ✓ running%s    %s\n" "$idx" "$pf" "$active_tag" "$pf_hint"
+            selectable+=("$pf")
+            ((idx++))
+        else
+            local icon state_label
+            case "$pf_state" in
+                configured-not-running) icon="·"; state_label="configured, not running" ;;
+                not-initialized)        icon="·"; state_label="not initialized" ;;
+                unreachable)            icon="✗"; state_label="unreachable" ;;
+                *)                      icon="?"; state_label="$pf_state" ;;
+            esac
+            printf "    %-${maxw}s  %s %-23s  (%s)\n" "$pf" "$icon" "$state_label" "$pf_hint"
+        fi
+    done
+    echo
+
+    if [[ "${#selectable[@]}" -eq 0 ]]; then
+        echo "✗ No platforms are currently in 'running' state." >&2
+        echo "  Bring one up with './uis platform up <name>' (see hints above)." >&2
+        exit "$EXIT_GENERAL_ERROR"
+    fi
+
+    local choice
+    read -rp "Pick a platform [1-${#selectable[@]}]: " choice
+    # Validate
+    if ! [[ "$choice" =~ ^[0-9]+$ ]] || (( choice < 1 )) || (( choice > ${#selectable[@]} )); then
+        log_error "Invalid selection: '$choice'"
+        exit "$EXIT_GENERAL_ERROR"
+    fi
+    local picked="${selectable[$((choice-1))]}"
+    # Re-dispatch through the named path so the no-op/lockstep logic runs there.
+    cmd_platform_use "$picked"
 }
 
 # ============================================================
@@ -1476,6 +1808,7 @@ cmd_cloudflare_teardown() {
 # ============================================================
 
 cmd_configure() {
+    _uis_cluster_banner
     run_configure "$@"
 }
 
@@ -1485,6 +1818,7 @@ cmd_configure() {
 # ============================================================
 
 cmd_expose() {
+    _uis_cluster_banner
     local service_or_flag="${1:-}"
     local flag="${2:-}"
 
@@ -1883,6 +2217,9 @@ cmd_secrets() {
 # ============================================================
 
 cmd_test_all() {
+    _uis_cluster_banner
+    # C-4 — children spawned by run_integration_tests should not re-banner.
+    export UIS_BANNER_PRINTED=1
     if ! type run_integration_tests &>/dev/null; then
         log_error "integration-testing.sh not loaded"
         exit "$EXIT_GENERAL_ERROR"

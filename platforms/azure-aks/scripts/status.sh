@@ -6,6 +6,9 @@
 # This script answers it in one command.
 #
 # Entry point: uis platform status azure-aks
+#
+# --summary flag: emits the C-1 one-line state hint format for consumption
+# by `./uis platform list`. See PLAN-platform-list-use-and-banner.md Phase 2.
 
 set -euo pipefail
 
@@ -13,6 +16,68 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="${UIS_REPO_ROOT:-$(cd "$SCRIPT_DIR/../../.." && pwd)}"
 ENV_FILE="$REPO_ROOT/.uis.secrets/cloud-accounts/azure-default.env"
+KUBECONFIG_PATH="${UIS_KUBECONFIG:-/mnt/urbalurbadisk/kubeconfig/kubeconf-all}"
+
+# ----- Flag parsing (first — --summary short-circuits before any preflight) -----
+SUMMARY=0
+OFFLINE=0
+DEEP=0
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --summary) SUMMARY=1; shift ;;
+        --offline) OFFLINE=1; shift ;;
+        --deep)    DEEP=1;    shift ;;
+        *) shift ;;
+    esac
+done
+
+# ----- Summary path (C-1 contract, consumed by `uis platform list`) -----
+# Emits exactly one tab-separated line: <state>\t<hint>. Fast (no cloud-API
+# calls unless --deep). State machine per the investigation's C-1:
+#   1. env file missing                                  → not-initialized
+#   2. env present, kubectl context absent in kubeconf-all → configured-not-running
+#   3. both present, probe succeeds                      → running
+#   4. both present, probe fails                         → unreachable
+#   With --offline, step 3/4 short-circuits to running (assumed; not probed).
+if (( SUMMARY )); then
+    if [[ ! -f "$ENV_FILE" ]]; then
+        printf 'not-initialized\trun '\''./uis platform init azure-aks'\'' to set up\n'
+        exit 0
+    fi
+    set -a
+    # shellcheck source=/dev/null
+    source "$ENV_FILE"
+    set +a
+    _cluster="${AZURE_AKS_CLUSTER_NAME:-azure-aks}"
+    if ! KUBECONFIG="$KUBECONFIG_PATH" kubectl config get-contexts "$_cluster" >/dev/null 2>&1; then
+        printf 'configured-not-running\trun '\''./uis platform up azure-aks'\'' to start it\n'
+        exit 0
+    fi
+    if (( OFFLINE )); then
+        printf 'running\t(offline — reachability not probed)\n'
+        exit 0
+    fi
+    if ! KUBECONFIG="$KUBECONFIG_PATH" kubectl --context "$_cluster" \
+            --request-timeout=3s get --raw /version >/dev/null 2>&1; then
+        printf 'unreachable\tAPI server timeout after 3s; run '\''./uis platform status azure-aks'\'' for details\n'
+        exit 0
+    fi
+    if (( DEEP )) && command -v az >/dev/null 2>&1 && az account show >/dev/null 2>&1; then
+        _rg="${AZURE_AKS_RESOURCE_GROUP:-rg-urbalurba-aks-weu}"
+        _region="${AZURE_AKS_LOCATION:-${AZURE_REGION:-westeurope}}"
+        mapfile -t _df < <(az aks show -g "$_rg" -n "$_cluster" \
+            --query "[kubernetesVersion, agentPoolProfiles[0].vmSize, agentPoolProfiles[0].count]" \
+            -o tsv 2>/dev/null)
+        if [[ "${#_df[@]}" -eq 3 ]]; then
+            printf 'running\t%s× %s in %s, k8s %s\n' "${_df[2]}" "${_df[1]}" "$_region" "${_df[0]}"
+        else
+            printf 'running\t(deep query failed — re-check Azure login)\n'
+        fi
+    else
+        printf 'running\tk8s cluster reachable\n'
+    fi
+    exit 0
+fi
 
 # ----- Refuse with pointer if env missing (consistent with up/down) -----
 if [[ ! -f "$ENV_FILE" ]]; then

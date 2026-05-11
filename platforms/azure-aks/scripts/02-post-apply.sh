@@ -97,22 +97,19 @@ print_success "Connected — $NODE_COUNT_ACTUAL node(s) ready"
 # the shared playbooks read TARGET_HOST from cluster-config.sh to pick the
 # kubectl context. Without the flip, Traefik (and every later service) would
 # try to deploy to `rancher-desktop`, which isn't even in the merged kubeconfig.
+#
+# Lockstep flip (Q4 of INVESTIGATE-active-cluster-visibility-ux.md): writes
+# both kubectl current-context AND cluster-config.sh in one shared writer.
+# Convergence point with 03-destroy.sh's auto-reset and cmd_platform_use's
+# manual flip — single writer means cluster-config.sh can never silently
+# diverge from the kubectl context.
 print_section "Step 3: Switch UIS target to AKS"
 
-CLUSTER_CONFIG="/mnt/urbalurbadisk/.uis.extend/cluster-config.sh"
-if [[ -f "$CLUSTER_CONFIG" ]]; then
-    sed -i.bak \
-        -e "s|^CLUSTER_TYPE=.*|CLUSTER_TYPE=\"azure-aks\"|" \
-        -e "s|^TARGET_HOST=.*|TARGET_HOST=\"${AZURE_AKS_CLUSTER_NAME}\"|" \
-        "$CLUSTER_CONFIG"
-    rm -f "${CLUSTER_CONFIG}.bak"
-    print_success "cluster-config.sh now points at: CLUSTER_TYPE=azure-aks, TARGET_HOST=${AZURE_AKS_CLUSTER_NAME}"
-    echo "  (Revert manually to switch back to rancher-desktop.)"
-else
-    print_warning "cluster-config.sh not found — skipping auto-flip"
-    echo "  Set CLUSTER_TYPE=\"azure-aks\" and TARGET_HOST=\"${AZURE_AKS_CLUSTER_NAME}\" yourself in:"
-    echo "    $CLUSTER_CONFIG"
-fi
+# shellcheck source=/dev/null
+source "/mnt/urbalurbadisk/provision-host/uis/lib/platform-switching.sh"
+pf_lockstep_flip "$AZURE_AKS_CLUSTER_NAME"
+print_success "cluster-config.sh + kubectl context flipped to: $AZURE_AKS_CLUSTER_NAME"
+echo "  (Use './uis platform use rancher-desktop' to switch back.)"
 
 # ─── Step 4: Storage class aliases ────────────────────────────────────────────
 print_section "Step 4: Storage class aliases"
