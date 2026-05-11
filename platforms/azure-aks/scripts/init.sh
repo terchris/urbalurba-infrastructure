@@ -50,6 +50,11 @@ register_providers              # block until all four Registered (Q6)
 write_env_atomically "$ENV_FILE"
 
 # ----- Summary -----
+# Show the env file as a host-relative path (the user runs `./uis` from their
+# repo root, so `.uis.secrets/...` is what they'd `cat` or `ls`). The bind
+# mount means the in-container `/mnt/urbalurbadisk/.uis.secrets/...` is the
+# *same file* — but displaying the container prefix to a novice on the host
+# side is just noise.
 echo
 echo "═══════════════════════════════════════════════════════════"
 echo " ✓ AKS setup ready"
@@ -58,6 +63,6 @@ echo "  Subscription: $AZURE_SUBSCRIPTION_NAME"
 echo "                ($AZURE_SUBSCRIPTION_ID)"
 echo "  Tenant:       $AZURE_TENANT_ID"
 echo "  Region:       $AZURE_REGION"
-echo "  Config:       $ENV_FILE"
+echo "  Config:       ${ENV_FILE#$REPO_ROOT/}"
 echo
-echo "Next: uis platform up azure-aks"
+echo "Next: ./uis platform up azure-aks"

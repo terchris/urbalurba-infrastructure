@@ -16,15 +16,15 @@ ENV_FILE="$REPO_ROOT/.uis.secrets/cloud-accounts/azure-default.env"
 
 # ----- Refuse with pointer if env missing (consistent with up/down) -----
 if [[ ! -f "$ENV_FILE" ]]; then
-    echo "✗ No config file found at $ENV_FILE" >&2
-    echo "  Run 'uis platform init azure-aks' first to set one up." >&2
+    echo "✗ No config file found at ${ENV_FILE#$REPO_ROOT/}" >&2
+    echo "  Run './uis platform init azure-aks' first to set one up." >&2
     exit 1
 fi
 
 # ----- Preflight: az is required (kubectl is best-effort below) -----
 if ! command -v az >/dev/null 2>&1; then
-    echo "✗ Azure CLI (az) is required for 'uis platform status azure-aks'." >&2
-    echo "  Run 'uis tools install azure-aks' to install it." >&2
+    echo "✗ Azure CLI (az) is required for './uis platform status azure-aks'." >&2
+    echo "  Run './uis tools install azure-aks' to install it." >&2
     exit 1
 fi
 
@@ -49,7 +49,7 @@ RG="${AZURE_AKS_RESOURCE_GROUP:-rg-urbalurba-aks-weu}"
 # with a misleading "subscription doesn't exist in cloud 'AzureCloud'".
 if ! az account show >/dev/null 2>&1; then
     echo "✗ Not signed in to Azure." >&2
-    echo "  Run 'az login' (or re-run 'uis platform init azure-aks') first." >&2
+    echo "  Run 'az login' (or re-run './uis platform init azure-aks') first." >&2
     exit 1
 fi
 
@@ -125,7 +125,7 @@ if ! az aks show -g "$RG" -n "$CLUSTER_NAME" >/dev/null 2>&1; then
     echo "  Subscription:   $AZURE_SUBSCRIPTION_ID"
     echo "  Cost:           €0/day  (no Azure resources running)"
     echo
-    echo "  Bring it up:    uis platform up azure-aks"
+    echo "  Bring it up:    ./uis platform up azure-aks"
     exit 0
 fi
 
@@ -197,4 +197,4 @@ fi
 echo "  Est. daily:     ~€${EST_DAILY}/day  (${NODE_COUNT}× $NODE_SIZE + IP/LB/disk overhead)"
 echo "  Spent so far:   ~€${SPENT}"
 echo
-echo "  Tear down:      uis platform down azure-aks"
+echo "  Tear down:      ./uis platform down azure-aks"

@@ -33,7 +33,7 @@ require_tools_or_die() {
     command -v tofu >/dev/null 2>&1 || missing+=("opentofu")
     if (( ${#missing[@]} > 0 )); then
         echo "✗ Missing required tool(s): ${missing[*]}"
-        echo "  Run 'uis tools install azure-aks' to install the AKS dependencies."
+        echo "  Run './uis tools install azure-aks' to install the AKS dependencies."
         exit 1
     fi
 }
@@ -47,9 +47,8 @@ require_interactive_or_die() {
     if [[ -n "${UIS_NONINTERACTIVE:-}" ]] || [[ ! -t 0 ]]; then
         echo "✗ This wizard requires an interactive terminal."
         if [[ -n "${UIS_NONINTERACTIVE:-}" ]]; then
-            echo "  UIS_NONINTERACTIVE is set, but uis platform init does not yet support"
-            echo "  non-interactive mode. (See Q5 in INVESTIGATE-aks-novice-onboarding.md."
-            echo "  Non-interactive mode lands when a real CI/scripted consumer surfaces.)"
+            echo "  UIS_NONINTERACTIVE is set, but './uis platform init' does not yet support"
+            echo "  non-interactive mode."
         else
             echo "  No TTY attached to stdin. Run this command directly from your terminal,"
             echo "  not via 'docker exec' without -it or piped from a script."
@@ -209,7 +208,7 @@ check_owner_or_contributor() {
     echo "✗ Role check failed after 3 attempts. Aborting."
     echo "  Either pick a different subscription, request a role assignment,"
     echo "  or activate Owner/Contributor via the PIM link above and re-run"
-    echo "  'uis platform init azure-aks'."
+    echo "  './uis platform init azure-aks'."
     exit 1
 }
 
@@ -284,7 +283,7 @@ check_quota() {
         echo
         echo "  Request a quota increase here:"
         echo "  https://portal.azure.com/#view/Microsoft_Azure_Capacity/QuotaMenuBlade/~/myQuotas"
-        echo "  Or pick a different region by re-running 'uis platform init azure-aks'."
+        echo "  Or pick a different region by re-running './uis platform init azure-aks'."
         exit 1
     fi
     echo "✓ Quota OK: $available vCPUs available in Standard_B family (need $total_vcpus)"
