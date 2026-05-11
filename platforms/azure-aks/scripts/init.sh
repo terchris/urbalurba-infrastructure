@@ -1,7 +1,7 @@
 #!/bin/bash
 # init.sh — Interactive wizard for AKS cluster onboarding.
 #
-# Spec: website/docs/ai-developer/plans/active/PLAN-uis-platform-init-azure-aks.md
+# Spec: website/docs/ai-developer/plans/completed/PLAN-uis-platform-init-azure-aks.md
 # Entry point: ./uis platform init azure-aks
 #
 # Orchestrates the helpers in provision-host/uis/lib/azure-discovery.sh in a

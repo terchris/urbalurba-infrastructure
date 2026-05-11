@@ -1,7 +1,7 @@
 #!/bin/bash
 # azure-discovery.sh — Shared Azure helpers for per-platform init wizards.
 #
-# Spec: website/docs/ai-developer/plans/active/PLAN-uis-platform-init-azure-aks.md
+# Spec: website/docs/ai-developer/plans/completed/PLAN-uis-platform-init-azure-aks.md
 # Sourced by platforms/azure-aks/scripts/init.sh and, in future, by
 # platforms/azure-microk8s/scripts/init.sh (which will share the auth +
 # subscription-picker + role-check + region-picker pieces).

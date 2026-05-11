@@ -1,7 +1,7 @@
 #!/bin/bash
 # down.sh — Tear down the AKS cluster (delegates to 03-destroy.sh).
 #
-# Spec: website/docs/ai-developer/plans/active/PLAN-uis-platform-down-azure-aks.md
+# Spec: website/docs/ai-developer/plans/completed/PLAN-uis-platform-down-azure-aks.md
 # Entry point: uis platform down azure-aks
 #
 # Thin pass-through. The interactive typed-name confirmation prompt and the

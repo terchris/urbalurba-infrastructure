@@ -6,13 +6,13 @@
 
 ## Status: Backlog
 
-**Goal**: Provide a self-contained runbook for the first manual run-through of `platforms/azure-aks/` against an Azure subscription. Explains every config variable (what it is, where to find it, what changes if you change it), every authentication step, and every script in the order it must run. Companion to [PLAN-001-aks-step1-verification.md](./PLAN-001-aks-step1-verification.md) — that plan's Phase 2 lists the eight scripts to run; this plan is the detailed *how* and *why* for someone doing it for the first time.
+**Goal**: Provide a self-contained runbook for the first manual run-through of `platforms/azure-aks/` against an Azure subscription. Explains every config variable (what it is, where to find it, what changes if you change it), every authentication step, and every script in the order it must run. Companion to [PLAN-001-aks-step1-verification.md](../completed/PLAN-001-aks-step1-verification.md) — that plan's Phase 2 lists the eight scripts to run; this plan is the detailed *how* and *why* for someone doing it for the first time.
 
 **Last Updated**: 2026-05-08
 
 **Investigation**: [INVESTIGATE-platform-provisioning-layer.md](./INVESTIGATE-platform-provisioning-layer.md) — Step 1 scope and verification bar.
 
-**Companion**: [PLAN-001-aks-step1-verification.md](./PLAN-001-aks-step1-verification.md) — drives Phase 1 (OpenTofu installer, shipped) and Phase 2 (this manual run-through). When PLAN-001 Phase 2 is in flight, the operator follows this document.
+**Companion**: [PLAN-001-aks-step1-verification.md](../completed/PLAN-001-aks-step1-verification.md) — drives Phase 1 (OpenTofu installer, shipped) and Phase 2 (this manual run-through). When PLAN-001 Phase 2 is in flight, the operator follows this document.
 
 **Note on the "b" suffix**: this is a runbook companion to PLAN-001, not the next ordered PLAN in the sequence. PLAN-002 (secrets-apply parity) is a separate scope. Future ordered plans (PLAN-003+) will continue the numbering.
 

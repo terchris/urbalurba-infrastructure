@@ -1,7 +1,7 @@
 #!/bin/bash
 # up.sh — Provision an AKS cluster end-to-end.
 #
-# Spec: website/docs/ai-developer/plans/active/PLAN-uis-platform-up-azure-aks.md
+# Spec: website/docs/ai-developer/plans/completed/PLAN-uis-platform-up-azure-aks.md
 # Entry point: uis platform up azure-aks
 #
 # Chains the three existing lifecycle scripts in order, with inter-step

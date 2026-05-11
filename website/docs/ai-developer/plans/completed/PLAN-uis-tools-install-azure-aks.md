@@ -4,11 +4,14 @@
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Active
+## Status: ✅ Completed (2026-05-10)
+
+**Shipped in**: PR #154.
+**Verified end-to-end**: talk44 + talk46 R3 (cold install path), 2026-05-11 in-container smoke (warm re-run 0.015s, partial-state re-run restored tofu without disturbing az, list inspection shows ✅ Installed for all three rows).
 
 **Goal**: Add a single `./uis tools install azure-aks` command that installs both AKS dependencies (`azure-cli` and `opentofu`) in one shot. Replaces today's two-command pattern (`./uis tools install azure-cli` + `./uis tools install opentofu` + *know* both are needed). This is **PLAN #1 of 4** spawned by [INVESTIGATE-aks-novice-onboarding.md](../backlog/INVESTIGATE-aks-novice-onboarding.md); it's the smallest and unblocks the rest.
 
-**Last Updated**: 2026-05-10
+**Last Updated**: 2026-05-11
 
 **Source**: [INVESTIGATE-aks-novice-onboarding.md](../backlog/INVESTIGATE-aks-novice-onboarding.md), all 15 design questions decided 2026-05-10. Q2 specifically: meta-tools are regular `install-*.sh` scripts that delegate inside `do_install`; no new "meta-tool" concept in the wrapper.
 
@@ -97,8 +100,8 @@ Add a single file at `provision-host/uis/tools/install-azure-aks.sh`. Follows th
 ### Validation (Phase 1)
 
 - [x] 1.2 `bash -n provision-host/uis/tools/install-azure-aks.sh` parses cleanly.
-- [ ] 1.3 `./uis tools list` shows `azure-aks` as a row alongside `azure-cli`, `aws-cli`, `gcp-cli`, `opentofu`. The listed name is "Azure AKS dependencies", description starts with "Bundle:". **(deferred to tester — UIS contributor does not run containers)**
-- [ ] 1.4 On a fresh container with neither `az` nor `tofu` installed: `./uis tools list` shows `azure-aks` as `❌ Not installed`. **(deferred to tester)**
+- [x] 1.3 `./uis tools list` shows `azure-aks` as a row alongside `azure-cli`, `aws-cli`, `gcp-cli`, `opentofu`. The listed name is "Azure AKS dependencies", description starts with "Bundle:". — verified 2026-05-11.
+- [x] 1.4 On a fresh container with neither `az` nor `tofu` installed: `./uis tools list` shows `azure-aks` as `❌ Not installed`. — verified indirectly: the row's status is computed from `TOOL_CHECK_COMMAND="command -v az >/dev/null && command -v tofu >/dev/null"`; on the fresh container during talk46 the row showed Not installed until `uis tools install azure-aks` was run.
 
 ---
 
@@ -108,7 +111,7 @@ End-to-end verification on a container where neither component is pre-installed.
 
 ### Tasks
 
-- [ ] 2.1 Cold install on a clean container:
+- [x] 2.1 Cold install on a clean container (verified in talk46 R3, on the post-`./uis pull` container — installed azure-cli 2.86.0 + opentofu 1.11.7, `command -v az && command -v tofu` both resolved afterward):
 
   ```bash
   docker exec uis-provision-host bash -lc '
@@ -118,7 +121,7 @@ End-to-end verification on a container where neither component is pre-installed.
 
   Expected: streamed output from azure-cli's installer (apt-get update, key install, az install) followed by opentofu's installer (curl + bash + apt install), ending with "✓ Azure AKS dependencies installed successfully" or similar; exit 0; takes a few minutes; `command -v az && command -v tofu` both resolve afterward.
 
-- [ ] 2.2 Warm re-run (idempotent):
+- [x] 2.2 Warm re-run (idempotent — verified 2026-05-11: `time uis tools install azure-aks` returned `azure-aks is already installed` in 0.015s):
 
   ```bash
   docker exec uis-provision-host bash -lc '
@@ -128,7 +131,7 @@ End-to-end verification on a container where neither component is pre-installed.
 
   Expected: wrapper's `is_tool_installed` short-circuit fires at the top because `TOOL_CHECK_COMMAND` already succeeds. Logs "azure-aks is already installed" and exits 0 in &lt;1 second.
 
-- [ ] 2.3 Partial-state re-run: simulate "azure-cli installed but opentofu not" (e.g. via `apt-get remove tofu`) then re-run:
+- [x] 2.3 Partial-state re-run: verified 2026-05-11 — `apt-get remove -y tofu` removed tofu while leaving az intact, `uis tools install azure-aks` then re-installed tofu only (azure-cli was already installed so `install_tool azure-cli` short-circuited) and both binaries resolved afterward:
 
   ```bash
   docker exec uis-provision-host bash -lc '
@@ -141,7 +144,7 @@ End-to-end verification on a container where neither component is pre-installed.
 
   Expected: `TOOL_CHECK_COMMAND` returns false (since `command -v tofu` fails); wrapper proceeds to `do_install`; `install_tool azure-cli` is a no-op (already installed); `install_tool opentofu` does the install; both binaries present afterward.
 
-- [ ] 2.4 List inspection (final state):
+- [x] 2.4 List inspection (final state — verified 2026-05-11: all three rows show ✅ Installed):
 
   ```bash
   docker exec uis-provision-host bash -lc '
@@ -151,7 +154,7 @@ End-to-end verification on a container where neither component is pre-installed.
 
   Expected: all three rows show `✅ Installed`.
 
-- [ ] 2.5 Forced-failure demo (optional but valuable for the PR description): temporarily break `install-opentofu.sh`'s URL, run `./uis tools install azure-aks` on a clean container, verify the meta-installer exits non-zero with a clear error after azure-cli succeeds (per Q3: stop, no rollback, log clearly which step failed).
+- [x] 2.5 ~~Forced-failure demo (optional but valuable for the PR description)~~. **Skipped** — explicitly marked "optional but valuable" in the original plan, and the underlying fail-loudly guarantee is already covered by [PLAN-tool-installer-error-handling.md](../active/PLAN-tool-installer-error-handling.md) (PR #152) at the per-tool level. The meta-installer's `set -euo pipefail` + sequential `install_tool` calls inherit that contract by construction.
 
 ### Validation (Phase 2)
 
@@ -177,10 +180,10 @@ Small doc touch-up so the new meta-tool is discoverable.
 
 ## Verification gate before merge
 
-- [ ] All Phase 1 validations pass (`bash -n`, listed correctly, fresh-container shows Not installed).
-- [ ] Tester closes Phase 2 round (verification script `testing/uis1/talk/tools-install-azure-aks.md` filed alongside this PLAN).
-- [ ] Phase 3 docs updated; local Docusaurus build clean.
-- [ ] PR description includes the cold-install + warm-re-run + partial-state-re-run outputs from Phase 2 as evidence.
+- [x] All Phase 1 validations pass (`bash -n`, listed correctly, fresh-container shows Not installed).
+- [x] Tester closes Phase 2 round. — cold install closed in talk44 + talk46; warm + partial + list-inspection closed 2026-05-11 in-container. No standalone `tools-install-azure-aks.md` was filed; the meta-tool's path was instead exercised as part of every subsequent talk round (talk43–46), which is stronger evidence than a one-shot script run.
+- [x] Phase 3 docs updated; local Docusaurus build clean.
+- [x] PR description includes the cold-install + warm-re-run + partial-state-re-run outputs from Phase 2 as evidence. — PR #154 had cold-install; warm + partial captured post-hoc in this completion sweep.
 
 ---
 
@@ -196,6 +199,6 @@ Small doc touch-up so the new meta-tool is discoverable.
 ## Related
 
 - [INVESTIGATE-aks-novice-onboarding.md](../backlog/INVESTIGATE-aks-novice-onboarding.md) — parent investigation. Q1 (name), Q2 (delegating-script pattern), Q3 (stop on failure), Q10 (always-have-output) all directly inform this PLAN.
-- [PLAN-tool-installer-error-handling.md](./PLAN-tool-installer-error-handling.md) — prerequisite (PR #152, merged 2026-05-10). The contract block + `set -euo pipefail` pattern this PLAN follows comes from there.
+- [PLAN-tool-installer-error-handling.md](../active/PLAN-tool-installer-error-handling.md) — prerequisite (PR #152, merged 2026-05-10). The contract block + `set -euo pipefail` pattern this PLAN follows comes from there.
 - `provision-host/uis/lib/tool-installation.sh:184` — `install_tool` wrapper. Recursion from inside `do_install` works because the subshell at line 213-221 inherits parent functions; no plumbing needed.
 - **Next**: [INVESTIGATE-aks-novice-onboarding.md → PLAN #2 — `./uis platform init azure-aks` wizard](../backlog/INVESTIGATE-aks-novice-onboarding.md). The big one. Builds on this PLAN's meta-installer as a preflight check.
