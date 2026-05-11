@@ -117,7 +117,7 @@ Tools:
 Platform:
   platform init <provider>    Interactive setup wizard for a cloud platform (e.g. azure-aks)
   platform up   <provider>    Provision the cluster end-to-end (bootstrap + apply + post-apply)
-  platform down <provider>    Tear down the cluster (PLAN #4 — not yet implemented)
+  platform down <provider>    Tear down the cluster (delegates to 03-destroy.sh)
 
 Tailscale:
   tailscale expose <service>    Expose a service via Tailscale Funnel
@@ -862,17 +862,11 @@ cmd_platform() {
             cmd_platform_up "$@"
             ;;
         down)
-            log_error "'uis platform down' is not yet implemented"
-            {
-                echo "(PLAN #4 follows PLAN #3 from INVESTIGATE-aks-novice-onboarding.md)"
-                echo "For now, tear down via the lifecycle script directly:"
-                echo "  ./platforms/<provider>/scripts/03-destroy.sh"
-            } >&2
-            exit "$EXIT_GENERAL_ERROR"
+            cmd_platform_down "$@"
             ;;
         "")
             log_error "Usage: uis platform <subcmd> <provider>"
-            echo "Subcommands: init | up | down (not yet implemented)" >&2
+            echo "Subcommands: init | up | down" >&2
             exit "$EXIT_GENERAL_ERROR"
             ;;
         *)
@@ -942,6 +936,32 @@ cmd_platform_up() {
     if [[ ! -f "$script" ]]; then
         log_error "Platform '$provider' has no up.sh (looked at $script)"
         { _list_available_platforms_with_script up.sh "$repo_root"; } >&2
+        exit "$EXIT_GENERAL_ERROR"
+    fi
+
+    export UIS_REPO_ROOT="$repo_root"
+    exec "$script"
+}
+
+# cmd_platform_down — same shape as cmd_platform_up but dispatches to down.sh.
+# The per-platform down.sh delegates to 03-destroy.sh (which owns the typed-name
+# confirmation prompt + UIS_DESTROY_CONFIRM env-var escape hatch), then prints
+# the config-preservation pointer per Q12.
+cmd_platform_down() {
+    local provider="${1:-}"
+    local repo_root
+    repo_root="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+
+    if [[ -z "$provider" ]]; then
+        log_error "Usage: uis platform down <provider>"
+        { _list_available_platforms_with_script down.sh "$repo_root"; } >&2
+        exit "$EXIT_GENERAL_ERROR"
+    fi
+
+    local script="$repo_root/platforms/$provider/scripts/down.sh"
+    if [[ ! -f "$script" ]]; then
+        log_error "Platform '$provider' has no down.sh (looked at $script)"
+        { _list_available_platforms_with_script down.sh "$repo_root"; } >&2
         exit "$EXIT_GENERAL_ERROR"
     fi
 

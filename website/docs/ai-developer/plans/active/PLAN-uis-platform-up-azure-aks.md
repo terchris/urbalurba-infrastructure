@@ -8,7 +8,7 @@
 
 **Goal**: Add `./uis platform up azure-aks` — a thin chain wrapper that runs the three existing lifecycle scripts (`00-bootstrap-state.sh` → `01-apply.sh` → `02-post-apply.sh`) in order with visible inter-step banners. This is **PLAN #3 of 4** spawned by [INVESTIGATE-aks-novice-onboarding.md](../backlog/INVESTIGATE-aks-novice-onboarding.md). Trivial once PLAN #2's `init` ships — the heavy lifting (sub discovery, role check, region pick, provider registration, env-file write) is done; `up` just executes the IaC.
 
-**Last Updated**: 2026-05-11
+**Last Updated**: 2026-05-11 — **bundled with PLAN #4 (`./uis platform down azure-aks`) in PR #156** so the AKS wrapper sequence ships as one logical change. Tester round at `testing/uis1/talk/talk.md` covers both wrappers.
 
 **Source**: [INVESTIGATE-aks-novice-onboarding.md](../backlog/INVESTIGATE-aks-novice-onboarding.md). Implements Q8 (three-layer split), Q9 (naive chain), Q10 (always have output), Q11 (refuse-with-pointer if env missing).
 
