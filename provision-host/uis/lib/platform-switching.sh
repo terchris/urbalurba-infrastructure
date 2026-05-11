@@ -28,10 +28,57 @@ PF_PROBE_TIMEOUT="${PF_PROBE_TIMEOUT:-3s}"
 PF_VALID_STATES_REGEX='^(not-initialized|configured-not-running|running|unreachable)$'
 
 
+# ----- pf_ensure_kubeconf_seeded ----------------------------------------------
+# Bootstrap `kubeconf-all` on a fresh container. The merged kubeconfig is only
+# *built* by 02-post-apply.sh during AKS provisioning, but `platform list` is
+# the discovery command novices use *before* any cluster work. Without a seed
+# step, a fresh container reports rancher-desktop as `not-initialized` even
+# when it's running on the host. F15 from talk48.
+#
+# Strategy: when kubeconf-all is missing, extract the rancher-desktop context
+# from the bind-mounted host kubeconfig at /home/ansible/.kube/config and write
+# it BOTH to:
+#   - rancher-desktop-kubeconf — the per-platform seed file the existing
+#     04-merge-kubeconf.yml playbook picks up. Ensures rancher-desktop survives
+#     the AKS merge that runs at the end of 02-post-apply.sh.
+#   - kubeconf-all directly — so `platform list` / `platform use` work right
+#     now, before any merge has run.
+#
+# Idempotent: returns 0 immediately if kubeconf-all already exists, or if the
+# host kubeconfig is missing / has no rancher-desktop context (clean CI env).
+# Safe to call from any pf_* entry point.
+pf_ensure_kubeconf_seeded() {
+    [[ -f "$PF_KUBECONFIG" ]] && return 0
+
+    local host_kc="/home/ansible/.kube/config"
+    [[ -f "$host_kc" ]] || return 0
+
+    # Does the host have a rancher-desktop context to seed from?
+    KUBECONFIG="$host_kc" kubectl config get-contexts rancher-desktop \
+        >/dev/null 2>&1 || return 0
+
+    local kc_dir
+    kc_dir="$(dirname "$PF_KUBECONFIG")"
+    mkdir -p "$kc_dir" 2>/dev/null || return 0
+
+    # Extract just the rancher-desktop context (--minify drops other contexts
+    # the user might have on their host; --flatten inlines cert/key data so
+    # the file is self-contained).
+    local seed_file="$kc_dir/rancher-desktop-kubeconf"
+    KUBECONFIG="$host_kc" kubectl config view \
+        --minify --context=rancher-desktop --flatten \
+        > "$seed_file" 2>/dev/null || { rm -f "$seed_file"; return 0; }
+
+    cp "$seed_file" "$PF_KUBECONFIG"
+    chmod 600 "$seed_file" "$PF_KUBECONFIG" 2>/dev/null || true
+}
+
+
 # ----- pf_active_platform -----------------------------------------------------
 # Echo the kubectl current-context name (the active platform per Q1). Empty
 # string if unset (e.g. fresh kubeconfig).
 pf_active_platform() {
+    pf_ensure_kubeconf_seeded
     KUBECONFIG="$PF_KUBECONFIG" kubectl config current-context 2>/dev/null || echo ""
 }
 
@@ -223,5 +270,5 @@ pf_banner() {
 
 # Make the functions available to child shells if needed (sub-shell invocations
 # from ansible's `shell` module, etc.). Most callers source this file directly.
-export -f pf_active_platform pf_probe_reachable pf_lockstep_flip
-export -f pf_list_platforms pf_platform_summary pf_banner
+export -f pf_ensure_kubeconf_seeded pf_active_platform pf_probe_reachable
+export -f pf_lockstep_flip pf_list_platforms pf_platform_summary pf_banner
