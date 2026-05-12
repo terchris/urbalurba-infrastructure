@@ -67,7 +67,18 @@ print_section "AKS PLATFORM — POST-APPLY SETUP"
 # location). 04-merge-kubeconf.yml reads the same directory and writes the
 # merged kubeconf-all there. So we point KUBECONFIG straight at $MERGED_KUBECONFIG
 # without any cross-directory copying.
+#
+# Seed rancher-desktop into the merge dir FIRST so the merge picks it up
+# alongside azure-aks-kubeconf. Without this seed step, the recycle → init →
+# up novice flow (no `pf_*` call before this script runs) produces a kubeconf-all
+# that contains only azure-aks → `platform use rancher-desktop` fails with
+# "not initialized" → destroy's auto-reset cascades to a broken state
+# (talk50 F18). Idempotent: fast-returns if seed file already exists.
 print_section "Step 1: Merge kubeconfig"
+
+# shellcheck source=/dev/null
+source "/mnt/urbalurbadisk/provision-host/uis/lib/platform-switching.sh"
+pf_ensure_kubeconf_seeded
 
 ANSIBLE_PLAYBOOK="/mnt/urbalurbadisk/ansible/playbooks/04-merge-kubeconf.yml"
 if [[ -f "$ANSIBLE_PLAYBOOK" ]]; then
@@ -105,8 +116,7 @@ print_success "Connected — $NODE_COUNT_ACTUAL node(s) ready"
 # diverge from the kubectl context.
 print_section "Step 3: Switch UIS target to AKS"
 
-# shellcheck source=/dev/null
-source "/mnt/urbalurbadisk/provision-host/uis/lib/platform-switching.sh"
+# platform-switching.sh was sourced before Step 1's pre-merge seed.
 pf_lockstep_flip "$AZURE_AKS_CLUSTER_NAME"
 print_success "cluster-config.sh + kubectl context flipped to: $AZURE_AKS_CLUSTER_NAME"
 echo "  (Use './uis platform use rancher-desktop' to switch back.)"

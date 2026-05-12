@@ -34,26 +34,38 @@ PF_VALID_STATES_REGEX='^(not-initialized|configured-not-running|running|unreacha
 
 
 # ----- pf_ensure_kubeconf_seeded ----------------------------------------------
-# Bootstrap `kubeconf-all` on a fresh container. The merged kubeconfig is only
-# *built* by 02-post-apply.sh during AKS provisioning, but `platform list` is
-# the discovery command novices use *before* any cluster work. Without a seed
-# step, a fresh container reports rancher-desktop as `not-initialized` even
-# when it's running on the host. F15 from talk48.
+# Bootstrap rancher-desktop into the merge dir so 04-merge-kubeconf.yml builds
+# a kubeconf-all that contains rancher-desktop. The merged kubeconfig is built
+# by 02-post-apply.sh during AKS provisioning, but `platform list` is the
+# discovery command novices use *before* any cluster work, so we need a seed
+# even on fresh containers. F15 from talk48.
 #
-# Strategy: when kubeconf-all is missing, extract the rancher-desktop context
-# from the bind-mounted host kubeconfig at /home/ansible/.kube/config and write
-# it BOTH to:
-#   - rancher-desktop-kubeconf — the per-platform seed file the existing
-#     04-merge-kubeconf.yml playbook picks up. Ensures rancher-desktop survives
-#     the AKS merge that runs at the end of 02-post-apply.sh.
-#   - kubeconf-all directly — so `platform list` / `platform use` work right
-#     now, before any merge has run.
+# Strategy: when the seed file (rancher-desktop-kubeconf) is missing in the
+# merge dir, extract the rancher-desktop context from the bind-mounted host
+# kubeconfig at /home/ansible/.kube/config and write it to:
+#   - rancher-desktop-kubeconf — the per-platform seed file 04-merge-kubeconf.yml
+#     picks up. Ensures rancher-desktop survives every merge that runs.
+#   - kubeconf-all + legacy kubeconf-all (only when kubeconf-all is missing) —
+#     so `platform list` / `platform use` work right now, before any merge.
 #
-# Idempotent: returns 0 immediately if kubeconf-all already exists, or if the
-# host kubeconfig is missing / has no rancher-desktop context (clean CI env).
-# Safe to call from any pf_* entry point.
+# The idempotency token is the seed file (rancher-desktop-kubeconf), NOT
+# kubeconf-all. F18 from talk50: gating on kubeconf-all was wrong because
+# 02-post-apply.sh can create kubeconf-all via the merge without going through
+# the seeder, leaving rancher-desktop out of the merged kubeconfig forever
+# and cascading to a failed auto-reset on destroy.
+#
+# Safe to call from any pf_* entry point AND from 02-post-apply.sh before its
+# merge step. Returns 0 immediately if already seeded, the host kubeconfig is
+# missing, or the host has no rancher-desktop context (clean CI env).
 pf_ensure_kubeconf_seeded() {
-    [[ -f "$PF_KUBECONFIG" ]] && return 0
+    local kc_dir
+    kc_dir="$(dirname "$PF_KUBECONFIG")"
+    local seed_file="$kc_dir/rancher-desktop-kubeconf"
+
+    # Idempotent based on the seed file — the actual artifact we're
+    # responsible for producing. (Pre-F18 fix this was `[[ -f "$PF_KUBECONFIG" ]]`
+    # which had the talk50 hole.)
+    [[ -f "$seed_file" ]] && return 0
 
     local host_kc="/home/ansible/.kube/config"
     [[ -f "$host_kc" ]] || return 0
@@ -62,36 +74,38 @@ pf_ensure_kubeconf_seeded() {
     KUBECONFIG="$host_kc" kubectl config get-contexts rancher-desktop \
         >/dev/null 2>&1 || return 0
 
-    local kc_dir
-    kc_dir="$(dirname "$PF_KUBECONFIG")"
     mkdir -p "$kc_dir" 2>/dev/null || return 0
 
     # Extract just the rancher-desktop context (--minify drops other contexts
     # the user might have on their host; --flatten inlines cert/key data so
     # the file is self-contained).
-    local seed_file="$kc_dir/rancher-desktop-kubeconf"
     KUBECONFIG="$host_kc" kubectl config view \
         --minify --context=rancher-desktop --flatten \
         > "$seed_file" 2>/dev/null || { rm -f "$seed_file"; return 0; }
+    chmod 600 "$seed_file" 2>/dev/null || true
 
-    cp "$seed_file" "$PF_KUBECONFIG"
-    chmod 600 "$seed_file" "$PF_KUBECONFIG" 2>/dev/null || true
+    # If kubeconf-all is missing (e.g. first-ever seed before any merge has
+    # run — the `./uis platform list` cold-start case), write it from the seed
+    # so platform list / platform use work right away.
+    # If kubeconf-all already exists (e.g. from a prior platform up's merge
+    # that didn't include rancher-desktop), don't overwrite it — the next
+    # merge in 02-post-apply.sh will pick up the seed file we just wrote and
+    # rebuild kubeconf-all correctly.
+    if [[ ! -f "$PF_KUBECONFIG" ]]; then
+        cp --remove-destination "$seed_file" "$PF_KUBECONFIG" 2>/dev/null || true
+        chmod 600 "$PF_KUBECONFIG" 2>/dev/null || true
 
-    # Mirror the seed to the legacy bind-mounted kubeconfig too — the ~100
-    # ansible playbooks under ansible/playbooks/ read from there, not from
-    # PF_KUBECONFIG. Without this mirror, `./uis deploy <service>` on a
-    # rancher-desktop-only host would fail at task 1 of the playbook.
-    #
-    # --remove-destination is required: on first-run the legacy path is a
-    # symlink (kubeconf-all -> /home/ansible/.kube/config) pointing into the
-    # host's read-only bind-mounted kubeconfig. A plain `cp` follows the
-    # symlink and tries to write the host file → fails with EROFS. The flag
-    # makes cp unlink the symlink first and write a fresh regular file.
-    local legacy_dir
-    legacy_dir="$(dirname "$PF_LEGACY_KUBECONFIG")"
-    if [[ -d "$legacy_dir" ]]; then
-        cp --remove-destination "$PF_KUBECONFIG" "$PF_LEGACY_KUBECONFIG" 2>/dev/null || true
-        chmod 600 "$PF_LEGACY_KUBECONFIG" 2>/dev/null || true
+        # Mirror to legacy bind-mounted kubeconfig — the ~100 ansible playbooks
+        # under ansible/playbooks/ read from there, not from PF_KUBECONFIG.
+        # --remove-destination handles the symlink (kubeconf-all -> /home/ansible/
+        # .kube/config) that lives at the legacy path on first-run; without it
+        # cp follows the symlink into the read-only host kubeconfig (EROFS).
+        local legacy_dir
+        legacy_dir="$(dirname "$PF_LEGACY_KUBECONFIG")"
+        if [[ -d "$legacy_dir" ]]; then
+            cp --remove-destination "$seed_file" "$PF_LEGACY_KUBECONFIG" 2>/dev/null || true
+            chmod 600 "$PF_LEGACY_KUBECONFIG" 2>/dev/null || true
+        fi
     fi
 }
 
