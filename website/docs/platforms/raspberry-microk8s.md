@@ -1,7 +1,7 @@
 # Raspberry Pi MicroK8s Host Documentation
 
 :::caution Legacy `hosts/*` path — not yet migrated to UIS CLI
-This platform still runs through the legacy `hosts/raspberry-microk8s/` scripts; it has not been migrated to the `platforms/*` + `./uis` CLI shape that [Rancher Desktop](./rancher-kubernetes.md) and [Azure AKS](./azure-aks.md) use. The instructions below describe the legacy flow and may be outdated.
+This platform still runs through the legacy `hosts/raspberry-microk8s/` scripts; it has not been migrated to the `platforms/*` + `./uis platform <verb>` CLI shape that [Rancher Desktop](./rancher-kubernetes.md) and [Azure AKS](./azure-aks.md) use. Concretely, **`./uis platform list/use/init/up/status/down` do not work for this target yet** — you'll see it omitted from the platform list output. The instructions below describe the legacy flow and may be outdated.
 
 The migration (or formal removal) of all legacy `hosts/*` platforms is tracked at [INVESTIGATE-migrate-hosts-to-platforms.md](../ai-developer/plans/backlog/INVESTIGATE-migrate-hosts-to-platforms.md). Whether to keep first-class RPi support is one of the open questions there — the current state is "still works but unmaintained".
 :::

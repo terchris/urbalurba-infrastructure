@@ -225,7 +225,7 @@ The chain orchestrator. Mirrors `init.sh`'s shape (banner + preflight + delegate
     - `01-apply.sh`: `tofu apply — no changes` in ~30s.
     - `02-post-apply.sh`: kubeconfig already merged, storage classes already aliased, Traefik already installed.
     - Final banner. Total elapsed should be ~1–2 minutes.
-  - **R4** — **deploy verification**: `uis deploy nginx` against the live AKS cluster. Confirm the cluster-config flip from R2 routed the deploy to AKS (per [INVESTIGATE-active-cluster-visibility-ux.md](../backlog/INVESTIGATE-active-cluster-visibility-ux.md), this is currently a silent-failure mode; layered visibility lands later). `kubectl get pods -n nginx` shows the pod running.
+  - **R4** — **deploy verification**: `uis deploy nginx` against the live AKS cluster. Confirm the cluster-config flip from R2 routed the deploy to AKS (per [INVESTIGATE-active-cluster-visibility-ux.md](./INVESTIGATE-active-cluster-visibility-ux.md), this is currently a silent-failure mode; layered visibility lands later). `kubectl get pods -n nginx` shows the pod running.
   - **R5** — **cost reassurance + tear-down hint visible**: confirm the wizard printed `⚠ This will create or update Azure resources and may incur cost (~€1/day)` before any actual API call. After R2-R4, run `./platforms/azure-aks/scripts/03-destroy.sh` manually (PLAN #4's `down` wrapper isn't shipped yet). Cluster goes away, cost stops.
 
 ### Validation (Phase 3)
@@ -259,6 +259,6 @@ The chain orchestrator. Mirrors `init.sh`'s shape (banner + preflight + delegate
 - [INVESTIGATE-aks-novice-onboarding.md](../backlog/INVESTIGATE-aks-novice-onboarding.md) — parent investigation. Q8, Q9, Q10, Q11 directly inform this PLAN.
 - [PLAN-uis-tools-install-azure-aks.md](./PLAN-uis-tools-install-azure-aks.md) — PLAN #1 (PR #154, merged).
 - [PLAN-uis-platform-init-azure-aks.md](./PLAN-uis-platform-init-azure-aks.md) — PLAN #2 (PR #155, merged). `init` writes the env file that `up` reads.
-- [INVESTIGATE-active-cluster-visibility-ux.md](../backlog/INVESTIGATE-active-cluster-visibility-ux.md) — once `up` lands and the operator has 2+ clusters (rancher-desktop + azure-aks), Layer 1's per-command banner + Layer 4's `uis platform list/use` become the next safety problem. R4 of Phase 3 explicitly notes this.
+- [INVESTIGATE-active-cluster-visibility-ux.md](./INVESTIGATE-active-cluster-visibility-ux.md) — once `up` lands and the operator has 2+ clusters (rancher-desktop + azure-aks), Layer 1's per-command banner + Layer 4's `uis platform list/use` become the next safety problem. R4 of Phase 3 explicitly notes this.
 - `platforms/azure-aks/scripts/{00-bootstrap-state,01-apply,02-post-apply}.sh` — the three lifecycle scripts `up.sh` chains. Unchanged in this PR.
 - **Next**: PLAN #4 — `./uis platform down azure-aks` pass-through to `03-destroy.sh`. Trivial; under a day.

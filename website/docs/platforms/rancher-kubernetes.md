@@ -87,9 +87,34 @@ All services are accessible in your browser via `*.localhost` URLs:
 | pgAdmin | [http://pgadmin.localhost](http://pgadmin.localhost) |
 | ArgoCD | [http://argocd.localhost](http://argocd.localhost) |
 
-## Context Switching
+## Using UIS platform commands with Rancher Desktop
 
-If you manage multiple clusters, switch between them:
+Rancher Desktop is one of the platforms `uis platform list` knows about. Confirm:
+
+```bash
+./uis platform list
+```
+
+Expected (when Rancher Desktop is running on your host):
+
+```
+Active: rancher-desktop
+
+PLATFORM          STATUS
+rancher-desktop   ✓ running  (active)    local k3s
+```
+
+If you're switching back from a cloud platform (e.g. after `./uis platform down azure-aks`), UIS auto-resets the active platform to `rancher-desktop`. To switch manually:
+
+```bash
+./uis platform use rancher-desktop
+```
+
+Rancher Desktop doesn't have an `init` step — you set it up at the OS level via the Rancher Desktop app, then `./uis start` connects to it. See the [Platforms overview](./index.md) for the full `uis platform` mechanic and how the active-platform state is tracked.
+
+## Context Switching (advanced)
+
+If you prefer to use `kubectl` directly (without going through `uis platform use`):
 
 ```bash
 ./uis shell
@@ -97,6 +122,8 @@ kubectl config use-context rancher-desktop   # Local development
 kubectl config use-context azure-aks         # Cloud production
 kubectl config current-context               # Verify current
 ```
+
+Note that direct `kubectl` switching only flips half the active-platform state — `cluster-config.sh` won't follow. `./uis deploy <service>` reads `cluster-config.sh` to pick its target, so the two can disagree. Prefer `./uis platform use <name>` which flips both atomically. See [How it works — cluster targeting](./index.md#how-it-works--cluster-targeting).
 
 ## Factory Reset
 

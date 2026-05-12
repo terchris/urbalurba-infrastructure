@@ -21,6 +21,29 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
+      label: 'Platforms',
+      link: {
+        type: 'doc',
+        id: 'platforms/index',
+      },
+      items: [
+        'platforms/rancher-kubernetes',
+        'platforms/azure-aks',
+        'platforms/azure-microk8s',
+        'platforms/multipass-microk8s',
+        'platforms/raspberry-microk8s',
+        {
+          type: 'category',
+          label: 'Cloud Init',
+          items: [
+            'platforms/cloud-init/index',
+            'platforms/cloud-init/secrets',
+          ],
+        },
+      ],
+    },
+    {
+      type: 'category',
       label: 'Services',
       link: {
         type: 'generated-index',
@@ -184,29 +207,6 @@ const sidebars: SidebarsConfig = {
         'developing/argocd-pipeline',
         'developing/argocd-commands',
         'developing/argocd-dashboard',
-      ],
-    },
-    {
-      type: 'category',
-      label: 'Platforms',
-      link: {
-        type: 'doc',
-        id: 'platforms/index',
-      },
-      items: [
-        'platforms/rancher-kubernetes',
-        'platforms/azure-aks',
-        'platforms/azure-microk8s',
-        'platforms/multipass-microk8s',
-        'platforms/raspberry-microk8s',
-        {
-          type: 'category',
-          label: 'Cloud Init',
-          items: [
-            'platforms/cloud-init/index',
-            'platforms/cloud-init/secrets',
-          ],
-        },
       ],
     },
     {

@@ -1,10 +1,25 @@
 # Plan: `./uis platform list / use` + per-command platform banner
 
-> **IMPLEMENTATION RULES:** Before implementing this plan, read and follow:
+## Status: Completed — shipped 2026-05-12
+
+**Shipped**: PRs #161 (initial implementation) + #162 (F15 kubeconf-all seeding) + #163 (F16 legacy lockstep sync) + #164 (F18 pre-merge seed) + #165 (F17 destroyed-context cleanup). All seven Phases of this plan delivered.
+
+**Verified end-to-end** in `testing/uis1/talk/talk.md` round-by-round across talks 48–51:
+- talk48: initial verification — surfaced F14 (no-TTY exit in apply prompt), F15 (kubeconf-all not seeded), F16 (silent wrong-cluster deploy via legacy kubeconfig divergence), F17 (post-destroy `✗ unreachable` cosmetic), F18 (seeder gate too narrow → recycle→up→use cascade).
+- talk49–50: each F-finding fixed in its own PR, with the lockstep mechanic re-verified each round.
+- talk51 (final): full novice path (`./uis tools install azure-aks` → `init` → `up` → `deploy nginx` → `use rancher-desktop` round-trip → `down`) ran end-to-end without manual intervention. All four locations (in-container kubeconf-all, legacy kubeconf-all, `cluster-config.sh` CLUSTER_TYPE + TARGET_HOST) stayed in lockstep. F14/F15/F16/F18 closed; F17 closed in PR #165.
+
+**User-facing documentation** lives in `website/docs/platforms/index.md` (the platform hub) and `website/docs/platforms/azure-aks.md` (the novice walkthrough). The CLI reference at `website/docs/reference/uis-cli-reference.md` carries the full subcommand list.
+
+**Source investigation** (also moved to `completed/` in the same docs PR): [INVESTIGATE-active-cluster-visibility-ux.md](./INVESTIGATE-active-cluster-visibility-ux.md).
+
+---
+
+> **IMPLEMENTATION RULES (historical):** Before implementing this plan, read and follow:
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Active
+## Status: Active (historical — kept for the plan record below)
 
 **Goal**: Add `./uis platform list` (potential platforms + status), `./uis platform use <name>` (refuse-unless-initialized-and-reachable + lockstep flip), and a per-command banner at the top of every cluster-touching `./uis` command — so a user with 2+ platforms can see what they have, switch safely between them, and tell what platform any command is targeting before it runs. **Layer 4 + Layer 1 of [INVESTIGATE-active-cluster-visibility-ux.md](./INVESTIGATE-active-cluster-visibility-ux.md), bundled per Q2 / C-9.**
 
@@ -13,7 +28,7 @@
 **Source**: [INVESTIGATE-active-cluster-visibility-ux.md](./INVESTIGATE-active-cluster-visibility-ux.md) — design questions Q1–Q5 + implementation contracts C-1 through C-9, locked through three gap-and-contradiction sweeps. This PLAN drafts the implementation against those contracts; design decisions don't get revisited here.
 
 **Related (context)**:
-- [INVESTIGATE-aks-novice-onboarding.md](./INVESTIGATE-aks-novice-onboarding.md) — sibling investigation that shipped `./uis platform init / up / status / down` via PRs #154–#159. This PLAN extends the `./uis platform` family with `list` + `use` and threads the banner through every cluster-touching command in the same image.
+- [INVESTIGATE-aks-novice-onboarding.md](../backlog/INVESTIGATE-aks-novice-onboarding.md) — sibling investigation that shipped `./uis platform init / up / status / down` via PRs #154–#159. This PLAN extends the `./uis platform` family with `list` + `use` and threads the banner through every cluster-touching command in the same image.
 
 ---
 

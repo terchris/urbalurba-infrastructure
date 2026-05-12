@@ -22,6 +22,62 @@ These commands run on the host machine and manage the UIS container.
 | `./uis logs [--tail N]` | Show container logs (default: last 50 lines) |
 | `./uis build` | Build the container image locally as `uis-provision-host:local` |
 
+## Platform Management
+
+UIS targets multiple Kubernetes platforms (Rancher Desktop, Azure AKS, …). The `uis platform` subcommands surface them all under a single command interface. See [Platforms overview](../platforms/index.md) for the full mechanic.
+
+| Command | Description |
+|---------|-------------|
+| `./uis platform list [--offline\|--deep]` | List all platforms and their state. `--offline` skips reachability probe; `--deep` adds per-platform extras (e.g. cluster version, cost). |
+| `./uis platform use [<name>] [--offline]` | Switch the active platform — kubectl context + `cluster-config.sh` flip together. No arg → interactive picker over reachable platforms. `--offline` allows switching to an unreachable platform (e.g. to clean up stale state). |
+| `./uis platform init <provider>` | Interactive setup wizard for a cloud platform. Writes `.uis.secrets/cloud-accounts/<provider>-default.env`. |
+| `./uis platform up <provider>` | Provision the cluster end-to-end. Chains bootstrap + tofu apply + post-apply configuration. Auto-flips active platform to the new cluster on success. |
+| `./uis platform status <provider>` | Show cluster state, external IP, and rough cost estimate. Does not target the active platform — reports on the named one. |
+| `./uis platform down <provider>` | Tear down the cluster. Requires typing the cluster name to confirm (irreversible). Auto-resets active platform back to `rancher-desktop` on success. |
+
+### `platform list` — canonical output
+
+```
+$ ./uis platform list
+Active: rancher-desktop
+
+PLATFORM          STATUS
+rancher-desktop   ✓ running  (active)    local k3s
+azure-aks         · configured, not running  (run './uis platform up azure-aks' to start it)
+```
+
+Four possible state values per row: `✓ running`, `· configured, not running`, `· not initialized`, `✗ unreachable`. See [Platforms overview](../platforms/index.md) for what each means.
+
+### `platform use` — canonical output
+
+```
+$ ./uis platform use rancher-desktop
+✓ Switched: azure-aks → rancher-desktop
+```
+
+```
+$ ./uis platform use      # no arg → interactive picker
+     PLATFORM          STATUS
+[1] rancher-desktop   ✓ running  (currently active)    local k3s
+    azure-aks         · configured, not running  (run './uis platform up azure-aks' to start it)
+
+Pick a platform [1-1]:
+```
+
+Only `running` platforms get selectable numbers. Switching to a `not initialized` or `unreachable` platform doesn't have a meaningful outcome.
+
+### Banner on every cluster-touching command
+
+`./uis deploy`, `./uis undeploy`, `./uis list`, `./uis status`, `./uis configure`, `./uis expose`, `./uis stack install`, and `./uis test all` all print a one-line banner identifying the active platform before running:
+
+```
+$ ./uis deploy nginx
+ℹ  Platform: azure-aks (reachable)
+(deploy output follows…)
+```
+
+If no platform is active or the active platform is unreachable, the banner aborts the command with a recovery hint. See [Platforms overview](../platforms/index.md#banner-on-every-cluster-touching-command) for all four banner cases.
+
 ## Service Management
 
 ### Discovery
