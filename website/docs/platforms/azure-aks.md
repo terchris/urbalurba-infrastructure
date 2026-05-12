@@ -82,9 +82,9 @@ Expected closing banner:
 ═══════════════════════════════════════════════════════════
  ✓ AKS setup ready
 ═══════════════════════════════════════════════════════════
-  Subscription: Azure subscription 1
-                (077d4d11-24e1-4fdc-a5f8-051eb6408208)
-  Tenant:       780144c7-ffef-4e8f-93f2-18d3058eab0f
+  Subscription: <Your Subscription Name>
+                (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
+  Tenant:       xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
   Region:       westeurope
   Config:       .uis.secrets/cloud-accounts/azure-default.env
 
@@ -107,7 +107,7 @@ The flow you'll see:
 ═══════════════════════════════════════════════════════════
  AKS cluster provisioning
  (uis platform up azure-aks)
- Subscription: 077d4d11-24e1-4fdc-a5f8-051eb6408208
+ Subscription: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
  Region:       westeurope
 ═══════════════════════════════════════════════════════════
 
@@ -149,7 +149,7 @@ POST-APPLY COMPLETE — CLUSTER READY
 
 Cluster:        azure-aks
 Nodes:          1
-External IP:    20.126.163.208
+External IP:    <a public IP assigned by Azure>
 
 Manage cluster:
   ./uis platform status azure-aks                   # state, external IP, cost
@@ -234,7 +234,7 @@ DESTROY COMPLETE
 ✅ Deleted resource group: rg-urbalurba-aks-weu
 ✅ Removed kubectl context
 
-💾 State preserved in:     sa077d4d1124e14fdctf
+💾 State preserved in:     <your state storage account>
 
 💰 Estimated savings: ~€1/day (Standard_B2s_v2 x 1)
 
