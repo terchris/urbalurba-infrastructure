@@ -193,6 +193,55 @@ pf_lockstep_flip() {
 }
 
 
+# ----- pf_remove_context ------------------------------------------------------
+# Delete a kubectl context (plus the cluster + user entries it references)
+# from kubeconf-all in-container, then sync to legacy. Idempotent — silent
+# no-op if the context isn't present.
+#
+# Called from per-platform 03-destroy.sh scripts after a successful teardown.
+# Without this cleanup, `uis platform list` post-destroy shows the destroyed
+# platform as `✗ unreachable (API timeout)` against the dead API server URL
+# still in the kubeconfig, instead of the correct `· configured, not running`
+# (env file present, no live context). F17 from talk49/50.
+#
+# Why also delete the cluster + user: kubectl's `delete-context` only removes
+# the context entry, leaving the cluster/user entries behind as orphans. They
+# don't affect platform list semantics but bloat the file over destroy cycles
+# and leak the stale API server URL into anything that reads the merged config.
+pf_remove_context() {
+    local context="${1:?pf_remove_context: missing context argument}"
+
+    [[ -f "$PF_KUBECONFIG" ]] || return 0
+    KUBECONFIG="$PF_KUBECONFIG" kubectl config get-contexts "$context" \
+        >/dev/null 2>&1 || return 0
+
+    # Capture the cluster + user names this context references before deleting
+    # the context (which is what makes them findable).
+    local cluster_ref user_ref
+    cluster_ref="$(KUBECONFIG="$PF_KUBECONFIG" kubectl config view \
+        -o "jsonpath={.contexts[?(@.name=='$context')].context.cluster}" 2>/dev/null)"
+    user_ref="$(KUBECONFIG="$PF_KUBECONFIG" kubectl config view \
+        -o "jsonpath={.contexts[?(@.name=='$context')].context.user}" 2>/dev/null)"
+
+    KUBECONFIG="$PF_KUBECONFIG" kubectl config delete-context "$context" \
+        >/dev/null 2>&1 || true
+    [[ -n "$cluster_ref" ]] && \
+        KUBECONFIG="$PF_KUBECONFIG" kubectl config delete-cluster "$cluster_ref" \
+            >/dev/null 2>&1 || true
+    [[ -n "$user_ref" ]] && \
+        KUBECONFIG="$PF_KUBECONFIG" kubectl config delete-user "$user_ref" \
+            >/dev/null 2>&1 || true
+
+    # Sync to legacy bind-mount. Plain cp — kubectl writes to the bind mount
+    # trigger the lima/9P flock phantom-file bug (see PR #163).
+    if [[ -d "$(dirname "$PF_LEGACY_KUBECONFIG")" ]]; then
+        cp --remove-destination "$PF_KUBECONFIG" "$PF_LEGACY_KUBECONFIG" \
+            2>/dev/null || true
+        chmod 600 "$PF_LEGACY_KUBECONFIG" 2>/dev/null || true
+    fi
+}
+
+
 # ----- pf_list_platforms ------------------------------------------------------
 # Emit the inventory of "potential platforms UIS knows about" to stdout, one
 # name per line. Sources per Q3:
@@ -334,4 +383,5 @@ pf_banner() {
 # Make the functions available to child shells if needed (sub-shell invocations
 # from ansible's `shell` module, etc.). Most callers source this file directly.
 export -f pf_ensure_kubeconf_seeded pf_active_platform pf_probe_reachable
-export -f pf_lockstep_flip pf_list_platforms pf_platform_summary pf_banner
+export -f pf_lockstep_flip pf_remove_context pf_list_platforms
+export -f pf_platform_summary pf_banner

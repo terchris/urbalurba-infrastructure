@@ -171,9 +171,23 @@ fi
 # ─── Clean up kubeconfig ──────────────────────────────────────────────────────
 print_section "Cleaning up kubeconfig"
 
+# shellcheck source=/dev/null
+source "/mnt/urbalurbadisk/provision-host/uis/lib/platform-switching.sh"
+
+# Host kubeconfig (/home/ansible/.kube/config) — defensive cleanup. UIS doesn't
+# normally write the AKS context there, but a user may have run
+# `az aks get-credentials` manually outside UIS.
 if kubectl config get-contexts "$AZURE_AKS_CLUSTER_NAME" >/dev/null 2>&1; then
     kubectl config delete-context "$AZURE_AKS_CLUSTER_NAME" >/dev/null 2>&1 || true
-    print_success "Removed kubectl context: $AZURE_AKS_CLUSTER_NAME"
+    print_success "Removed kubectl context from host kubeconfig: $AZURE_AKS_CLUSTER_NAME"
+fi
+
+# In-container kubeconf-all + legacy bind-mount. Without this, `uis platform
+# list` post-destroy shows the destroyed platform as `✗ unreachable` (probe
+# times out against the dead API URL still in the kubeconfig) instead of
+# `· configured, not running`. F17 from talk49/50.
+if pf_remove_context "$AZURE_AKS_CLUSTER_NAME"; then
+    print_success "Removed $AZURE_AKS_CLUSTER_NAME from kubeconf-all (in-container + legacy)"
 fi
 
 if [[ -f "$KUBECONFIG_FILE" ]]; then
@@ -192,8 +206,6 @@ fi
 # kubectl context.
 print_section "Reset UIS target to rancher-desktop"
 
-# shellcheck source=/dev/null
-source "/mnt/urbalurbadisk/provision-host/uis/lib/platform-switching.sh"
 pf_lockstep_flip "rancher-desktop"
 print_success "cluster-config.sh + kubectl context reset to: rancher-desktop"
 
