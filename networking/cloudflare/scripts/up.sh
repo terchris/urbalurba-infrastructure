@@ -21,7 +21,15 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="${UIS_REPO_ROOT:-$(cd "$SCRIPT_DIR/../../.." && pwd)}"
 ENV_FILE="$REPO_ROOT/.uis.secrets/service-keys/cloudflare.env"
 ENV_FILE_REL=".uis.secrets/service-keys/cloudflare.env"
-UIS_CLI="$REPO_ROOT/uis"
+# Resolve the uis CLI: inside the container the binary lives at /usr/local/bin/uis
+# (on PATH); on a developer host the repo-root './uis' is what works. Try the
+# repo-relative path first to keep developer-host workflows honest, then fall
+# back to PATH for the container.
+if [[ -x "$REPO_ROOT/uis" ]]; then
+    UIS_CLI="$REPO_ROOT/uis"
+else
+    UIS_CLI="$(command -v uis 2>/dev/null || true)"
+fi
 PLAYBOOK="$REPO_ROOT/ansible/playbooks/820-deploy-network-cloudflare-tunnel.yml"
 
 # ----- Refuse with pointer if init has not been run -----
@@ -51,8 +59,9 @@ echo
 
 # ----- 1/2 Push token into urbalurba-secrets via the standard pipeline -----
 echo "▶ 1/2 Pushing token into urbalurba-secrets (uis secrets generate + apply)..."
-if [[ ! -x "$UIS_CLI" ]]; then
-    echo "✗ './uis' not found or not executable at $REPO_ROOT/uis" >&2
+if [[ -z "$UIS_CLI" || ! -x "$UIS_CLI" ]]; then
+    echo "✗ uis CLI not found — checked $REPO_ROOT/uis and \$PATH." >&2
+    echo "  Run inside the UIS container (./uis network up cloudflare) or from a repo with ./uis." >&2
     exit 1
 fi
 "$UIS_CLI" secrets generate
