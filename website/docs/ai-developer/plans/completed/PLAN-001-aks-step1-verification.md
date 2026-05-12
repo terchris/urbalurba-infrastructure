@@ -78,13 +78,13 @@ The tester runs the full `platforms/azure-aks/` flow against an Azure subscripti
 
 - [x] 2.3 Log into Azure — handled by the wizard's `az_login_if_needed` / device-code flow. The PIM-activation retry loop from `hosts/azure-microk8s/` was ported into `check_owner_or_contributor` ([PLAN-uis-platform-init-azure-aks.md](../completed/PLAN-uis-platform-init-azure-aks.md) Phase 1.4).
 
-- [x] 2.4 Run `platforms/azure-aks/scripts/00-bootstrap-state.sh`. — ran successfully in talk46 R3 as step `▶ 1/3` of `uis platform up azure-aks`. State RG + storage account `sa077d4d1124e14fdctf` + container + versioning all created.
+- [x] 2.4 Run `platforms/azure-aks/scripts/00-bootstrap-state.sh`. — ran successfully in talk46 R3 as step `▶ 1/3` of `uis platform up azure-aks`. State RG + storage account (derived from the subscription ID) + container + versioning all created.
 
 - [x] 2.5 Run `platforms/azure-aks/scripts/01-apply.sh`. — ran successfully in talk46 R3 as step `▶ 2/3`. `tofu apply` created RG + Log Analytics workspace + AKS cluster (Standard_B2s_v2 × 1, k8s 1.34). Subscription-quota check now ported into the wizard (stronger than the originally-deferred plan).
 
-- [x] 2.6 Run `platforms/azure-aks/scripts/02-post-apply.sh`. — ran successfully in talk46 R3 as step `▶ 3/3`. Kubeconfig merged, storage class aliases applied, Traefik installed, external IP `4.245.36.75` provisioned. `kubernetes-secrets.yml` apply gap closed separately by [PLAN-002-aks-secrets-apply-parity.md](../backlog/PLAN-002-aks-secrets-apply-parity.md) (PR #149).
+- [x] 2.6 Run `platforms/azure-aks/scripts/02-post-apply.sh`. — ran successfully in talk46 R3 as step `▶ 3/3`. Kubeconfig merged, storage class aliases applied, Traefik installed, external IP provisioned. `kubernetes-secrets.yml` apply gap closed separately by [PLAN-002-aks-secrets-apply-parity.md](../backlog/PLAN-002-aks-secrets-apply-parity.md) (PR #149).
 
-- [x] 2.7 Verify with `./uis deploy nginx`. — verified in talk46 R3: pod scheduled, service reachable, IngressRoute applied, in-cluster connectivity tests (steps 13 + 15 of `020-setup-nginx.yml`) both succeeded. Public smoke `curl http://4.245.36.75/` returned the catch-all page end-to-end. The F7 cluster-aware banner (PR #157) also rendered the correct LB IP + curl --resolve hint for hostname routes.
+- [x] 2.7 Verify with `./uis deploy nginx`. — verified in talk46 R3: pod scheduled, service reachable, IngressRoute applied, in-cluster connectivity tests (steps 13 + 15 of `020-setup-nginx.yml`) both succeeded. Public smoke `curl http://<external-ip>/` returned the catch-all page end-to-end. The F7 cluster-aware banner (PR #157) also rendered the correct LB IP + curl --resolve hint for hostname routes.
 
 - [x] 2.8 Tear-down via `03-destroy.sh`. — verified in talk46 R3 via `uis platform down azure-aks`. Cluster RG and Log Analytics destroyed; state RG `rg-urbalurba-tfstate` preserved as designed. `az aks list -o table` returned empty afterward.
 
