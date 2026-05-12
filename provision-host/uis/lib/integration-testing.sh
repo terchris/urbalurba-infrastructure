@@ -26,7 +26,6 @@ SKIP_SERVICES_ALWAYS="gravitee"
 # Format: one entry per line, service_id:VAR1,VAR2,...
 SKIP_SERVICES_CONDITIONAL="
 tailscale-tunnel:TAILSCALE_CLIENTID,TAILSCALE_CLIENTSECRET,TAILSCALE_DOMAIN
-cloudflare-tunnel:CLOUDFLARE_TUNNEL_TOKEN
 "
 
 # Check if a value is a placeholder (not configured).

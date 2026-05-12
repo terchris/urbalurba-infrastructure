@@ -511,27 +511,6 @@
 ,
   {
     "@type": "SoftwareApplication",
-    "id": "cloudflare-tunnel",
-    "name": "Cloudflare Tunnel",
-    "description": "Secure tunnel to Cloudflare network",
-    "category": "NETWORKING",
-    "tags": ["tunnel", "cloudflare", "cdn", "ddos-protection", "reverse-proxy"],
-    "abstract": "Secure outbound-only tunnel to expose services via Cloudflare",
-    "logo": "cloudflare-logo.svg",
-    "website": "https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/"
-    ,"summary": "Cloudflare Tunnel creates a secure, outbound-only connection between your origin and Cloudflares edge. No need to open public inbound ports - traffic is routed through Cloudflares network."
-    ,"docs": "/docs/services/networking/cloudflare-tunnel"
-    ,"playbook": "820-deploy-network-cloudflare-tunnel.yml"
-    ,"priority": 101
-    ,"checkCommand": "kubectl get pods -n default -l app=cloudflared --no-headers 2>/dev/null | grep -q Running"
-    ,"removePlaybook": "821-remove-network-cloudflare-tunnel.yml"
-    ,"requires": ["nginx"]
-    ,"namespace": "default"
-    ,"image": "cloudflare/cloudflared:latest"
-  }
-,
-  {
-    "@type": "SoftwareApplication",
     "id": "tailscale-tunnel",
     "name": "Tailscale Tunnel",
     "description": "Secure mesh VPN tunnel",
