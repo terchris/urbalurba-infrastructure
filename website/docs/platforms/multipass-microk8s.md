@@ -1,7 +1,7 @@
 # Multipass MicroK8s Host Documentation
 
 :::caution Legacy — replaced by Rancher Desktop, not migrated to UIS CLI
-This platform was the original local-development target for UIS but has been **superseded by [Rancher Desktop](./rancher-kubernetes.md)**, which is the supported local-dev path today. The Multipass + MicroK8s setup still works via the legacy `hosts/multipass-microk8s/` scripts, but it is not maintained and not migrated to the `platforms/*` + `./uis` CLI shape. Use Rancher Desktop instead for new installations.
+This platform was the original local-development target for UIS but has been **superseded by [Rancher Desktop](./rancher-kubernetes.md)**, which is the supported local-dev path today. The Multipass + MicroK8s setup still works via the legacy `hosts/multipass-microk8s/` scripts, but it is not maintained and not migrated to the `platforms/*` + `./uis platform <verb>` CLI shape — **`./uis platform list/use/init/up/status/down` do not work for this target**. Use Rancher Desktop instead for new installations.
 
 Tracking for the migration of all legacy `hosts/*` platforms (or formal removal): [INVESTIGATE-migrate-hosts-to-platforms.md](../ai-developer/plans/backlog/INVESTIGATE-migrate-hosts-to-platforms.md).
 :::
