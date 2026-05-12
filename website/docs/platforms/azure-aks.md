@@ -27,7 +27,7 @@ For the helpers.no nonprofit grant subscription specifically, the Contributor ro
 ./uis pull                        # 1. get the latest provision-host image
 ./uis tools install azure-aks     # 2. installs azure-cli + opentofu
 ./uis platform init azure-aks     # 3. interactive wizard writes the config file
-./uis platform up azure-aks       # 4. provisions the cluster end-to-end (~5 min)
+./uis platform up azure-aks       # 4. provisions the cluster end-to-end (~7 min)
 ./uis deploy nginx                # 5. verify with a real service
 ./uis platform down azure-aks     # 6. tear down when finished (cluster cost stops)
 ```
@@ -179,7 +179,7 @@ Active: azure-aks
 
 PLATFORM          STATUS
 rancher-desktop   ✓ running    local k3s
-azure-aks         ✓ running  (active)    Azure AKS, k8s 1.32
+azure-aks         ✓ running  (active)    k8s cluster reachable
 ```
 
 ### 5. Verify with `./uis deploy nginx`

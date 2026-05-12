@@ -25,7 +25,7 @@ The status column uses four state values:
 
 | State | Meaning | Typical hint |
 |---|---|---|
-| `✓ running` | Cluster is live and reachable from inside the provision-host container | platform-specific (e.g. `local k3s`, `Azure AKS, k8s 1.32`) |
+| `✓ running` | Cluster is live and reachable from inside the provision-host container | platform-specific (e.g. `local k3s`, `k8s cluster reachable`) |
 | `· configured, not running` | Setup completed (env file or platform config exists), no live cluster | `run './uis platform up <name>' to start it` |
 | `· not initialized` | UIS doesn't have configuration for this platform yet | `run './uis platform init <name>' to set up` (rancher-desktop says "install Rancher Desktop and start it" — no init wizard needed for the local-only case) |
 | `✗ unreachable` | Setup exists but the API server didn't respond within 3 seconds | `run './uis platform status <name>' for details` |
