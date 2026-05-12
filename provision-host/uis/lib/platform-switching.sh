@@ -23,6 +23,11 @@ PF_KUBECONFIG="${PF_KUBECONFIG:-/mnt/urbalurbadisk/kubeconfig/kubeconf-all}"
 PF_CLUSTER_CONFIG="${PF_CLUSTER_CONFIG:-/mnt/urbalurbadisk/.uis.extend/cluster-config.sh}"
 PF_PLATFORMS_DIR="${PF_PLATFORMS_DIR:-/mnt/urbalurbadisk/platforms}"
 PF_PROBE_TIMEOUT="${PF_PROBE_TIMEOUT:-3s}"
+# The legacy bind-mounted kubeconf-all consumed by ~100 ansible playbooks
+# (see 04-merge-kubeconf.yml step 30's comment). pf_lockstep_flip keeps it
+# byte-identical to PF_KUBECONFIG via plain cp — kubectl writes can't touch
+# this path due to the lima/9P flock issue, but cp is fine.
+PF_LEGACY_KUBECONFIG="${PF_LEGACY_KUBECONFIG:-/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all}"
 
 # C-1 enum — the only valid <state> values status.sh --summary may emit.
 PF_VALID_STATES_REGEX='^(not-initialized|configured-not-running|running|unreachable)$'
@@ -71,6 +76,23 @@ pf_ensure_kubeconf_seeded() {
 
     cp "$seed_file" "$PF_KUBECONFIG"
     chmod 600 "$seed_file" "$PF_KUBECONFIG" 2>/dev/null || true
+
+    # Mirror the seed to the legacy bind-mounted kubeconfig too — the ~100
+    # ansible playbooks under ansible/playbooks/ read from there, not from
+    # PF_KUBECONFIG. Without this mirror, `./uis deploy <service>` on a
+    # rancher-desktop-only host would fail at task 1 of the playbook.
+    #
+    # --remove-destination is required: on first-run the legacy path is a
+    # symlink (kubeconf-all -> /home/ansible/.kube/config) pointing into the
+    # host's read-only bind-mounted kubeconfig. A plain `cp` follows the
+    # symlink and tries to write the host file → fails with EROFS. The flag
+    # makes cp unlink the symlink first and write a fresh regular file.
+    local legacy_dir
+    legacy_dir="$(dirname "$PF_LEGACY_KUBECONFIG")"
+    if [[ -d "$legacy_dir" ]]; then
+        cp --remove-destination "$PF_KUBECONFIG" "$PF_LEGACY_KUBECONFIG" 2>/dev/null || true
+        chmod 600 "$PF_LEGACY_KUBECONFIG" 2>/dev/null || true
+    fi
 }
 
 
@@ -99,25 +121,52 @@ pf_probe_reachable() {
 
 
 # ----- pf_lockstep_flip -------------------------------------------------------
-# Atomic write of both halves of "the active platform":
-#   1. kubectl current-context in kubeconf-all (truth for reads, Q1)
-#   2. cluster-config.sh's CLUSTER_TYPE + TARGET_HOST fields (cached projection
-#      that ansible playbooks read for inventory; written here in lockstep so
-#      it always agrees with kubectl by construction)
+# Atomic write of all three halves of "the active platform":
+#   1. kubectl current-context in PF_KUBECONFIG (in-container, truth for reads, Q1)
+#   2. byte-identical sync to PF_LEGACY_KUBECONFIG (bind-mounted, consumed by ~100
+#      ansible playbooks like 020-setup-nginx.yml that do
+#      `kubectl config current-context` with KUBECONFIG=legacy path)
+#   3. cluster-config.sh's CLUSTER_TYPE + TARGET_HOST fields (cached projection
+#      that service-deployment.sh reads for target_host; written here so it
+#      always agrees with kubectl by construction)
 #
 # Three call sites converge on this function:
 #   - 02-post-apply.sh's auto-flip-on-up
 #   - 03-destroy.sh's auto-reset-on-down
 #   - cmd_platform_use's manual flip
-# Single writer means cluster-config.sh can never silently diverge from the
-# kubectl context — Q4 of the investigation.
+#
+# Why all three locations: F16 from talk48 R7 — the 04-merge-kubeconf.yml
+# playbook uses `kubectl config use-context {{ most_recent_basename }}` where
+# `most_recent_basename` is sorted by the mtime of the *copies in temp_dir*.
+# `ansible.builtin.copy` doesn't preserve source mtime by default, so when
+# multiple *-kubeconf seeds are present (rancher-desktop-kubeconf from F15's
+# auto-seeding + azure-aks-kubeconf from 01-apply.sh), the sort is unstable
+# and the playbook may pick the wrong context. By having pf_lockstep_flip
+# overwrite both kubeconf-all files immediately after the merge, the brief
+# window of merge-picked-wrong-context can't leak to consumer playbooks.
+# Single writer means the three locations can never silently diverge.
 pf_lockstep_flip() {
     local platform="${1:?pf_lockstep_flip: missing platform argument}"
 
-    # Truth for reads.
+    # 1. Truth for reads (in-container).
     KUBECONFIG="$PF_KUBECONFIG" kubectl config use-context "$platform" >/dev/null
 
-    # Cached projection. By convention CLUSTER_TYPE == TARGET_HOST == platform
+    # 2. Sync to legacy (bind-mounted). cp instead of kubectl — kubectl writes
+    # to the bind mount trigger the lima/9P flock phantom-file bug (see
+    # 04-merge-kubeconf.yml step 30 comment). Plain `cp` doesn't use flock; safe.
+    # --remove-destination handles the symlink that lives at the legacy path on
+    # first-run (kubeconf-all -> /home/ansible/.kube/config); without it cp
+    # follows the symlink into the read-only host kubeconfig and fails EROFS.
+    if [[ -f "$PF_KUBECONFIG" ]]; then
+        local legacy_dir
+        legacy_dir="$(dirname "$PF_LEGACY_KUBECONFIG")"
+        if [[ -d "$legacy_dir" ]]; then
+            cp --remove-destination "$PF_KUBECONFIG" "$PF_LEGACY_KUBECONFIG" 2>/dev/null || true
+            chmod 600 "$PF_LEGACY_KUBECONFIG" 2>/dev/null || true
+        fi
+    fi
+
+    # 3. Cached projection. By convention CLUSTER_TYPE == TARGET_HOST == platform
     # directory name (per the investigation's edge case #10). Write both for
     # backward compat with existing ansible readers; future work can collapse.
     if [[ -f "$PF_CLUSTER_CONFIG" ]]; then
