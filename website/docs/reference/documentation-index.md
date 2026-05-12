@@ -128,7 +128,7 @@ Welcome to the complete documentation for **Urbalurba Infrastructure** — a zer
 | Document | Purpose |
 |----------|---------|
 | [Networking Services Overview](../services/networking/index.md) | Network services |
-| [Cloudflare Tunnel](../services/networking/cloudflare-tunnel.md) | Cloudflare tunnel service |
+| [Cloudflare tunnel](../networking/cloudflare.md) | Cloudflare tunnel (in-cluster `cloudflared`, `uis network ... cloudflare`) |
 | [Tailscale Tunnel](../services/networking/tailscale-tunnel.md) | Tailscale tunnel service |
 
 ### Networking

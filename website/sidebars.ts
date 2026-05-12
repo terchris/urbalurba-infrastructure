@@ -44,6 +44,21 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
+      label: 'Networking',
+      link: {
+        type: 'doc',
+        id: 'networking/index',
+      },
+      items: [
+        'networking/cloudflare',
+        'networking/cloudflare-setup',
+        'networking/tailscale-setup',
+        'networking/tailscale-internal-ingress',
+        'networking/tailscale-network-isolation',
+      ],
+    },
+    {
+      type: 'category',
       label: 'Services',
       link: {
         type: 'generated-index',
@@ -159,15 +174,11 @@ const sidebars: SidebarsConfig = {
           label: 'Networking',
           link: {
             type: 'generated-index',
-            description: 'VPN tunnels and network access services.',
+            description: 'Networking services that run as in-cluster pods. For tunnel providers (Cloudflare, Tailscale), see the top-level Networking section.',
           },
           items: [
+            'services/networking/traefik',
             'services/networking/tailscale-tunnel',
-            'services/networking/cloudflare-tunnel',
-            'networking/tailscale-setup',
-            'networking/tailscale-network-isolation',
-            'networking/tailscale-internal-ingress',
-            'networking/cloudflare-setup',
           ],
         },
         {

@@ -3,22 +3,25 @@ title: Networking
 sidebar_label: Networking
 ---
 
-# Networking
+# Networking services
 
-VPN tunnels and network access. Deploy the services your application needs.
+This page lists networking services that are deployed as in-cluster pods via the standard `uis deploy` pipeline. For tunnel providers (Cloudflare, Tailscale), see the top-level [Networking](/docs/networking/) section — those use the `uis network <verb> <provider>` family.
 
 ## Services
 
 | Service | Description | Deploy |
 |---------|-------------|--------|
-| [Cloudflare Tunnel](./cloudflare-tunnel.md) | Secure tunnel to Cloudflare network | `./uis deploy cloudflare-tunnel` |
-| [Tailscale Tunnel](./tailscale-tunnel.md) | Secure mesh VPN tunnel | `./uis deploy tailscale-tunnel` |
+| [Traefik](./traefik.md) | IngressRoute controller — terminates HTTP/HTTPS and routes by hostname | `./uis deploy traefik` |
+| [Tailscale Tunnel](./tailscale-tunnel.md) | Tailscale Funnel + operator (legacy CLI — port to `uis network` pending) | `./uis deploy tailscale-tunnel` |
 
-## Quick Start
+## Tunnel providers
 
-Deploy the services you need:
+For Cloudflare and Tailscale tunnels, use the unified network CLI:
 
 ```bash
-./uis deploy cloudflare-tunnel
-./uis deploy tailscale-tunnel
+./uis network init cloudflare    # set up Cloudflare
+./uis network up cloudflare      # deploy
+./uis network list               # see all providers
 ```
+
+See **[Networking → Cloudflare](/docs/networking/cloudflare)** for the full walkthrough.

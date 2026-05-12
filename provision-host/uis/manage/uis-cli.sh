@@ -123,14 +123,18 @@ Platform:
   platform use    [<provider>]   Switch the active platform (interactive picker if no arg)
   platform down   <provider>  Tear down the cluster (delegates to 03-destroy.sh)
 
-Tailscale:
+Network:
+  network init   <provider>   Interactive setup wizard for a networking provider (cloudflare)
+  network list                Show networking providers and their state
+  network up     <provider>   Deploy the provider into the active cluster
+  network status <provider>   Show provider state, tunnel/route status, pod health
+  network down   <provider>   Remove the provider's cluster footprint (config preserved)
+  network verify <provider>   Diagnostics for the provider's tunnel/route + pod
+
+Tailscale (legacy verbs — CLI port to 'network' coming):
   tailscale expose <service>    Expose a service via Tailscale Funnel
   tailscale unexpose <service>  Remove a service from Tailscale Funnel
   tailscale verify              Check Tailscale secrets, API, devices, and operator
-
-Cloudflare:
-  cloudflare verify             Check Cloudflare secrets, network, and pod status
-  cloudflare teardown           Remove tunnel and show dashboard cleanup steps
 
 ArgoCD:
   argocd register <name> <url>  Register a GitHub repo as ArgoCD application
@@ -175,8 +179,9 @@ Examples:
   uis tools install azure-cli  # Install Azure CLI
   uis tailscale expose whoami  # Expose whoami via Tailscale Funnel
   uis tailscale verify         # Check Tailscale configuration
-  uis cloudflare verify        # Check Cloudflare tunnel configuration
-  uis deploy cloudflare-tunnel # Deploy Cloudflare tunnel
+  uis network init cloudflare  # Set the Cloudflare tunnel token
+  uis network up cloudflare    # Deploy the Cloudflare tunnel in-cluster
+  uis network verify cloudflare  # Check Cloudflare tunnel configuration
   uis argocd register my-app https://github.com/owner/repo  # Register repo
   uis argocd remove my-app     # Remove ArgoCD application
   uis argocd list              # List registered ArgoCD applications
@@ -1341,6 +1346,233 @@ _cmd_platform_use_picker() {
 }
 
 # ============================================================
+# Network Commands  —  uis network <verb> <provider>
+# ============================================================
+#
+# Mirror of cmd_platform_* shape. Each verb dispatches to a per-provider script
+# under networking/<provider>/scripts/<verb>.sh. Only cloudflare is registered
+# this round; tailscale port is deferred to INVESTIGATE-tailscale-architecture-
+# cleanup.md.
+
+cmd_network() {
+    local subcmd="${1:-}"
+    shift || true
+
+    case "$subcmd" in
+        init)    cmd_network_init "$@" ;;
+        list)    cmd_network_list "$@" ;;
+        up)      cmd_network_up "$@" ;;
+        status)  cmd_network_status "$@" ;;
+        down)    cmd_network_down "$@" ;;
+        verify)  cmd_network_verify "$@" ;;
+        "")
+            log_error "Usage: uis network <subcmd> [<provider>]"
+            echo "Subcommands: init | list | up | status | down | verify" >&2
+            exit "$EXIT_GENERAL_ERROR"
+            ;;
+        *)
+            log_error "Unknown network subcommand: $subcmd"
+            echo "Usage: uis network [init|list|up|status|down|verify] [<provider>]" >&2
+            exit "$EXIT_GENERAL_ERROR"
+            ;;
+    esac
+}
+
+# Internal helper: list networking providers that have a given script name
+# under networking/*/scripts/. Mirrors _list_available_platforms_with_script.
+_list_available_network_providers_with_script() {
+    local target_script="$1"
+    local repo_root="$2"
+    echo "Available providers:"
+    local p script_path
+    for script_path in "$repo_root"/networking/*/scripts/"$target_script"; do
+        [[ -f "$script_path" ]] || continue
+        p=$(basename "$(dirname "$(dirname "$script_path")")")
+        # Skip the legacy/ directory if it ever grows a scripts/ subdir.
+        case "$p" in
+            legacy|_*|.*) continue ;;
+        esac
+        echo "  - $p"
+    done
+}
+
+# cmd_network_init — interactive wizard for a networking provider.
+# No banner — `init` writes a local env file; doesn't touch the cluster.
+cmd_network_init() {
+    local provider="${1:-}"
+    local repo_root
+    repo_root="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+
+    if [[ -z "$provider" ]]; then
+        log_error "Usage: uis network init <provider>"
+        { _list_available_network_providers_with_script init.sh "$repo_root"; } >&2
+        exit "$EXIT_GENERAL_ERROR"
+    fi
+
+    local script="$repo_root/networking/$provider/scripts/init.sh"
+    if [[ ! -f "$script" ]]; then
+        log_error "Unknown network provider '$provider' (no init.sh found at $script)"
+        { _list_available_network_providers_with_script init.sh "$repo_root"; } >&2
+        exit "$EXIT_GENERAL_ERROR"
+    fi
+
+    export UIS_REPO_ROOT="$repo_root"
+    exec "$script"
+}
+
+# cmd_network_up — provision the provider into the active cluster.
+# Banner fires — `up` deploys to whatever the active platform is, so the user
+# should see which cluster the cloudflared pod (or future tailscale operator)
+# is landing on.
+cmd_network_up() {
+    _uis_cluster_banner
+    local provider="${1:-}"
+    local repo_root
+    repo_root="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+
+    if [[ -z "$provider" ]]; then
+        log_error "Usage: uis network up <provider>"
+        { _list_available_network_providers_with_script up.sh "$repo_root"; } >&2
+        exit "$EXIT_GENERAL_ERROR"
+    fi
+
+    local script="$repo_root/networking/$provider/scripts/up.sh"
+    if [[ ! -f "$script" ]]; then
+        log_error "Network provider '$provider' has no up.sh (looked at $script)"
+        { _list_available_network_providers_with_script up.sh "$repo_root"; } >&2
+        exit "$EXIT_GENERAL_ERROR"
+    fi
+
+    export UIS_REPO_ROOT="$repo_root"
+    exec "$script"
+}
+
+# cmd_network_down — remove the provider's cluster footprint.
+# Banner fires — `down` operates on whatever cluster the deployment is on.
+cmd_network_down() {
+    _uis_cluster_banner
+    local provider="${1:-}"
+    local repo_root
+    repo_root="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+
+    if [[ -z "$provider" ]]; then
+        log_error "Usage: uis network down <provider>"
+        { _list_available_network_providers_with_script down.sh "$repo_root"; } >&2
+        exit "$EXIT_GENERAL_ERROR"
+    fi
+
+    local script="$repo_root/networking/$provider/scripts/down.sh"
+    if [[ ! -f "$script" ]]; then
+        log_error "Network provider '$provider' has no down.sh (looked at $script)"
+        { _list_available_network_providers_with_script down.sh "$repo_root"; } >&2
+        exit "$EXIT_GENERAL_ERROR"
+    fi
+
+    export UIS_REPO_ROOT="$repo_root"
+    exec "$script"
+}
+
+# cmd_network_status — show provider state, tunnel/route state, pod health.
+# No banner — status reports on the named provider regardless of which platform
+# is active (same reasoning as cmd_platform_status: explicit <provider> arg).
+cmd_network_status() {
+    local provider="${1:-}"
+    local repo_root
+    repo_root="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+
+    if [[ -z "$provider" ]]; then
+        log_error "Usage: uis network status <provider>"
+        { _list_available_network_providers_with_script status.sh "$repo_root"; } >&2
+        exit "$EXIT_GENERAL_ERROR"
+    fi
+
+    local script="$repo_root/networking/$provider/scripts/status.sh"
+    if [[ ! -f "$script" ]]; then
+        log_error "Network provider '$provider' has no status.sh (looked at $script)"
+        { _list_available_network_providers_with_script status.sh "$repo_root"; } >&2
+        exit "$EXIT_GENERAL_ERROR"
+    fi
+
+    export UIS_REPO_ROOT="$repo_root"
+    exec "$script" "$@"
+}
+
+# cmd_network_verify — diagnostics. Banner fires — verify runs against a real
+# cluster and a real Cloudflare/Tailscale account; users should see which one.
+cmd_network_verify() {
+    _uis_cluster_banner
+    local provider="${1:-}"
+    local repo_root
+    repo_root="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+
+    if [[ -z "$provider" ]]; then
+        log_error "Usage: uis network verify <provider>"
+        { _list_available_network_providers_with_script verify.sh "$repo_root"; } >&2
+        exit "$EXIT_GENERAL_ERROR"
+    fi
+
+    local script="$repo_root/networking/$provider/scripts/verify.sh"
+    if [[ ! -f "$script" ]]; then
+        log_error "Network provider '$provider' has no verify.sh (looked at $script)"
+        { _list_available_network_providers_with_script verify.sh "$repo_root"; } >&2
+        exit "$EXIT_GENERAL_ERROR"
+    fi
+
+    export UIS_REPO_ROOT="$repo_root"
+    exec "$script"
+}
+
+# cmd_network_list — enumerate networking providers + their state. Two rows
+# this round: cloudflare (real state from status.sh --summary) + tailscale
+# (fixed placeholder since the CLI port for tailscale is deferred).
+# No banner — discovery command.
+cmd_network_list() {
+    local repo_root
+    repo_root="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+
+    # Header.
+    echo "PROVIDER     STATUS"
+
+    # Cloudflare row — real state via status.sh --summary if available.
+    local cf_status="$repo_root/networking/cloudflare/scripts/status.sh"
+    if [[ -f "$cf_status" ]]; then
+        local cf_line cf_state cf_hint
+        # status.sh --summary emits one tab-separated line: <state>\t<hint>
+        cf_line="$(UIS_REPO_ROOT="$repo_root" "$cf_status" --summary 2>/dev/null || echo "")"
+        if [[ -n "$cf_line" ]]; then
+            cf_state="${cf_line%%	*}"
+            cf_hint="${cf_line#*	}"
+            local cf_icon cf_state_label
+            case "$cf_state" in
+                running)
+                    cf_icon="✓"; cf_state_label="running"
+                    ;;
+                configured-not-running)
+                    cf_icon="·"; cf_state_label="configured, not running"
+                    ;;
+                not-initialized)
+                    cf_icon="·"; cf_state_label="not initialized"
+                    ;;
+                unreachable)
+                    cf_icon="✗"; cf_state_label="unreachable"
+                    ;;
+                *)
+                    cf_icon="?"; cf_state_label="$cf_state"
+                    ;;
+            esac
+            printf "%-12s %s %-25s (%s)\n" "cloudflare" "$cf_icon" "$cf_state_label" "$cf_hint"
+        else
+            printf "%-12s ? error                       (status.sh --summary failed)\n" "cloudflare"
+        fi
+    else
+        printf "%-12s · not initialized            (no networking/cloudflare/scripts/status.sh)\n" "cloudflare"
+    fi
+
+    # Tailscale row — fixed placeholder. Port deferred to a future plan.
+    printf "%-12s · port pending                (use './uis tailscale expose/unexpose/verify' for now)\n" "tailscale"
+}
+
+# ============================================================
 # Interactive Setup Menu
 # ============================================================
 
@@ -1662,7 +1894,7 @@ cmd_verify() {
             cmd_tailscale_verify
             ;;
         cloudflare|cloudflare-tunnel)
-            cmd_cloudflare_verify
+            cmd_network_verify cloudflare
             ;;
         argocd)
             cmd_argocd_verify
@@ -1763,53 +1995,31 @@ cmd_tailscale_verify() {
 }
 
 # ============================================================
-# Cloudflare Commands
+# Cloudflare Commands — ported to `uis network <verb> cloudflare`
 # ============================================================
+#
+# Old top-level `uis cloudflare verify/teardown` commands are replaced by the
+# unified `uis network <verb> cloudflare` family. This stub catches users with
+# muscle memory and points them at the new commands.
 
 cmd_cloudflare() {
     local subcmd="${1:-}"
-    shift || true
-
-    if [[ -z "$subcmd" ]]; then
-        log_error "Usage: uis cloudflare <command>"
-        echo ""
-        echo "Commands:"
-        echo "  verify                Check Cloudflare secrets, network, and pod status"
-        echo "  teardown              Remove tunnel and show dashboard cleanup steps"
-        exit "$EXIT_GENERAL_ERROR"
-    fi
-
+    log_error "'uis cloudflare' moved to 'uis network ... cloudflare'."
     case "$subcmd" in
         verify)
-            cmd_cloudflare_verify
+            echo "  Use: ./uis network verify cloudflare" >&2
             ;;
         teardown)
-            cmd_cloudflare_teardown
+            echo "  Use: ./uis network down cloudflare" >&2
+            ;;
+        "")
+            echo "  See: ./uis help (Network: section)" >&2
             ;;
         *)
-            log_error "Unknown cloudflare command: $subcmd"
-            echo ""
-            echo "Commands:"
-            echo "  verify                Check Cloudflare secrets, network, and pod status"
-            echo "  teardown              Remove tunnel and show dashboard cleanup steps"
-            exit "$EXIT_GENERAL_ERROR"
+            echo "  See: ./uis help (Network: section)" >&2
             ;;
     esac
-}
-
-cmd_cloudflare_verify() {
-    print_section "Verifying Cloudflare Tunnel Configuration"
-    ansible-playbook "$ANSIBLE_DIR/822-verify-cloudflare.yml"
-}
-
-cmd_cloudflare_teardown() {
-    print_section "Cloudflare Tunnel Teardown"
-    ansible-playbook "$ANSIBLE_DIR/821-remove-network-cloudflare-tunnel.yml"
-    echo ""
-    echo "Manual cleanup required:"
-    echo "  1. Go to Cloudflare dashboard > Zero Trust > Networks > Tunnels"
-    echo "  2. Find and delete the tunnel"
-    echo "  3. Remove any DNS records pointing to the tunnel"
+    exit "$EXIT_GENERAL_ERROR"
 }
 
 # ============================================================
@@ -2304,6 +2514,9 @@ main() {
             ;;
         platform)
             cmd_platform "$@"
+            ;;
+        network)
+            cmd_network "$@"
             ;;
         deploy)
             cmd_deploy "$@"
