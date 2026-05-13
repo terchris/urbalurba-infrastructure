@@ -67,9 +67,9 @@ If the file already exists, the wizard offers three options: skip (keep existing
 Two stages:
 
 1. **`uis secrets generate` + `uis secrets apply`** — pushes the token from the local env file into the `urbalurba-secrets` Secret in the cluster. This is the same pipeline every other UIS secret uses.
-2. **`ansible-playbook 820-deploy-network-cloudflare-tunnel.yml`** — applies the static `820-cloudflare-tunnel-base.yaml` manifest (a Deployment with 2 replicas of `cloudflared`) and waits for both pods to reach `Running`. The playbook also runs a final HTTPS probe through your domain if `BASE_DOMAIN_CLOUDFLARE` is set.
+2. **`ansible-playbook 820-deploy-network-cloudflare-tunnel.yml`** — applies the static `820-cloudflare-tunnel-base.yaml` manifest (a Deployment with one `cloudflared` replica) and waits for the pod to reach `Running`. The playbook also runs a final HTTPS probe through your domain if `BASE_DOMAIN_CLOUDFLARE` is set.
 
-The pods register with Cloudflare's edge within ~15 seconds. After that, any service with a Traefik IngressRoute matching `*.your-domain.com` is reachable on the public internet.
+The pod registers with Cloudflare's edge within ~15 seconds. After that, any service with a Traefik IngressRoute matching `*.your-domain.com` is reachable on the public internet.
 
 ### 4. Verify
 
@@ -110,7 +110,7 @@ internet user
   ↓
 Cloudflare edge (terminates TLS, optionally adds WAF / DDoS rules)
   ↓
-cloudflared pod (outbound-only, 2 replicas)
+cloudflared pod (outbound-only)
   ↓
 Traefik IngressRoute (HostRegexp match)
   ↓
