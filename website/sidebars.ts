@@ -53,7 +53,6 @@ const sidebars: SidebarsConfig = {
         'networking/cloudflare',
         'networking/cloudflare-setup',
         'networking/tailscale-setup',
-        'networking/tailscale-internal-ingress',
         'networking/tailscale-network-isolation',
       ],
     },

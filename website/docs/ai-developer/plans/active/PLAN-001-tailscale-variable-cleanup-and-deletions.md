@@ -153,14 +153,11 @@ User confirms phase is complete.
 
 ### Tasks
 
-- [ ] 4.1 `bash -n` syntax check on all modified shell scripts (no `bash` errors)
-- [ ] 4.2 `python3 -c "import json; json.load(open('website/src/data/services.json'))"` — services.json still parses (not touched in this plan, but spot-check)
-- [ ] 4.3 `cd website && npm run build` — Docusaurus build clean; no new broken links beyond pre-existing ones in `/plans/`
-- [ ] 4.4 Build container locally: `./uis build`
-- [ ] 4.5 Smoke test the legacy CLI surface still works (no real cluster work):
-  - `./uis help` — Tailscale section still lists `expose/unexpose/verify`
-  - `./uis tailscale --help` — usage banner appears
-  - `./uis deploy tailscale-tunnel --dry-run` — passes (services.json entry still there at this point)
+- [x] 4.1 `bash -n` syntax check on modified shell scripts — all pass (802-tunnel-deploy.sh, create-cloud-init.sh, secrets-management.sh, integration-testing.sh)
+- [x] 4.2 services.json parses cleanly
+- [x] 4.3 `cd website && npm run build` — `[SUCCESS]` after removing the `networking/tailscale-internal-ingress` entry from `sidebars.ts` (sidebar still referenced the doc page deleted in Phase 3). Only broken anchors flagged are pre-existing in unrelated files (INVESTIGATE-dagster, completed/PLAN-001-postgrest-documentation).
+- [ ] 4.4 `./uis build` — tester step per contributor/tester split (contributor never tests deploys)
+- [ ] 4.5 Smoke test legacy CLI surface (`./uis tailscale --help`, `./uis deploy tailscale-tunnel --dry-run`) — tester step
 
 ### Validation
 
