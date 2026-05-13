@@ -27,9 +27,6 @@ assert_file_exists "$TEMPLATES_DIR/uis.secrets/cloud-accounts/azure.env.template
 start_test "uis.secrets/cloud-accounts/gcp.env.template exists"
 assert_file_exists "$TEMPLATES_DIR/uis.secrets/cloud-accounts/gcp.env.template" && pass_test
 
-start_test "uis.secrets/service-keys/tailscale.env.template exists"
-assert_file_exists "$TEMPLATES_DIR/uis.secrets/service-keys/tailscale.env.template" && pass_test
-
 start_test "uis.secrets/service-keys/cloudflare.env.template exists"
 assert_file_exists "$TEMPLATES_DIR/uis.secrets/service-keys/cloudflare.env.template" && pass_test
 

@@ -66,5 +66,4 @@ You don't change the ingress to switch providers — you add or remove the netwo
 - **[Cloudflare tunnel](./cloudflare.md)** — set up `cloudflared` in-cluster, point a domain at it. Token-based, no inbound ports.
 - **[Cloudflare setup (deep dive)](./cloudflare-setup.md)** — historical setup guide. Covers DNS, dashboard config, multiple environments.
 - **[Tailscale Funnel setup](./tailscale-setup.md)** — public `*.ts.net` exposure with Tailscale Funnel.
-- **[Tailscale internal ingress](./tailscale-internal-ingress.md)** — tailnet-private HTTP access for internal services.
 - **[Tailscale network isolation](./tailscale-network-isolation.md)** — ACL patterns for restricting who reaches what.

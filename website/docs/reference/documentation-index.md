@@ -140,7 +140,6 @@ Welcome to the complete documentation for **Urbalurba Infrastructure** — a zer
 | [Networking Overview](../networking/index.md) | Dual-tunnel internet access architecture |
 | [Cloudflare Setup](../networking/cloudflare-setup.md) | Cloudflare tunnel configuration guide |
 | [Tailscale Setup](../networking/tailscale-setup.md) | Tailscale tunnel configuration guide |
-| [Tailscale Internal Ingress](../networking/tailscale-internal-ingress.md) | Tailscale internal access setup |
 | [Tailscale Network Isolation](../networking/tailscale-network-isolation.md) | Tailscale funnel security setup |
 
 ### Hosts & Platforms

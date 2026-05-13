@@ -158,7 +158,7 @@ show_secrets_status() {
 
     echo ""
     echo "External Services (configure when needed):"
-    local vars_external="TAILSCALE_SECRET CLOUDFLARE_DNS_TOKEN CLOUDFLARE_TUNNEL_TOKEN OPENAI_API_KEY ANTHROPIC_API_KEY GITHUB_ACCESS_TOKEN"
+    local vars_external="TAILSCALE_VM_AUTH_KEY CLOUDFLARE_DNS_TOKEN CLOUDFLARE_TUNNEL_TOKEN OPENAI_API_KEY ANTHROPIC_API_KEY GITHUB_ACCESS_TOKEN"
     for var in $vars_external; do
         local value
         value=$(get_default_secret "$var")
@@ -326,7 +326,7 @@ edit_secrets() {
         return 1
     fi
 
-    local editor="${EDITOR:-${VISUAL:-nano}}"
+    local editor="${EDITOR:-${VISUAL:-vi}}"
 
     log_info "Opening secrets config in $editor..."
     "$editor" "$config_file"

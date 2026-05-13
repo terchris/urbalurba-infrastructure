@@ -25,7 +25,7 @@ SKIP_SERVICES_ALWAYS="gravitee"
 # in secrets-config/00-common-values.env.template.
 # Format: one entry per line, service_id:VAR1,VAR2,...
 SKIP_SERVICES_CONDITIONAL="
-tailscale-tunnel:TAILSCALE_CLIENTID,TAILSCALE_CLIENTSECRET,TAILSCALE_DOMAIN
+tailscale-tunnel:TAILSCALE_CLIENTID,TAILSCALE_CLIENTSECRET,TAILSCALE_TAILNET
 "
 
 # Check if a value is a placeholder (not configured).

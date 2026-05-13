@@ -1,8 +1,8 @@
 # 800-tailscale-operator-config.yaml.j2
 # Installs Tailscale Kubernetes Operator with ingress functionality
 #
-# This is a Jinja2 template - used by Ansible playbook 805-deploy-tailscale-internal-ingress.yml
-# Variable: TAILSCALE_OPERATOR_PREFIX - used for both operator and ingress device names
+# This is a Jinja2 template - rendered by Ansible playbook 802-deploy-network-tailscale-tunnel.yml
+# Variable: TAILSCALE_OWNER_ID - cluster owner identifier, used as operator device-name prefix
 #
 # Usage: This file is rendered by Ansible, then used with:
 # helm install tailscale-operator tailscale/tailscale-operator -n tailscale --create-namespace \
@@ -24,19 +24,18 @@ apiServerProxyConfig:
 # The Tailscale K8s operator ALWAYS registers as a device on the tailnet - this cannot be disabled.
 # See: https://tailscale.com/kb/1236/kubernetes-operator
 #
-# Per-cluster naming convention (matches Tailscale docs naming + our cluster prefix):
-#   Operator: {{ TAILSCALE_OPERATOR_PREFIX }}-tailscale-operator (controller that manages Tailscale resources)
-#   Ingress:  {{ TAILSCALE_OPERATOR_PREFIX }} (configured in 805-tailscale-internal-ingress.yaml.j2)
+# Per-cluster naming convention (matches Tailscale docs naming + cluster owner prefix):
+#   Operator: {{ TAILSCALE_OWNER_ID }}-tailscale-operator (controller that manages Tailscale resources)
 #
-# Example for 3 clusters - Tailscale admin console will show 6 devices:
-#   k8s-terje-tailscale-operator, k8s-terje          (MacBook cluster)
-#   k8s-imac-tailscale-operator, k8s-imac            (iMac cluster)
-#   k8s-tecmacdev-tailscale-operator, k8s-tecmacdev  (tecmacdev cluster)
+# Example for 3 clusters on a shared tailnet — Tailscale admin will show 3 operator devices:
+#   terje-tailscale-operator      (Terje's MacBook cluster)
+#   alice-tailscale-operator      (Alice's laptop cluster)
+#   bob-tailscale-operator        (Bob's MBP cluster)
 #
 # The "-tailscale-operator" suffix matches the default name from Tailscale docs,
 # making it clear this is the Tailscale Kubernetes Operator (not a custom component).
 operatorConfig:
-  hostname: "{{ TAILSCALE_OPERATOR_PREFIX }}-tailscale-operator"  # Unique operator name per cluster
+  hostname: "{{ TAILSCALE_OWNER_ID }}-tailscale-operator"  # Unique operator name per cluster
   tags: "tag:k8s-operator"  # Tag for the operator itself
   logging: "info"           # Use info level for production
 

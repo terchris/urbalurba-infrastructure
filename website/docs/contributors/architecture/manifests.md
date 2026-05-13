@@ -138,7 +138,6 @@ Files are numbered by category. The number in the manifest filename matches the 
 |------|---------|
 | `800-tailscale-operator-config.yaml.j2` | Tailscale operator Helm values (Jinja2 template) |
 | `803-tailscale-cluster-ingress.yaml.j2` | Tailscale cluster ingress (Jinja2 template) |
-| `805-tailscale-internal-ingress.yaml.j2` | Tailscale internal access ingress (Jinja2 template) |
 | `820-cloudflare-tunnel-base.yaml` | Cloudflare tunnel deployment |
 
 ## Manifest Patterns
