@@ -37,7 +37,7 @@
         ts_clientid: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_CLIENTID | b64decode }}"
         ts_clientsecret: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_CLIENTSECRET | b64decode }}"
         ts_tailnet: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_TAILNET | b64decode }}"
-        ts_public_hostname: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_OWNER_ID | default('') | b64decode | default('not set', true) }}"
+        ts_owner_id: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_OWNER_ID | default('') | b64decode | default('not set', true) }}"
       when: urbalurba_secrets.resources | length > 0
       ignore_errors: true
 
@@ -46,7 +46,7 @@
         ts_clientid: ""
         ts_clientsecret: ""
         ts_tailnet: ""
-        ts_public_hostname: "not set"
+        ts_owner_id: "not set"
       when: urbalurba_secrets.resources | length == 0
 
     - name: "04 Validate secrets are not placeholders"
@@ -182,7 +182,7 @@
           - ""
           - "Configuration:"
           - "  Tailnet: {{ ts_tailnet | default('not set') }}"
-          - "  Public Hostname: {{ ts_public_hostname }}"
+          - "  Owner ID: {{ ts_owner_id }}"
           - "  OAuth Client ID: {{ ts_clientid[:8] + '...' if ts_clientid | length > 8 else ts_clientid | default('not set') }}"
           - ""
           - "Checks:"

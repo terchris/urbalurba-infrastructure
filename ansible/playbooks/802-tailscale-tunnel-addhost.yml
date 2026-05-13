@@ -8,14 +8,14 @@
 # Usage:
 #   ansible-playbook playbooks/802-tailscale-tunnel-addhost.yml \
 #     -e service_name=whoami \
-#     -e tailscale_domain=dog-pence.ts.net
+#     -e tailscale_tailnet=dog-pence.ts.net
 #
 # Optional parameters (have sensible defaults):
 #     -e ingress_hostname=my-hostname
 #
 # Required parameters (passed via -e):
 #   service_name: Name of the Kubernetes service to expose
-#   tailscale_domain: Tailscale MagicDNS domain (e.g. dog-pence.ts.net)
+#   tailscale_tailnet: Tailscale MagicDNS domain (e.g. dog-pence.ts.net)
 
 - name: Create Tailscale ingress for service
   hosts: localhost
@@ -40,8 +40,8 @@
 
     - name: "01a Validate Tailscale domain parameter"
       ansible.builtin.fail:
-        msg: "tailscale_domain is required. Pass via -e tailscale_domain=your-domain.ts.net"
-      when: tailscale_domain is not defined or tailscale_domain == ""
+        msg: "tailscale_tailnet is required. Pass via -e tailscale_tailnet=your-domain.ts.net"
+      when: tailscale_tailnet is not defined or tailscale_tailnet == ""
 
     - name: "02 Verify kubeconfig file exists"
       ansible.builtin.stat:
@@ -57,7 +57,7 @@
       ansible.builtin.debug:
         msg: |
           Creating Tailscale ingress for service '{{ service_name }}' in namespace '{{ ingress_namespace }}'
-          Target URL: https://{{ ingress_hostname }}.{{ tailscale_domain }}
+          Target URL: https://{{ ingress_hostname }}.{{ tailscale_tailnet }}
           Backend: {{ service_name }}:80
 
     - name: "06 Skip operator check if SKIP_OPERATOR_CHECK is set"
@@ -179,7 +179,7 @@
 
     - name: "13 Extract actual FQDN from ingress status"
       ansible.builtin.set_fact:
-        actual_fqdn: "{{ final_ingress.resources[0].status.loadBalancer.ingress[0].hostname | default(ingress_hostname + '.' + tailscale_domain) }}"
+        actual_fqdn: "{{ final_ingress.resources[0].status.loadBalancer.ingress[0].hostname | default(ingress_hostname + '.' + tailscale_tailnet) }}"
       when:
         - final_ingress.resources | length > 0
         - final_ingress.resources[0].status.loadBalancer.ingress is defined
@@ -187,7 +187,7 @@
 
     - name: "13a Set fallback FQDN if status not available"
       ansible.builtin.set_fact:
-        actual_fqdn: "{{ ingress_hostname }}.{{ tailscale_domain }}"
+        actual_fqdn: "{{ ingress_hostname }}.{{ tailscale_tailnet }}"
       when: actual_fqdn is not defined
 
     - name: "14 Display success message"

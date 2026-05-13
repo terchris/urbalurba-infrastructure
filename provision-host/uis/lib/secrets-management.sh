@@ -326,7 +326,7 @@ edit_secrets() {
         return 1
     fi
 
-    local editor="${EDITOR:-${VISUAL:-nano}}"
+    local editor="${EDITOR:-${VISUAL:-vi}}"
 
     log_info "Opening secrets config in $editor..."
     "$editor" "$config_file"
