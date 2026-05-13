@@ -224,18 +224,14 @@ Examples currently scaffolded:
 - `cloudflare.env`
 - `openai.env`
 
-#### Important current inconsistency
+#### Tailscale secrets — split across two auth flows
 
-Tailscale is currently split across two models:
+Tailscale uses two distinct auth flows that share the same `00-common-values.env.template`:
 
-1. `service-keys/tailscale.env` exists and is scaffolded by host/target helpers
-2. Active Tailscale networking and cloud-init-related flows currently read `TAILSCALE_SECRET`, `TAILSCALE_CLIENTID`, `TAILSCALE_CLIENTSECRET`, `TAILSCALE_TAILNET`, and `TAILSCALE_DOMAIN` from the generated Kubernetes secret system
+1. **K8s cluster operator (OAuth)** — reads `TAILSCALE_CLIENTID`, `TAILSCALE_CLIENTSECRET`, `TAILSCALE_TAILNET`, `TAILSCALE_OWNER_ID` from the generated Kubernetes secret. The operator mints short-lived auth keys via the API for each Pod proxy.
+2. **Cloud-init / VM bootstrap (static auth key)** — reads `TAILSCALE_VM_AUTH_KEY` (a `tskey-auth-XXX` static key) which `cloud-init/create-cloud-init.sh` substitutes into VM cloud-init templates so external Ubuntu VMs (Multipass, Azure, GCP, OCI, Raspberry) can join the tailnet on first boot.
 
-So today:
-- `service-keys/tailscale.env` appears to be **prepared for use**
-- but the active runtime path appears to rely on `TAILSCALE_SECRET` in `secrets-config/00-common-values.env.template`
-
-This ambiguity should be resolved by the target-management work.
+The two flows are intentionally separate — OAuth wouldn't work for cloud-init (the VM has no way to run the OAuth client before it joins the tailnet), and a static auth key wouldn't work for the operator (each Pod proxy needs its own short-lived key). A future cloud-init rewrite may unify both onto OAuth-minted auth keys, but that's out of scope for the current Tailscale architecture cleanup.
 
 ### `api-keys/`
 

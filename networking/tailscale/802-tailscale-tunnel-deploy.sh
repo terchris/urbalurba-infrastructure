@@ -52,25 +52,17 @@ if ! kubectl --kubeconfig="$KUBECONFIG_PATH" get secret urbalurba-secrets -n def
     exit 1
 fi
 
-# Check for template values in secrets
-TAILSCALE_SECRET=$(kubectl --kubeconfig="$KUBECONFIG_PATH" get secret urbalurba-secrets -n default -o jsonpath='{.data.TAILSCALE_SECRET}' | base64 -d 2>/dev/null)
-if [[ "$TAILSCALE_SECRET" == *"tskey-auth-ktyTufs"* || "$TAILSCALE_SECRET" == *"XXXXXXX"* ]]; then
-    echo "Error: Tailscale secrets contain template values"
-    echo "Update your Kubernetes secrets with valid Tailscale keys first"
-    exit 1
-fi
-
 # Get Tailscale domain from secrets
-TAILSCALE_DOMAIN=$(kubectl --kubeconfig="$KUBECONFIG_PATH" get secret urbalurba-secrets -n default -o jsonpath='{.data.TAILSCALE_DOMAIN}' | base64 -d 2>/dev/null)
-if [ -z "$TAILSCALE_DOMAIN" ]; then
-    echo "Error: TAILSCALE_DOMAIN not found in urbalurba-secrets"
+TAILSCALE_TAILNET=$(kubectl --kubeconfig="$KUBECONFIG_PATH" get secret urbalurba-secrets -n default -o jsonpath='{.data.TAILSCALE_TAILNET}' | base64 -d 2>/dev/null)
+if [ -z "$TAILSCALE_TAILNET" ]; then
+    echo "Error: TAILSCALE_TAILNET not found in urbalurba-secrets"
     exit 1
 fi
 
 # Get cluster hostname from secrets
-TAILSCALE_PUBLIC_HOSTNAME=$(kubectl --kubeconfig="$KUBECONFIG_PATH" get secret urbalurba-secrets -n default -o jsonpath='{.data.TAILSCALE_PUBLIC_HOSTNAME}' | base64 -d 2>/dev/null)
-if [ -z "$TAILSCALE_PUBLIC_HOSTNAME" ]; then
-    echo "Error: TAILSCALE_PUBLIC_HOSTNAME not found in urbalurba-secrets"
+TAILSCALE_OWNER_ID=$(kubectl --kubeconfig="$KUBECONFIG_PATH" get secret urbalurba-secrets -n default -o jsonpath='{.data.TAILSCALE_OWNER_ID}' | base64 -d 2>/dev/null)
+if [ -z "$TAILSCALE_OWNER_ID" ]; then
+    echo "Error: TAILSCALE_OWNER_ID not found in urbalurba-secrets"
     exit 1
 fi
 
@@ -121,13 +113,13 @@ fi
 if [ -z "$SERVICE_NAME" ]; then
     if [ "$OPERATOR_RUNNING" = false ]; then
         echo ""
-        echo "Deploying Tailscale operator: $TAILSCALE_PUBLIC_HOSTNAME"
+        echo "Deploying Tailscale operator: $TAILSCALE_OWNER_ID"
         echo "Using playbook: $OPERATOR_PLAYBOOK_PATH"
         echo ""
         
         # Execute the operator deployment playbook (includes cluster ingress)
         echo "Deploying Tailscale operator (this may take a few minutes)..."
-        cd /mnt/urbalurbadisk/ansible && ansible-playbook $OPERATOR_PLAYBOOK_PATH -e TAILSCALE_PUBLIC_HOSTNAME="$TAILSCALE_PUBLIC_HOSTNAME"
+        cd /mnt/urbalurbadisk/ansible && ansible-playbook $OPERATOR_PLAYBOOK_PATH -e TAILSCALE_OWNER_ID="$TAILSCALE_OWNER_ID"
         check_command_success "Deploy Tailscale operator"
         
         # Wait for operator to be ready
@@ -153,13 +145,13 @@ if [ -z "$SERVICE_NAME" ]; then
     echo "  ./802-tailscale-tunnel-deploy.sh authentik"
     echo "  ./802-tailscale-tunnel-deploy.sh grafana"
     echo ""
-    echo "Each service will be accessible at: https://[service-name].$TAILSCALE_DOMAIN"
+    echo "Each service will be accessible at: https://[service-name].$TAILSCALE_TAILNET"
     echo ""
     echo "Note: If a service doesn't exist, Traefik will serve the catch-all nginx page"
     echo ""
     echo "DNS Troubleshooting:"
-    echo "  Check DNS resolution: nslookup [service-name].$TAILSCALE_DOMAIN"
-    echo "  Check DNS details: dig [service-name].$TAILSCALE_DOMAIN"
+    echo "  Check DNS resolution: nslookup [service-name].$TAILSCALE_TAILNET"
+    echo "  Check DNS details: dig [service-name].$TAILSCALE_TAILNET"
     echo "  Note: DNS propagation can take 1-5 minutes globally"
     exit 0
 fi
@@ -173,7 +165,7 @@ if [ "$OPERATOR_RUNNING" = false ]; then
     
     # Execute the operator deployment playbook (includes cluster ingress - we'll clean it up)
     echo "Deploying Tailscale operator (this may take a few minutes)..."
-    cd /mnt/urbalurbadisk/ansible && ansible-playbook $OPERATOR_PLAYBOOK_PATH -e TAILSCALE_PUBLIC_HOSTNAME="$TAILSCALE_PUBLIC_HOSTNAME"
+    cd /mnt/urbalurbadisk/ansible && ansible-playbook $OPERATOR_PLAYBOOK_PATH -e TAILSCALE_OWNER_ID="$TAILSCALE_OWNER_ID"
     check_command_success "Deploy Tailscale operator"
     
     # Wait for operator to be ready
@@ -201,13 +193,13 @@ echo "✅ Skipping service validation - Traefik will handle routing to $SERVICE_
 # Add parameter values to STATUS
 STATUS+=("SERVICE_NAME: $SERVICE_NAME")
 STATUS+=("HOSTNAME: $INGRESS_HOSTNAME")
-STATUS+=("DOMAIN: $TAILSCALE_DOMAIN")
+STATUS+=("DOMAIN: $TAILSCALE_TAILNET")
 
 echo ""
 echo "Creating Tailscale ingress for: $SERVICE_NAME"
 echo "Hostname: $INGRESS_HOSTNAME"
-echo "Domain: $TAILSCALE_DOMAIN"
-echo "Will be accessible at: https://$INGRESS_HOSTNAME.$TAILSCALE_DOMAIN"
+echo "Domain: $TAILSCALE_TAILNET"
+echo "Will be accessible at: https://$INGRESS_HOSTNAME.$TAILSCALE_TAILNET"
 echo "Traefik will handle routing to the appropriate service"
 echo ""
 
@@ -216,7 +208,7 @@ echo "Creating Tailscale ingress..."
 cd /mnt/urbalurbadisk/ansible && ansible-playbook $INGRESS_PLAYBOOK_PATH \
     -e service_name="$SERVICE_NAME" \
     -e ingress_hostname="$INGRESS_HOSTNAME" \
-    -e tailscale_domain="$TAILSCALE_DOMAIN" \
+    -e tailscale_tailnet="$TAILSCALE_TAILNET" \
     -e SKIP_OPERATOR_CHECK="true"
 check_command_success "Create Tailscale ingress"
 
@@ -235,10 +227,10 @@ for i in {1..6}; do
     sleep 5
 done
 
-EXPECTED_URL="https://$INGRESS_HOSTNAME.$TAILSCALE_DOMAIN"
+EXPECTED_URL="https://$INGRESS_HOSTNAME.$TAILSCALE_TAILNET"
 if [ -n "$ACTUAL_HOSTNAME" ]; then
     ACTUAL_URL="https://$ACTUAL_HOSTNAME"
-    if [ "$ACTUAL_HOSTNAME" != "$INGRESS_HOSTNAME.$TAILSCALE_DOMAIN" ]; then
+    if [ "$ACTUAL_HOSTNAME" != "$INGRESS_HOSTNAME.$TAILSCALE_TAILNET" ]; then
         STATUS+=("Hostname Check: WARNING - Mismatch detected")
         echo ""
         echo "⚠️  HOSTNAME MISMATCH DETECTED"
@@ -274,8 +266,8 @@ else
     echo "✅ Traefik will handle routing to the appropriate service"
     echo ""
     echo "DNS Troubleshooting:"
-    echo "  Check DNS resolution: nslookup ${ACTUAL_HOSTNAME:-$INGRESS_HOSTNAME.$TAILSCALE_DOMAIN}"
-    echo "  Check DNS details: dig ${ACTUAL_HOSTNAME:-$INGRESS_HOSTNAME.$TAILSCALE_DOMAIN}"
+    echo "  Check DNS resolution: nslookup ${ACTUAL_HOSTNAME:-$INGRESS_HOSTNAME.$TAILSCALE_TAILNET}"
+    echo "  Check DNS details: dig ${ACTUAL_HOSTNAME:-$INGRESS_HOSTNAME.$TAILSCALE_TAILNET}"
     echo "  Test connectivity: curl $ACTUAL_URL"
     echo ""
     echo "Note: DNS propagation can take 1-5 minutes globally"

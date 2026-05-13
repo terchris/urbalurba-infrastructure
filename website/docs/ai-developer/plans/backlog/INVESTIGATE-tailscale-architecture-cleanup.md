@@ -148,7 +148,7 @@ Seven `TAILSCALE_*` variables in `secrets-templates/00-common-values.env.templat
 
 | Variable | Read by | Path |
 |---|---|---|
-| `TAILSCALE_SECRET` | 801-setup, 803-verify (placeholder check), 802-deploy.sh (placeholder check) | Legacy auth key — host-side only |
+| `TAILSCALE_SECRET` → `TAILSCALE_VM_AUTH_KEY` | 801-setup (deleted), 803-verify (placeholder check — dropped), 802-deploy.sh (placeholder check — dropped), cloud-init/create-cloud-init.sh (alive — VM bootstrap) | Static auth key for cloud-init / VM bootstrap only — never used cluster-side. Renamed Decision 2. |
 | `TAILSCALE_TAILNET` | 801-remove, 802-deploy, 803-device-cleanup, 803-verify, 804-delete.sh | OAuth API device-list URL |
 | `TAILSCALE_DOMAIN` | 801-setup, 802-deploy, 803-verify, 805-deploy | Tailnet base domain (e.g. `dog-pence.ts.net`) |
 | `TAILSCALE_PUBLIC_HOSTNAME` | 801-remove, 802-deploy, 803-verify, 802-deploy.sh, 804-delete.sh | Funnel ingress device name → `k8s.dog-pence.ts.net` |
@@ -162,7 +162,7 @@ Plus `BASE_DOMAIN_TAILSCALE` (line 21) — a cross-cutting variable for ingress-
 
 ### Variable set after the cleanup (Decisions 1, 2, 3, 11, 12, 13, 16)
 
-Eight variables today → **four** after cleanup:
+Eight variables today → **five** after cleanup (the four cluster-side OAuth values plus the renamed `TAILSCALE_VM_AUTH_KEY` that the cloud-init / VM-bootstrap path keeps using):
 
 | Variable | Status | Source |
 |---|---|---|
@@ -170,13 +170,13 @@ Eight variables today → **four** after cleanup:
 | `TAILSCALE_CLIENTSECRET` | kept | wizard prompt (silent) |
 | `TAILSCALE_TAILNET` | kept | wizard prompt |
 | `TAILSCALE_OWNER_ID` | renamed from `TAILSCALE_OPERATOR_PREFIX` (Decision 13) | wizard prompt (Decision 14) |
-| `TAILSCALE_SECRET` | **deleted** (Decision 2, no readers after 801-setup goes) | — |
+| `TAILSCALE_VM_AUTH_KEY` | renamed from `TAILSCALE_SECRET` (Decision 2) — kept for cloud-init / VM bootstrap | manual edit (cloud-init scope, out of wizard) |
 | `TAILSCALE_DOMAIN` | **deleted** (Decision 11, derive from `TAILNET`) | — |
 | `TAILSCALE_PUBLIC_HOSTNAME` | **deleted** (Decision 12, derive from `OWNER_ID`) | — |
 | `TAILSCALE_AUTH_KEY` (in service-keys template) | **deleted** (Decision 3, no readers ever) | — |
 | `BASE_DOMAIN_TAILSCALE` | **deleted** (Decision 16, architecturally vestigial — tailnet domains have no wildcard DNS) | — |
 
-Integration test gate (`provision-host/uis/lib/integration-testing.sh:28`): `tailscale-tunnel:TAILSCALE_CLIENTID,TAILSCALE_CLIENTSECRET,TAILSCALE_DOMAIN` — OAuth path only. `TAILSCALE_SECRET` is silently untested.
+Integration test gate (`provision-host/uis/lib/integration-testing.sh:28`): `tailscale-tunnel:TAILSCALE_CLIENTID,TAILSCALE_CLIENTSECRET,TAILSCALE_DOMAIN` — OAuth path only. The cluster operator path never used `TAILSCALE_SECRET` / `TAILSCALE_VM_AUTH_KEY`, so this gate doesn't need it.
 
 ### Docs
 
@@ -212,11 +212,11 @@ Read against [Tailscale Kubernetes operator docs](https://tailscale.com/kb/1236/
 
 ## Decisions (evidence-supported, lock in for PLAN)
 
-**Decision 1 — Drop `801-setup-network-tailscale-tunnel.yml` and the matching shell wrapper.** Evidence: it sets up `tailscaled` on the provision-host container, runs a smoke test, and tears down — leftover scaffolding from an earlier architecture where the host itself was on the tailnet. The current model puts everything in-cluster via the operator. With 801 gone, `TAILSCALE_SECRET` has no readers and goes away too.
+**Decision 1 — Drop `801-setup-network-tailscale-tunnel.yml` and the matching shell wrapper.** Evidence: it sets up `tailscaled` on the provision-host container, runs a smoke test, and tears down — leftover scaffolding from an earlier architecture where the host itself was on the tailnet. The current model puts everything in-cluster via the operator. With 801 gone, the cluster-side has no reader for the static auth-key variable — but the cloud-init / VM-bootstrap path still does, so see Decision 2 for the rename rather than delete.
 
-**Decision 2 — OAuth is canonical.** Every cluster-side path (802, 805, 801-remove, verify, device-cleanup) already uses `TAILSCALE_CLIENTID` + `TAILSCALE_CLIENTSECRET`. After Decision 1, `TAILSCALE_SECRET` (legacy auth key) has no callers. Drop it from `00-common-values.env.template`, `00-master-secrets.yml.template`, and `803-verify-tailscale.yml`'s placeholder check.
+**Decision 2 — OAuth is canonical for the cluster path; rename `TAILSCALE_SECRET` → `TAILSCALE_VM_AUTH_KEY` for the cloud-init path.** Every cluster-side path (802, 805, 801-remove, verify, device-cleanup) uses `TAILSCALE_CLIENTID` + `TAILSCALE_CLIENTSECRET` (OAuth). The variable historically named `TAILSCALE_SECRET` is a *static auth key* (`tskey-auth-XXX` format) consumed exclusively by the **cloud-init / VM bootstrap path** (`cloud-init/create-cloud-init.sh:85` → `URB_TAILSCALE_SECRET_VARIABLE` substitution in VM templates → VM joins tailnet on first boot). The current name is dangerously ambiguous next to `TAILSCALE_CLIENTSECRET` and obscures that this is for VM provisioning, not the cluster operator. Rename to `TAILSCALE_VM_AUTH_KEY` — scope-explicit, matches Tailscale's own "auth key" terminology. Keep the variable in `00-common-values.env.template` + `00-master-secrets.yml.template` under the new name. Drop the dead reads in `networking/tailscale/802-tailscale-tunnel-deploy.sh:56-57` (placeholder check on a variable the cluster operator path never uses) and `803-verify-tailscale.yml` (verifies a cluster-side key that doesn't exist anymore). The cloud-init / VM-install path itself is out of scope for this initiative and will be revisited separately — that's where the question of "can OAuth replace the static auth key?" gets answered.
 
-**Decision 3 — Delete `TAILSCALE_AUTH_KEY` from `service-keys/tailscale.env.template`.** No code reads it. The same template is unused since the new wizard pattern writes `service-keys/tailscale.env` directly via the init script.
+**Decision 3 — Delete `TAILSCALE_AUTH_KEY` from `service-keys/tailscale.env.template`.** No code reads it. The same template is unused since the new wizard pattern writes `service-keys/tailscale.env` directly via the init script. Deleting frees the name for the Decision 2 rename target (`TAILSCALE_VM_AUTH_KEY`) without collision — though we use the more scope-explicit name regardless of availability.
 
 **Decision 4 — Delete `networking/tailscale/804-tailscale-tunnel-delete.sh`.** Orphaned (253 lines, no caller); superseded by playbook `801-remove-network-tailscale-tunnel.yml`.
 
@@ -357,7 +357,7 @@ ansible/playbooks/
   802-tailscale-funnel-ingress.yml           # RENAMED from 802-deploy: just creates the cluster Funnel Ingress (opt-in path)
   802-tailscale-tunnel-addhost.yml           # KEPT (Decision 8): per-service Funnel ingress create
   803-tailscale-device-cleanup.yml           # unchanged
-  803-verify-tailscale.yml                   # updated: drop TAILSCALE_SECRET check
+  803-verify-tailscale.yml                   # updated: drop the static-auth-key placeholder check (cluster path uses OAuth only)
   805-tailscale-internal-ingress.yml         # DELETED (Decision 15)
   806-tailscale-internal-ingress-remove.yml  # DELETED (Decision 15 — was broken anyway)
   801-remove-network-tailscale-tunnel.yml    # updated: drops the smoke-test parts left over from old 801-setup days

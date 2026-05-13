@@ -6,7 +6,7 @@
 
 ## Status: Active
 
-**Goal**: Shrink the Tailscale secret variable set from 8 to 4 and delete the dead-code files (internal-mode, 801-setup, 804-delete, AUTH_KEY template) ahead of the network CLI port.
+**Goal**: Shrink the Tailscale secret variable set from 8 to 5 (4 cluster-side OAuth values + 1 renamed cloud-init / VM-bootstrap key) and delete the dead-code files (internal-mode, 801-setup, 804-delete, AUTH_KEY template) ahead of the network CLI port.
 
 **Last Updated**: 2026-05-13
 
@@ -58,31 +58,43 @@ User confirms phase is complete.
 
 ---
 
-## Phase 2: Delete unused secret variables
+## Phase 2: Variable cleanup — rename + delete
 
-Investigation Decisions 2, 3, 11, 12, 16. After this phase, the variable set is down to 4 (`CLIENTID`, `CLIENTSECRET`, `TAILNET`, `OWNER_ID`).
+Investigation Decisions 2, 3, 11, 12, 16. After this phase, the variable set is down to 5: `CLIENTID`, `CLIENTSECRET`, `TAILNET`, `OWNER_ID` (cluster path) + `VM_AUTH_KEY` (cloud-init / VM-bootstrap path, out of cluster scope).
+
+**Phase 2 audit surfaced a gap in Decision 2 as originally written**: `TAILSCALE_SECRET` is not unused — `cloud-init/create-cloud-init.sh:85` reads it for VM bootstrap (`URB_TAILSCALE_SECRET_VARIABLE` substitution), called by `hosts/multipass-microk8s/01-create-multipass-microk8s.sh:75`. Decision 2 updated to **rename** rather than delete: `TAILSCALE_SECRET` → `TAILSCALE_VM_AUTH_KEY` to disambiguate from `TAILSCALE_CLIENTSECRET` and mark scope explicitly. The cluster-side dead reads (placeholder checks in `802-deploy.sh` and `803-verify.yml`) still go away — they verify a static auth key that the cluster operator path never uses.
 
 ### Tasks
 
-- [ ] 2.1 Delete `TAILSCALE_SECRET` from `00-common-values.env.template` + `00-master-secrets.yml.template` (Decision 2)
-- [ ] 2.2 Delete `TAILSCALE_DOMAIN` from both templates (Decision 11). `grep -rn 'TAILSCALE_DOMAIN' .` and replace every read with `TAILSCALE_TAILNET` — files: 802-deploy, 803-verify, plus any shell script readers
-- [ ] 2.3 Delete `TAILSCALE_PUBLIC_HOSTNAME` from both templates (Decision 12). Replace every read with `TAILSCALE_OWNER_ID` — files: 801-remove, 802-deploy, 803-verify, 803-tailscale-cluster-ingress.yaml.j2
-- [ ] 2.4 Delete `provision-host/uis/templates/uis.secrets/service-keys/tailscale.env.template` entirely (Decision 3 — defines `TAILSCALE_AUTH_KEY`, no code reads it)
-- [ ] 2.5 `BASE_DOMAIN_TAILSCALE` cleanup (Decision 16): `grep -rn '\$BASE_DOMAIN_TAILSCALE\|{{ BASE_DOMAIN_TAILSCALE\|{{ base_domain_tailscale' .` — audit each reader, rewire to `${TAILSCALE_TAILNET}` if it actually needs the tailnet domain, delete the read otherwise (Tailscale Funnel bypasses Traefik per Decision 10, so wildcard HostRegexp patterns matching `*.<tailnet>` match nothing in practice). Then delete `BASE_DOMAIN_TAILSCALE` from both templates.
-- [ ] 2.6 Update `803-verify-tailscale.yml` to drop the `TAILSCALE_SECRET` placeholder check (was the 6th of 6 checks per investigation; verify still has 5 checks after)
+- [x] 2.1 Rename `TAILSCALE_SECRET` → `TAILSCALE_VM_AUTH_KEY` in `00-common-values.env.template` + `00-master-secrets.yml.template` (Decision 2). Comment block rewritten to mark the scope explicitly (cloud-init / VM bootstrap only).
+- [x] 2.2 Rename in alive readers: `cloud-init/create-cloud-init.sh:85`, `provision-host/uis/lib/secrets-management.sh:161`, `website/docs/networking/tailscale-setup.md` (3 refs), `website/docs/contributors/architecture/secrets.md` (rewrote the inconsistency note to describe the two auth flows). The internal `URB_TAILSCALE_SECRET_VARIABLE` placeholder name in cloud-init templates stays unchanged (out of scope; future cloud-init rewrite).
+- [x] 2.3 Dropped dead cluster-side reads of the old `TAILSCALE_SECRET`:
+  - `networking/tailscale/802-tailscale-tunnel-deploy.sh` — removed the read + placeholder check (cluster path uses OAuth)
+  - `ansible/playbooks/803-verify-tailscale.yml` — removed `ts_secret` fact extraction + the `tskey-auth-ktyTufs` check from the placeholder validator (verify now has 5 cluster-side checks)
+  - `801-setup-network-tailscale-tunnel.yml:36` left alone — Phase 3 deletes the whole file
+- [x] 2.4 Deleted `TAILSCALE_DOMAIN` from both templates (Decision 11). Rewired reads to `TAILSCALE_TAILNET` in 802-deploy.yml, 803-verify.yml, 802-tailscale-tunnel-deploy.sh, integration-testing.sh gate. Also renamed internal var `tailscale_domain` → `tailscale_tailnet` in 802-deploy.yml and `ts_domain` → `ts_tailnet` in 803-verify.yml for semantic clarity.
+- [x] 2.5 Deleted `TAILSCALE_PUBLIC_HOSTNAME` from both templates (Decision 12). Rewired reads to `TAILSCALE_OWNER_ID` in 801-remove.yml, 802-deploy.yml, 803-verify.yml, 803-tailscale-cluster-ingress.yaml.j2, 802-tailscale-tunnel-deploy.sh + tailscale-setup.md. The duplicate `tailscale_public_hostname` set_fact in 802-deploy.yml was consolidated into the existing `tailscale_owner_id` fact (same source after Decision 12).
+- [x] 2.6 Deleted `provision-host/uis/templates/uis.secrets/service-keys/tailscale.env.template` (Decision 3 — defined unused `TAILSCALE_AUTH_KEY`). New variable name `TAILSCALE_VM_AUTH_KEY` is scope-explicit per Decision 2.
+- [x] 2.7 Deleted `BASE_DOMAIN_TAILSCALE` from `00-common-values.env.template:21`. Audit confirmed zero active readers; pure delete (not in master template).
 
 ### Validation
 
 ```bash
-# Confirm no remaining reads of the deleted variables outside historical plans
-for v in TAILSCALE_SECRET TAILSCALE_DOMAIN TAILSCALE_PUBLIC_HOSTNAME TAILSCALE_AUTH_KEY BASE_DOMAIN_TAILSCALE; do
-  echo "=== $v ==="
-  grep -rn "$v" --exclude-dir=plans/completed --exclude-dir=plans/backlog .
-done
-# Expected: empty for all five
+# Confirm the rename is complete + the deletes landed cleanly
+echo "=== Old name should be gone except in historical plans ==="
+grep -rn 'TAILSCALE_SECRET\b' --exclude-dir=plans/completed --exclude-dir=plans/backlog --exclude-dir=node_modules --exclude-dir=.git .
+# Expected: empty (or only PLAN-001 task descriptions referencing the rename history)
 
-# Confirm template parses cleanly
-./uis secrets generate --dry-run
+echo "=== Deleted variables should have zero remaining readers ==="
+for v in TAILSCALE_DOMAIN TAILSCALE_PUBLIC_HOSTNAME TAILSCALE_AUTH_KEY BASE_DOMAIN_TAILSCALE; do
+  echo "--- $v ---"
+  grep -rn "$v" --exclude-dir=plans/completed --exclude-dir=plans/backlog --exclude-dir=node_modules --exclude-dir=.git .
+done
+# Expected: empty for all four (or only PLAN-001 task descriptions)
+
+echo "=== New name should appear in templates + cloud-init path ==="
+grep -rn 'TAILSCALE_VM_AUTH_KEY' --exclude-dir=plans --exclude-dir=node_modules --exclude-dir=.git .
+# Expected: ~6 hits (2 templates, secrets-management.sh, create-cloud-init.sh, ubuntu-cloud-init README, tailscale-setup.md)
 ```
 
 User confirms phase is complete.
@@ -159,7 +171,7 @@ User confirms phase is complete.
 
 ## Acceptance Criteria
 
-- [ ] Variable set is down from 8 to 4: `CLIENTID`, `CLIENTSECRET`, `TAILNET`, `OWNER_ID`
+- [ ] Variable set is down from 8 to 5: `CLIENTID`, `CLIENTSECRET`, `TAILNET`, `OWNER_ID` (cluster path) + `VM_AUTH_KEY` (cloud-init / VM-bootstrap, renamed from `TAILSCALE_SECRET`)
 - [ ] Dead files deleted: 801-setup playbook, 801-setup shell wrapper, 804-delete shell, 805/806 playbooks, 805 j2 manifest, AUTH_KEY service-keys template, internal-ingress doc page
 - [ ] `TAILSCALE_OPERATOR_PREFIX` references gone from non-historical files
 - [ ] `BASE_DOMAIN_TAILSCALE` references gone (rewired to `TAILSCALE_TAILNET` where needed, deleted otherwise)

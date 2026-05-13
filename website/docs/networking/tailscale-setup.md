@@ -117,7 +117,7 @@ Before starting, ensure you have:
 7. **Tags:** Type `tag:k8s-operator` and click "Add tags" 
    - The `tag:k8s-operator` is required for Funnel capability (public internet access)
 8. Click "Generate key"
-9. Copy the **auth key** → **This becomes `TAILSCALE_SECRET`**
+9. Copy the **auth key** → **This becomes `TAILSCALE_VM_AUTH_KEY`**
 
 **Why tag:k8s-operator?** 
 - The ACL policy grants Funnel capability only to devices with `tag:k8s-operator`
@@ -154,7 +154,7 @@ Before starting, ensure you have:
 
 1. Go to [Tailscale Admin Console → DNS](https://login.tailscale.com/admin/dns)
 2. Enable **MagicDNS** 
-3. Note your **MagicDNS domain** (e.g., `dog-pence.ts.net`) → **This becomes `TAILSCALE_DOMAIN`**
+3. Note your **MagicDNS domain** (e.g., `dog-pence.ts.net`) → **This becomes `TAILSCALE_TAILNET`**
 
 ### Step 6: Configure Tailscale Secrets
 
@@ -165,10 +165,10 @@ nano .uis.secrets/config/00-common-values.env
 
 Update these variables:
 ```bash
-TAILSCALE_SECRET=tskey-auth-YOUR-AUTH-KEY           # From Step 3: Auth Key
+TAILSCALE_VM_AUTH_KEY=tskey-auth-YOUR-AUTH-KEY           # From Step 3: Auth Key
 TAILSCALE_TAILNET=your-tailnet-name                 # From Step 1: Your tailnet name
-TAILSCALE_DOMAIN=your-magic-dns-domain              # From Step 5: MagicDNS domain
-TAILSCALE_PUBLIC_HOSTNAME=k8s                      # Becomes: k8s.[your-domain].ts.net (cluster ingress only)
+TAILSCALE_TAILNET=your-magic-dns-domain              # From Step 5: MagicDNS domain
+TAILSCALE_OWNER_ID=k8s                      # Becomes: k8s.[your-domain].ts.net (cluster ingress only)
 TAILSCALE_CLIENTID=YOUR-OAUTH-CLIENT-ID             # From Step 4: OAuth Client ID
 TAILSCALE_CLIENTSECRET=tskey-client-YOUR-SECRET      # From Step 4: OAuth Client Secret
 ```
@@ -178,7 +178,7 @@ Then regenerate the Kubernetes secrets:
 ./uis secrets generate
 ```
 
-**Important: TAILSCALE_PUBLIC_HOSTNAME:**
+**Important: TAILSCALE_OWNER_ID:**
 - This is used for the cluster-wide ingress only (when no service parameter is provided)
 - Example: If set to `k8s` and your domain is `dog-pence.ts.net`:
   - `k8s.dog-pence.ts.net` → Routes to Traefik's default backend (nginx catch-all)
@@ -335,7 +335,7 @@ If you get authentication errors, create new keys at [Tailscale Admin Console](h
 **Update secrets file:**
 ```bash
 # Edit .uis.secrets/config/00-common-values.env
-TAILSCALE_SECRET=tskey-auth-YOUR-NEW-AUTH-KEY
+TAILSCALE_VM_AUTH_KEY=tskey-auth-YOUR-NEW-AUTH-KEY
 TAILSCALE_CLIENTID=YOUR-NEW-CLIENT-ID
 TAILSCALE_CLIENTSECRET=tskey-client-YOUR-NEW-CLIENT-SECRET
 
@@ -363,7 +363,7 @@ This means **Let's Encrypt ACME rate limiting** is blocking TLS certificate issu
 
 **Solutions:**
 1. **Wait** for the rate limit to reset (the error message includes the retry-after timestamp)
-2. **Use a different hostname** — change `TAILSCALE_PUBLIC_HOSTNAME` in `.uis.secrets/config/00-common-values.env` (e.g., `k8s-2` instead of `k8s`), then `./uis secrets generate` and redeploy
+2. **Use a different hostname** — change `TAILSCALE_OWNER_ID` in `.uis.secrets/config/00-common-values.env` (e.g., `k8s-2` instead of `k8s`), then `./uis secrets generate` and redeploy
 3. **Avoid repeated deploy/undeploy cycles** with the same hostname during testing
 
 ### Script Execution Issues

@@ -11,10 +11,9 @@
 #
 # Usage:
 #   ansible-playbook playbooks/802-deploy-network-tailscale-tunnel.yml
-#     -e TAILSCALE_PUBLIC_HOSTNAME="k8s"
 #
-# Required parameters:
-#   TAILSCALE_PUBLIC_HOSTNAME: Public Funnel hostname for the cluster ingress (defaults to 'k8s')
+# Required: secrets `urbalurba-secrets` in the default namespace must contain
+# `TAILSCALE_CLIENTID`, `TAILSCALE_CLIENTSECRET`, `TAILSCALE_TAILNET`, `TAILSCALE_OWNER_ID`.
 
 - name: Deploy Tailscale operator to Kubernetes cluster
   hosts: localhost
@@ -51,8 +50,7 @@
       ansible.builtin.set_fact:
         tailscale_clientid: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_CLIENTID | b64decode }}"
         tailscale_clientsecret: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_CLIENTSECRET | b64decode }}"
-        tailscale_domain: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_DOMAIN | b64decode }}"
-        tailscale_public_hostname: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_PUBLIC_HOSTNAME | default('') | b64decode | default(default_cluster_hostname, true) }}"
+        tailscale_tailnet: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_TAILNET | b64decode }}"
         tailscale_owner_id: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_OWNER_ID | default('') | b64decode | default(default_cluster_hostname, true) }}"
       when: urbalurba_secrets.resources | length > 0
 
@@ -99,7 +97,7 @@
       ansible.builtin.set_fact:
         stale_devices: >-
           {{ devices_response.json.devices | default([]) |
-             selectattr('name', 'search', '^' + tailscale_public_hostname + '(-[0-9]+)?[.]') |
+             selectattr('name', 'search', '^' + tailscale_owner_id + '(-[0-9]+)?[.]') |
              list }}
       when: devices_response.status is defined and devices_response.status == 200
 
@@ -306,7 +304,7 @@
         src: "{{ manifests_folder }}/{{ ingress_manifest }}"
         dest: "{{ temp_ingress_file.path }}"
       vars:
-        TAILSCALE_PUBLIC_HOSTNAME: "{{ tailscale_public_hostname }}"
+        TAILSCALE_OWNER_ID: "{{ tailscale_owner_id }}"
 
     - name: "14 Apply Tailscale Ingress configuration"
       kubernetes.core.k8s:
@@ -327,8 +325,8 @@
       ansible.builtin.debug:
         msg: 
           - "✅ Tailscale operator deployed successfully!"
-          - "Cluster hostname: {{ tailscale_public_hostname }}"
-          - "Services will be accessible at: https://service.{{ tailscale_public_hostname }}.{{ tailscale_domain }}"
+          - "Cluster hostname: {{ tailscale_owner_id }}"
+          - "Services will be accessible at: https://service.{{ tailscale_owner_id }}.{{ tailscale_tailnet }}"
 
     - name: "17 Wait for Tailscale ingress to be fully operational"
       ansible.builtin.pause:
@@ -337,7 +335,7 @@
 
     - name: "18 Test Tailscale tunnel connectivity"
       ansible.builtin.uri:
-        url: "https://{{ tailscale_public_hostname }}.{{ tailscale_domain }}"
+        url: "https://{{ tailscale_owner_id }}.{{ tailscale_tailnet }}"
         method: GET
         status_code: 200
         validate_certs: false
@@ -352,7 +350,7 @@
       ansible.builtin.debug:
         msg:
           - "🌐 Tailscale Funnel connectivity test:"
-          - "URL tested: https://{{ tailscale_public_hostname }}.{{ tailscale_domain }}"
+          - "URL tested: https://{{ tailscale_owner_id }}.{{ tailscale_tailnet }}"
           - "Response status: {{ tunnel_test.status | default('timeout') }}"
           - "✅ Tunnel is working correctly - nginx catch-all responded with 'Hello World'"
       when: tunnel_test.status is defined and tunnel_test.status == 200
@@ -361,7 +359,7 @@
       ansible.builtin.fail:
         msg:
           - "❌ Tailscale Funnel connectivity test FAILED!"
-          - "URL tested: https://{{ tailscale_public_hostname }}.{{ tailscale_domain }}"
+          - "URL tested: https://{{ tailscale_owner_id }}.{{ tailscale_tailnet }}"
           - "Status: Connection failed or timed out"
           - ""
           - "The operator deployed successfully, but the tunnel is not accessible from the internet."
@@ -373,7 +371,7 @@
           - "Check the operator pod logs:"
           - "kubectl logs -n tailscale -l app=operator"
           - ""
-          - "Manual test: curl https://{{ tailscale_public_hostname }}.{{ tailscale_domain }}"
+          - "Manual test: curl https://{{ tailscale_owner_id }}.{{ tailscale_tailnet }}"
       when: tunnel_test.status is not defined or tunnel_test.status != 200
 
     - name: "20 Final deployment summary - SUCCESS"
@@ -382,7 +380,7 @@
           - "🎉 Tailscale tunnel deployment complete and VERIFIED!"
           - "✅ Connectivity test passed - tunnel is working"
           - "Your cluster is now accessible via Tailscale Funnel:"
-          - "  https://{{ tailscale_public_hostname }}.{{ tailscale_domain }} (cluster ingress)"
-          - "  https://whoami.{{ tailscale_public_hostname }}.{{ tailscale_domain }} (whoami service)"
-          - "  https://SERVICE.{{ tailscale_public_hostname }}.{{ tailscale_domain }} (any service)"
+          - "  https://{{ tailscale_owner_id }}.{{ tailscale_tailnet }} (cluster ingress)"
+          - "  https://whoami.{{ tailscale_owner_id }}.{{ tailscale_tailnet }} (whoami service)"
+          - "  https://SERVICE.{{ tailscale_owner_id }}.{{ tailscale_tailnet }} (any service)"
       when: tunnel_test.status is defined and tunnel_test.status == 200

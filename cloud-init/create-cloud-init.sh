@@ -82,7 +82,7 @@ initialize_variables() {
     add_variable "URB_TEMPLATE_FILE" "$template_file"
 
     # Add Kubernetes secrets
-    add_variable "URB_TAILSCALE_SECRET_VARIABLE" "$(extract_kubernetes_secret "TAILSCALE_SECRET")"
+    add_variable "URB_TAILSCALE_SECRET_VARIABLE" "$(extract_kubernetes_secret "TAILSCALE_VM_AUTH_KEY")"
     
     add_variable "URB_WIFI_SSID_VARIABLE" "$(extract_kubernetes_secret "WIFI_SSID")"
     add_variable "URB_WIFI_PASSWORD_VARIABLE" "$(extract_kubernetes_secret "WIFI_PASSWORD")"

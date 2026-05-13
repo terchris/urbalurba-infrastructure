@@ -37,9 +37,7 @@
         ts_clientid: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_CLIENTID | b64decode }}"
         ts_clientsecret: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_CLIENTSECRET | b64decode }}"
         ts_tailnet: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_TAILNET | b64decode }}"
-        ts_domain: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_DOMAIN | b64decode }}"
-        ts_secret: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_SECRET | b64decode }}"
-        ts_public_hostname: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_PUBLIC_HOSTNAME | default('') | b64decode | default('not set', true) }}"
+        ts_public_hostname: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_OWNER_ID | default('') | b64decode | default('not set', true) }}"
       when: urbalurba_secrets.resources | length > 0
       ignore_errors: true
 
@@ -48,8 +46,6 @@
         ts_clientid: ""
         ts_clientsecret: ""
         ts_tailnet: ""
-        ts_domain: ""
-        ts_secret: ""
         ts_public_hostname: "not set"
       when: urbalurba_secrets.resources | length == 0
 
@@ -60,11 +56,8 @@
             ts_clientid != "" and
             ts_clientsecret != "" and
             ts_tailnet != "" and
-            ts_domain != "" and
-            ts_secret != "" and
             "XXXXXXX" not in ts_clientid and
-            "XXXXXXX" not in ts_clientsecret and
-            "tskey-auth-ktyTufs" not in ts_secret
+            "XXXXXXX" not in ts_clientsecret
           }}
 
     - name: "05 Report secrets check"
@@ -189,7 +182,6 @@
           - ""
           - "Configuration:"
           - "  Tailnet: {{ ts_tailnet | default('not set') }}"
-          - "  Domain: {{ ts_domain | default('not set') }}"
           - "  Public Hostname: {{ ts_public_hostname }}"
           - "  OAuth Client ID: {{ ts_clientid[:8] + '...' if ts_clientid | length > 8 else ts_clientid | default('not set') }}"
           - ""
