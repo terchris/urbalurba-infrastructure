@@ -86,11 +86,13 @@ Save it somewhere safe — you'll put it in the UIS secrets config in Step 4.
 
 ## Step 3: Configure Public Hostname Routes
 
-After saving the tunnel, you'll be on the tunnel configuration page. Navigate to the **Hostname routes** tab (or "Published application routes").
+After saving the tunnel, you'll be on the tunnel configuration page. Click the **Hostname routes** tab.
+
+> **Important: the Beta "Hostname routes" tab has TWO sections.** Scroll down to **"Published application routes"** (the lower section). The upper section, titled "Your hostname routes", is for **Cloudflare One / WARP-client private access** — it has a simpler form (just hostname + description) and is **not** what UIS needs. Adding a route in the upper section will trigger a "Cloudflare One Client device profile" popup and will *not* create the public DNS record you need. If you see a form without Service Type / URL fields, you're in the wrong section.
 
 ### Add wildcard route (all subdomains)
 
-Click **"Add a published application route"**:
+In the **Published application routes** section, click **"Add a published application route"**:
 
 | Field | Value |
 |-------|-------|
@@ -101,6 +103,8 @@ Click **"Add a published application route"**:
 | **URL** | `traefik.kube-system.svc.cluster.local:80` |
 
 Click **Save**.
+
+> **If a "Cloudflare One Client device profile" popup appears** asking about Split Tunnels and the `100.64.0.0/10` CGNAT range — click **Confirm**. This is a generic Zero Trust warning that fires whenever you point a route at a `.cluster.local` origin. It does **not** apply to UIS's public-tunnel use case (no WARP client involved). Clicking Cancel will abort the save.
 
 ### Add root domain route
 
@@ -116,19 +120,27 @@ Click **"Add a published application route"** again:
 
 Click **Save**.
 
-### DNS record conflict error
+### Verify both halves: published route AND DNS record
 
-If you see: *"Error: An A, AAAA, or CNAME record with that host already exists"*
+A Cloudflare tunnel route needs **two** things to actually serve traffic, and they live in different places:
 
-This means an old DNS record exists (e.g., from a previously deleted tunnel). Fix it:
+1. A **Published Application Route** (you just added these) — tells the tunnel which origin URL to forward each hostname's traffic to.
+2. A **DNS record** under `DNS → Records` — tells Cloudflare's edge which tunnel to send traffic for that hostname to.
 
-1. Go to the main Cloudflare dashboard: `dash.cloudflare.com`
-2. Select your domain → **DNS → Records**
-3. Find the conflicting record (CNAME or Tunnel type pointing to the old tunnel)
-4. Click **Edit** → **Delete** the old record
-5. Go back to the tunnel config and try adding the route again
+When you save a published route, Cloudflare *normally* auto-creates the matching DNS record (displayed as `Type: Tunnel`). **This auto-create is not 100% reliable** — it sometimes silently skips for wildcards, apex/root domains, or when conflicting records already exist.
 
-Cloudflare will automatically create the correct DNS record when the route is saved.
+**After saving each route, verify** by going to `dash.cloudflare.com → <your-domain> → DNS → Records`. You should see two rows added by the tunnel:
+
+| Type | Name | Content | Proxy status |
+|------|------|---------|--------------|
+| Tunnel | `*` | `<your-tunnel-name>` | Proxied (orange cloud) |
+| Tunnel | `<your-domain>` (or `@`) | `<your-tunnel-name>` | Proxied (orange cloud) |
+
+**If a row is missing**, add it manually: click **Add record**, set Type to `CNAME`, Name to `*` (or `@` for root), Target to `<your-tunnel-uuid>.cfargotunnel.com` (find the UUID on the tunnel's Overview tab), and **Proxy status: Proxied (orange cloud)**. Save.
+
+> **The "record already exists" error** (*"An A, AAAA, or CNAME record with that host already exists"*) happens in two cases:
+> - There's a stale DNS record from a previous tunnel or another service (e.g., Squarespace A records, an old CNAME). **Fix**: in DNS → Records, find and delete the conflicting row, then re-save the route.
+> - You manually added a DNS record before saving the matching Published Application Route, and the route's auto-create is now trying to create a duplicate. **Fix**: delete your manual DNS record, then save the route — Cloudflare will auto-create the correct one.
 
 ### Verify your routes
 
@@ -138,6 +150,10 @@ Your tunnel should now show two published application routes:
 |---|-------|------|---------|
 | 1 | `*.urbalurba.no` | `*` | `http://traefik.kube-system.svc.cluster.local:80` |
 | 2 | `urbalurba.no` | `*` | `http://traefik.kube-system.svc.cluster.local:80` |
+
+…and matching `Type: Tunnel` rows in DNS → Records.
+
+> **"No connection detected yet" / Continue button disabled** during tunnel creation — Cloudflare's tunnel wizard shows install instructions for `cloudflared` and a Connection Status panel that polls for the connector. The Continue button stays disabled until the connector connects. In UIS the connector is the K8s pod that gets deployed in Step 5 below — not running yet. **You can configure hostname routes on the tunnel's detail page without finishing the wizard**: click "Cancel" on the install screen (the tunnel itself is already saved), navigate back to `Networks → Tunnels → <your tunnel>`, and proceed with Step 3 from there. After Step 5, the dashboard will show the connector as Healthy.
 
 ## Step 4: Configure UIS Secrets
 
@@ -187,11 +203,16 @@ This runs 5 checks:
 You can also test manually:
 
 ```bash
-curl https://whoami.urbalurba.no
+# whoami's IngressRoute uses HostRegexp(whoami-public.*) — note the "-public" suffix
+curl https://whoami-public.urbalurba.no
+
+# Root domain hits Traefik's catch-all (typically the nginx landing page)
 curl https://urbalurba.no
 ```
 
 The tunnel status in the Cloudflare dashboard should change from **Inactive** to **Healthy**.
+
+> **Common mistake**: the whoami service's IngressRoute matches `HostRegexp(whoami-public.*)`, **not** `whoami.*`. A curl to `https://whoami.urbalurba.no` will return 404 because no IngressRoute matches that exact hostname. Same applies to other services — check the actual IngressRoute pattern (`kubectl get ingressroutes -A`) before forming URLs.
 
 ---
 
@@ -226,6 +247,65 @@ This removes Kubernetes resources and prints instructions for deleting the tunne
 | Connection timeout | Port 7844 blocked by network | See "Port 7844 Blocked" below |
 | DNS record conflict | Old CNAME from deleted tunnel | Delete old DNS record, re-add route |
 | "Worker is Running!" on root domain | Cloudflare Worker intercepting traffic | Check Workers & Pages, remove Worker routes |
+| `NXDOMAIN` / "Could not resolve host" for subdomain | Wildcard DNS record missing (auto-create failed) | See "DNS auto-create didn't fire" below |
+| `HTTP/2 404` from `server: cloudflare` despite DNS resolving | Published Application Route missing, or stale Private hostname route | See "404 from Cloudflare edge" below |
+| Continue button greyed out during tunnel creation | Wizard expects connector to connect first | Cancel the wizard and configure routes from the tunnel detail page — see Step 3 |
+| "Cloudflare One Client device profile" popup on route save | You're in the wrong section (Private hostnames) | Use "Published application routes" section, not "Your hostname routes" — see Step 3 |
+| Whoami curl returns 404 from traefik (not Cloudflare) | Wrong hostname — IngressRoute uses `whoami-public.*`, not `whoami.*` | Use `https://whoami-public.<your-domain>` |
+
+### DNS auto-create didn't fire
+
+After saving a Published Application Route, Cloudflare *should* automatically create a matching `Type: Tunnel` row in `DNS → Records`. Sometimes it silently skips this — especially for wildcards, apex/root domains, or when conflicting records exist.
+
+**Diagnostic** (from your host):
+
+```bash
+# Query Cloudflare's authoritative nameserver directly — bypasses caching
+dig +short @sandy.ns.cloudflare.com whoami-public.yourdomain.com
+#   Expected: two Cloudflare anycast IPs (e.g., 104.21.x.x and 172.67.x.x)
+#   If empty: the wildcard / apex record is missing from Cloudflare's zone
+```
+
+If `dig` returns nothing from the authoritative nameserver, the record genuinely doesn't exist in Cloudflare's zone — this is not a propagation issue. Add the record manually:
+
+1. Go to `dash.cloudflare.com → <your-domain> → DNS → Records → Add record`
+2. Type: `CNAME`, Name: `*` (or `@` for root), Target: `<tunnel-uuid>.cfargotunnel.com`, Proxy status: **Proxied (orange cloud)**
+3. Get the tunnel UUID from `Networks → Tunnels → <your-tunnel> → Overview` tab
+
+Cloudflare's authoritative DNS is instant — within seconds of saving, `dig +short @sandy.ns.cloudflare.com` should return the anycast IPs.
+
+### 404 from Cloudflare edge (despite DNS working)
+
+If `curl https://your-hostname.yourdomain.com/` returns:
+
+```
+HTTP/2 404
+server: cloudflare
+cf-ray: ...
+```
+
+…and the headers show `server: cloudflare` (not `server: traefik` or your origin's server), the 404 is from Cloudflare's edge, not your cluster. This means **DNS resolves to Cloudflare, but Cloudflare has no Published Application Route to forward the request through**.
+
+**Diagnostic — confirm traefik would have served it**:
+
+```bash
+# Curl traefik directly with the unresolvable hostname as Host header
+curl -I -H 'Host: your-hostname.yourdomain.com' http://localhost/
+#   If you get 200 (or any non-404 from a route that matches), traefik is fine.
+#   The problem is at Cloudflare's published-route layer.
+```
+
+**Fix**: go to `Networks → Tunnels → <your-tunnel> → Hostname routes → Published application routes` and verify there's a row covering this hostname. If missing, add it (Step 3). If you previously added a route in the upper "Your hostname routes" section by mistake — that's a Private route and doesn't serve public traffic — delete it and re-add in the Published Application Routes section.
+
+### Stale DNS records from prior domain owners
+
+If your domain was previously used elsewhere (Squarespace, Wix, one.com, GitHub Pages, etc.), the DNS zone may contain leftover A/CNAME records that proxy traffic to the old origin. These show up as:
+
+- `A` rows at the apex pointing to non-Cloudflare IPs (e.g., Squarespace `198.185.x.x` or `198.49.x.x`)
+- `CNAME` rows for subdomains pointing to provider hostnames (e.g., `*.squarespace.com`, `ghs.google.com` for old Google Sites)
+- `NS` rows at the apex pointing to a previous registrar's nameservers (cosmetic leftover; the registrar-level NS is what actually matters)
+
+To use the domain with Cloudflare Tunnel, delete the old A/CNAME records that conflict with the tunnel routes. Leave MX records (email), TXT records (verification/SPF), and the registrar-level NS configuration alone.
 
 ### Port 7844 Blocked (Corporate Networks)
 
@@ -282,12 +362,19 @@ When you add published application routes, Cloudflare automatically creates:
 With the wildcard route (`*.urbalurba.no`), ALL subdomains automatically reach your cluster:
 
 ```
-whoami.urbalurba.no    → Cloudflare → cloudflared pod → Traefik → whoami service
-openwebui.urbalurba.no → Cloudflare → cloudflared pod → Traefik → openwebui service
-grafana.urbalurba.no   → Cloudflare → cloudflared pod → Traefik → grafana service
+whoami-public.urbalurba.no  → Cloudflare → cloudflared pod → Traefik → whoami service
+openwebui.urbalurba.no       → Cloudflare → cloudflared pod → Traefik → openwebui service
+grafana.urbalurba.no         → Cloudflare → cloudflared pod → Traefik → grafana service
 ```
 
-Traefik routes to the correct service using its HostRegexp IngressRoute rules (e.g., `HostRegexp('whoami\..+')`). No per-service tunnel configuration needed.
+Traefik routes to the correct service using its HostRegexp IngressRoute rules. Each service deployed via UIS defines its own HostRegexp pattern — `whoami` uses `HostRegexp(whoami-public.*)`, others use their own conventions. **The IngressRoute pattern is what determines the URL**, not the service name alone. Inspect with:
+
+```bash
+kubectl get ingressroutes -A
+kubectl get ingressroute <name> -n <namespace> -o yaml
+```
+
+A subdomain that doesn't match any specific IngressRoute falls through to Traefik's catch-all (typically `nginx-root-catch-all` serving the default nginx landing page), so an unconfigured subdomain still returns 200 — just from the catch-all, not the intended service. If you expect a specific service and see the nginx page instead, check the IngressRoute's HostRegexp pattern against your URL.
 
 ---
 

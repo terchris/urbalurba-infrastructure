@@ -75,5 +75,5 @@
           - "To fully clean up, delete the tunnel in:"
           - "  Cloudflare dashboard > Zero Trust > Networks > Tunnels"
           - ""
-          - "To redeploy: uis deploy cloudflare-tunnel"
+          - "To redeploy: uis network up cloudflare"
           - "==================================================="

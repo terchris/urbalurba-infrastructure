@@ -58,10 +58,8 @@
 
           To fix:
           1. Create a tunnel in the Cloudflare dashboard (Zero Trust > Networks > Tunnels)
-          2. Copy the tunnel token
-          3. Set CLOUDFLARE_TUNNEL_TOKEN in .uis.secrets/secrets-config/00-common-values.env.template
-          4. Run: uis secrets generate && uis secrets apply
-          5. Then: uis deploy cloudflare-tunnel
+          2. Run: uis network init cloudflare   (paste the tunnel token when prompted)
+          3. Then: uis network up cloudflare
       when: >-
         cf_tunnel_token is not defined or
         cf_tunnel_token == "" or
@@ -160,6 +158,6 @@
           - ""
           - "Cloudflare dashboard: Zero Trust > Networks > Tunnels"
           - ""
-          - "To verify: uis cloudflare verify"
-          - "To remove: uis undeploy cloudflare-tunnel"
+          - "To verify: uis network verify cloudflare"
+          - "To remove: uis network down cloudflare"
           - "==================================================="

@@ -115,7 +115,7 @@
       vars:
         running_pods: "{{ cf_pods.resources | default([]) | selectattr('status.phase', 'equalto', 'Running') | list }}"
         pod_result: >-
-          {% if cf_pods.resources | default([]) | length == 0 %}INFO: Pods - not deployed (deploy with: uis deploy cloudflare-tunnel)
+          {% if cf_pods.resources | default([]) | length == 0 %}INFO: Pods - not deployed (deploy with: uis network up cloudflare)
           {% elif running_pods | length == cf_pods.resources | length %}PASS: Pods - {{ running_pods | length }}/{{ cf_pods.resources | length }} running
           {% else %}WARN: Pods - {{ running_pods | length }}/{{ cf_pods.resources | length }} running ({{ cf_pods.resources | map(attribute='status.phase') | list | join(', ') }}){% endif %}
 
@@ -188,9 +188,9 @@
           - "{% for result in check_results %}  {{ result | trim }}\n{% endfor %}"
           - ""
           - "Commands:"
-          - "  Deploy:   uis deploy cloudflare-tunnel"
-          - "  Remove:   uis undeploy cloudflare-tunnel"
-          - "  Teardown: uis cloudflare teardown"
+          - "  Status:   uis network status cloudflare"
+          - "  Verify:   uis network verify cloudflare"
+          - "  Remove:   uis network down cloudflare"
           - "  Logs:     kubectl logs -n default -l app=cloudflared --tail=50"
           - ""
           - "==================================================="
