@@ -15,7 +15,7 @@ UIS targets **multiple networking providers** from a single command interface. C
 ```
 $ uis network list
 PROVIDER     STATUS                                  HINT
-cloudflare   ✓ running                               2/2 cloudflared pods up
+cloudflare   ✓ running                               1/1 cloudflared pods up
 tailscale    · pending CLI port                      use legacy verbs: ./uis tailscale ...
 ```
 
@@ -23,7 +23,7 @@ The status column uses the same four-state vocabulary as `uis platform list`:
 
 | State | Meaning | Typical hint |
 |---|---|---|
-| `✓ running` | Provider is deployed and at least one pod is in the `Running` phase | provider-specific (e.g. `2/2 cloudflared pods up`) |
+| `✓ running` | Provider is deployed and at least one pod is in the `Running` phase | provider-specific (e.g. `1/1 cloudflared pods up`) |
 | `· configured, not running` | `init` has been run (env file exists), no provider deployment in the cluster | `run './uis network up <provider>' to deploy` |
 | `· not initialized` | UIS has no configuration for this provider yet | `run './uis network init <provider>' to set up` |
 | `✗ unreachable` | Deployment exists but no pods are Running | `check 'kubectl -n default logs -l app=<provider>'` |

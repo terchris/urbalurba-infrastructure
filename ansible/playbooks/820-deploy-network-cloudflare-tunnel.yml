@@ -5,7 +5,7 @@
 # This playbook:
 # 1. Validates prerequisites (kubeconfig, secrets)
 # 2. Verifies CLOUDFLARE_TUNNEL_TOKEN is set and not a placeholder
-# 3. Applies the static manifest (2 replicas of cloudflared)
+# 3. Applies the static manifest (1 replica of cloudflared)
 # 4. Waits for pods to be running
 # 5. Tests end-to-end connectivity through the tunnel
 #

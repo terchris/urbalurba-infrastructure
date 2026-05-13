@@ -196,7 +196,7 @@ This deploys 2 `cloudflared` pods (for high availability) that connect to Cloudf
 This runs 5 checks:
 1. **Secrets** — `CLOUDFLARE_TUNNEL_TOKEN` is configured and not a placeholder
 2. **Network** — DNS resolves and port 7844 is reachable
-3. **Pods** — 2/2 cloudflared pods are running
+3. **Pods** — the cloudflared pod is running
 4. **Logs** — Tunnel connection registered with Cloudflare edge
 5. **End-to-end** — HTTP request through the tunnel returns a response
 
