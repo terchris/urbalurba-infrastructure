@@ -107,15 +107,22 @@ Investigation Decisions 1, 4, 15.
 
 ### Tasks
 
-- [ ] 3.1 Delete `ansible/playbooks/801-setup-network-tailscale-tunnel.yml` (Decision 1 — host-side smoke-test scaffolding, obsolete)
-- [ ] 3.2 Delete `networking/tailscale/801-tailscale-tunnel-setup.sh` (Decision 1 — wrapper for the above)
-- [ ] 3.3 Delete `networking/tailscale/804-tailscale-tunnel-delete.sh` (Decision 4 — orphaned, 253 lines, no caller, superseded by `801-remove-network-tailscale-tunnel.yml`)
-- [ ] 3.4 Delete `ansible/playbooks/805-deploy-tailscale-internal-ingress.yml` (Decision 15 — internal-mode dead)
-- [ ] 3.5 Delete `ansible/playbooks/806-remove-tailscale-internal-ingress.yml` (Decision 15 — was silently broken anyway)
-- [ ] 3.6 Delete `manifests/805-tailscale-internal-ingress.yaml.j2` (Decision 15)
-- [ ] 3.7 Delete `website/docs/networking/tailscale-internal-ingress.md` (Decision 15)
-- [ ] 3.8 Update `801-remove-network-tailscale-tunnel.yml` — drop any cleanup logic that assumed 801-setup ran first (host-side state cleanup), keep the cluster-side cleanup
-- [ ] 3.9 Update `INVESTIGATE-tailscale-cross-cluster-backbone.md`: replace "Deleted in the cleanup — recoverable from git history" placeholder with the actual commit hash from this plan's PR after merge
+- [x] 3.1 Delete `ansible/playbooks/801-setup-network-tailscale-tunnel.yml` (Decision 1 — host-side smoke-test scaffolding, obsolete)
+- [x] 3.2 Delete `networking/tailscale/801-tailscale-tunnel-setup.sh` (Decision 1 — wrapper for the above)
+- [x] 3.3 Delete `networking/tailscale/804-tailscale-tunnel-delete.sh` (Decision 4 — orphaned, 253 lines, no caller, superseded by `801-remove-network-tailscale-tunnel.yml`)
+- [x] 3.4 Delete `ansible/playbooks/805-deploy-tailscale-internal-ingress.yml` (Decision 15 — internal-mode dead)
+- [x] 3.5 Delete `ansible/playbooks/806-remove-tailscale-internal-ingress.yml` (Decision 15 — was silently broken anyway)
+- [x] 3.6 Delete `manifests/805-tailscale-internal-ingress.yaml.j2` (Decision 15)
+- [x] 3.7 Delete `website/docs/networking/tailscale-internal-ingress.md` (Decision 15)
+- [x] 3.8 Update `801-remove-network-tailscale-tunnel.yml` — dropped the "Based on logic from 804" comment + the `provision-host` device-name match in the tailnet device-deletion regex (was the host-side residue from when 801-setup created a `provision-host` device)
+- [ ] 3.9 Update `INVESTIGATE-tailscale-cross-cluster-backbone.md`: replace "Deleted in the cleanup — recoverable from git history" placeholder with the actual commit hash from this plan's PR after merge — deferred to post-merge follow-up
+
+**Also cleaned up stale cross-references (not in original task list but surfaced by the deletion):**
+- `networking/tailscale/802-tailscale-tunnel-deploy.sh` — dropped two references to `801-tailscale-tunnel-setup.sh` (header comment + the secrets-missing error message)
+- `provision-host/uis/templates/secrets-templates/00-master-secrets.yml.template` — rewrote the OAuth client comment block (was referring to deleted scripts; now describes the OAuth scopes properly)
+- `website/docs/networking/index.md` — removed the bullet linking to the deleted internal-ingress page
+- `website/docs/reference/documentation-index.md` — removed the Tailscale Internal Ingress row
+- `website/docs/contributors/architecture/manifests.md` — removed the `805-tailscale-internal-ingress.yaml.j2` row from the 800-899 networking manifests table
 
 ### Validation
 

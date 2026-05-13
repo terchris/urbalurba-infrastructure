@@ -8,8 +8,7 @@
 # 3. **Handles both existing services and catch-all behavior** for non-existent services
 #
 # Prerequisites:
-# - urbalurba-secrets must exist in cluster with valid Tailscale keys
-# - Run 801-tailscale-tunnel-setup.sh first to validate Tailscale setup
+# - urbalurba-secrets must exist in cluster with valid Tailscale OAuth credentials
 #
 # Usage: ./802-tailscale-tunnel-deploy.sh [service-name] [optional-hostname]
 # Examples:
@@ -48,7 +47,7 @@ INGRESS_HOSTNAME="${2:-$SERVICE_NAME}"
 # Validate Tailscale secrets exist
 if ! kubectl --kubeconfig="$KUBECONFIG_PATH" get secret urbalurba-secrets -n default >/dev/null 2>&1; then
     echo "Error: No urbalurba-secrets found"
-    echo "Run ./801-tailscale-tunnel-setup.sh first to validate Tailscale configuration"
+    echo "Run ./uis secrets generate && ./uis secrets apply first."
     exit 1
 fi
 

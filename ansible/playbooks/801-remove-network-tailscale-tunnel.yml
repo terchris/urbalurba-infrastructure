@@ -9,8 +9,6 @@
 # - Optionally removes devices from Tailnet via API
 # - Preserves urbalurba-secrets
 #
-# Based on logic from networking/tailscale/804-tailscale-tunnel-delete.sh
-#
 # Usage:
 #   ansible-playbook playbooks/801-remove-network-tailscale-tunnel.yml
 #   ansible-playbook playbooks/801-remove-network-tailscale-tunnel.yml -e remove_tailnet_devices=false
@@ -235,7 +233,7 @@
       ansible.builtin.set_fact:
         cluster_devices: >-
           {{ devices_response.json.devices | default([]) |
-             selectattr('name', 'search', 'tailscale-operator|' + ts_hostname + '|provision-host') |
+             selectattr('name', 'search', 'tailscale-operator|' + ts_hostname) |
              list }}
       when:
         - remove_tailnet_devices | bool
