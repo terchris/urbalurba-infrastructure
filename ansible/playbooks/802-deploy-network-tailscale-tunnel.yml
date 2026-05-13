@@ -53,7 +53,7 @@
         tailscale_clientsecret: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_CLIENTSECRET | b64decode }}"
         tailscale_domain: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_DOMAIN | b64decode }}"
         tailscale_public_hostname: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_PUBLIC_HOSTNAME | default('') | b64decode | default(default_cluster_hostname, true) }}"
-        tailscale_operator_prefix: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_OPERATOR_PREFIX | default('') | b64decode | default(default_cluster_hostname, true) }}"
+        tailscale_owner_id: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_OWNER_ID | default('') | b64decode | default(default_cluster_hostname, true) }}"
       when: urbalurba_secrets.resources | length > 0
 
     - name: "05 Ensure Tailscale credentials were retrieved"
@@ -107,7 +107,7 @@
       ansible.builtin.set_fact:
         stale_operator_devices: >-
           {{ devices_response.json.devices | default([]) |
-             selectattr('name', 'search', '^' + tailscale_operator_prefix + '-tailscale-operator(-[0-9]+)?[.]') |
+             selectattr('name', 'search', '^' + tailscale_owner_id + '-tailscale-operator(-[0-9]+)?[.]') |
              list }}
       when: devices_response.status is defined and devices_response.status == 200
 
@@ -161,7 +161,7 @@
         src: "{{ manifests_folder }}/{{ operator_config_template }}"
         dest: "{{ temp_operator_config_file.path }}"
       vars:
-        TAILSCALE_OPERATOR_PREFIX: "{{ tailscale_operator_prefix }}"
+        TAILSCALE_OWNER_ID: "{{ tailscale_owner_id }}"
 
     - name: "07 Create values file with Tailscale credentials for Helm"
       ansible.builtin.tempfile:
