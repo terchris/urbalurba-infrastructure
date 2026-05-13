@@ -43,8 +43,8 @@ Internet User → Cloudflare Edge (CDN/WAF) → Tunnel → Traefik → Your Serv
 The token-based approach follows the same pattern as all other UIS services:
 
 1. **Configure in Cloudflare dashboard** (one-time): Create tunnel, get token, configure routes
-2. **Add token to secrets**: Put `CLOUDFLARE_TUNNEL_TOKEN` in `.uis.secrets/secrets-config/00-common-values.env.template`
-3. **Deploy**: `./uis deploy cloudflare-tunnel`
+2. **Initialise UIS with the token**: `./uis network init cloudflare` (interactive wizard, writes the token + domain to `.uis.secrets/`)
+3. **Deploy**: `./uis network up cloudflare`
 
 No interactive browser auth from the container. No generated credential files.
 
@@ -155,42 +155,48 @@ Your tunnel should now show two published application routes:
 
 > **"No connection detected yet" / Continue button disabled** during tunnel creation — Cloudflare's tunnel wizard shows install instructions for `cloudflared` and a Connection Status panel that polls for the connector. The Continue button stays disabled until the connector connects. In UIS the connector is the K8s pod that gets deployed in Step 5 below — not running yet. **You can configure hostname routes on the tunnel's detail page without finishing the wizard**: click "Cancel" on the install screen (the tunnel itself is already saved), navigate back to `Networks → Tunnels → <your tunnel>`, and proceed with Step 3 from there. After Step 5, the dashboard will show the connector as Healthy.
 
-## Step 4: Configure UIS Secrets
+## Step 4: Configure UIS with the Tunnel Token
 
-Add the tunnel token to your secrets config:
-
-```bash
-# Edit the secrets file (opens in your default editor)
-./uis secrets edit
-```
-
-This opens `.uis.secrets/secrets-config/00-common-values.env.template`. Add or update these lines:
+Run the interactive init wizard:
 
 ```bash
-BASE_DOMAIN_CLOUDFLARE=urbalurba.no
-CLOUDFLARE_TUNNEL_TOKEN=eyJhIjoiOT...your-full-token-here
+./uis network init cloudflare
 ```
 
-Then regenerate and apply secrets:
+The wizard prompts for two values:
 
-```bash
-./uis secrets generate
-./uis secrets apply
-```
+- **`CLOUDFLARE_TUNNEL_TOKEN`** — paste the long `eyJ...` string you copied in Step 2.
+- **`BASE_DOMAIN_CLOUDFLARE`** — your domain, e.g. `urbalurba.no` (used by `uis network verify cloudflare`'s end-to-end probe; press Enter to skip if you want to set it later).
+
+The wizard writes two files:
+
+- `.uis.secrets/service-keys/cloudflare.env` — the canonical source-of-truth (owner-only `chmod 600`)
+- `.uis.secrets/secrets-config/00-common-values.env.template` — the matching template lines get patched in place
+
+**The wizard requires an interactive terminal** — it intentionally refuses non-TTY stdin to prevent token leaks through shell history or piped scripts. If you need to drive it non-interactively (e.g. CI), edit the files directly: put `CLOUDFLARE_TUNNEL_TOKEN=...` and `BASE_DOMAIN_CLOUDFLARE=...` into `.uis.secrets/service-keys/cloudflare.env` with mode `0600`.
+
+> **Re-running the wizard**: if `cloudflare.env` already exists, the wizard shows a three-option menu — Skip / Re-prompt / Show. Pick Show to inspect the current values, Re-prompt to rotate the token.
 
 ## Step 5: Deploy the Tunnel
 
 ```bash
-./uis deploy cloudflare-tunnel
+./uis network up cloudflare
 ```
 
-This deploys 2 `cloudflared` pods (for high availability) that connect to Cloudflare using the token. All routing is managed by Cloudflare's dashboard — no local configuration files needed.
+This is a two-stage command:
+
+1. **Stage 1/2** — pushes the token into the `urbalurba-secrets` Kubernetes Secret (runs `uis secrets generate` + `uis secrets apply` under the hood).
+2. **Stage 2/2** — applies the manifest and waits for the cloudflared pod to register with Cloudflare's edge (`ansible-playbook 820-deploy-network-cloudflare-tunnel.yml`).
+
+The default manifest deploys **1 cloudflared pod**. On single-node clusters (Rancher Desktop), more replicas wouldn't add fault tolerance (all pods would land on the same node anyway). A `--replicas` flag for multi-node clusters is on the roadmap.
+
+When the command finishes you'll see `✓ Cloudflare tunnel is up`. The tunnel status in the Cloudflare dashboard will change from **Inactive** to **Healthy** within a few seconds.
 
 ## Step 6: Verify
 
 ```bash
 # Run all verification checks
-./uis cloudflare verify
+./uis network verify cloudflare
 ```
 
 This runs 5 checks:
@@ -199,6 +205,13 @@ This runs 5 checks:
 3. **Pods** — the cloudflared pod is running
 4. **Logs** — Tunnel connection registered with Cloudflare edge
 5. **End-to-end** — HTTP request through the tunnel returns a response
+
+Quick state check:
+
+```bash
+./uis network list                 # provider table + pod count
+./uis network status cloudflare    # detail panel (token char count, domain, pods)
+```
 
 You can also test manually:
 
@@ -218,21 +231,22 @@ The tunnel status in the Cloudflare dashboard should change from **Inactive** to
 
 ## Managing the Tunnel
 
-### Undeploy (keep tunnel for redeployment)
+### Take down the tunnel (keep config for redeployment)
 
 ```bash
-./uis undeploy cloudflare-tunnel
+./uis network down cloudflare
 ```
 
-This removes the Kubernetes resources but keeps the tunnel configured in Cloudflare. Redeploy anytime with `./uis deploy cloudflare-tunnel`.
+This removes the Kubernetes resources (deployment + pods) but **preserves** `.uis.secrets/service-keys/cloudflare.env` so you can redeploy without re-running the init wizard. Redeploy with `./uis network up cloudflare` — same token, same domain, ready in ~20 seconds. The Cloudflare-side tunnel and Published Application Routes are also preserved (they're dashboard state, not affected by the local down).
 
-### Full teardown
+### Full teardown (forget the token)
 
 ```bash
-./uis cloudflare teardown
+./uis network down cloudflare
+rm .uis.secrets/service-keys/cloudflare.env
 ```
 
-This removes Kubernetes resources and prints instructions for deleting the tunnel in the Cloudflare dashboard.
+Then optionally, in the Cloudflare dashboard: `Zero Trust → Networks → Tunnels → <your tunnel> → … → Delete`. The dashboard cleanup is independent of the local state and is only needed if you're retiring the tunnel altogether.
 
 ---
 
@@ -314,7 +328,7 @@ Cloudflare tunnels use **port 7844** (TCP and UDP) for the tunnel connection, no
 **Symptoms:**
 - Tunnel pod starts but stays in "connecting" state
 - Logs show connection timeouts to Cloudflare edge
-- `./uis cloudflare verify` reports port 7844 as blocked
+- `./uis network verify cloudflare` reports port 7844 as blocked
 
 **Solutions:**
 1. **Switch networks**: Use home WiFi or mobile hotspot
@@ -347,7 +361,7 @@ User Request → Cloudflare Edge (CDN/WAF/TLS) → Tunnel Pod → Traefik → Se
 
 ### Components
 - **Cloudflare Edge**: Global CDN, DDoS protection, TLS termination
-- **Tunnel Connector**: 2 `cloudflared` pods in your cluster (HA)
+- **Tunnel Connector**: 1 `cloudflared` pod in your cluster (single replica by default; multi-replica HA on multi-node clusters is on the roadmap)
 - **Traefik**: Ingress controller routing to services via IngressRoutes
 - **Services**: Your applications with HostRegexp IngressRoute patterns
 
