@@ -91,13 +91,15 @@ Two stages:
 
 The operator registers as `<owner_id>-tailscale-operator.<tailnet>.ts.net`.
 
-**Opt-in cluster Funnel**: if you also want a wildcard cluster ingress at `https://<owner_id>.<tailnet>.ts.net` (Traefik-backed, useful when you have a lot of services and don't want to expose each one individually):
+**Opt-in cluster Funnel device**: you can also create a single Tailscale device at `https://<owner_id>.<tailnet>.ts.net` that serves Traefik's default backend (the nginx catch-all):
 
 ```bash
 ./uis network up tailscale --with-cluster-funnel
 ```
 
-The wildcard ingress is **opt-in** because per-service Funnel devices are the canonical exposure model (see step 4) — most users don't need both. The cluster device also consumes Let's Encrypt cert allowance on a hostname that's not always needed.
+This is mainly useful as a smoke-test ("the operator installed and Funnel works") or if you want a single "cluster landing page" URL. **It does not let you expose multiple services through one device.** Tailscale Funnel has no wildcard DNS — `https://whoami.<owner_id>.<tailnet>.ts.net` won't resolve. Each service you want public still needs its own per-service expose (step 4), regardless of whether the cluster Funnel device exists.
+
+The cluster Funnel device is opt-in because it costs a Let's Encrypt cert allowance against `<owner_id>.<tailnet>.ts.net` (5 certs per 7 days on that hostname) for limited practical value.
 
 ### 4. Expose a service
 
