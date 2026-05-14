@@ -20,7 +20,7 @@ Throughout this document we use the tailscale domain `dog-pence.ts.net` as an ex
 - ✅ **DOES work**: `https://authentik.dog-pence.ts.net` (each service gets its own URL)
 
 ### The Solution: Individual Service Ingresses
-We use the `./uis tailscale expose <service>` command to create individual Tailscale ingresses for each service. Each service gets its own public URL directly on your tailscale domain.
+We use the `./uis network expose tailscale <service>` command to create individual Tailscale ingresses for each service. Each service gets its own public URL directly on your tailscale domain.
 
 ## 🚀 Quick Summary
 
@@ -65,11 +65,11 @@ Before starting, ensure you have:
 
 | Command | Purpose | When to Use |
 |---------|---------|-------------|
-| `./uis deploy tailscale-tunnel` | Deploy Tailscale operator to cluster | After secrets are configured |
-| `./uis undeploy tailscale-tunnel` | Remove Tailscale operator and ingresses | Clean up / start over |
-| `./uis tailscale expose <service>` | Expose a service via Tailscale Funnel | After operator deployed |
-| `./uis tailscale unexpose <service>` | Remove a service from Tailscale Funnel | When removing a service |
-| `./uis tailscale verify` | Check Tailscale secrets, API, devices, and operator | Diagnostics / pre-deploy checks |
+| `./uis network up tailscale` | Deploy Tailscale operator to cluster | After secrets are configured |
+| `./uis network down tailscale` | Remove Tailscale operator and ingresses | Clean up / start over |
+| `./uis network expose tailscale <service>` | Expose a service via Tailscale Funnel | After operator deployed |
+| `./uis network unexpose tailscale <service>` | Remove a service from Tailscale Funnel | When removing a service |
+| `./uis network verify tailscale` | Check Tailscale secrets, API, devices, and operator | Diagnostics / pre-deploy checks |
 
 ## 🚀 Quick Start Guide
 
@@ -192,7 +192,7 @@ Then regenerate the Kubernetes secrets:
 
 Verify your Tailscale secrets and API connectivity before deploying:
 ```bash
-./uis tailscale verify
+./uis network verify tailscale
 ```
 
 This checks:
@@ -204,7 +204,7 @@ This checks:
 ### Step 8: Deploy Tailscale Operator to Cluster
 ```bash
 # Deploy the Tailscale operator (secrets are applied automatically)
-./uis deploy tailscale-tunnel
+./uis network up tailscale
 ```
 
 ### Step 9: Expose Services via Tailscale Funnel
@@ -213,17 +213,17 @@ Since Tailscale doesn't support wildcard DNS, expose each service individually:
 
 ```bash
 # Expose whoami (uses service name as hostname)
-./uis tailscale expose whoami
+./uis network expose tailscale whoami
 # Result: https://whoami.dog-pence.ts.net
 
 # Expose other services
-./uis tailscale expose open-webui
+./uis network expose tailscale open-webui
 # Result: https://open-webui.dog-pence.ts.net
 
-./uis tailscale expose authentik-server
+./uis network expose tailscale authentik-server
 # Result: https://authentik-server.dog-pence.ts.net
 
-./uis tailscale expose grafana
+./uis network expose tailscale grafana
 # Result: https://grafana.dog-pence.ts.net
 ```
 
@@ -236,7 +236,7 @@ Since Tailscale doesn't support wildcard DNS, expose each service individually:
 
 **To remove a service from Funnel:**
 ```bash
-./uis tailscale unexpose whoami
+./uis network unexpose tailscale whoami
 ```
 
 This removes the Tailscale ingress and cleans up the device from your Tailnet via API.
@@ -293,7 +293,7 @@ curl -v https://whoami.dog-pence.ts.net
 To completely remove Tailscale and start over:
 ```bash
 # Remove Tailscale operator, ingresses, and all cluster devices from Tailnet
-./uis undeploy tailscale-tunnel
+./uis network down tailscale
 ```
 
 **What gets deleted:**
@@ -315,7 +315,7 @@ This error means your OAuth client doesn't have permission for `tag:k8s-operator
 5. Generate a new client secret (required after scope changes)
 6. Update `TAILSCALE_CLIENTSECRET` in `.uis.secrets/secrets-config/00-common-values.env.template`
 7. Regenerate secrets: `./uis secrets generate`
-8. Redeploy: `./uis deploy tailscale-tunnel`
+8. Redeploy: `./uis network up tailscale`
 
 **Key Point:** The operator uses `tag:k8s-operator` for all devices, including itself and cluster ingress devices with Funnel capability.
 
@@ -344,12 +344,12 @@ TAILSCALE_CLIENTSECRET=tskey-client-YOUR-NEW-CLIENT-SECRET
 
 # Regenerate and redeploy
 ./uis secrets generate
-./uis deploy tailscale-tunnel
+./uis network up tailscale
 ```
 
 ### TLS Handshake Timeout (Let's Encrypt Rate Limiting)
 
-If `./uis deploy tailscale-tunnel` or `./uis tailscale expose <service>` reports a TLS handshake timeout, check the Tailscale proxy pod logs:
+If `./uis network up tailscale` or `./uis network expose tailscale <service>` reports a TLS handshake timeout, check the Tailscale proxy pod logs:
 
 ```bash
 ./uis shell
@@ -407,10 +407,10 @@ curl -fsSL https://tailscale.com/install.sh | sh
 ```
 
 ### Setup Flow
-- **Configure secrets** → `./uis deploy tailscale-tunnel` → `./uis tailscale expose <service>` (sequential)
-- Run `./uis tailscale expose` for each service you want to make public
-- `./uis tailscale unexpose <service>` removes a single service from Funnel
-- `./uis undeploy tailscale-tunnel` removes operator and all ingresses
+- **Configure secrets** → `./uis network up tailscale` → `./uis network expose tailscale <service>` (sequential)
+- Run `./uis network expose tailscale` for each service you want to make public
+- `./uis network unexpose tailscale <service>` removes a single service from Funnel
+- `./uis network down tailscale` removes operator and all ingresses
 
 ### Integration with Other Systems
 - Works alongside Cloudflare tunnels (different domains)
@@ -423,7 +423,7 @@ After setup, verify your services are accessible:
 
 ```bash
 # Run Tailscale diagnostics
-./uis tailscale verify
+./uis network verify tailscale
 
 # Test individual service URLs
 curl https://whoami.dog-pence.ts.net
@@ -441,6 +441,6 @@ curl https://authentik.dog-pence.ts.net
 
 ## 📝 Summary
 
-While Tailscale doesn't support wildcard DNS (limiting us from using patterns like `*.k8s.dog-pence.ts.net`), the `./uis tailscale expose` command provides a practical workaround. Each service gets its own public URL like `https://whoami.dog-pence.ts.net`, giving you full control over which services are exposed to the internet.
+While Tailscale doesn't support wildcard DNS (limiting us from using patterns like `*.k8s.dog-pence.ts.net`), the `./uis network expose tailscale` command provides a practical workaround. Each service gets its own public URL like `https://whoami.dog-pence.ts.net`, giving you full control over which services are exposed to the internet.
 
 ⚠️ **Authentication Note**: Services exposed via Tailscale are publicly accessible by default. If you need authentication, consider adding Authentik protection. See `docs/rules-ingress-traefik.md` for authentication setup details.
