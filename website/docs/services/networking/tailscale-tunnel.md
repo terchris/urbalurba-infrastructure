@@ -72,8 +72,9 @@ This service requires a Tailscale account and API credentials. Configure them vi
 
 | File | Purpose |
 |------|---------|
-| `ansible/playbooks/802-deploy-network-tailscale-tunnel.yml` | Deployment playbook |
-| `ansible/playbooks/802-remove-network-tailscale-tunnel.yml` | Removal playbook |
+| `ansible/playbooks/800-tailscale-operator-install.yml` | Operator install playbook |
+| `ansible/playbooks/802-tailscale-funnel-ingress.yml` | Cluster Funnel ingress playbook (opt-in via `--with-cluster-funnel`) |
+| `ansible/playbooks/801-remove-network-tailscale-tunnel.yml` | Removal playbook |
 
 ## Undeploy
 

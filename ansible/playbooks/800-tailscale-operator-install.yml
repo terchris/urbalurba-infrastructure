@@ -1,0 +1,264 @@
+---
+# file: playbooks/800-tailscale-operator-install.yml
+# Description: Install (or upgrade) the Tailscale Kubernetes operator via Helm.
+#
+# This playbook is the cluster-side foundation. It does NOT create the cluster
+# Funnel ingress device (that's 802-tailscale-funnel-ingress.yml, opt-in via
+# 'uis network up tailscale --with-cluster-funnel'). It does NOT expose
+# individual services (that's 802-tailscale-tunnel-addhost.yml, invoked by
+# 'uis network expose tailscale <svc>').
+#
+# Idempotent: re-running on an already-installed operator is a no-op Helm
+# upgrade with the same values. PLAN-002 Decision 5.
+#
+# Usage:
+#   ansible-playbook playbooks/800-tailscale-operator-install.yml
+#
+# Required secrets in 'urbalurba-secrets' (default namespace):
+#   TAILSCALE_CLIENTID, TAILSCALE_CLIENTSECRET, TAILSCALE_OWNER_ID.
+#   (TAILSCALE_TAILNET is not strictly required here, but the device-cleanup
+#   API call uses it; if absent, the cleanup is skipped.)
+
+- name: Install Tailscale Kubernetes operator
+  hosts: localhost
+  gather_facts: false
+  vars:
+    manifests_folder: "/mnt/urbalurbadisk/manifests"
+    kubeconfig_file: "/mnt/urbalurbadisk/.uis.secrets/generated/kubeconfig/kubeconf-all"
+    operator_config_template: "800-tailscale-operator-config.yaml.j2"
+    default_owner_id: "k8s"
+    operator_namespace: "tailscale"
+    operator_release_name: "tailscale-operator"
+
+  tasks:
+    - name: "01 Verify kubeconfig file exists"
+      ansible.builtin.stat:
+        path: "{{ kubeconfig_file }}"
+      register: kubeconfig_stat
+
+    - name: "02 Fail if kubeconfig file does not exist"
+      ansible.builtin.fail:
+        msg: "Kubeconfig file not found at {{ kubeconfig_file }}"
+      when: not kubeconfig_stat.stat.exists
+
+    - name: "03 Retrieve Tailscale secrets from urbalurba-secrets"
+      kubernetes.core.k8s_info:
+        kind: Secret
+        name: urbalurba-secrets
+        namespace: default
+        kubeconfig: "{{ kubeconfig_file }}"
+      register: urbalurba_secrets
+
+    - name: "04 Extract Tailscale credentials"
+      ansible.builtin.set_fact:
+        tailscale_clientid: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_CLIENTID | b64decode }}"
+        tailscale_clientsecret: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_CLIENTSECRET | b64decode }}"
+        tailscale_tailnet: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_TAILNET | default('') | b64decode }}"
+        tailscale_owner_id: "{{ urbalurba_secrets.resources[0].data.TAILSCALE_OWNER_ID | default('') | b64decode | default(default_owner_id, true) }}"
+      when: urbalurba_secrets.resources | length > 0
+
+    - name: "05 Ensure Tailscale credentials were retrieved"
+      ansible.builtin.fail:
+        msg: "Failed to retrieve TAILSCALE_CLIENTID / TAILSCALE_CLIENTSECRET from urbalurba-secrets. Run 'uis network init tailscale' first."
+      when: tailscale_clientid is not defined or tailscale_clientsecret is not defined or tailscale_clientid == "" or tailscale_clientsecret == ""
+
+    # Pre-install cleanup: remove stale operator devices so Tailscale doesn't
+    # assign a -1 / -2 suffix when the new pod registers. Only operator devices
+    # are cleaned here; per-service and cluster Funnel devices are not touched.
+    - name: "05a Obtain OAuth access token for operator-device cleanup"
+      ansible.builtin.uri:
+        url: "https://api.tailscale.com/api/v2/oauth/token"
+        method: POST
+        body_format: form-urlencoded
+        body:
+          client_id: "{{ tailscale_clientid }}"
+          client_secret: "{{ tailscale_clientsecret }}"
+          grant_type: "client_credentials"
+        status_code: [200]
+        timeout: 15
+      register: oauth_token_response
+      ignore_errors: true
+      no_log: true
+      when: tailscale_tailnet != ""
+
+    - name: "05b Extract access token"
+      ansible.builtin.set_fact:
+        ts_access_token: "{{ oauth_token_response.json.access_token }}"
+      when:
+        - tailscale_tailnet != ""
+        - oauth_token_response.status is defined
+        - oauth_token_response.status == 200
+      no_log: true
+
+    - name: "05c List devices in tailnet"
+      ansible.builtin.uri:
+        url: "https://api.tailscale.com/api/v2/tailnet/{{ tailscale_tailnet }}/devices"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ ts_access_token }}"
+        status_code: [200]
+        timeout: 15
+      register: devices_response
+      when: ts_access_token is defined
+      ignore_errors: true
+
+    - name: "05d Find stale operator devices"
+      ansible.builtin.set_fact:
+        stale_operator_devices: >-
+          {{ devices_response.json.devices | default([]) |
+             selectattr('name', 'search', '^' + tailscale_owner_id + '-tailscale-operator(-[0-9]+)?[.]') |
+             list }}
+      when: devices_response.status is defined and devices_response.status == 200
+
+    - name: "05e Report stale operator devices"
+      ansible.builtin.debug:
+        msg: "Found {{ stale_operator_devices | default([]) | length }} stale operator device(s); cleaning up: {{ (stale_operator_devices | default([])) | map(attribute='name') | join(', ') }}"
+      when: (stale_operator_devices | default([]) | length) > 0
+
+    - name: "05f Delete stale operator devices via Tailscale API"
+      ansible.builtin.uri:
+        url: "https://api.tailscale.com/api/v2/device/{{ item.id }}"
+        method: DELETE
+        headers:
+          Authorization: "Bearer {{ ts_access_token }}"
+        status_code: [200, 204]
+        timeout: 15
+      loop: "{{ stale_operator_devices | default([]) }}"
+      loop_control:
+        label: "{{ item.name }}"
+      ignore_errors: true
+      no_log: true
+
+    - name: "06 Add Tailscale Helm repository"
+      kubernetes.core.helm_repository:
+        name: tailscale
+        repo_url: https://pkgs.tailscale.com/helmcharts
+        kubeconfig: "{{ kubeconfig_file }}"
+
+    - name: "06a Create temp file for rendered operator config"
+      ansible.builtin.tempfile:
+        state: file
+        suffix: .yaml
+      register: temp_operator_config_file
+
+    - name: "06b Apply variable substitution to operator config template"
+      ansible.builtin.template:
+        src: "{{ manifests_folder }}/{{ operator_config_template }}"
+        dest: "{{ temp_operator_config_file.path }}"
+      vars:
+        TAILSCALE_OWNER_ID: "{{ tailscale_owner_id }}"
+
+    - name: "07 Create values file with Tailscale OAuth credentials for Helm"
+      ansible.builtin.tempfile:
+        state: file
+        suffix: .yaml
+      register: temp_values_file
+
+    - name: "08 Write OAuth credentials to temporary values file"
+      ansible.builtin.copy:
+        content: |
+          oauth:
+            clientId: "{{ tailscale_clientid }}"
+            clientSecret: "{{ tailscale_clientsecret }}"
+        dest: "{{ temp_values_file.path }}"
+      no_log: true
+
+    - name: "09 Install (or upgrade) Tailscale operator via Helm"
+      kubernetes.core.helm:
+        name: "{{ operator_release_name }}"
+        chart_ref: tailscale/tailscale-operator
+        release_namespace: "{{ operator_namespace }}"
+        create_namespace: true
+        values_files:
+          - "{{ temp_operator_config_file.path }}"
+          - "{{ temp_values_file.path }}"
+        wait: true
+        kubeconfig: "{{ kubeconfig_file }}"
+      register: helm_install_result
+
+    - name: "09a Verify Helm install succeeded"
+      ansible.builtin.fail:
+        msg: "❌ Helm install failed: {{ helm_install_result.msg | default('unknown error') }}"
+      when: helm_install_result.failed | default(false)
+
+    - name: "10 Wait for Tailscale operator pod to appear"
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: "{{ operator_namespace }}"
+        label_selectors:
+          - "app=operator"
+        kubeconfig: "{{ kubeconfig_file }}"
+      register: operator_pods
+      until:
+        - operator_pods.resources | length > 0
+        - operator_pods.resources | map(attribute='status.phase') | list | select('in', ['Pending', 'Running']) | list | length > 0
+      retries: 12
+      delay: 5
+
+    - name: "10a Refuse if pods are in error state"
+      ansible.builtin.fail:
+        msg: "❌ Tailscale operator pods are in error state: {{ operator_pods.resources | map(attribute='status.phase') | list | join(', ') }}"
+      when:
+        - operator_pods.resources | length > 0
+        - operator_pods.resources | map(attribute='status.phase') | list | select('in', ['Failed', 'Error', 'CrashLoopBackOff']) | list | length > 0
+
+    - name: "11 Wait for Tailscale operator pod to be Running"
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: "{{ operator_namespace }}"
+        label_selectors:
+          - "app=operator"
+        kubeconfig: "{{ kubeconfig_file }}"
+      register: operator_pods_status
+      until:
+        - operator_pods_status.resources | length > 0
+        - operator_pods_status.resources | map(attribute='status.phase') | list | unique == ['Running']
+      retries: 12
+      delay: 10
+
+    - name: "11a Show pod status + recent logs when not Running"
+      kubernetes.core.k8s_log:
+        name: "{{ operator_pods.resources[0].metadata.name }}"
+        namespace: "{{ operator_namespace }}"
+        kubeconfig: "{{ kubeconfig_file }}"
+        tail_lines: 50
+      register: operator_logs
+      when:
+        - operator_pods.resources | length > 0
+        - operator_pods_status.resources[0].status.phase != 'Running'
+      failed_when: false
+
+    - name: "11b Fail with pod-status hint when operator not ready"
+      ansible.builtin.fail:
+        msg:
+          - "❌ Tailscale operator pod failed to reach Running."
+          - "Pod: {{ operator_pods.resources[0].metadata.name }}"
+          - "Status: {{ operator_pods_status.resources[0].status.phase | default('Unknown') }}"
+          - ""
+          - "Recent pod logs (last 50 lines):"
+          - "{{ operator_logs.log | default('No logs available') }}"
+          - ""
+          - "Common causes:"
+          - "- 403 / auth errors: OAuth client missing 'tag:k8s-operator' on Devices Core (write) and Keys Auth Keys (write) scopes"
+          - "- Network: cluster cannot reach Tailscale control plane"
+          - ""
+          - "Fix: re-check the OAuth client at https://login.tailscale.com/admin/settings/oauth, then './uis network init tailscale' to update credentials, then re-run 'up'."
+      when:
+        - operator_pods.resources | length > 0
+        - operator_pods_status.resources[0].status.phase != 'Running'
+
+    - name: "12 Clean up temporary Helm value files"
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - "{{ temp_operator_config_file.path }}"
+        - "{{ temp_values_file.path }}"
+
+    - name: "13 Operator install summary"
+      ansible.builtin.debug:
+        msg:
+          - "✅ Tailscale operator installed and Running."
+          - "Operator device: {{ tailscale_owner_id }}-tailscale-operator.{{ tailscale_tailnet | default('<tailnet>') }}"
+          - "Per-service expose: './uis network expose tailscale <svc>'"
+          - "Cluster Funnel:    './uis network up tailscale --with-cluster-funnel' (creates {{ tailscale_owner_id }}.{{ tailscale_tailnet | default('<tailnet>') }})"
