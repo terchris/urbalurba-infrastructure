@@ -334,6 +334,10 @@
         prompt: "Waiting for Tailscale Funnel and DNS to stabilize..."
 
     - name: "18 Test Tailscale tunnel connectivity"
+      # Fresh OWNER_ID first-deploys take ~90–120s for cert provisioning +
+      # DNS propagation (per talk52 F4). Warm-cache deploys short-circuit on
+      # the first attempt via the until condition, so the larger budget only
+      # matters when it's actually needed.
       ansible.builtin.uri:
         url: "https://{{ tailscale_owner_id }}.{{ tailscale_tailnet }}"
         method: GET
@@ -341,7 +345,7 @@
         validate_certs: false
         timeout: 30
       register: tunnel_test
-      retries: 12
+      retries: 24
       delay: 10
       until: tunnel_test.status == 200
       failed_when: false
