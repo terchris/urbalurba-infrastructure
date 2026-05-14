@@ -32,8 +32,8 @@ Complete list of services available in UIS compared to their cloud equivalents.
 | **GitOps & CD** | Azure DevOps, GitHub Actions | ArgoCD | `./uis deploy argocd` |
 | **Database Admin** | Azure Portal | pgAdmin | `./uis deploy pgadmin` |
 | **Redis Admin** | Azure Portal | RedisInsight | `./uis deploy redisinsight` |
-| **VPN Connectivity** | Azure VPN Gateway | Tailscale | `./uis deploy tailscale-tunnel` |
-| **Public Tunnels** | Azure Front Door | Cloudflare Tunnels | `./uis deploy cloudflare-tunnel` |
+| **VPN Connectivity** | Azure VPN Gateway | Tailscale | `./uis network up tailscale` |
+| **Public Tunnels** | Azure Front Door | Cloudflare Tunnels | `./uis network up cloudflare` |
 | **Test Service** | — | Whoami | `./uis deploy whoami` |
 
 ## Service Categories

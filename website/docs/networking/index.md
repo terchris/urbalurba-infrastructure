@@ -34,9 +34,9 @@ The decision typically comes down to **three constraints**:
 
 ```
 $ uis network list
-PROVIDER     STATUS                                  HINT
-cloudflare   ✓ running                               1/1 cloudflared pods up
-tailscale    · pending CLI port                      use legacy verbs: ./uis tailscale ...
+PROVIDER     STATUS
+cloudflare   ✓ running                   (1/1 cloudflared pods up)
+tailscale    ✓ running                   (1/1 operator pod up, 2 service(s) exposed)
 ```
 
 The status column uses the same four-state vocabulary as `uis platform list`:
@@ -69,7 +69,7 @@ The wizard never deploys anything. Init writes config; up deploys.
 | Provider | CLI port | Deploy path | Notes |
 |---|---|---|---|
 | **Cloudflare** | ✅ `uis network ... cloudflare` | In-cluster `cloudflared` pods, token-based | Verified on rancher-desktop with `*.skryter.no`. See [Cloudflare tunnel](./cloudflare.md). |
-| **Tailscale** | ⏳ pending | Legacy verbs: `uis deploy tailscale-tunnel`, `uis tailscale expose/unexpose/verify` | Funnel works end-to-end today. See [Tailscale Funnel](./tailscale.md) for the novice path. CLI will be ported to the `uis network ... tailscale` family in a future round. |
+| **Tailscale** | ✅ `uis network ... tailscale` | In-cluster Tailscale operator + per-service Funnel devices, OAuth-based | Verified end-to-end on rancher-desktop against `dog-pence.ts.net`. See [Tailscale Funnel](./tailscale.md) for the three-command novice path. |
 
 ## How traffic reaches your services
 
