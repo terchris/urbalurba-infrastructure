@@ -69,7 +69,7 @@ The wizard never deploys anything. Init writes config; up deploys.
 | Provider | CLI port | Deploy path | Notes |
 |---|---|---|---|
 | **Cloudflare** | ✅ `uis network ... cloudflare` | In-cluster `cloudflared` pods, token-based | Verified on rancher-desktop with `*.skryter.no`. See [Cloudflare tunnel](./cloudflare.md). |
-| **Tailscale** | ⏳ pending | Legacy verbs: `uis tailscale ...`, `uis deploy tailscale-tunnel` | Funnel + internal ingress both work today via legacy CLI. Port to `uis network ... tailscale` is tracked in `INVESTIGATE-tailscale-architecture-cleanup.md`. |
+| **Tailscale** | ⏳ pending | Legacy verbs: `uis deploy tailscale-tunnel`, `uis tailscale expose/unexpose/verify` | Funnel works end-to-end today. See [Tailscale Funnel](./tailscale.md) for the novice path. CLI will be ported to the `uis network ... tailscale` family in a future round. |
 
 ## How traffic reaches your services
 
@@ -83,7 +83,8 @@ You don't change the ingress to switch providers — you add or remove the netwo
 
 ## Pages in this section
 
-- **[Cloudflare tunnel](./cloudflare.md)** — set up `cloudflared` in-cluster, point a domain at it. Token-based, no inbound ports.
-- **[Cloudflare setup (deep dive)](./cloudflare-setup.md)** — historical setup guide. Covers DNS, dashboard config, multiple environments.
-- **[Tailscale Funnel setup](./tailscale-setup.md)** — public `*.ts.net` exposure with Tailscale Funnel.
+- **[Cloudflare tunnel](./cloudflare.md)** — three-command novice path for `cloudflared` in-cluster, token-based.
+- **[Cloudflare setup (deep dive)](./cloudflare-setup.md)** — dashboard walk-through, DNS, multi-environment.
+- **[Tailscale Funnel](./tailscale.md)** — three-command novice path for the Tailscale operator + per-service Funnel exposure.
+- **[Tailscale setup (deep dive)](./tailscale-setup.md)** — dashboard walk-through, ACL JSON, OAuth scopes, MagicDNS.
 - **[Tailscale network isolation](./tailscale-network-isolation.md)** — design proposal for host-network-isolation hardening (not implemented; design reference only).
