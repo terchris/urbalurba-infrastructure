@@ -511,27 +511,6 @@
 ,
   {
     "@type": "SoftwareApplication",
-    "id": "tailscale-tunnel",
-    "name": "Tailscale Tunnel",
-    "description": "Secure mesh VPN tunnel",
-    "category": "NETWORKING",
-    "tags": ["vpn", "wireguard", "mesh-network", "remote-access", "zero-trust"],
-    "abstract": "Zero-config WireGuard-based mesh VPN for secure remote access",
-    "logo": "tailscale-logo.svg",
-    "website": "https://tailscale.com"
-    ,"summary": "Tailscale creates a secure, private network between your servers, computers, and cloud instances using WireGuard encryption. It provides zero-config networking with built-in NAT traversal."
-    ,"docs": "/docs/services/networking/tailscale-tunnel"
-    ,"playbook": "802-deploy-network-tailscale-tunnel.yml"
-    ,"priority": 100
-    ,"checkCommand": "kubectl get pods -n tailscale -l app=operator --no-headers 2>/dev/null | grep -q Running"
-    ,"removePlaybook": "801-remove-network-tailscale-tunnel.yml"
-    ,"requires": ["nginx"]
-    ,"helmChart": "tailscale/tailscale-operator"
-    ,"namespace": "tailscale"
-  }
-,
-  {
-    "@type": "SoftwareApplication",
     "id": "traefik",
     "name": "Traefik",
     "description": "Cluster ingress controller and reverse proxy",

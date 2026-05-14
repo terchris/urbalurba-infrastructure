@@ -124,17 +124,14 @@ Platform:
   platform down   <provider>  Tear down the cluster (delegates to 03-destroy.sh)
 
 Network:
-  network init   <provider>   Interactive setup wizard for a networking provider (cloudflare)
-  network list                Show networking providers and their state
-  network up     <provider>   Deploy the provider into the active cluster
-  network status <provider>   Show provider state, tunnel/route status, pod health
-  network down   <provider>   Remove the provider's cluster footprint (config preserved)
-  network verify <provider>   Diagnostics for the provider's tunnel/route + pod
-
-Tailscale (legacy verbs — CLI port to 'network' coming):
-  tailscale expose <service>    Expose a service via Tailscale Funnel
-  tailscale unexpose <service>  Remove a service from Tailscale Funnel
-  tailscale verify              Check Tailscale secrets, API, devices, and operator
+  network init     <provider>             Interactive setup wizard for a networking provider (cloudflare, tailscale)
+  network list                            Show networking providers and their state
+  network up       <provider>             Deploy the provider into the active cluster
+  network status   <provider>             Show provider state, tunnel/route status, pod health
+  network down     <provider>             Remove the provider's cluster footprint (config preserved)
+  network verify   <provider>             Diagnostics for the provider's tunnel/route + pod
+  network expose   <provider> <service>   Expose a service via Funnel (Tailscale only)
+  network unexpose <provider> <service>   Remove a per-service Funnel exposure (Tailscale only)
 
 ArgoCD:
   argocd register <name> <url>  Register a GitHub repo as ArgoCD application
@@ -177,18 +174,20 @@ Examples:
   uis secrets status      # Show what's configured
   uis tools list          # Show available tools
   uis tools install azure-cli  # Install Azure CLI
-  uis tailscale expose whoami  # Expose whoami via Tailscale Funnel
-  uis tailscale verify         # Check Tailscale configuration
-  uis network init cloudflare  # Set the Cloudflare tunnel token
-  uis network up cloudflare    # Deploy the Cloudflare tunnel in-cluster
-  uis network verify cloudflare  # Check Cloudflare tunnel configuration
+  uis network init cloudflare         # Set the Cloudflare tunnel token
+  uis network up cloudflare           # Deploy the Cloudflare tunnel in-cluster
+  uis network verify cloudflare       # Check Cloudflare tunnel configuration
+  uis network init tailscale          # Set Tailscale OAuth + owner-id
+  uis network up tailscale            # Install the Tailscale operator
+  uis network expose tailscale whoami # Expose whoami via Tailscale Funnel
+  uis network verify tailscale        # Check Tailscale configuration
   uis argocd register my-app https://github.com/owner/repo  # Register repo
   uis argocd remove my-app     # Remove ArgoCD application
   uis argocd list              # List registered ArgoCD applications
   uis test-all                                  # Run full integration test
   uis test-all --dry-run                        # Preview test plan
   uis test-all --clean                          # Clean cluster first, then test
-  uis test-all --only tailscale-tunnel --clean  # Test only specific services
+  uis test-all --only nginx --clean             # Test only specific services
 
 EOF
 }
@@ -1359,20 +1358,22 @@ cmd_network() {
     shift || true
 
     case "$subcmd" in
-        init)    cmd_network_init "$@" ;;
-        list)    cmd_network_list "$@" ;;
-        up)      cmd_network_up "$@" ;;
-        status)  cmd_network_status "$@" ;;
-        down)    cmd_network_down "$@" ;;
-        verify)  cmd_network_verify "$@" ;;
+        init)      cmd_network_init "$@" ;;
+        list)      cmd_network_list "$@" ;;
+        up)        cmd_network_up "$@" ;;
+        status)    cmd_network_status "$@" ;;
+        down)      cmd_network_down "$@" ;;
+        verify)    cmd_network_verify "$@" ;;
+        expose)    cmd_network_expose "$@" ;;
+        unexpose)  cmd_network_unexpose "$@" ;;
         "")
             log_error "Usage: uis network <subcmd> [<provider>]"
-            echo "Subcommands: init | list | up | status | down | verify" >&2
+            echo "Subcommands: init | list | up | status | down | verify | expose | unexpose" >&2
             exit "$EXIT_GENERAL_ERROR"
             ;;
         *)
             log_error "Unknown network subcommand: $subcmd"
-            echo "Usage: uis network [init|list|up|status|down|verify] [<provider>]" >&2
+            echo "Usage: uis network [init|list|up|status|down|verify|expose|unexpose] [<provider>]" >&2
             exit "$EXIT_GENERAL_ERROR"
             ;;
     esac
@@ -1522,54 +1523,106 @@ cmd_network_verify() {
     exec "$script"
 }
 
-# cmd_network_list — enumerate networking providers + their state. Two rows
-# this round: cloudflare (real state from status.sh --summary) + tailscale
-# (fixed placeholder since the CLI port for tailscale is deferred).
+# cmd_network_expose — per-service Funnel exposure. Tailscale-specific; the
+# Cloudflare path uses cluster-wide HostRegexp routing so per-service expose
+# isn't a meaningful concept there.
+cmd_network_expose() {
+    _uis_cluster_banner
+    local provider="${1:-}"
+    shift || true
+    local repo_root
+    repo_root="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+
+    if [[ -z "$provider" ]]; then
+        log_error "Usage: uis network expose <provider> <service>"
+        { _list_available_network_providers_with_script expose.sh "$repo_root"; } >&2
+        exit "$EXIT_GENERAL_ERROR"
+    fi
+
+    local script="$repo_root/networking/$provider/scripts/expose.sh"
+    if [[ ! -f "$script" ]]; then
+        log_error "Network provider '$provider' has no expose.sh (looked at $script)"
+        if [[ "$provider" == "cloudflare" ]]; then
+            echo "  Cloudflare exposes services via cluster-wide HostRegexp routing —" >&2
+            echo "  every IngressRoute matching *.<your-domain> is automatically reachable" >&2
+            echo "  once 'uis network up cloudflare' is running. No per-service step needed." >&2
+        else
+            { _list_available_network_providers_with_script expose.sh "$repo_root"; } >&2
+        fi
+        exit "$EXIT_GENERAL_ERROR"
+    fi
+
+    export UIS_REPO_ROOT="$repo_root"
+    exec "$script" "$@"
+}
+
+# cmd_network_unexpose — undo per-service Funnel exposure. Tailscale-specific.
+cmd_network_unexpose() {
+    _uis_cluster_banner
+    local provider="${1:-}"
+    shift || true
+    local repo_root
+    repo_root="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+
+    if [[ -z "$provider" ]]; then
+        log_error "Usage: uis network unexpose <provider> <service>"
+        { _list_available_network_providers_with_script unexpose.sh "$repo_root"; } >&2
+        exit "$EXIT_GENERAL_ERROR"
+    fi
+
+    local script="$repo_root/networking/$provider/scripts/unexpose.sh"
+    if [[ ! -f "$script" ]]; then
+        log_error "Network provider '$provider' has no unexpose.sh (looked at $script)"
+        if [[ "$provider" == "cloudflare" ]]; then
+            echo "  Cloudflare doesn't have per-service unexpose — remove the IngressRoute" >&2
+            echo "  or take the cluster tunnel down entirely with 'uis network down cloudflare'." >&2
+        else
+            { _list_available_network_providers_with_script unexpose.sh "$repo_root"; } >&2
+        fi
+        exit "$EXIT_GENERAL_ERROR"
+    fi
+
+    export UIS_REPO_ROOT="$repo_root"
+    exec "$script" "$@"
+}
+
+# cmd_network_list — enumerate networking providers + their state.
+# Reads each provider's status.sh --summary and renders a row.
 # No banner — discovery command.
+_print_network_provider_row() {
+    local provider="$1"
+    local repo_root="$2"
+    local status_script="$repo_root/networking/$provider/scripts/status.sh"
+    if [[ ! -f "$status_script" ]]; then
+        printf "%-12s · not initialized            (no networking/%s/scripts/status.sh)\n" "$provider" "$provider"
+        return
+    fi
+    local line state hint icon state_label
+    # status.sh --summary emits one tab-separated line: <state>\t<hint>
+    line="$(UIS_REPO_ROOT="$repo_root" "$status_script" --summary 2>/dev/null || echo "")"
+    if [[ -z "$line" ]]; then
+        printf "%-12s ? error                       (status.sh --summary failed)\n" "$provider"
+        return
+    fi
+    state="${line%%	*}"
+    hint="${line#*	}"
+    case "$state" in
+        running)                icon="✓"; state_label="running" ;;
+        configured-not-running) icon="·"; state_label="configured, not running" ;;
+        not-initialized)        icon="·"; state_label="not initialized" ;;
+        unreachable)            icon="✗"; state_label="unreachable" ;;
+        *)                      icon="?"; state_label="$state" ;;
+    esac
+    printf "%-12s %s %-25s (%s)\n" "$provider" "$icon" "$state_label" "$hint"
+}
+
 cmd_network_list() {
     local repo_root
     repo_root="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 
-    # Header.
     echo "PROVIDER     STATUS"
-
-    # Cloudflare row — real state via status.sh --summary if available.
-    local cf_status="$repo_root/networking/cloudflare/scripts/status.sh"
-    if [[ -f "$cf_status" ]]; then
-        local cf_line cf_state cf_hint
-        # status.sh --summary emits one tab-separated line: <state>\t<hint>
-        cf_line="$(UIS_REPO_ROOT="$repo_root" "$cf_status" --summary 2>/dev/null || echo "")"
-        if [[ -n "$cf_line" ]]; then
-            cf_state="${cf_line%%	*}"
-            cf_hint="${cf_line#*	}"
-            local cf_icon cf_state_label
-            case "$cf_state" in
-                running)
-                    cf_icon="✓"; cf_state_label="running"
-                    ;;
-                configured-not-running)
-                    cf_icon="·"; cf_state_label="configured, not running"
-                    ;;
-                not-initialized)
-                    cf_icon="·"; cf_state_label="not initialized"
-                    ;;
-                unreachable)
-                    cf_icon="✗"; cf_state_label="unreachable"
-                    ;;
-                *)
-                    cf_icon="?"; cf_state_label="$cf_state"
-                    ;;
-            esac
-            printf "%-12s %s %-25s (%s)\n" "cloudflare" "$cf_icon" "$cf_state_label" "$cf_hint"
-        else
-            printf "%-12s ? error                       (status.sh --summary failed)\n" "cloudflare"
-        fi
-    else
-        printf "%-12s · not initialized            (no networking/cloudflare/scripts/status.sh)\n" "cloudflare"
-    fi
-
-    # Tailscale row — fixed placeholder. Port deferred to a future plan.
-    printf "%-12s · port pending                (use './uis tailscale expose/unexpose/verify' for now)\n" "tailscale"
+    _print_network_provider_row "cloudflare" "$repo_root"
+    _print_network_provider_row "tailscale" "$repo_root"
 }
 
 # ============================================================
@@ -1891,7 +1944,7 @@ cmd_verify() {
 
     case "$target" in
         tailscale|tailscale-tunnel)
-            cmd_tailscale_verify
+            cmd_network_verify tailscale
             ;;
         cloudflare|cloudflare-tunnel)
             cmd_network_verify cloudflare
@@ -1931,67 +1984,32 @@ cmd_verify() {
 # Tailscale Commands
 # ============================================================
 
+# cmd_tailscale — redirect stub. The whole 'uis tailscale ...' family was
+# replaced by 'uis network ... tailscale' in PLAN-002. This stub catches
+# users with muscle memory and points them at the new commands.
 cmd_tailscale() {
     local subcmd="${1:-}"
-    shift || true
-
-    if [[ -z "$subcmd" ]]; then
-        log_error "Usage: uis tailscale <command> [options]"
-        echo ""
-        echo "Commands:"
-        echo "  expose <service>      Expose a service via Tailscale Funnel"
-        echo "  unexpose <service>    Remove a service from Tailscale Funnel"
-        echo "  verify                Check Tailscale secrets, API, devices, and operator"
-        exit "$EXIT_GENERAL_ERROR"
-    fi
-
+    log_error "'uis tailscale' moved to 'uis network ... tailscale'."
     case "$subcmd" in
         expose)
-            cmd_tailscale_expose "$@"
+            shift || true
+            echo "  Use: ./uis network expose tailscale ${1:-<service>}" >&2
             ;;
         unexpose)
-            cmd_tailscale_unexpose "$@"
+            shift || true
+            echo "  Use: ./uis network unexpose tailscale ${1:-<service>}" >&2
             ;;
         verify)
-            cmd_tailscale_verify
+            echo "  Use: ./uis network verify tailscale" >&2
+            ;;
+        "")
+            echo "  See: ./uis help (Network: section)" >&2
             ;;
         *)
-            log_error "Unknown tailscale command: $subcmd"
-            echo ""
-            echo "Commands:"
-            echo "  expose <service>      Expose a service via Tailscale Funnel"
-            echo "  unexpose <service>    Remove a service from Tailscale Funnel"
-            echo "  verify                Check Tailscale secrets, API, devices, and operator"
-            exit "$EXIT_GENERAL_ERROR"
+            echo "  See: ./uis help (Network: section)" >&2
             ;;
     esac
-}
-
-cmd_tailscale_expose() {
-    local service="${1:-}"
-    if [[ -z "$service" ]]; then
-        log_error "Usage: uis tailscale expose <service>"
-        echo "Example: uis tailscale expose whoami"
-        exit "$EXIT_GENERAL_ERROR"
-    fi
-    print_section "Exposing $service via Tailscale Funnel"
-    cd /mnt/urbalurbadisk && ./networking/tailscale/802-tailscale-tunnel-deploy.sh "$service"
-}
-
-cmd_tailscale_unexpose() {
-    local service="${1:-}"
-    if [[ -z "$service" ]]; then
-        log_error "Usage: uis tailscale unexpose <service>"
-        echo "Example: uis tailscale unexpose whoami"
-        exit "$EXIT_GENERAL_ERROR"
-    fi
-    print_section "Removing $service from Tailscale Funnel"
-    cd /mnt/urbalurbadisk && ./networking/tailscale/803-tailscale-tunnel-deletehost.sh "$service"
-}
-
-cmd_tailscale_verify() {
-    print_section "Verifying Tailscale Configuration"
-    ansible-playbook "$ANSIBLE_DIR/803-verify-tailscale.yml"
+    exit "$EXIT_GENERAL_ERROR"
 }
 
 # ============================================================

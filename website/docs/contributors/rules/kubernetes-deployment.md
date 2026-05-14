@@ -126,8 +126,7 @@ provision-host/uis/services/
 │   ├── service-redisinsight.sh
 │   └── service-whoami.sh
 ├── networking/
-│   ├── service-cloudflare-tunnel.sh
-│   └── service-tailscale-tunnel.sh
+│   └── service-cloudflare-tunnel.sh
 └── observability/
     ├── service-grafana.sh
     ├── service-loki.sh

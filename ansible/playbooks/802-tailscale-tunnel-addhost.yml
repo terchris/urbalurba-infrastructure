@@ -107,7 +107,7 @@
       ansible.builtin.fail:
         msg: |
           Tailscale operator not found in 'tailscale' namespace.
-          Run ./802-tailscale-tunnel-deploy.sh first to deploy the operator.
+          Run './uis network up tailscale' first to install the operator.
       when: not tailscale_operator_found
 
     - name: "08 Check if ingress already exists"
