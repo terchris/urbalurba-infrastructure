@@ -1,7 +1,12 @@
 # Tailscale Funnel Security Setup for Rancher Desktop
 
-TODO: This is not implemented - it is a potential solution that isolates the cluster when connected to the internet using tailscale funnel or cloudfrale tunnel.
+:::warning Design proposal — not deployed
 
+This page describes a network-isolation design that has **not been implemented** in UIS. Nothing on this page is wired up to the CLI or the default rancher-desktop configuration. It exists as a design reference for a future investigation, not as a setup guide.
+
+If you want to expose services through Tailscale Funnel today, see [Tailscale Funnel setup](./tailscale-setup.md) — that's the active, working path. Come back to this page only if you want to read about the proposed host-network-isolation hardening on top.
+
+:::
 
 ## Overview
 
