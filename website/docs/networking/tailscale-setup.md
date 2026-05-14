@@ -76,7 +76,7 @@ Before starting, ensure you have:
 ### Step 1: Create Tailscale Account
 
 1. Visit [tailscale.com](https://tailscale.com) and sign up
-2. Your tailnet will be created (e.g., `yourusername.github`) → **Note this as `TAILSCALE_TAILNET`**
+2. Tailscale gives you a tailnet identifier (e.g., `yourusername.github`). The value UIS needs is your **MagicDNS domain** — the `<words>.ts.net` form, captured in Step 5 below. Don't note the org-handle form for `TAILSCALE_TAILNET`.
 
 ### Step 2: Configure Access Control Tags (Prepare for auth key)
 
@@ -158,19 +158,22 @@ Before starting, ensure you have:
 
 ### Step 6: Configure Tailscale Secrets
 
-Edit the secrets source file with your Tailscale values from Steps 1-5:
+Edit the secrets source file with your Tailscale values from Steps 1-5. The file lives in your local `.uis.secrets/secrets-config/` folder; edit it with whichever editor you prefer (from the host or inside the provision-host container — `./uis secrets edit` opens it in `vi`, or just edit the file directly on the host since it's bind-mounted):
+
 ```bash
-nano .uis.secrets/config/00-common-values.env
+# From the host:
+vi .uis.secrets/secrets-config/00-common-values.env.template
+# Or from inside the provision-host container:
+./uis secrets edit
 ```
 
 Update these variables:
 ```bash
-TAILSCALE_VM_AUTH_KEY=tskey-auth-YOUR-AUTH-KEY           # From Step 3: Auth Key
-TAILSCALE_TAILNET=your-tailnet-name                 # From Step 1: Your tailnet name
-TAILSCALE_TAILNET=your-magic-dns-domain              # From Step 5: MagicDNS domain
-TAILSCALE_OWNER_ID=k8s                      # Becomes: k8s.[your-domain].ts.net (cluster ingress only)
-TAILSCALE_CLIENTID=YOUR-OAUTH-CLIENT-ID             # From Step 4: OAuth Client ID
-TAILSCALE_CLIENTSECRET=tskey-client-YOUR-SECRET      # From Step 4: OAuth Client Secret
+TAILSCALE_TAILNET=your-magic-dns-domain     # From Step 5: MagicDNS domain (e.g. dog-pence.ts.net)
+TAILSCALE_OWNER_ID=k8s-yourname             # Your identity on the tailnet; cluster Funnel device + operator prefix
+TAILSCALE_CLIENTID=YOUR-OAUTH-CLIENT-ID     # From Step 4: OAuth Client ID
+TAILSCALE_CLIENTSECRET=tskey-client-YOUR-SECRET   # From Step 4: OAuth Client Secret
+TAILSCALE_VM_AUTH_KEY=tskey-auth-YOUR-AUTH-KEY    # From Step 3: only needed for VM/cloud-init provisioning
 ```
 
 Then regenerate the Kubernetes secrets:
@@ -310,7 +313,7 @@ This error means your OAuth client doesn't have permission for `tag:k8s-operator
 3. In **Devices → Core** scope, ensure `tag:k8s-operator` is added
 4. In **Keys → Auth Keys** scope, ensure `tag:k8s-operator` is added
 5. Generate a new client secret (required after scope changes)
-6. Update `TAILSCALE_CLIENTSECRET` in `.uis.secrets/config/00-common-values.env`
+6. Update `TAILSCALE_CLIENTSECRET` in `.uis.secrets/secrets-config/00-common-values.env.template`
 7. Regenerate secrets: `./uis secrets generate`
 8. Redeploy: `./uis deploy tailscale-tunnel`
 
@@ -334,7 +337,7 @@ If you get authentication errors, create new keys at [Tailscale Admin Console](h
 
 **Update secrets file:**
 ```bash
-# Edit .uis.secrets/config/00-common-values.env
+# Edit .uis.secrets/secrets-config/00-common-values.env.template
 TAILSCALE_VM_AUTH_KEY=tskey-auth-YOUR-NEW-AUTH-KEY
 TAILSCALE_CLIENTID=YOUR-NEW-CLIENT-ID
 TAILSCALE_CLIENTSECRET=tskey-client-YOUR-NEW-CLIENT-SECRET
@@ -363,7 +366,7 @@ This means **Let's Encrypt ACME rate limiting** is blocking TLS certificate issu
 
 **Solutions:**
 1. **Wait** for the rate limit to reset (the error message includes the retry-after timestamp)
-2. **Use a different hostname** — change `TAILSCALE_OWNER_ID` in `.uis.secrets/config/00-common-values.env` (e.g., `k8s-2` instead of `k8s`), then `./uis secrets generate` and redeploy
+2. **Use a different hostname** — change `TAILSCALE_OWNER_ID` in `.uis.secrets/secrets-config/00-common-values.env.template` (e.g., `k8s-2` instead of `k8s`), then `./uis secrets generate` and redeploy
 3. **Avoid repeated deploy/undeploy cycles** with the same hostname during testing
 
 ### Script Execution Issues

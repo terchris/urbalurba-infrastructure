@@ -8,6 +8,26 @@ sidebar_position: 1
 
 UIS targets **multiple networking providers** from a single command interface. Cloudflare tunnels expose services on a domain you own. Tailscale Funnel + Tailscale internal ingress give you tunnel-style or VPN-style access without a public domain. All of them speak the same `uis network ...` vocabulary, so swapping the path your services take to the internet is a CLI flag away.
 
+## Which one should I use?
+
+You probably want **one** of these — most users don't need both. Pick by what you're trying to do:
+
+| If you want to… | Use | Why |
+|---|---|---|
+| Quickly show a service on your laptop to a colleague | **Tailscale Funnel** | No domain needed (get a free `<thing>.ts.net` URL), no Cloudflare account, works from any network including corporate Wi-Fi |
+| Run a service for real (own DNS, WAF, DDoS protection, predictable URL) | **Cloudflare tunnel** | You already own the domain, Cloudflare handles certs and edge security, wildcard subdomain routing works |
+| Both — different services on different paths | Both | They coexist. The same backend pod can answer on `whoami.localhost`, `whoami.<your-name>.ts.net`, and `whoami.your-domain.com` simultaneously |
+
+The decision typically comes down to **three constraints**:
+
+1. **Do you own a domain Cloudflare can host DNS for?** No → Tailscale is your option. Yes → either works.
+2. **Does your network allow outbound TCP/7844?** Some corporate networks block it. Cloudflare needs it. Tailscale uses UDP/443 + DERP relay, which goes through almost anything.
+3. **How many services do you want to expose?** Cloudflare gives you wildcard subdomain routing for free — one tunnel handles `*.your-domain.com`. Tailscale Funnel has no wildcard DNS, so you `uis tailscale expose <service>` for each one you want public.
+
+**On security:** both paths terminate TLS at the provider's edge and reach into the cluster over an outbound-only connection — no inbound ports, no public IP on your side. Cloudflare adds a free WAF and DDoS protection in front. Tailscale Funnel sits behind Tailscale's own infrastructure with no built-in WAF. Authentik forward-auth in front of Traefik still works for Cloudflare paths; **it does not work for Tailscale Funnel**, because the Tailscale operator's per-service proxy routes directly to the backend service and bypasses Traefik entirely. If you want auth on a Tailscale-exposed service, the service has to enforce it itself.
+
+
+
 ## See what you have
 
 `uis network list` shows every provider UIS knows about and its current state:
@@ -66,4 +86,4 @@ You don't change the ingress to switch providers — you add or remove the netwo
 - **[Cloudflare tunnel](./cloudflare.md)** — set up `cloudflared` in-cluster, point a domain at it. Token-based, no inbound ports.
 - **[Cloudflare setup (deep dive)](./cloudflare-setup.md)** — historical setup guide. Covers DNS, dashboard config, multiple environments.
 - **[Tailscale Funnel setup](./tailscale-setup.md)** — public `*.ts.net` exposure with Tailscale Funnel.
-- **[Tailscale network isolation](./tailscale-network-isolation.md)** — ACL patterns for restricting who reaches what.
+- **[Tailscale network isolation](./tailscale-network-isolation.md)** — design proposal for host-network-isolation hardening (not implemented; design reference only).
