@@ -117,13 +117,18 @@ What happens:
 3. Funnel is enabled on that device; the cert provisions in ~30–60s
 4. The proxy forwards directly to the backend `Service` on port 80
 
-Repeat for any service you want public:
+Repeat for any service you want public. **You don't need to know the namespace** — the CLI scans the whole cluster for a Service with the name you gave and uses whichever namespace it finds it in:
 
 ```bash
-./uis network expose tailscale grafana
-./uis network expose tailscale authentik-server
-./uis network expose tailscale open-webui
+./uis network expose tailscale whoami              # finds 'default/whoami'
+./uis network expose tailscale authentik-server    # finds 'authentik/authentik-server'
+./uis network expose tailscale grafana             # finds 'monitoring/grafana'
+./uis network expose tailscale open-webui          # finds 'ai/open-webui'
 ```
+
+If you typo a service name, the CLI says "no Service named X found in any namespace" and aborts — no Tailscale device gets created from a typo.
+
+In the rare case where two namespaces both contain a Service with the same name, the CLI prints both candidates and asks you to disambiguate with `-n <namespace>`.
 
 There's a Let's Encrypt rate limit of **5 certs per exact hostname per 7 days**. If you deploy/undeploy the same name repeatedly during testing, you'll hit it and the cert will fail. The fix is either to wait, or to use a different service name.
 
@@ -147,12 +152,14 @@ A `PASS` on all four means the path is healthy.
 ### 6. Day-2 commands
 
 ```bash
-./uis network expose tailscale <service>     # add a service to Funnel
-./uis network unexpose tailscale <service>   # remove a service from Funnel (deletes Ingress + tailnet device)
-./uis network status tailscale               # operator state + list of exposed services
-./uis network list                           # one-line state across all providers
-./uis network down tailscale                 # tear down operator + cluster ingress + all per-service devices
+./uis network expose tailscale <service>      # add a service to Funnel (namespace auto-detected)
+./uis network unexpose tailscale <service>    # remove a service from Funnel (namespace auto-detected)
+./uis network status tailscale                # operator state + list of exposed services with their namespaces
+./uis network list                            # one-line state across all providers
+./uis network down tailscale                  # tear down operator + cluster ingress + all per-service devices
 ```
+
+Both `expose` and `unexpose` auto-detect the namespace — `expose` by scanning Services cluster-wide for the given name, `unexpose` by scanning for the `<service>-tailscale` Ingress. Pass `-n <namespace>` only in the rare case where two namespaces both have a Service (or an exposed Ingress) with the same name.
 
 `down` cleans up tailnet devices via the API as well as the in-cluster state. After `down`, the admin console should show no `<owner_id>-*` or `*-tailscale-operator` devices.
 

@@ -50,10 +50,12 @@ _operator_pod_counts() {
     echo "${running}/${total}"
 }
 
-# List Tailscale-class Ingresses in 'default' (these are per-service exposes).
+# List Tailscale-class Ingresses across ALL namespaces (per-service exposes).
+# Emits one line per match in the form '<namespace>/<ingress_name>' so the
+# caller can derive both the namespace and the service URL.
 _exposed_services() {
-    _kubectl -n default get ingress -o json 2>/dev/null \
-        | python3 -c "import sys, json; data=json.load(sys.stdin); print('\n'.join(i['metadata']['name'] for i in data.get('items', []) if i.get('spec', {}).get('ingressClassName') == 'tailscale'))" 2>/dev/null || true
+    _kubectl get ingress -A -o json 2>/dev/null \
+        | python3 -c "import sys, json; data=json.load(sys.stdin); print('\n'.join(i['metadata']['namespace'] + '/' + i['metadata']['name'] for i in data.get('items', []) if i.get('spec', {}).get('ingressClassName') == 'tailscale' and i['metadata'].get('namespace') != 'kube-system'))" 2>/dev/null || true
 }
 
 # Cluster Funnel Ingress present?
@@ -140,20 +142,21 @@ else
     echo "  Cluster Funnel: not deployed (opt-in via 'uis network up tailscale --with-cluster-funnel')"
 fi
 
-# Exposed services
+# Exposed services (format from _exposed_services: '<ns>/<ingress_name>')
 exposed=$(_exposed_services)
 if [[ -n "$exposed" ]]; then
     echo
     echo "  Exposed services:"
-    while IFS= read -r svc; do
+    while IFS= read -r entry; do
+        ns="${entry%%/*}"
+        ingress="${entry#*/}"
         # Tailscale ingresses are named <svc>-tailscale in addhost.yml's convention.
-        # Strip the suffix when computing the URL.
-        host="${svc%-tailscale}"
-        echo "    https://${host}.${TAILSCALE_TAILNET:-?}"
+        host="${ingress%-tailscale}"
+        echo "    https://${host}.${TAILSCALE_TAILNET:-?}    (svc: $ns/$host)"
     done <<< "$exposed"
 else
     echo "  Exposed services: none"
-    echo "  Expose one with:  ./uis network expose tailscale <service>"
+    echo "  Expose one with:  ./uis network expose tailscale <service> [-n <namespace>]"
 fi
 
 echo
