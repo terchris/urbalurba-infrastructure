@@ -1401,6 +1401,7 @@ _list_available_network_providers_with_script() {
 # No banner — `init` writes a local env file; doesn't touch the cluster.
 cmd_network_init() {
     local provider="${1:-}"
+    shift || true
     local repo_root
     repo_root="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 
@@ -1418,7 +1419,7 @@ cmd_network_init() {
     fi
 
     export UIS_REPO_ROOT="$repo_root"
-    exec "$script"
+    exec "$script" "$@"
 }
 
 # cmd_network_up — provision the provider into the active cluster.
@@ -1428,6 +1429,7 @@ cmd_network_init() {
 cmd_network_up() {
     _uis_cluster_banner
     local provider="${1:-}"
+    shift || true
     local repo_root
     repo_root="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 
@@ -1445,7 +1447,7 @@ cmd_network_up() {
     fi
 
     export UIS_REPO_ROOT="$repo_root"
-    exec "$script"
+    exec "$script" "$@"
 }
 
 # cmd_network_down — remove the provider's cluster footprint.
@@ -1453,6 +1455,7 @@ cmd_network_up() {
 cmd_network_down() {
     _uis_cluster_banner
     local provider="${1:-}"
+    shift || true
     local repo_root
     repo_root="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 
@@ -1470,7 +1473,7 @@ cmd_network_down() {
     fi
 
     export UIS_REPO_ROOT="$repo_root"
-    exec "$script"
+    exec "$script" "$@"
 }
 
 # cmd_network_status — show provider state, tunnel/route state, pod health.
@@ -1503,6 +1506,7 @@ cmd_network_status() {
 cmd_network_verify() {
     _uis_cluster_banner
     local provider="${1:-}"
+    shift || true
     local repo_root
     repo_root="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 
@@ -1520,7 +1524,7 @@ cmd_network_verify() {
     fi
 
     export UIS_REPO_ROOT="$repo_root"
-    exec "$script"
+    exec "$script" "$@"
 }
 
 # cmd_network_expose — per-service Funnel exposure. Tailscale-specific; the
