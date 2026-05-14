@@ -9,6 +9,7 @@ Investigations and plans waiting for implementation, sorted by last updated date
 
 | Document | Goal | Updated |
 |----------|------|---------|
+| [INVESTIGATE-uis-cli-top-level-doc](INVESTIGATE-uis-cli-top-level-doc.md) | Add a top-level UIS CLI doc and figure out how to keep its command examples in sync with the 88 markdown files that currently contain `./uis ...` examples. Six sync strategies analysed; strawman target is a generate + lint + consolidate combo. | 2026-05-14 |
 | [---](PLAN-multi-platform-docs-restructure.md) | — | 2026-05-14 |
 | [---](PLAN-cloudflare-network-port-and-docs-lift-up.md) | Port Cloudflare networking from the current ad-hoc shape (`uis deploy cloudflare-tunnel` + `uis cloudflare verify/teardown` + manual setup-guide-driven dashboard work) to a first-class `uis network <verb> cloudflare` command family symmetric with `uis platform <verb> <provider>`. Lift `Networking` in the sidebar + docs. **Tailscale wholesale deferred** to a future plan. | 2026-05-14 |
 | [Plan: clean up merged kubeconfig entries when destroying an AKS cluster](PLAN-aks-destroy-kubeconfig-cleanup.md) | When `platforms/azure-aks/scripts/03-destroy.sh` tears down an AKS cluster, also remove that cluster's stale `clusters:` / `contexts:` / `users:` entries from the merged `kubeconf-all`, and re-point `current-context` to `rancher-desktop`. Symmetric counterpart to `02-post-apply.sh`'s flip-on-apply. | 2026-05-14 |
