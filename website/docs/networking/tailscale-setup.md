@@ -78,33 +78,62 @@ Before starting, ensure you have:
 1. Visit [tailscale.com](https://tailscale.com) and sign up
 2. Tailscale gives you a tailnet identifier (e.g., `yourusername.github`). The value UIS needs is your **MagicDNS domain** — the `<words>.ts.net` form, captured in Step 5 below. Don't note the org-handle form for `TAILSCALE_TAILNET`.
 
-### Step 2: Configure Access Control Tags (Prepare for auth key)
+### Step 2: Configure the tailnet ACL
 
 1. Go to [Tailscale Access Controls](https://login.tailscale.com/admin/acls)
 2. Click **"JSON editor"** (top right of the policy editor)
-3. **Replace the entire content with this clean configuration:**
-   ```json
+3. **Replace the entire content with this minimum configuration:**
+
+   ```jsonc
    {
+     // Identity tag for every device UIS registers (operator pod + cluster
+     // Funnel device + per-service Funnel devices). Owned by autogroup:admin
+     // so the OAuth client (configured with this tag in Step 4) can apply it.
      "tagOwners": {
        "tag:k8s-operator": ["autogroup:admin"]
      },
+
+     // Grants the Funnel capability to tag:k8s-operator devices. Without this,
+     // the operator registers devices fine but Funnel never activates and
+     // https://<device>.<tailnet>.ts.net returns "not configured".
+     // Funnel must also be enabled at the tailnet level:
+     // https://login.tailscale.com/admin/settings/funnel
      "nodeAttrs": [
        {
          "target": ["tag:k8s-operator"],
-         "attr": ["funnel"]
+         "attr":   ["funnel"]
        }
      ],
+
      "acls": [
-       {"action": "accept", "src": ["*"], "dst": ["*:*"]}
+       // You (admin) can reach everything — needed for kubectl/curl/debug
+       // from your laptop or any other personal device on the tailnet.
+       {
+         "action": "accept",
+         "src":    ["autogroup:admin"],
+         "dst":    ["*:*"]
+       },
+
+       // K8s operator devices can talk to each other. The operator pod and
+       // the per-service Funnel ingress devices coordinate over tailnet IPs;
+       // without this, intra-tag traffic is ACL-denied and exposes break.
+       {
+         "action": "accept",
+         "src":    ["tag:k8s-operator"],
+         "dst":    ["tag:k8s-operator:*"]
+       }
      ]
    }
    ```
-4. Click "Save"
+
+4. Click **Save**.
 
 **What this does:**
-- `tagOwners`: Allows admins to assign `tag:k8s-operator` tags
-- `nodeAttrs`: Enables **Funnel** capability for devices with `tag:k8s-operator` (public internet access)
-- `acls`: Allows all devices to communicate with each other (simple setup)
+- `tagOwners` — defines who can apply `tag:k8s-operator`. The OAuth client you create in Step 4 needs the same tag so it can register operator devices.
+- `nodeAttrs` — grants the Funnel attribute to tagged devices, allowing public-internet exposure.
+- `acls` — the minimum two rules: admin can reach anything (for debugging from your laptop), and tagged devices can talk among themselves (required for operator ↔ ingress traffic).
+
+**Note on Funnel and ACLs**: Funnel (public internet → tailnet) is **not** governed by these ACL rules. Anyone on the internet can reach a Funnel-exposed device's HTTPS endpoint. To restrict, the service itself must enforce auth (Tailscale Funnel bypasses Traefik, so Authentik forward-auth doesn't apply — see [Tailscale Funnel](./tailscale.md)).
 
 ### Step 3: Create Auth Key (for provision-host authentication with Funnel)
 
