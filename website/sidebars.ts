@@ -52,6 +52,7 @@ const sidebars: SidebarsConfig = {
       items: [
         'networking/cloudflare',
         'networking/cloudflare-setup',
+        'networking/tailscale',
         'networking/tailscale-setup',
         'networking/tailscale-network-isolation',
       ],
