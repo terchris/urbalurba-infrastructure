@@ -232,8 +232,13 @@ cmd_list() {
 
             # Multi-instance services: emit one row per actual deployment,
             # with explicit Deployed / Degraded / Not deployed states.
+            #
+            # Note: this whole branch runs under `set -e` (uis-cli.sh:9).
+            # _classify_ready_count returns 1 for degraded and 2 for unknown;
+            # both calls must sit inside `if` conditions so a non-zero return
+            # doesn't trip errexit and abort the surrounding loop.
             if _is_service_multi_instance "$service_id" 2>/dev/null; then
-                local _mi_lines _dep_name _dep_ready _mi_classified
+                local _mi_lines _dep_name _dep_ready
                 _mi_lines=$(get_multi_instance_deployments "$service_id" 2>/dev/null)
                 if [[ -z "$_mi_lines" ]]; then
                     # Zero deployments — keep the service-type visible in the
@@ -247,9 +252,7 @@ cmd_list() {
                 else
                     while IFS=$'\t' read -r _dep_name _dep_ready; do
                         [[ -z "$_dep_name" ]] && continue
-                        _classify_ready_count "$_dep_ready"
-                        _mi_classified=$?
-                        if [[ "$_mi_classified" -eq 0 ]]; then
+                        if _classify_ready_count "$_dep_ready"; then
                             printf "%-18s %-20s %-12s %s %s\n" \
                                 "$_dep_name" \
                                 "${SCRIPT_NAME:0:20}" \
