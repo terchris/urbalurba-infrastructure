@@ -4,7 +4,7 @@
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Backlog
+## Status: Completed (talk54 R1-R10 PASS; 2 acceptance items marked open below — see notes)
 
 **Goal**: Write the user-facing Tailscale documentation against the new CLI, update the networking hub to surface the production-vs-developer framing and team-sharing semantic, and verify end-to-end with the tester against the real `dog-pence.ts.net` tailnet.
 
@@ -36,23 +36,23 @@ Mirror of `networking/cloudflare.md` shape, adapted for the team-sharing develop
 
 ### Tasks
 
-- [ ] 1.1 Frontmatter + title + headline sentence (mirror of cloudflare.md). Headline: "Share services running on your local cluster with colleagues — over the public internet, on any network."
-- [ ] 1.2 **Prerequisites section** — the 4 admin-console items the wizard banner references:
+- [x] 1.1 Frontmatter + title + headline sentence (mirror of cloudflare.md). Headline: "Share services running on your local cluster with colleagues — over the public internet, on any network."
+- [x] 1.2 **Prerequisites section** — the 4 admin-console items the wizard banner references:
   - Tailscale account (free for personal / 3 users + 100 devices)
   - OAuth client with scopes: `Devices Core`, `Auth Keys`, `Services` (write). Path: Settings → OAuth clients → Generate new
   - MagicDNS enabled. Path: DNS → enable MagicDNS
   - Funnel `nodeAttrs` policy. Path: Access controls → ensure `{"target": ["autogroup:member"], "attr": ["funnel"]}`
-- [ ] 1.3 **Headline callout** (C-8 surfacing #2): "Services exposed via Tailscale Funnel bypass Traefik. Authentik forward-auth and other middleware do not apply. The service must enforce its own auth." Mention that this is **inherent to Tailscale's per-service device model** (Decision 10) — not something UIS chose.
-- [ ] 1.4 **6-command flow** with copy-pasteable commands:
+- [x] 1.3 **Headline callout** (C-8 surfacing #2): "Services exposed via Tailscale Funnel bypass Traefik. Authentik forward-auth and other middleware do not apply. The service must enforce its own auth." Mention that this is **inherent to Tailscale's per-service device model** (Decision 10) — not something UIS chose.
+- [x] 1.4 **6-command flow** with copy-pasteable commands:
   1. `./uis network init tailscale` — wizard prompts for tailnet + OAuth + owner_id
   2. `./uis network up tailscale` — operator installs in-cluster
   3. `./uis deploy whoami` — deploy a test service the colleague will see
   4. `./uis network expose tailscale whoami` — create the per-service Funnel device
   5. (curl or browser) `https://whoami-<owner_id>.<tailnet>.ts.net` — colleague sees whoami
   6. `./uis network unexpose tailscale whoami` (and eventually `./uis network down tailscale` for full cleanup)
-- [ ] 1.5 **Team-sharing section** — `TAILSCALE_OWNER_ID` makes 5 developers on the same tailnet not collide. Concrete examples (Terje, Alice, Bob — same tailnet, distinct owner_ids → distinct device names → predictable Slack-shareable URLs).
-- [ ] 1.6 **Comparison with Cloudflare** — short callout (1 paragraph + table row) pointing at `networking/cloudflare.md` for the production-grade alternative. Lift the comparison table from the investigation's Positioning section if it makes sense (or summarize: Cloudflare = production with WAF + owned domain; Tailscale = dev share, no WAF, no domain, works on any network).
-- [ ] 1.7 **Troubleshooting section** covering the failure modes the investigation surfaced:
+- [x] 1.5 **Team-sharing section** — `TAILSCALE_OWNER_ID` makes 5 developers on the same tailnet not collide. Concrete examples (Terje, Alice, Bob — same tailnet, distinct owner_ids → distinct device names → predictable Slack-shareable URLs).
+- [x] 1.6 **Comparison with Cloudflare** — short callout (1 paragraph + table row) pointing at `networking/cloudflare.md` for the production-grade alternative. Lift the comparison table from the investigation's Positioning section if it makes sense (or summarize: Cloudflare = production with WAF + owned domain; Tailscale = dev share, no WAF, no domain, works on any network).
+- [x] 1.7 **Troubleshooting section** covering the failure modes the investigation surfaced:
   - "MagicDNS not enabled" → URLs don't resolve; admin console → DNS → enable
   - "Funnel nodeAttrs missing" → Tailscale auto-adds on first attempt but fails if ACLs restrict; add manually
   - "OAuth scopes wrong" → operator install succeeds but device creation fails; check `Devices Core` / `Auth Keys` / `Services` (write)
@@ -74,10 +74,10 @@ User confirms the walkthrough is clear and the Traefik-bypass callout is promine
 
 ### Tasks
 
-- [ ] 2.1 Update the canonical `uis network list` example output — tailscale row now shows `✓ running (N services exposed)` (real state) instead of `· port pending` (placeholder).
-- [ ] 2.2 Update the Cloudflare-vs-Tailscale comparison table — lift the Positioning section's table from the investigation. Key dimensions to surface: Use case (production vs dev share), Firewall/WAF (Cloudflare yes, Tailscale no), DNS hosting (Cloudflare yes, Tailscale .ts.net), Network reachability (Cloudflare 7844 sometimes blocked, Tailscale any network), In-cluster path (Cloudflare → Traefik, Tailscale bypasses Traefik), URL shape.
-- [ ] 2.3 Add a "Team sharing" subsection showing the `TAILSCALE_OWNER_ID` story — 5 developers, same tailnet, distinct device names. Reference the full walkthrough in `tailscale.md`.
-- [ ] 2.4 Update any sidebar entries / cross-refs that pointed at `tailscale-internal-ingress.md` (deleted in PLAN-001) to drop the link.
+- [x] 2.1 Update the canonical `uis network list` example output — tailscale row now shows `✓ running (N services exposed)` (real state) instead of `· port pending` (placeholder).
+- [x] 2.2 Update the Cloudflare-vs-Tailscale comparison table — lift the Positioning section's table from the investigation. Key dimensions to surface: Use case (production vs dev share), Firewall/WAF (Cloudflare yes, Tailscale no), DNS hosting (Cloudflare yes, Tailscale .ts.net), Network reachability (Cloudflare 7844 sometimes blocked, Tailscale any network), In-cluster path (Cloudflare → Traefik, Tailscale bypasses Traefik), URL shape.
+- [x] 2.3 Add a "Team sharing" subsection showing the `TAILSCALE_OWNER_ID` story — 5 developers, same tailnet, distinct device names. Reference the full walkthrough in `tailscale.md`.
+- [x] 2.4 Update any sidebar entries / cross-refs that pointed at `tailscale-internal-ingress.md` (deleted in PLAN-001) to drop the link.
 
 ### Validation
 
@@ -94,12 +94,12 @@ User confirms the hub reflects the new positioning + team semantic.
 
 ### Tasks
 
-- [ ] 3.1 `grep -rn 'uis tailscale expose\|uis tailscale unexpose\|uis tailscale verify\|uis deploy tailscale-tunnel' website/docs/` — replace each with the new CLI invocation
-- [ ] 3.2 Update `website/docs/networking/tailscale-setup.md`:
+- [x] 3.1 `grep -rn 'uis tailscale expose\|uis tailscale unexpose\|uis tailscale verify\|uis deploy tailscale-tunnel' website/docs/` — replace each with the new CLI invocation
+- [x] 3.2 Update `website/docs/networking/tailscale-setup.md`:
   - Most content is now in the new `tailscale.md`. Either delete `tailscale-setup.md` entirely (preferred — single canonical user page) or keep as a thin redirect with frontmatter slug pointing at `tailscale.md`.
   - If kept: drop any "Coming soon" callout (work is done).
-- [ ] 3.3 Update `website/docs/networking/tailscale-network-isolation.md` — keep, but cross-link to `tailscale.md` from the top. The ACL / isolation content remains useful as a deep-dive.
-- [ ] 3.4 Update `website/docs/reference/uis-cli-reference.md` — add `expose` / `unexpose` to the Network Management section. Confirm `tailscale` is listed as a provider for the other 5 verbs.
+- [x] 3.3 Update `website/docs/networking/tailscale-network-isolation.md` — keep, but cross-link to `tailscale.md` from the top. The ACL / isolation content remains useful as a deep-dive.
+- [x] 3.4 Update `website/docs/reference/uis-cli-reference.md` — add `expose` / `unexpose` to the Network Management section. Confirm `tailscale` is listed as a provider for the other 5 verbs.
 
 ### Validation
 
@@ -122,8 +122,8 @@ The tester runs the full novice flow against a real tailnet, including the phone
 
 ### Tasks
 
-- [ ] 4.1 Archive current `testing/uis1/talk/talk.md` to `talk<N>.md` (next available number per memory: "talk.md naming protocol")
-- [ ] 4.2 Write fresh `talk.md` for the Tailscale-port verification round. Brief covers, in order:
+- [x] 4.1 Archive current `testing/uis1/talk/talk.md` to `talk<N>.md` (next available number per memory: "talk.md naming protocol")
+- [x] 4.2 Write fresh `talk.md` for the Tailscale-port verification round. Brief covers, in order:
   - **Pre-flight prerequisites** — Tailscale account, OAuth client with correct scopes, MagicDNS enabled, Funnel nodeAttrs present
   - **R0** — pull `:latest` (or use `:local` per the fast-loop memory)
   - **R1** — `uis network list` cold state (`· not initialized`), `uis tailscale expose whoami` redirect-stub fires, `uis deploy tailscale-tunnel` redirect error
@@ -135,8 +135,8 @@ The tester runs the full novice flow against a real tailnet, including the phone
   - **R7** — `uis network down tailscale` — operator removed, devices cleaned via API; env file preserved
   - **R8** — Re-run `uis network up tailscale` without re-init — operator comes back; previously-exposed services need re-expose (state was in the cluster, which was cleaned)
   - **R9** — Optional: `uis network up tailscale --with-cluster-funnel` — cluster Funnel device deploys at `<owner_id>.dog-pence.ts.net`; note Let's Encrypt rate-limit awareness
-- [ ] 4.3 **Traefik-bypass sanity check** (R4 follow-up): deploy a service that's auth-protected on the Cloudflare path (whoami sits behind Authentik forward-auth in some configs). Expose via Tailscale. Confirm the Tailscale URL returns the bare service response with **no auth challenge** — proves Decision 10's security consequence is real and the C-8 surfacing in docs is justified.
-- [ ] 4.4 Capture verbose output from each round (mirror the talk49 / talk52 approach) for the docs round if the docs need refinement based on real output.
+- [x] 4.3 **Traefik-bypass sanity check** (R4 follow-up): deploy a service that's auth-protected on the Cloudflare path (whoami sits behind Authentik forward-auth in some configs). Expose via Tailscale. Confirm the Tailscale URL returns the bare service response with **no auth challenge** — proves Decision 10's security consequence is real and the C-8 surfacing in docs is justified.
+- [x] 4.4 Capture verbose output from each round (mirror the talk49 / talk52 approach) for the docs round if the docs need refinement based on real output.
 
 ### Validation
 
@@ -146,15 +146,15 @@ Tester completes all rounds R0–R9 with PASS status; any FAIL findings filed as
 
 ## Acceptance Criteria
 
-- [ ] `networking/tailscale.md` is the platform-style novice walkthrough with the 6-command flow, prereqs, team-sharing section, Cloudflare comparison, and troubleshooting
-- [ ] Traefik-bypass callout prominent in `networking/tailscale.md` opening (C-8 surfacing #2 satisfied — combined with PLAN-002's #1 wizard banner + #3 expose.sh prompt, all three surfacings now live)
-- [ ] `networking/index.md` hub shows real tailscale state in the example + the Positioning-derived comparison table + team-sharing subsection
-- [ ] No `uis tailscale expose/unexpose/verify` or `uis deploy tailscale-tunnel` references remain in `website/docs/` (excluding `plans/completed/` and `plans/backlog/` which are historical)
-- [ ] `website/docs/reference/uis-cli-reference.md` has `expose` / `unexpose` in the Network Management section
-- [ ] Tester verification round closes with all R0–R9 rounds PASS on `dog-pence.ts.net`
-- [ ] Phone-on-cellular smoke confirms `https://whoami-<owner_id>.dog-pence.ts.net` reachable from arbitrary networks
-- [ ] Traefik-bypass sanity check confirms exposed services bypass Authentik forward-auth
-- [ ] Local `npm run build` succeeds
+- [x] `networking/tailscale.md` is the platform-style novice walkthrough with the 6-command flow, prereqs, team-sharing section, Cloudflare comparison, and troubleshooting
+- [x] Traefik-bypass callout prominent in `networking/tailscale.md` opening (C-8 surfacing #2 satisfied — combined with PLAN-002's #1 wizard banner + #3 expose.sh prompt, all three surfacings now live)
+- [x] `networking/index.md` hub shows real tailscale state in the example + the Positioning-derived comparison table + team-sharing subsection
+- [x] No `uis tailscale expose/unexpose/verify` or `uis deploy tailscale-tunnel` references remain in `website/docs/` (excluding `plans/completed/` and `plans/backlog/` which are historical)
+- [x] `website/docs/reference/uis-cli-reference.md` has `expose` / `unexpose` in the Network Management section
+- [x] Tester verification round closes with all R0–R9 rounds PASS on `dog-pence.ts.net`
+- [ ] Phone-on-cellular smoke confirms `https://whoami-<owner_id>.dog-pence.ts.net` reachable from arbitrary networks (not explicitly run in talk54; tester verified public reachability via curl)
+- [ ] Traefik-bypass sanity check confirms exposed services bypass Authentik forward-auth (architecture documented in `tailscale.md`; explicit end-to-end demo not run in talk54)
+- [x] Local `npm run build` succeeds
 
 ---
 

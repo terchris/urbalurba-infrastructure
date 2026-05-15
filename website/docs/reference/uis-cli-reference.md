@@ -78,6 +78,21 @@ $ ./uis deploy nginx
 
 If no platform is active or the active platform is unreachable, the banner aborts the command with a recovery hint. See [Platforms overview](../platforms/index.md#banner-on-every-cluster-touching-command) for all four banner cases.
 
+## Network Management
+
+UIS supports two networking providers — Cloudflare (production-grade tunnels with WAF + your own domain) and Tailscale (per-service Funnel for dev sharing on any network). The `uis network` subcommands manage both under a single command surface. See [Networking](../networking/index.md) for the comparison + walkthrough.
+
+| Command | Description |
+|---------|-------------|
+| `./uis network list` | List both providers and their state. |
+| `./uis network init <provider>` | Interactive setup wizard. `<provider>` is `cloudflare` or `tailscale`. |
+| `./uis network up <provider> [flags]` | Deploy the provider into the cluster. Tailscale supports `--with-cluster-funnel` for an opt-in catch-all device. |
+| `./uis network down <provider>` | Tear down the provider's cluster footprint. |
+| `./uis network status <provider>` | Show provider state, tunnel/route state, pod health. |
+| `./uis network verify <provider>` | Run the provider's diagnostics. |
+| `./uis network expose tailscale <service> [--yes]` | Expose a service via a per-service Tailscale Funnel device. Namespace auto-detected. Tailscale-specific — Cloudflare uses cluster-wide HostRegexp routing instead. |
+| `./uis network unexpose tailscale <service>` | Undo per-service Funnel exposure. |
+
 ## Service Management
 
 ### Discovery
@@ -151,20 +166,9 @@ Available stacks: `observability`, `ai-local`, `analytics`
 
 ## Service-Specific Commands
 
-### Tailscale
+### Tailscale and Cloudflare
 
-| Command | Description |
-|---------|-------------|
-| `./uis tailscale expose <service-id>` | Expose a service via Tailscale Funnel |
-| `./uis tailscale unexpose <service-id>` | Remove service from Tailscale Funnel |
-| `./uis tailscale verify` | Check Tailscale secrets, API, devices, and operator |
-
-### Cloudflare
-
-| Command | Description |
-|---------|-------------|
-| `./uis cloudflare verify` | Check tunnel network and pod status |
-| `./uis cloudflare teardown` | Remove tunnel (shows manual dashboard steps) |
+Tailscale and Cloudflare are managed through the unified [`uis network`](#network-management) family. The legacy `uis tailscale <verb>` and `uis cloudflare <verb>` invocations print a redirect stub and exit non-zero.
 
 ### ArgoCD
 

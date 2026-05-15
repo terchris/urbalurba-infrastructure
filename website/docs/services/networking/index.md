@@ -12,16 +12,17 @@ This page lists networking services that are deployed as in-cluster pods via the
 | Service | Description | Deploy |
 |---------|-------------|--------|
 | [Traefik](./traefik.md) | IngressRoute controller — terminates HTTP/HTTPS and routes by hostname | `./uis deploy traefik` |
-| [Tailscale Tunnel](./tailscale-tunnel.md) | Tailscale Funnel + operator (legacy CLI — port to `uis network` pending) | `./uis deploy tailscale-tunnel` |
 
 ## Tunnel providers
 
-For Cloudflare and Tailscale tunnels, use the unified network CLI:
+Cloudflare and Tailscale tunnels are managed through the unified network CLI, not `uis deploy`:
 
 ```bash
 ./uis network init cloudflare    # set up Cloudflare
 ./uis network up cloudflare      # deploy
+./uis network init tailscale     # set up Tailscale
+./uis network up tailscale       # deploy
 ./uis network list               # see all providers
 ```
 
-See **[Networking → Cloudflare](/docs/networking/cloudflare)** for the full walkthrough.
+See **[Networking → Cloudflare](/docs/networking/cloudflare)** and **[Networking → Tailscale](/docs/networking/tailscale)** for the full walkthroughs.
