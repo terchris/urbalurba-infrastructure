@@ -4,7 +4,20 @@
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Backlog (Tier 2 — UX block on the AKS doc rewrite)
+## Status: Completed — proposed target flow shipped end-to-end; decisions Q1-Q3 implemented
+
+The target six-command novice flow is live and documented:
+
+```
+./uis pull                         # 1
+./uis tools install azure-aks      # 2  (meta-installer per Q1/Q2 — provision-host/uis/tools/install-azure-aks.sh)
+./uis platform init azure-aks      # 3  (wizard per Q4 — platforms/azure-aks/scripts/init.sh)
+./uis platform up azure-aks        # 4  (lifecycle wrapper)
+./uis deploy nginx                 # 5  (verification)
+./uis platform down azure-aks      # 6
+```
+
+The `aks/` → `azure-aks/` rename also landed. The AKS guide (`website/docs/platforms/azure-aks.md`) leads with this exact flow.
 
 **Last Updated**: 2026-05-10
 
