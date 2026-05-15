@@ -32,7 +32,6 @@ Investigations and plans waiting for implementation, sorted by last updated date
 | [INVESTIGATE backlog — priority view](1PRIORITY.md) | — | 2026-05-15 |
 | [Investigate: Dagster Orchestration Platform for UIS](INVESTIGATE-service-dagster.md) | Deploy Dagster as the data orchestration platform in UIS, providing scheduling, observability, and lineage for data pipelines across applications — starting with Atlas, with reusability for future apps. | 2026-05-14 |
 | [---](INVESTIGATE-network-tailscale-cross-cluster-backbone.md) | — | 2026-05-13 |
-| [INVESTIGATE: `./uis build` should restart the container after a successful build](INVESTIGATE-cli-build-restart-container.md) | The same pattern works correctly for `./uis pull` — it calls `stop_container` + `start_container` after pulling. The `build` branch is missing the equivalent. | 2026-05-13 |
 | [---](INVESTIGATE-platform-aks-docs-restructure.md) | — | 2026-05-12 |
 | [---](INVESTIGATE-network-cloudflare-in-cluster-restructure.md) | — | 2026-05-12 |
 | [Investigate: Metabase Internal BI / Data Exploration for UIS](INVESTIGATE-service-metabase.md) | Deploy Metabase as the internal data-exploration and validation tool for UIS-hosted applications, providing visual SQL exploration, ad-hoc questions, and dashboards for development teams — starting with Atlas, with reusability for future apps. | 2026-05-07 |
