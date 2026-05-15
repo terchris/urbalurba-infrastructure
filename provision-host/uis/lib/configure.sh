@@ -37,20 +37,6 @@ _is_configurable() {
     [[ "$val" == "true" ]]
 }
 
-# Check if a service is multi-instance (multiInstance: true in services.json)
-# Multi-instance services configure dependencies before dispatching, not the service itself.
-_is_multi_instance() {
-    local service_id="$1"
-
-    if [[ ! -f "$SERVICES_JSON" ]]; then
-        return 1
-    fi
-
-    local val
-    val=$(jq -r --arg id "$service_id" '.services[] | select(.id == $id) | .multiInstance // false' "$SERVICES_JSON")
-    [[ "$val" == "true" ]]
-}
-
 # Get space-separated list of services that the target service requires (from services.json .requires)
 _get_requires() {
     local service_id="$1"
@@ -213,7 +199,7 @@ run_configure() {
     # Precheck: for multi-instance services, check the data-plane dependencies are deployed
     # (the service itself has no instances until configure runs); for single-instance services,
     # check the service itself is deployed. See INVESTIGATE-postgrest.md Decision #23.
-    if _is_multi_instance "$service_id"; then
+    if _is_service_multi_instance "$service_id"; then
         local dep
         while IFS= read -r dep; do
             [[ -z "$dep" ]] && continue
