@@ -11,7 +11,8 @@
 **Last Updated**: 2026-05-10
 
 **Related**:
-- [PLAN-tools-docs.md](./PLAN-tools-docs.md) — user-facing tools reference, same set of scripts.
+- [INVESTIGATE-uis-cli-top-level-doc](../backlog/INVESTIGATE-uis-cli-top-level-doc.md) — umbrella investigation that groups CLI-doc-hygiene work; this PLAN hardens the `./uis tools install` scripts whose user-facing reference shipped via PLAN-tools-docs.
+- [PLAN-tools-docs](../completed/PLAN-tools-docs.md) — user-facing tools reference (`reference/tools.md`) covering the same set of scripts; shipped 2026-05-08.
 - Surfaced during the AKS novice-onboarding refactor: a robust `./uis tools install azure-cli && ./uis tools install opentofu` is a prerequisite for the "minimum-commands" novice flow.
 
 ---

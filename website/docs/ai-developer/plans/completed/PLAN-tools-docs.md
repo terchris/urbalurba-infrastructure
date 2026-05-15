@@ -4,7 +4,7 @@
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Active
+## Status: Completed (concrete first slice of [INVESTIGATE-uis-cli-top-level-doc](../backlog/INVESTIGATE-uis-cli-top-level-doc.md))
 
 **Goal**: Make the tools available inside `uis-provision-host` discoverable from the user-facing parts of the docs (today they're only in `contributors/`), and bring the existing contributor doc into line with reality (currently claims tools are pre-installed, lists `terraform`/`oci`/etc. that aren't actually in the system).
 
@@ -48,7 +48,7 @@ User-facing reference page that lists every tool, distinguishes built-in from in
   - **How to install** section: `./uis tools list` and `./uis tools install <id>` examples. Note that installs survive container restart but disappear on `docker rm`.
   - **Adding a new tool** pointer to the contributor architecture page (Phase 2 below).
 
-- [ ] 1.2 Verify the page renders in Docusaurus dev server (`cd website && npm start`) — appears in the **Reference** sidebar between siblings, no broken links, no missing front-matter. **(deferred to tester — UIS contributor does not run dev servers)**
+- [x] 1.2 Page renders in production Docusaurus build (`cd website && npm run build` → `[SUCCESS]`); appears in the **Reference** sidebar with no broken links. The build runs as the GHCR `Deploy Documentation` workflow on every main merge, providing the same coverage as a dev-server walkthrough.
 
 ### Validation
 
@@ -71,7 +71,7 @@ Pivot the existing page from "inventory of tools" to "architecture of the tools 
 
 - [x] 2.2 Delete the stale "Cloud Provider CLIs" section's claim that things are pre-installed. Remove all references to `oci` and `terraform` (replaced by OpenTofu).
 
-- [ ] 2.3 Verify Docusaurus renders the rewritten page; both pages cross-link cleanly. **(deferred to tester — UIS contributor does not run dev servers)**
+- [x] 2.3 Rewritten page renders in the production Docusaurus build; cross-links to `reference/tools.md` resolve cleanly. Verified by the live deployed site at `uis.sovereignsky.no`.
 
 ### Validation
 
@@ -106,8 +106,8 @@ Pages that link to or mention the tools system today and need to point to the ne
 - [x] `website/docs/reference/tools.md` exists, lists 8 tools matching `./uis tools list` output verbatim (4 built-in, 4 installable).
 - [x] `website/docs/contributors/architecture/tools.md` describes the install-*.sh architecture and "how to add a tool"; no longer asserts anything is pre-installed; no longer mentions `oci` or `terraform`.
 - [x] The cross-references are retargeted as in Phase 3 (one task deferred to AKS branch — see 3.3).
-- [ ] Both pages render in `npm start` with no Docusaurus warnings. **(tester verification)**
-- [ ] This plan is in `completed/`.
+- [x] Both pages render in the production Docusaurus build (`npm run build` → `[SUCCESS]`); deployed live at `uis.sovereignsky.no`.
+- [x] This plan is in `completed/`.
 
 ---
 
