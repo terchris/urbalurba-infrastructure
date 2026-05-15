@@ -122,7 +122,7 @@ A child PLAN per platform that's worth migrating, plus one cleanup PR for the de
 
 ## Related
 
-- [PLAN-aks-destroy-kubeconfig-cleanup.md](./PLAN-aks-destroy-kubeconfig-cleanup.md) — destroy-side kubeconfig cleanup; the `03-destroy.sh` shape that future platforms inherit.
+- [PLAN-platform-aks-destroy-kubeconfig-cleanup.md](./PLAN-platform-aks-destroy-kubeconfig-cleanup.md) — destroy-side kubeconfig cleanup; the `03-destroy.sh` shape that future platforms inherit.
 - [INVESTIGATE-active-cluster-visibility-ux.md](../completed/INVESTIGATE-active-cluster-visibility-ux.md) — once we have multiple platforms, "which cluster am I about to deploy to?" becomes more pressing. Visibility UX is a prerequisite for confidently using multiple `platforms/*` flows.
 - PR #149 — landed `platforms/azure-aks/`, the template every other migrated platform should follow.
 - PR #150 — promoted "Hosts & Platforms" to top-level "Platforms" sidebar.

@@ -3,7 +3,7 @@
 **Status:** Investigation needed
 **Created:** 2026-05-14
 **Surfaced by:** talk53 F5 (Tailscale CLI port verification) — tester noticed `railway-postgrest` deployment running healthily but absent from `./uis status` output.
-**Related to:** [INVESTIGATE-customer-onboarding-database](https://github.com/helpers-no/urbalurba-infrastructure/blob/main/INVESTIGATE-customer-onboarding-database.md) (the Railway customer onboarding flow that motivated multi-instance PostgREST in the first place), PLAN-002 / customer-onboarding work expanding the `--app <name>` pattern to more services.
+**Related to:** [INVESTIGATE-docs-customer-onboarding-database](https://github.com/helpers-no/urbalurba-infrastructure/blob/main/INVESTIGATE-docs-customer-onboarding-database.md) (the Railway customer onboarding flow that motivated multi-instance PostgREST in the first place), PLAN-002 / customer-onboarding work expanding the `--app <name>` pattern to more services.
 
 ---
 
@@ -53,7 +53,7 @@ Confirming this requires reading `cmd_status` + the postgrest service's `SCRIPT_
 
 For solo development the gap is cosmetic — the user knows what they deployed and can `kubectl` directly.
 
-For **customer onboarding** (per the `INVESTIGATE-customer-onboarding-database.md` flow with the Railway customer) the gap is misleading. The new user is told `./uis status` is the official "is my stack healthy" signal. If their `--app <name>`-scoped PostgREST doesn't appear there, they'll assume it failed and start debugging the wrong thing. Same false-negative flavor as talk52 F4's "Tailscale deploy reported FAILED but actually worked" — UI says broken, reality says fine.
+For **customer onboarding** (per the `INVESTIGATE-docs-customer-onboarding-database.md` flow with the Railway customer) the gap is misleading. The new user is told `./uis status` is the official "is my stack healthy" signal. If their `--app <name>`-scoped PostgREST doesn't appear there, they'll assume it failed and start debugging the wrong thing. Same false-negative flavor as talk52 F4's "Tailscale deploy reported FAILED but actually worked" — UI says broken, reality says fine.
 
 The `--app <name>` pattern is also the direction PLAN-002 / customer-onboarding work is expanding (likely to `redis --app foo`, future per-customer postgresql namespaces, etc.). Pattern will get worse as more services adopt it.
 

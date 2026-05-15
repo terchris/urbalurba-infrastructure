@@ -10,7 +10,7 @@
 
 **Last Updated**: 2026-03-13
 
-**Investigation**: [INVESTIGATE-backstage-enhancements.md](../backlog/INVESTIGATE-backstage-enhancements.md) — Enhancement 1
+**Investigation**: [INVESTIGATE-service-backstage-enhancements.md](../backlog/INVESTIGATE-service-backstage-enhancements.md) — Enhancement 1
 
 **Prerequisites**: PLAN-002 complete (Backstage deployed with catalog)
 
@@ -182,7 +182,7 @@ spec:
 
 ### Tasks
 
-- [x] 4.1 Update `INVESTIGATE-backstage-enhancements.md` — note Enhancement 1 is complete
+- [x] 4.1 Update `INVESTIGATE-service-backstage-enhancements.md` — note Enhancement 1 is complete
 - [ ] 4.2 Move this plan to `completed/`
 
 ---

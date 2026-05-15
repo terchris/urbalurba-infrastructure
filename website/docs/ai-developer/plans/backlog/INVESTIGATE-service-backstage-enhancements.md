@@ -188,7 +188,7 @@ Small for enabling the plugin. The value comes from the Scaffolder creating repo
 
 ## Enhancement 5: Authentik OIDC Authentication
 
-Already captured in [INVESTIGATE-backstage-auth.md](INVESTIGATE-backstage-auth.md) (was PLAN-003, downgraded to investigation). Not duplicated here.
+Already captured in [INVESTIGATE-service-backstage-auth.md](INVESTIGATE-service-backstage-auth.md) (was PLAN-003, downgraded to investigation). Not duplicated here.
 
 ---
 

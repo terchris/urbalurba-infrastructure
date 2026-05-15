@@ -7,7 +7,7 @@ sidebar_label: PLAN — Cloudflare network port + docs lift-up
 
 ## Status: Backlog (awaiting "execute")
 
-**Spec**: [INVESTIGATE-networking-restructure-and-cloudflare-in-cluster.md](INVESTIGATE-networking-restructure-and-cloudflare-in-cluster.md) — Q1-Q10 locked in.
+**Spec**: [INVESTIGATE-network-cloudflare-in-cluster-restructure.md](INVESTIGATE-network-cloudflare-in-cluster-restructure.md) — Q1-Q10 locked in.
 
 **Goal**: Port Cloudflare networking from the current ad-hoc shape (`uis deploy cloudflare-tunnel` + `uis cloudflare verify/teardown` + manual setup-guide-driven dashboard work) to a first-class `uis network <verb> cloudflare` command family symmetric with `uis platform <verb> <provider>`. Lift `Networking` in the sidebar + docs. **Tailscale wholesale deferred** to a future plan.
 

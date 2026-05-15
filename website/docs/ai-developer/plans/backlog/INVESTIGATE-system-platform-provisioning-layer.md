@@ -199,7 +199,7 @@ Code lives in `platforms/azure-aks/`. The `feature/platform-aks-opentofu` branch
 
 #### Findings from first-run verification (closed 2026-05-11)
 
-The first-run actually went considerably beyond the originally-planned "manual four-script walkthrough" — by the time verification happened, the four-PLAN AKS novice-onboarding sequence ([INVESTIGATE-aks-novice-onboarding.md](INVESTIGATE-aks-novice-onboarding.md)) had also shipped, so verification ran through `uis platform up azure-aks` + `uis deploy nginx` + `uis platform down azure-aks` instead. The verification bar above was met regardless: nginx's in-cluster connectivity tests passed against the AKS cluster, and the cluster was cleanly destroyed afterward.
+The first-run actually went considerably beyond the originally-planned "manual four-script walkthrough" — by the time verification happened, the four-PLAN AKS novice-onboarding sequence ([INVESTIGATE-platform-aks-novice-onboarding.md](INVESTIGATE-platform-aks-novice-onboarding.md)) had also shipped, so verification ran through `uis platform up azure-aks` + `uis deploy nginx` + `uis platform down azure-aks` instead. The verification bar above was met regardless: nginx's in-cluster connectivity tests passed against the AKS cluster, and the cluster was cleanly destroyed afterward.
 
 Addressed during verification (chronological):
 
@@ -213,7 +213,7 @@ Addressed during verification (chronological):
 
 Intentionally deferred:
 
-- **`kubernetes-secrets.yml` apply in `02-post-apply.sh`** — split out to [PLAN-002-aks-secrets-apply-parity.md](PLAN-002-aks-secrets-apply-parity.md) (PR #149). The verification bar above (nginx) doesn't need cluster secrets, so this gap didn't block Step 1. Closed via PLAN-002.
+- **`kubernetes-secrets.yml` apply in `02-post-apply.sh`** — split out to [PLAN-platform-aks-002-secrets-apply-parity.md](PLAN-platform-aks-002-secrets-apply-parity.md) (PR #149). The verification bar above (nginx) doesn't need cluster secrets, so this gap didn't block Step 1. Closed via PLAN-002.
 - **Quota pre-flight check (`hosts/azure-aks/check-aks-quota.sh`)** — *not* deferred. Ported into the new wizard library (`azure-discovery.sh::check_quota`) so the cold cycle's first error is "you don't have enough vCPU quota" with the increase-link, not a partial-create failure 10 minutes into `tofu apply`. Stronger than the originally-deferred plan.
 - **PIM retry loop** — *not* weakened. The legacy 3-attempt loop is preserved in `azure-discovery.sh::check_owner_or_contributor` because PIM activation is a normal recovery path, not an error edge case (preserve-legacy-retry-paths memory).
 - **External-IP curl reachability test in 02-post-apply.sh** — still deferred. The nginx deploy hits Traefik end-to-end so the load-bearing path is covered; a dedicated curl-the-LB test would be polish.
@@ -253,7 +253,7 @@ merges these into `kubeconf-all`. This must keep working as platforms are added.
 
 The current `./uis` wrapper bypasses this by symlinking `kubeconf-all` to the host
 kubeconfig. This should be restored to a real merge as part of the target management
-work (see INVESTIGATE-remote-deployment-targets.md).
+work (see INVESTIGATE-system-remote-deployment-targets.md).
 
 ### .gitignore
 
@@ -287,13 +287,13 @@ referenced from all platform post-apply scripts.
 2. Should OpenTofu modules be shared across `aks/`, `gke/`, `eks/` (e.g., a shared `modules/traefik-helm/`) or kept separate for simplicity?
 3. What is the right home for the Ansible merge playbook — should each platform call it, or should there be a shared `platforms/common/` area?
 4. Should `hosts/` be deleted immediately after a platform is migrated, or kept until all platforms are done?
-5. How does this interact with the `./uis target` command work described in INVESTIGATE-remote-deployment-targets.md? The `platforms/` scripts are the implementation behind `./uis target create` and `./uis target bootstrap`.
+5. How does this interact with the `./uis target` command work described in INVESTIGATE-system-remote-deployment-targets.md? The `platforms/` scripts are the implementation behind `./uis target create` and `./uis target bootstrap`.
 
 ---
 
 ## Related
 
-- [INVESTIGATE-remote-deployment-targets.md](INVESTIGATE-remote-deployment-targets.md) — target management UX (`./uis target` commands)
-- [INVESTIGATE-provision-host-tools-and-auth.md](INVESTIGATE-provision-host-tools-and-auth.md) — tool installation and cloud auth inside provision-host
+- [INVESTIGATE-system-remote-deployment-targets.md](INVESTIGATE-system-remote-deployment-targets.md) — target management UX (`./uis target` commands)
+- [INVESTIGATE-system-provision-host-tools-and-auth.md](INVESTIGATE-system-provision-host-tools-and-auth.md) — tool installation and cloud auth inside provision-host
 - `platforms/azure-aks/README.md` — AKS platform documentation
 - `hosts/azure-aks/` — original bash scripts being replaced

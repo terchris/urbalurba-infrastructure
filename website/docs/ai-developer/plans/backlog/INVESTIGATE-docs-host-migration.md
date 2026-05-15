@@ -4,7 +4,7 @@
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-**Related**: [INVESTIGATE-remote-deployment-targets](INVESTIGATE-remote-deployment-targets.md)
+**Related**: [INVESTIGATE-system-remote-deployment-targets](INVESTIGATE-system-remote-deployment-targets.md)
 **Created**: 2026-03-02
 **Status**: BACKLOG
 
@@ -27,10 +27,10 @@ The host documentation pages still describe the legacy deployment approach using
 
 1. **Which hosts does UIS actually support today?** Rancher Desktop works. Which others have been tested?
 2. **Should Multipass be removed?** It's already marked as legacy with "USE RANCHER DESKTOP INSTEAD".
-3. **What's the UIS workflow for remote targets?** Does `./uis` support targeting a remote cluster, or is it still local-only? See INVESTIGATE-remote-deployment-targets.
+3. **What's the UIS workflow for remote targets?** Does `./uis` support targeting a remote cluster, or is it still local-only? See INVESTIGATE-system-remote-deployment-targets.
 4. **Cloud-init relevance?** Is cloud-init still the approach for provisioning remote hosts, or has that changed?
 5. **Per-host pages or single page?** Should each host type keep its own page, or should they be consolidated?
 
 ## Dependencies
 
-- Remote deployment target support (INVESTIGATE-remote-deployment-targets) should be resolved first — the docs should reflect what actually works.
+- Remote deployment target support (INVESTIGATE-system-remote-deployment-targets) should be resolved first — the docs should reflect what actually works.

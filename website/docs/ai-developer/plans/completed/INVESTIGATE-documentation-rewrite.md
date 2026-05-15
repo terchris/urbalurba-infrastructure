@@ -155,7 +155,7 @@ Traefik is the ingress controller that routes all traffic into the cluster. Ever
 - **Azure AKS**: Installed via Helm in `hosts/azure-aks/02-azure-aks-setup.sh`
 - **Ubuntu MicroK8s**: Enabled as a MicroK8s addon
 
-For now, traefik gets a documentation page in Networking but no `service-traefik.sh` or `./uis deploy traefik`. Making it a deployable UIS service is deferred to INVESTIGATE-remote-deployment-targets (where platform-specific setup is addressed).
+For now, traefik gets a documentation page in Networking but no `service-traefik.sh` or `./uis deploy traefik`. Making it a deployable UIS service is deferred to INVESTIGATE-system-remote-deployment-targets (where platform-specific setup is addressed).
 
 ### Storage — Documentation Only
 
@@ -165,7 +165,7 @@ Storage is foundational — the storage class alias (`000-storage-class-alias.ya
 - **Ubuntu MicroK8s**: Needs `010-move-hostpath-storage.yml` to move storage to `/mnt/urbalurbadisk/kubernetesstorage`
 - **Azure AKS**: Uses Azure-managed storage classes
 
-For now, storage gets documentation pages but no `./uis deploy storage`. Platform-specific setup is deferred to INVESTIGATE-remote-deployment-targets.
+For now, storage gets documentation pages but no `./uis deploy storage`. Platform-specific setup is deferred to INVESTIGATE-system-remote-deployment-targets.
 
 ### Dependencies
 
@@ -561,8 +561,8 @@ Standardize all index pages using the appropriate template (package index for in
 ## Connection to Other Investigations
 
 - **INVESTIGATE-documentation-generation**: This rewrite IS the prototype. The template we design here becomes the spec for auto-generation. Every field that maps to script metadata is a field the generator can fill in.
-- **INVESTIGATE-version-pinning**: Once versions are pinned in script metadata, they appear automatically in the "Helm chart" field of each service page.
-- **INVESTIGATE-remote-deployment-targets**: Host docs stay as-is until target management exists.
+- **INVESTIGATE-system-version-pinning**: Once versions are pinned in script metadata, they appear automatically in the "Helm chart" field of each service page.
+- **INVESTIGATE-system-remote-deployment-targets**: Host docs stay as-is until target management exists.
 
 ---
 

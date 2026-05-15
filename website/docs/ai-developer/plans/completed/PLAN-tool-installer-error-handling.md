@@ -11,7 +11,7 @@
 **Last Updated**: 2026-05-10
 
 **Related**:
-- [INVESTIGATE-uis-cli-top-level-doc](../backlog/INVESTIGATE-uis-cli-top-level-doc.md) — umbrella investigation that groups CLI-doc-hygiene work; this PLAN hardens the `./uis tools install` scripts whose user-facing reference shipped via PLAN-tools-docs.
+- [INVESTIGATE-cli-top-level-doc](../backlog/INVESTIGATE-cli-top-level-doc.md) — umbrella investigation that groups CLI-doc-hygiene work; this PLAN hardens the `./uis tools install` scripts whose user-facing reference shipped via PLAN-tools-docs.
 - [PLAN-tools-docs](../completed/PLAN-tools-docs.md) — user-facing tools reference (`reference/tools.md`) covering the same set of scripts; shipped 2026-05-08.
 - Surfaced during the AKS novice-onboarding refactor: a robust `./uis tools install azure-cli && ./uis tools install opentofu` is a prerequisite for the "minimum-commands" novice flow.
 
@@ -45,7 +45,7 @@ The gap is inside the four `do_install` bodies. **None of them use `set -euo pip
 
 ## Out of Scope
 
-- **Legacy `hosts/install-*.sh` scripts** (`hosts/install-rancher-kubernetes.sh`, `hosts/install-azure-aks.sh`, `hosts/install-azure-microk8s-v2.sh`, `hosts/install-multipass-microk8s.sh`, `hosts/raspberry-microk8s/install-raspberry.sh`) — these are queued for deletion or migration in [INVESTIGATE-migrate-hosts-to-platforms.md](../backlog/INVESTIGATE-migrate-hosts-to-platforms.md). Do not touch in this PR.
+- **Legacy `hosts/install-*.sh` scripts** (`hosts/install-rancher-kubernetes.sh`, `hosts/install-azure-aks.sh`, `hosts/install-azure-microk8s-v2.sh`, `hosts/install-multipass-microk8s.sh`, `hosts/raspberry-microk8s/install-raspberry.sh`) — these are queued for deletion or migration in [INVESTIGATE-system-migrate-hosts-to-platforms.md](../backlog/INVESTIGATE-system-migrate-hosts-to-platforms.md). Do not touch in this PR.
 - **`do_uninstall` bodies** — same scripts have parallel uninstall functions with the same pattern. Inside this PR's scope to fix consistently *if* the diff stays small; otherwise can split.
 - **Adding new tools** (e.g. `kubelogin` as a first-class tool, `helm` plugins). Separate work.
 - **Changing the wrapper** (`tool-installation.sh`). Wrapper-level guarantees are already adequate; this plan only hardens the scripts it dispatches to.
@@ -178,5 +178,5 @@ Each of the four scripts has the contract block. The block is identical across a
 ## Related
 
 - [PLAN-tools-docs.md](./PLAN-tools-docs.md) — user-facing tools reference. Touches the same script set; this plan is independent and can land first or second without ordering constraints.
-- [INVESTIGATE-migrate-hosts-to-platforms.md](../backlog/INVESTIGATE-migrate-hosts-to-platforms.md) — legacy `hosts/install-*.sh` lifecycle decisions. Out of scope here.
+- [INVESTIGATE-system-migrate-hosts-to-platforms.md](../backlog/INVESTIGATE-system-migrate-hosts-to-platforms.md) — legacy `hosts/install-*.sh` lifecycle decisions. Out of scope here.
 - `provision-host/uis/lib/tool-installation.sh:184` — `install_tool` wrapper that this plan depends on (idempotency check + post-install verification).

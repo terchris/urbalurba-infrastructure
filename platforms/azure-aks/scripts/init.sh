@@ -5,7 +5,7 @@
 # Entry point: ./uis platform init azure-aks
 #
 # Orchestrates the helpers in provision-host/uis/lib/azure-discovery.sh in a
-# fail-fast order (per Q7 of INVESTIGATE-aks-novice-onboarding.md): each step
+# fail-fast order (per Q7 of INVESTIGATE-platform-aks-novice-onboarding.md): each step
 # surfaces failures the moment its required input is known. The wizard ends
 # by writing .uis.secrets/cloud-accounts/azure-default.env atomically.
 

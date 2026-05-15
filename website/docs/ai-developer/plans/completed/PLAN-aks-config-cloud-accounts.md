@@ -14,9 +14,9 @@
 **Last Updated**: 2026-05-11
 
 **Related**:
-- [INVESTIGATE-platform-provisioning-layer.md](../backlog/INVESTIGATE-platform-provisioning-layer.md) — Step 1 scope.
+- [INVESTIGATE-system-platform-provisioning-layer.md](../backlog/INVESTIGATE-system-platform-provisioning-layer.md) — Step 1 scope.
 - [PLAN-001-aks-step1-verification.md](./PLAN-001-aks-step1-verification.md) — sibling PLAN, both shipped 2026-05-11. PLAN-001's Phase 2 verified the new file structure end-to-end.
-- [PLAN-001b-aks-manual-setup.md](../backlog/PLAN-001b-aks-manual-setup.md) — Phase 4 references the bash file; this PLAN updated it.
+- [PLAN-platform-aks-001b-manual-setup.md](../backlog/PLAN-platform-aks-001b-manual-setup.md) — Phase 4 references the bash file; this PLAN updated it.
 - [Secrets architecture doc](../../../contributors/architecture/secrets.md) — names `cloud-accounts/azure-default.env` as the existing pattern.
 
 **Sequence**: this PLAN is the *small* restructure that lands first. The follow-up wizard (`./uis target add aks`) is a separate larger PLAN that builds on top of the file structure this PLAN locks in.
@@ -224,7 +224,7 @@ PLAN-001b's Phase 4 ("Configuration") still describes the old `platforms/azure-a
 
 ### Tasks
 
-- [x] 5.1 In `PLAN-001b-aks-manual-setup.md` Phase 4, replace the `cp ... azure-aks-config.sh` instruction with `cp provision-host/uis/templates/uis.secrets/cloud-accounts/azure.env.template .uis.secrets/cloud-accounts/azure-default.env` and the corresponding edit-and-source flow. Update the example values block to use `AZURE_*` prefixed names.
+- [x] 5.1 In `PLAN-platform-aks-001b-manual-setup.md` Phase 4, replace the `cp ... azure-aks-config.sh` instruction with `cp provision-host/uis/templates/uis.secrets/cloud-accounts/azure.env.template .uis.secrets/cloud-accounts/azure-default.env` and the corresponding edit-and-source flow. Update the example values block to use `AZURE_*` prefixed names.
 
 - [x] 5.2 In Phase 3's "What you should now have written down" table, rename the variable column entries (`TENANT_ID` → `AZURE_TENANT_ID`, `SUBSCRIPTION_ID` → `AZURE_SUBSCRIPTION_ID`, `LOCATION` → `AZURE_AKS_LOCATION`, `NODE_SIZE` → `AZURE_AKS_NODE_SIZE`, `STATE_STORAGE_ACCOUNT` → `AZURE_STATE_STORAGE_ACCOUNT`, `TAG_*` → `AZURE_TAG_*`).
 
@@ -232,7 +232,7 @@ PLAN-001b's Phase 4 ("Configuration") still describes the old `platforms/azure-a
 
 ### Validation
 
-`grep -nE "azure-aks-config\.sh|TENANT_ID(?!_)" website/docs/ai-developer/plans/backlog/PLAN-001b-aks-manual-setup.md` (or equivalent inspection) shows zero hits — every mention is the new path/name.
+`grep -nE "azure-aks-config\.sh|TENANT_ID(?!_)" website/docs/ai-developer/plans/backlog/PLAN-platform-aks-001b-manual-setup.md` (or equivalent inspection) shows zero hits — every mention is the new path/name.
 
 ---
 
@@ -311,7 +311,7 @@ This is faster than waiting for CI to publish to GHCR (CI build + push takes ~12
 - [x] All four `platforms/azure-aks/scripts/*.sh` source `$(get_cloud_credentials_path azure)` and use `${VAR:-default}` for optional values.
 - [x] `tofu/terraform.tfvars` generation maps prefixed bash → unprefixed tofu names; `tofu/variables.tf` and `tofu/main.tf` unchanged.
 - [x] `platforms/azure-aks/azure-aks-config.sh-template` is deleted; no in-tree references remain.
-- [x] `PLAN-001b-aks-manual-setup.md` Phase 3 + Phase 4 reflect the new location and variable names.
+- [x] `PLAN-platform-aks-001b-manual-setup.md` Phase 3 + Phase 4 reflect the new location and variable names.
 - [x] Tester can complete PLAN-001 Phase 2 (the AKS run-through) end-to-end against the new structure. — talk46 R3.
 - [x] This plan is in `completed/`. — done 2026-05-11.
 
@@ -326,7 +326,7 @@ This is faster than waiting for CI to publish to GHCR (CI build + push takes ~12
 - `platforms/azure-aks/scripts/03-destroy.sh`
 - `platforms/azure-aks/azure-aks-config.sh-template` (delete)
 - `platforms/azure-aks/README.md` (if it cites the old template)
-- `website/docs/ai-developer/plans/backlog/PLAN-001b-aks-manual-setup.md`
+- `website/docs/ai-developer/plans/backlog/PLAN-platform-aks-001b-manual-setup.md`
 - `website/docs/ai-developer/plans/active/PLAN-aks-config-cloud-accounts.md` → `completed/` (Phase 6)
 
 ---

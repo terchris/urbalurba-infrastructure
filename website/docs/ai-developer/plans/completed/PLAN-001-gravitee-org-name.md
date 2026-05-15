@@ -76,8 +76,8 @@ Expected: variable lines present, master-template reference present, exactly 1 `
 
 ### Tasks
 
-- [x] 2.1 Append a Round 7 brief to `talk.md` with restart + manual common-values edit (existing-install gap from `INVESTIGATE-uis-deploy-auto-regen-secrets`) + secrets generate/apply + drop-redeploy + the load-bearing org-name probe + regression checks for OQ4 / OQ5 / autoscaling / admin email.
-- [x] 2.2 Round 7 tester report received — five-layer wiring verified end-to-end on the override path. Two findings surfaced: (A) load-bearing quoting bug in image-default — `DEFAULT_ORGANIZATION_NAME=UIS Local Dev` (unquoted) gets truncated to `"UIS"` when `first-run.sh` and `secrets generate` `source` the file, so fresh installs would fail acceptance ("UIS Local Dev" required, would get "UIS"). (B) silent-failure mode in secrets pipeline — bad common-values syntax produces incomplete YAML without surfacing the error; `secrets apply` reports success; deploy UPDATEs the DB to empty string. Finding A is on the critical path for PLAN-001 acceptance; Finding B logged in `INVESTIGATE-uis-deploy-auto-regen-secrets.md` as adjacent silent-failure mode.
+- [x] 2.1 Append a Round 7 brief to `talk.md` with restart + manual common-values edit (existing-install gap from `INVESTIGATE-cli-deploy-auto-regen-secrets`) + secrets generate/apply + drop-redeploy + the load-bearing org-name probe + regression checks for OQ4 / OQ5 / autoscaling / admin email.
+- [x] 2.2 Round 7 tester report received — five-layer wiring verified end-to-end on the override path. Two findings surfaced: (A) load-bearing quoting bug in image-default — `DEFAULT_ORGANIZATION_NAME=UIS Local Dev` (unquoted) gets truncated to `"UIS"` when `first-run.sh` and `secrets generate` `source` the file, so fresh installs would fail acceptance ("UIS Local Dev" required, would get "UIS"). (B) silent-failure mode in secrets pipeline — bad common-values syntax produces incomplete YAML without surfacing the error; `secrets apply` reports success; deploy UPDATEs the DB to empty string. Finding A is on the critical path for PLAN-001 acceptance; Finding B logged in `INVESTIGATE-cli-deploy-auto-regen-secrets.md` as adjacent silent-failure mode.
 
 ## Phase 3: Quoting fix (Round 7 Finding A)
 
@@ -88,7 +88,7 @@ Expected: variable lines present, master-template reference present, exactly 1 `
 - [x] 3.3 Update the sed line in `first-run.sh:copy_secrets_templates` to emit a quoted value: `s|DEFAULT_ORGANIZATION_NAME=.*|DEFAULT_ORGANIZATION_NAME=\"${DEFAULT_ORGANIZATION_NAME}\"|`. Delimiter changed from `/` to `|` because the replacement now contains literal escaped double quotes; `|` keeps the line readable. The first-run sed sees the value already shell-stripped of source-time quotes, then re-quotes for the persisted per-install file (so subsequent `source` calls survive).
 - [x] 3.4 Run `./uis build`. New image: `875c9a5c9231`. Tester picks up via restart.
 - [x] 3.5 Append a Round 7.5 brief to `talk.md` asking the tester to confirm: (a) image-default chain works on a clean per-install init (drop their existing override, let first-run repopulate, deploy, verify "UIS Local Dev" surfaces); (b) all Round 7 regressions still hold.
-- [x] 3.6 Round 7.5 tester report received — fresh-init path produces `"UIS Local Dev"` end-to-end (full value, no truncation, no empty string), all regressions hold. Tester also noted that `copy_secrets_templates` is triggered lazily by the first secrets-pipeline command after the per-install file goes missing, not by restart itself; observation captured in `INVESTIGATE-uis-deploy-auto-regen-secrets.md` as a third adjacent failure mode.
+- [x] 3.6 Round 7.5 tester report received — fresh-init path produces `"UIS Local Dev"` end-to-end (full value, no truncation, no empty string), all regressions hold. Tester also noted that `copy_secrets_templates` is triggered lazily by the first secrets-pipeline command after the per-install file goes missing, not by restart itself; observation captured in `INVESTIGATE-cli-deploy-auto-regen-secrets.md` as a third adjacent failure mode.
 
 ### Validation
 
@@ -133,7 +133,7 @@ Tester confirms:
 
 **Why the password from `default/urbalurba-secrets:PGPASSWORD`, not a Gravitee-specific password**: this is the postgres admin password used to authenticate as the postgres superuser, same as the existing remove playbook task 8. The `gravitee_user` role has limited privileges; the superuser needs to do the UPDATE. The password lookup pattern is already established.
 
-**Existing-install workflow gap**: parking `INVESTIGATE-uis-deploy-auto-regen-secrets` covers this. For PLAN-001, the Round 7 brief instructs the tester to manually edit their per-install common-values + regen + apply before deploying. Once `INVESTIGATE-uis-deploy-auto-regen-secrets` lands, this manual step will go away for everyone.
+**Existing-install workflow gap**: parking `INVESTIGATE-cli-deploy-auto-regen-secrets` covers this. For PLAN-001, the Round 7 brief instructs the tester to manually edit their per-install common-values + regen + apply before deploying. Once `INVESTIGATE-cli-deploy-auto-regen-secrets` lands, this manual step will go away for everyone.
 
 **No separate PR** — folds into the gravitee-config branch per existing maintainer direction.
 

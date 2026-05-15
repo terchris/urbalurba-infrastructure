@@ -12,7 +12,7 @@
 
 **Related**:
 - [INVESTIGATE-openmetadata-deployment.md](INVESTIGATE-openmetadata-deployment.md) — OpenMetadata requires ES 9.x
-- [INVESTIGATE-version-pinning.md](../backlog/INVESTIGATE-version-pinning.md) — Elasticsearch is listed as unpinned. This upgrade also pins the version. Update that investigation after this work is complete.
+- [INVESTIGATE-system-version-pinning.md](../backlog/INVESTIGATE-system-version-pinning.md) — Elasticsearch is listed as unpinned. This upgrade also pins the version. Update that investigation after this work is complete.
 
 ---
 
@@ -127,4 +127,4 @@ This is a low-risk change: only one service (Gravitee) depends on ES, and Gravit
 ## Next Steps
 
 - [x] Create PLAN to upgrade and pin Elasticsearch version ✓
-- [x] After upgrade: update `INVESTIGATE-version-pinning.md` — change Elasticsearch row from UNPINNED to PINNED with version `9.3.0` ✓
+- [x] After upgrade: update `INVESTIGATE-system-version-pinning.md` — change Elasticsearch row from UNPINNED to PINNED with version `9.3.0` ✓

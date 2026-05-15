@@ -179,7 +179,7 @@ Only the CLI:
 
 The dct generates per-tool pages like `dct.sovereignsky.no/docs/tools/development-tools/csharp`. For UIS, this could be per-service pages showing:
 - Service description, category, dependencies
-- Helm chart name and version (ties into INVESTIGATE-version-pinning)
+- Helm chart name and version (ties into INVESTIGATE-system-version-pinning)
 - Deploy/undeploy commands
 - Configuration options
 - Related services
@@ -218,7 +218,7 @@ dct has `categories.sh` with a pipe-delimited table and helper functions. UIS ca
 ### Q5: Should version info live in script metadata?
 
 If each service script has `SCRIPT_HELM_VERSION` and `SCRIPT_IMAGE_VERSION`, then:
-- Version pinning (INVESTIGATE-version-pinning) becomes part of the metadata
+- Version pinning (INVESTIGATE-system-version-pinning) becomes part of the metadata
 - Documentation generator can show versions on service pages
 - A version-check script could compare pinned versions against latest available
 
@@ -241,7 +241,7 @@ UIS already has a Docusaurus site. Should `deploy-docs.yml` be extended to auto-
 - Version pinning metadata co-located with the service definition
 
 ### Connection to Other Investigations
-- **INVESTIGATE-version-pinning**: If chart/image versions become script metadata, version pinning and documentation are solved together
+- **INVESTIGATE-system-version-pinning**: If chart/image versions become script metadata, version pinning and documentation are solved together
 - **STATUS-service-migration**: Service pages could replace the manual tracking table
 
 ---

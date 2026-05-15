@@ -5,9 +5,9 @@ sidebar_label: PLAN — Multi-platform docs restructure
 
 # PLAN — Multi-platform docs restructure
 
-## Status: Completed (work shipped piecemeal across multiple PRs; Phase 0 tracked separately as [PLAN-aks-destroy-kubeconfig-cleanup](PLAN-aks-destroy-kubeconfig-cleanup.md))
+## Status: Completed (work shipped piecemeal across multiple PRs; Phase 0 tracked separately as [PLAN-platform-aks-destroy-kubeconfig-cleanup](PLAN-platform-aks-destroy-kubeconfig-cleanup.md))
 
-**Spec**: [INVESTIGATE-aks-and-platform-docs-restructure.md](INVESTIGATE-aks-and-platform-docs-restructure.md) — all Q1–Q9 decisions locked in.
+**Spec**: [INVESTIGATE-platform-aks-docs-restructure.md](INVESTIGATE-platform-aks-docs-restructure.md) — all Q1–Q9 decisions locked in.
 
 **Headline framing** (from the investigation): UIS is a **multi-platform tool**, not a Rancher-Desktop-with-an-AKS-side-guide. The docs structure must surface that at the front door, not bury it as the 8th sidebar category.
 
@@ -21,7 +21,7 @@ The plan was never executed as a single unified PR (Phase 7's intended shape). I
 
 | Phase | State | Evidence |
 |---|---|---|
-| 0 — Pre-restructure bug fix | **Open** | Tracked separately as [`PLAN-aks-destroy-kubeconfig-cleanup`](PLAN-aks-destroy-kubeconfig-cleanup.md) in backlog/. |
+| 0 — Pre-restructure bug fix | **Open** | Tracked separately as [`PLAN-platform-aks-destroy-kubeconfig-cleanup`](PLAN-platform-aks-destroy-kubeconfig-cleanup.md) in backlog/. |
 | 1 — Sidebar promotion | ✓ Done | `sidebars.ts` order is now `index → about → Getting Started → Platforms → …`. |
 | 2 — `platforms/index.md` hub | ✓ Done | Page opens with the multi-platform framing + canonical `uis platform list` example. |
 | 3 — AKS guide rewrite | ✓ Done | `platforms/azure-aks.md` opens with the six-command novice flow built on `uis platform init/up`. |

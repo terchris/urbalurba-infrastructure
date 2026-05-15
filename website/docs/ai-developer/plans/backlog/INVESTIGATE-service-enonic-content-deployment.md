@@ -12,7 +12,7 @@
 
 **Related**:
 - [INVESTIGATE-enonic-xp-deployment.md](../completed/INVESTIGATE-enonic-xp-deployment.md) — base Enonic XP platform deployment
-- [INVESTIGATE-enonic-app-deployment-pipeline.md](INVESTIGATE-enonic-app-deployment-pipeline.md) — app (code) deployment pipeline
+- [INVESTIGATE-service-enonic-app-deployment-pipeline.md](INVESTIGATE-service-enonic-app-deployment-pipeline.md) — app (code) deployment pipeline
 
 ---
 

@@ -4,14 +4,14 @@
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Completed (concrete first slice of [INVESTIGATE-uis-cli-top-level-doc](../backlog/INVESTIGATE-uis-cli-top-level-doc.md))
+## Status: Completed (concrete first slice of [INVESTIGATE-cli-top-level-doc](../backlog/INVESTIGATE-cli-top-level-doc.md))
 
 **Goal**: Make the tools available inside `uis-provision-host` discoverable from the user-facing parts of the docs (today they're only in `contributors/`), and bring the existing contributor doc into line with reality (currently claims tools are pre-installed, lists `terraform`/`oci`/etc. that aren't actually in the system).
 
 **Last Updated**: 2026-05-08
 
 **Related** (system-design context, *not* a prerequisite):
-- [INVESTIGATE-provision-host-tools-and-auth.md](./INVESTIGATE-provision-host-tools-and-auth.md) — bigger architecture investigation about how tools persist across rebuilds and how provider auth is wired. Tier 3, still deferred. This plan is scoped narrowly to the documentation gap and does not block on that work.
+- [INVESTIGATE-system-provision-host-tools-and-auth.md](./INVESTIGATE-system-provision-host-tools-and-auth.md) — bigger architecture investigation about how tools persist across rebuilds and how provider auth is wired. Tier 3, still deferred. This plan is scoped narrowly to the documentation gap and does not block on that work.
 
 ---
 
@@ -89,7 +89,7 @@ Pages that link to or mention the tools system today and need to point to the ne
 
 - [x] 3.2 `website/docs/advanced/provision-host/index.md:40` — currently links to `contributors/architecture/tools.md`. Retarget to `reference/tools.md` (the user-facing page) since this index is in the user-facing nav.
 
-- [x] 3.3 `website/docs/ai-developer/plans/backlog/PLAN-001b-aks-manual-setup.md` Phase 2 — currently directs the operator to `./uis tools install azure-cli && ./uis tools install opentofu` without context. Add a one-line link to `reference/tools.md` so first-time operators can see the broader inventory. **(shipped on `feature/aks-config-cloud-accounts` as commit `0c31993`; lands on main when PR #146 merges)**
+- [x] 3.3 `website/docs/ai-developer/plans/backlog/PLAN-platform-aks-001b-manual-setup.md` Phase 2 — currently directs the operator to `./uis tools install azure-cli && ./uis tools install opentofu` without context. Add a one-line link to `reference/tools.md` so first-time operators can see the broader inventory. **(shipped on `feature/aks-config-cloud-accounts` as commit `0c31993`; lands on main when PR #146 merges)**
 
 - [x] 3.4 `website/docs/advanced/provision-host/rancher.md:47` (discovered during grep audit) — same retarget from contributor page to `reference/tools.md`.
 
@@ -117,7 +117,7 @@ Pages that link to or mention the tools system today and need to point to the ne
 - `website/docs/contributors/architecture/tools.md` (rewrite)
 - `website/docs/reference/uis-cli-reference.md` (cross-ref update)
 - `website/docs/advanced/provision-host/index.md` (cross-ref update)
-- `website/docs/ai-developer/plans/backlog/PLAN-001b-aks-manual-setup.md` (cross-ref update)
+- `website/docs/ai-developer/plans/backlog/PLAN-platform-aks-001b-manual-setup.md` (cross-ref update)
 - `website/docs/ai-developer/plans/active/PLAN-tools-docs.md` → `completed/` (when done)
 
 ---
@@ -125,5 +125,5 @@ Pages that link to or mention the tools system today and need to point to the ne
 ## Implementation Notes
 
 - **Hand-maintained, not auto-generated.** The doc rebuild is small (8 tools), the auto-generation effort isn't justified at this size. If the inventory grows or drift recurs, revisit by extending `provision-host/uis/manage/uis-docs.sh` to emit this page from `install-*.sh` metadata. Tracked as a future enhancement, not part of this plan.
-- **Don't touch the system itself.** [INVESTIGATE-provision-host-tools-and-auth.md](./INVESTIGATE-provision-host-tools-and-auth.md) owns the questions about persistence (`enabled-tools.conf`), auth state (`.uis.secrets/cloud-accounts/`), and `target setup` integration. This plan is *only* about documentation; if either page tries to describe behaviour that doesn't yet exist, defer to that investigation rather than describing a future state.
+- **Don't touch the system itself.** [INVESTIGATE-system-provision-host-tools-and-auth.md](./INVESTIGATE-system-provision-host-tools-and-auth.md) owns the questions about persistence (`enabled-tools.conf`), auth state (`.uis.secrets/cloud-accounts/`), and `target setup` integration. This plan is *only* about documentation; if either page tries to describe behaviour that doesn't yet exist, defer to that investigation rather than describing a future state.
 - **Verify against `./uis tools list` output, not against assumptions.** The drift in the current `tools.md` came from describing what *should* be there. The fix is to describe what `./uis tools list` *does* show — generate the listing live in the container at write time, copy verbatim.

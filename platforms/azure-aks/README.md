@@ -47,7 +47,7 @@ cp provision-host/uis/templates/uis.secrets/cloud-accounts/azure.env.template \
 ```
 
 For a step-by-step walkthrough including how to discover your Azure values, see
-[PLAN-001b-aks-manual-setup.md](../../website/docs/ai-developer/plans/backlog/PLAN-001b-aks-manual-setup.md).
+[PLAN-platform-aks-001b-manual-setup.md](../../website/docs/ai-developer/plans/backlog/PLAN-platform-aks-001b-manual-setup.md).
 
 ## Daily operations
 
