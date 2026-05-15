@@ -3,7 +3,10 @@
 **Status:** Investigation needed
 **Created:** 2026-05-14
 **Surfaced by:** In-session question after the Tailscale CLI port (PRs #169–#181) — "do we have a command that lists all services and their status?" → realisation that the answer requires reading three separate doc sections, and the reference doc itself is stale.
-**Related to:** [INVESTIGATE-tailscale-architecture-cleanup](INVESTIGATE-tailscale-architecture-cleanup.md) (the work that surfaced the drift), PLAN-003 Tailscale docs lift-up (now partially shipped via PRs #178/#180), the Cloudflare port (PRs #169–#172).
+**Related to:** [INVESTIGATE-tailscale-architecture-cleanup](INVESTIGATE-tailscale-architecture-cleanup.md) (the work that surfaced the drift), [PLAN-003 Tailscale docs lift-up](../completed/PLAN-003-tailscale-docs-lift-up.md) (shipped), the Cloudflare port (PRs #169–#172).
+**Concrete slices already shipped:**
+- [PLAN-tools-docs](../completed/PLAN-tools-docs.md) — split tools docs into a user-facing inventory (`reference/tools.md`) + contributor architecture page; first instance of the "consolidation" strategy (B below).
+- [PLAN-tool-installer-error-handling](PLAN-tool-installer-error-handling.md) (active) — hardening the `install-*.sh` scripts whose output `reference/tools.md` describes. Belongs to the same tools surface this investigation will eventually generalise from.
 
 ---
 
@@ -100,6 +103,7 @@ Pick one doc page per topic and make every other page link to it instead of dupl
 - **Pro**: zero new tooling; one place to edit per surface
 - **Con**: link-heavy reading; reader has to jump to learn what a command does; doesn't help reference-doc drift unless we also commit "the reference doc IS the source of truth for command syntax"
 - **Verdict**: cheap, partial fix. Should probably happen regardless. Doesn't solve drift on its own.
+- **Evidence (shipped)**: PLAN-tools-docs split tools content into a single user-facing inventory at `reference/tools.md` + a contributor architecture page; 5 cross-refs were retargeted in one pass. Approach worked end-to-end — no tooling needed, the consolidation step itself caught two pieces of stale prose (the deleted `oci` reference, the never-mentioned OpenTofu install) that hand-maintenance had missed for months. Validates B's "cheap, real catch" claim for at least one CLI surface.
 
 ### C. Generate the CLI reference from `uis-cli.sh` help text
 
@@ -211,6 +215,8 @@ A future PLAN should ship roughly this:
 ### 4. Consolidation pass on the example sprinkles
 
 Audit the top 15 files (by `./uis ` count) and move duplicated walkthroughs into a single canonical home, with the others linking. Net result: ~half the `./uis ` occurrences disappear because they're now one link instead of N copies.
+
+**Status**: First slice already shipped via PLAN-tools-docs (tools surface: `reference/tools.md` is now the canonical inventory; 5 cross-refs retargeted; the old contributor page pivoted to architecture-only). Remaining surfaces to consolidate: services (esp. integration-services like postgrest/gravitee), networking (partially done by PLAN-003 — `tailscale.md` is now canonical), platforms (azure-aks.md heavy duplication with the AKS manual-setup runbook). Tools is the proof point; the remaining surfaces follow the same pattern.
 
 ---
 

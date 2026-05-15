@@ -10,7 +10,8 @@ Investigations and plans waiting for implementation, sorted by last updated date
 | Document | Goal | Updated |
 |----------|------|---------|
 | [INVESTIGATE: `./uis status` doesn't show multi-instance services](INVESTIGATE-uis-status-multi-instance.md) | ID                NAME              CATEGORY     HEALTH | 2026-05-15 |
-| [INVESTIGATE: Top-level UIS CLI doc + keeping command examples in sync](INVESTIGATE-uis-cli-top-level-doc.md) | Two related issues: | 2026-05-14 |
+| [INVESTIGATE: Top-level UIS CLI doc + keeping command examples in sync](INVESTIGATE-uis-cli-top-level-doc.md) | Two related issues: | 2026-05-15 |
+| [Investigate: customer onboarding flow for "I need a database for my app"](INVESTIGATE-customer-onboarding-database.md) | — | 2026-05-15 |
 | [Investigate: Dagster Orchestration Platform for UIS](INVESTIGATE-dagster.md) | Deploy Dagster as the data orchestration platform in UIS, providing scheduling, observability, and lineage for data pipelines across applications — starting with Atlas, with reusability for future apps. | 2026-05-14 |
 | [---](INVESTIGATE-uis-network-export-import.md) | — | 2026-05-13 |
 | [INVESTIGATE: `./uis build` should restart the container after a successful build](INVESTIGATE-uis-build-restart-container.md) | The same pattern works correctly for `./uis pull` — it calls `stop_container` + `start_container` after pulling. The `build` branch is missing the equivalent. | 2026-05-13 |
@@ -21,7 +22,6 @@ Investigations and plans waiting for implementation, sorted by last updated date
 | [---](PLAN-cloudflare-network-port-and-docs-lift-up.md) | Port Cloudflare networking from the current ad-hoc shape (`uis deploy cloudflare-tunnel` + `uis cloudflare verify/teardown` + manual setup-guide-driven dashboard work) to a first-class `uis network <verb> cloudflare` command family symmetric with `uis platform <verb> <provider>`. Lift `Networking` in the sidebar + docs. **Tailscale wholesale deferred** to a future plan. | 2026-05-12 |
 | [---](INVESTIGATE-networking-restructure-and-cloudflare-in-cluster.md) | — | 2026-05-12 |
 | [Investigate: migrate `hosts/*` to `platforms/*` (or formally retire)](INVESTIGATE-migrate-hosts-to-platforms.md) | — | 2026-05-12 |
-| [Investigate: customer onboarding flow for "I need a database for my app"](INVESTIGATE-customer-onboarding-database.md) | — | 2026-05-12 |
 | [Investigate: compress the AKS novice-onboarding flow with `./uis platform` wrapper commands](INVESTIGATE-aks-novice-onboarding.md) | — | 2026-05-12 |
 | [---](INVESTIGATE-aks-and-platform-docs-restructure.md) | — | 2026-05-12 |
 | [Plan: clean up merged kubeconfig entries when destroying an AKS cluster](PLAN-aks-destroy-kubeconfig-cleanup.md) | When `platforms/azure-aks/scripts/03-destroy.sh` tears down an AKS cluster, also remove that cluster's stale `clusters:` / `contexts:` / `users:` entries from the merged `kubeconf-all`, and re-point `current-context` to `rancher-desktop`. Symmetric counterpart to `02-post-apply.sh`'s flip-on-apply. | 2026-05-11 |
