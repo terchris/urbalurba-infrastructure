@@ -400,7 +400,16 @@ TAILSCALE_CLIENTSECRET=tskey-client-YOUR-NEW-CLIENT-SECRET
 
 ### TLS errors / no certificate
 
-If `curl https://<service>.<tailnet>.ts.net` returns a TLS handshake error (e.g. `SSL_ERROR_SYSCALL`, `unable to get local issuer certificate`, or the connection just hangs) and the Tailscale proxy pod log shows no `got cert` line, the most likely cause is **HTTPS Certificates is not enabled on your tailnet**.
+If `curl https://<service>.<tailnet>.ts.net` returns a TLS handshake error (e.g. `SSL_ERROR_SYSCALL`, `unable to get local issuer certificate`, or the connection just hangs), the playbook reported success, and the Tailscale proxy pod is Running but the URL never serves traffic, check the proxy pod log first:
+
+```bash
+./uis shell
+kubectl logs -n tailscale -l tailscale.com/parent-resource=<service> --tail=100 | grep -i "getCertPEM\|got cert"
+```
+
+Two distinct failure modes share this surface — the log line tells you which:
+
+**1. HTTPS Certificates not enabled on the tailnet** — log shows no `getCertPEM` line at all (cert request never starts).
 
 This is a separate toggle from MagicDNS and is required for Funnel to issue TLS certificates. Verify on the [Tailscale Admin Console → DNS](https://login.tailscale.com/admin/dns) page that both toggles are ON:
 
@@ -408,6 +417,16 @@ This is a separate toggle from MagicDNS and is required for Funnel to issue TLS 
 2. **HTTPS Certificates** — ON
 
 If HTTPS Certificates was off and you've just turned it on, `unexpose` and re-`expose` the affected service so the proxy pod re-requests a cert.
+
+**2. Let's Encrypt rate-limit (5 certs per exact hostname per 7 days)** — log shows a `429 urn:ietf:params:acme:error:rateLimited` line with a `retry after <timestamp>` and a pointer to `letsencrypt.org/docs/rate-limits/#new-certificates-per-exact-set-of-identifiers`.
+
+Every `unexpose` + `expose` cycle on the same hostname burns one Let's Encrypt issuance — the operator deletes the device on unexpose, a fresh device on re-expose requests a fresh cert. After 5 such cycles in 168 hours, ACME returns 429 until the oldest issuance ages out. In this state the proxy pod is Running, the Ingress is applied, the Tailscale device registers fine — but `getCertPEM` keeps failing → no cert installed → TLS handshake aborts at Server Hello → `curl` reports `SSL_ERROR_SYSCALL`.
+
+**Options:**
+
+1. **Wait** — the `retry after` timestamp in the log tells you when the oldest issuance ages out.
+2. **Use a different hostname** — expose the service under a different name (`./uis network unexpose tailscale <svc>` then `./uis network expose tailscale <svc-alt>`, where `<svc-alt>` is a fresh Kubernetes Service name) so a new ACME identifier is requested.
+3. **Avoid expose/unexpose churn** during testing — once exposed, leave it; `down`/`up` of the operator preserves cert state better than per-service expose/unexpose cycles.
 
 ### TLS Handshake Timeout (Let's Encrypt Rate Limiting)
 
