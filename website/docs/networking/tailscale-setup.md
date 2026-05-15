@@ -179,15 +179,33 @@ Before starting, ensure you have:
 - **General → DNS (Write)**: Enables MagicDNS configuration
 - **Settings → Feature Settings (Write)**: Allows enabling HTTPS/Funnel for internet access
 
-### Step 5: Configure MagicDNS Domain
+### Step 5: Configure MagicDNS Domain and HTTPS
 
 1. Go to [Tailscale Admin Console → DNS](https://login.tailscale.com/admin/dns)
-2. Enable **MagicDNS** 
-3. Note your **MagicDNS domain** (e.g., `dog-pence.ts.net`) → **This becomes `TAILSCALE_TAILNET`**
+2. Enable **MagicDNS**
+3. Enable **HTTPS Certificates** (separate toggle on the same DNS page). Without this, Funnel cannot issue TLS certs and exposed services will fail the HTTPS handshake — see Troubleshooting → "TLS errors / no certificate" below.
+4. Note your **MagicDNS domain** (e.g., `dog-pence.ts.net`) → **This becomes `TAILSCALE_TAILNET`**
 
 ### Step 6: Configure Tailscale Secrets
 
-Edit the secrets source file with your Tailscale values from Steps 1-5. The file lives in your local `.uis.secrets/secrets-config/` folder; edit it with whichever editor you prefer (from the host or inside the provision-host container — `./uis secrets edit` opens it in `vi`, or just edit the file directly on the host since it's bind-mounted):
+Run the wizard — it prompts for each value you collected in Steps 3-5, validates `TAILSCALE_OWNER_ID`, surfaces the **Tailscale Funnel bypasses Traefik** caveat up-front, and writes both `.uis.secrets/service-keys/tailscale.env` and the matching lines in `00-common-values.env.template` atomically:
+
+```bash
+./uis network init tailscale
+```
+
+The wizard prompts in order:
+- `TAILSCALE_TAILNET` — From Step 5: MagicDNS domain (e.g. `dog-pence.ts.net`)
+- `TAILSCALE_CLIENTID` — From Step 4: OAuth Client ID
+- `TAILSCALE_CLIENTSECRET` — From Step 4: OAuth Client Secret
+- `TAILSCALE_OWNER_ID` — Your identity on the tailnet; cluster Funnel device + operator prefix
+
+`TAILSCALE_VM_AUTH_KEY` from Step 3 is only needed for the cloud-init / VM-bootstrap path — laptop / rancher-desktop users can skip Step 3 entirely.
+
+<details>
+<summary>Fallback: manual edit (advanced users only)</summary>
+
+If you prefer to edit the secrets source file directly instead of running the wizard:
 
 ```bash
 # From the host:
@@ -202,13 +220,17 @@ TAILSCALE_TAILNET=your-magic-dns-domain     # From Step 5: MagicDNS domain (e.g.
 TAILSCALE_OWNER_ID=k8s-yourname             # Your identity on the tailnet; cluster Funnel device + operator prefix
 TAILSCALE_CLIENTID=YOUR-OAUTH-CLIENT-ID     # From Step 4: OAuth Client ID
 TAILSCALE_CLIENTSECRET=tskey-client-YOUR-SECRET   # From Step 4: OAuth Client Secret
-TAILSCALE_VM_AUTH_KEY=tskey-auth-YOUR-AUTH-KEY    # From Step 3: only needed for VM/cloud-init provisioning
+TAILSCALE_VM_AUTH_KEY=tskey-auth-YOUR-AUTH-KEY    # Only needed for VM/cloud-init provisioning
 ```
 
 Then regenerate the Kubernetes secrets:
 ```bash
 ./uis secrets generate
 ```
+
+The wizard does the same two-file write atomically and surfaces the Traefik-bypass caveat — recommended for first-time setup.
+
+</details>
 
 **Important: TAILSCALE_OWNER_ID:**
 - This is used for the cluster-wide ingress only (when no service parameter is provided)
@@ -375,6 +397,17 @@ TAILSCALE_CLIENTSECRET=tskey-client-YOUR-NEW-CLIENT-SECRET
 ./uis secrets generate
 ./uis network up tailscale
 ```
+
+### TLS errors / no certificate
+
+If `curl https://<service>.<tailnet>.ts.net` returns a TLS handshake error (e.g. `SSL_ERROR_SYSCALL`, `unable to get local issuer certificate`, or the connection just hangs) and the Tailscale proxy pod log shows no `got cert` line, the most likely cause is **HTTPS Certificates is not enabled on your tailnet**.
+
+This is a separate toggle from MagicDNS and is required for Funnel to issue TLS certificates. Verify on the [Tailscale Admin Console → DNS](https://login.tailscale.com/admin/dns) page that both toggles are ON:
+
+1. **MagicDNS** — ON
+2. **HTTPS Certificates** — ON
+
+If HTTPS Certificates was off and you've just turned it on, `unexpose` and re-`expose` the affected service so the proxy pod re-requests a cert.
 
 ### TLS Handshake Timeout (Let's Encrypt Rate Limiting)
 

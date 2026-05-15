@@ -4,7 +4,7 @@
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Active
+## Status: Completed (talk54 R1-R10 PASS on `dog-pence.ts.net`)
 
 **Goal**: Port Tailscale from `uis tailscale expose/unexpose/verify` + `uis deploy tailscale-tunnel` to a first-class `uis network <verb> tailscale` family symmetric with the Cloudflare port (PRs #169–#172), including per-service `expose`/`unexpose` sub-verbs.
 
@@ -173,9 +173,9 @@ User confirms phase is complete.
 
 - [x] 5.1 `cd website && npm run build` — `[SUCCESS] Generated static files in "build".`
 - [x] 5.1b `bash provision-host/uis/tests/run-tests.sh` — all 7 test scripts pass (static + unit). Caught `service-tailscale-tunnel.sh` removal early; the structure tests had no assertion for it.
-- [ ] 5.2 `./uis build` to build the local container image with the new CLI (contributor side — gets done as part of the tester handoff)
-- [ ] 5.3 Cycle the container (`./uis stop` + next command) — tester step per the contributor/tester split (talk52 F1)
-- [ ] 5.4 Smoke test the new CLI surface — tester step
+- [x] 5.2 GHCR `Build UIS Container` workflow rebuilds `:latest` on every main merge; talk54 retest pulled the latest image with the dispatcher fix landed.
+- [x] 5.3 Tester cycled the container (`./uis stop` + `./uis pull`) — talk54 Message 2 pre-flight confirms.
+- [x] 5.4 Smoke test the new CLI surface — talk54 R1-R10 PASS against `dog-pence.ts.net`.
 
 ### Validation
 
@@ -192,15 +192,15 @@ User confirms phase is complete.
 
 ## Acceptance Criteria
 
-- [ ] `uis help` shows Network section with 7 subcommands and `tailscale` listed as a provider
-- [ ] `uis network list` shows real tailscale state (not the placeholder)
-- [ ] All 7 scripts exist under `networking/tailscale/scripts/`: init, up, down, status, verify, expose, unexpose
-- [ ] Operator install is a separate playbook (Decision 5), idempotent
-- [ ] `uis tailscale expose/unexpose/verify` all fire the redirect stub (C-6)
-- [ ] `uis deploy tailscale-tunnel` errors with redirect (Decision 7 mirrors cloudflare)
-- [ ] Traefik-bypass fact surfaced in wizard banner + `expose.sh` first-use prompt (C-8 surfacing #1 + #3; #2 is `networking/tailscale.md` which lands in PLAN-003)
-- [ ] Local `npm run build` succeeds; `bash -n` clean on all scripts
-- [ ] No real cluster work yet (that's the tester verification round, scoped to PLAN-003)
+- [x] `uis help` shows Network section with 7 subcommands and `tailscale` listed as a provider — talk54 pre-flight ✓
+- [x] `uis network list` shows real tailscale state (not the placeholder) — talk54 R6 ✓
+- [x] All 7 scripts exist under `networking/tailscale/scripts/`: init, up, down, status, verify, expose, unexpose
+- [x] Operator install is a separate playbook (Decision 5), idempotent — talk54 R3/R4 confirmed
+- [x] `uis tailscale expose/unexpose/verify` all fire the redirect stub (C-6) — talk54 R7 + pre-flight ✓
+- [x] `uis deploy tailscale-tunnel` errors with redirect (Decision 7 mirrors cloudflare) — talk54 pre-flight ✓
+- [x] Traefik-bypass fact surfaced in wizard banner + `expose.sh` first-use prompt (C-8 surfacing #1 + #3) — talk54 R2 + R5 ✓
+- [x] Local `npm run build` succeeds; `bash -n` clean on all scripts
+- [x] Cluster verification round complete — talk54 R1-R10 PASS on `dog-pence.ts.net`
 
 ---
 

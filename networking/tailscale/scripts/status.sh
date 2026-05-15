@@ -112,7 +112,7 @@ source "$ENV_FILE"
 echo "  Config:     $ENV_FILE_REL"
 echo "  Tailnet:    ${TAILSCALE_TAILNET:-not set}"
 echo "  Owner ID:   ${TAILSCALE_OWNER_ID:-not set}"
-echo "  OAuth:      ${TAILSCALE_CLIENTID:+set}${TAILSCALE_CLIENTID:-not set}"
+echo "  OAuth:      $([[ -n "${TAILSCALE_CLIENTID:-}" ]] && echo set || echo "not set")"
 
 if ! _namespace_exists; then
     echo "  Operator:   not deployed"

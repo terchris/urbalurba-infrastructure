@@ -22,7 +22,7 @@ The decision typically comes down to **three constraints**:
 
 1. **Do you own a domain Cloudflare can host DNS for?** No → Tailscale is your option. Yes → either works.
 2. **Does your network allow outbound TCP/7844?** Some corporate networks block it. Cloudflare needs it. Tailscale uses UDP/443 + DERP relay, which goes through almost anything.
-3. **How many services do you want to expose?** Cloudflare gives you wildcard subdomain routing for free — one tunnel handles `*.your-domain.com`. Tailscale Funnel has no wildcard DNS, so you `uis tailscale expose <service>` for each one you want public.
+3. **How many services do you want to expose?** Cloudflare gives you wildcard subdomain routing for free — one tunnel handles `*.your-domain.com`. Tailscale Funnel has no wildcard DNS, so you `uis network expose tailscale <service>` for each one you want public.
 
 **On security:** both paths terminate TLS at the provider's edge and reach into the cluster over an outbound-only connection — no inbound ports, no public IP on your side. Cloudflare adds a free WAF and DDoS protection in front. Tailscale Funnel sits behind Tailscale's own infrastructure with no built-in WAF. Authentik forward-auth in front of Traefik still works for Cloudflare paths; **it does not work for Tailscale Funnel**, because the Tailscale operator's per-service proxy routes directly to the backend service and bypasses Traefik entirely. If you want auth on a Tailscale-exposed service, the service has to enforce it itself.
 

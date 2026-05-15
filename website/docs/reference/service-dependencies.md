@@ -47,7 +47,8 @@ graph LR
 | pgadmin | Management | postgresql | `./uis deploy pgadmin` |
 | redisinsight | Management | redis | `./uis deploy redisinsight` |
 | cloudflare-tunnel | Networking | nginx | `./uis deploy cloudflare-tunnel` |
-| tailscale-tunnel | Networking | nginx | `./uis deploy tailscale-tunnel` |
+
+For Tailscale, use the unified network CLI: `./uis network up tailscale` (see [Networking → Tailscale](../networking/tailscale.md)).
 
 ### Services with no dependencies
 

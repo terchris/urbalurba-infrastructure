@@ -178,7 +178,6 @@ const sidebars: SidebarsConfig = {
           },
           items: [
             'services/networking/traefik',
-            'services/networking/tailscale-tunnel',
           ],
         },
         {
