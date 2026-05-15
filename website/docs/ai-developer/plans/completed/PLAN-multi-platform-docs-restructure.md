@@ -5,13 +5,33 @@ sidebar_label: PLAN — Multi-platform docs restructure
 
 # PLAN — Multi-platform docs restructure
 
-## Status: Backlog (awaiting "execute")
+## Status: Completed (work shipped piecemeal across multiple PRs; Phase 0 tracked separately as [PLAN-aks-destroy-kubeconfig-cleanup](PLAN-aks-destroy-kubeconfig-cleanup.md))
 
 **Spec**: [INVESTIGATE-aks-and-platform-docs-restructure.md](INVESTIGATE-aks-and-platform-docs-restructure.md) — all Q1–Q9 decisions locked in.
 
 **Headline framing** (from the investigation): UIS is a **multi-platform tool**, not a Rancher-Desktop-with-an-AKS-side-guide. The docs structure must surface that at the front door, not bury it as the 8th sidebar category.
 
 **Verified prerequisite**: PR #164 (talk51 verification) — `uis platform list/use/init/up/status/down` + banner + lockstep all work end-to-end on the current `:latest`. F14/F15/F16/F18 closed. The tester's verbose output from talk51 R0–R6 is the source-of-truth material for the rewrites.
+
+---
+
+## Close-out retrospective (2026-05-15)
+
+The plan was never executed as a single unified PR (Phase 7's intended shape). Instead the deliverables landed opportunistically across other PRs over the following weeks. State of each phase as of 2026-05-15:
+
+| Phase | State | Evidence |
+|---|---|---|
+| 0 — Pre-restructure bug fix | **Open** | Tracked separately as [`PLAN-aks-destroy-kubeconfig-cleanup`](PLAN-aks-destroy-kubeconfig-cleanup.md) in backlog/. |
+| 1 — Sidebar promotion | ✓ Done | `sidebars.ts` order is now `index → about → Getting Started → Platforms → …`. |
+| 2 — `platforms/index.md` hub | ✓ Done | Page opens with the multi-platform framing + canonical `uis platform list` example. |
+| 3 — AKS guide rewrite | ✓ Done | `platforms/azure-aks.md` opens with the six-command novice flow built on `uis platform init/up`. |
+| 4 — CLI reference Platform section | ✓ Done | `reference/uis-cli-reference.md` has a Platform Management section parallel to Service / Network / Stack / Secrets. |
+| 5 — Per-platform-page touch-ups | ✓ Done | `azure-microk8s.md` carries the "not yet migrated" warning callout (5.4); `rancher-kubernetes.md` is consistent with the new mental model. |
+| 6 — Plan relocation + retrospective | ✓ Done | `PLAN-platform-list-use-and-banner.md` + `INVESTIGATE-active-cluster-visibility-ux.md` are both in `completed/`. |
+| 7 — Unified verification PR | N/A | Never executed as a single PR; the work shipped piecemeal. |
+| 8 — Tester round | N/A | talk51 covered the parts that shipped; no dedicated talk for this PLAN. |
+
+The lesson — when work ends up shipping piecemeal anyway, file the plan as completed and let the remaining phases live as their own focused items rather than wait for an "execute" gate that never fires.
 
 ---
 

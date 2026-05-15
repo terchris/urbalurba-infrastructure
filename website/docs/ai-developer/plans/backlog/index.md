@@ -17,7 +17,6 @@ Investigations and plans waiting for implementation, sorted by last updated date
 | [---](INVESTIGATE-uis-network-export-import.md) | — | 2026-05-13 |
 | [INVESTIGATE: `./uis build` should restart the container after a successful build](INVESTIGATE-uis-build-restart-container.md) | The same pattern works correctly for `./uis pull` — it calls `stop_container` + `start_container` after pulling. The `build` branch is missing the equivalent. | 2026-05-13 |
 | [---](INVESTIGATE-tailscale-cross-cluster-backbone.md) | — | 2026-05-13 |
-| [---](PLAN-multi-platform-docs-restructure.md) | — | 2026-05-12 |
 | [---](PLAN-cloudflare-network-port-and-docs-lift-up.md) | Port Cloudflare networking from the current ad-hoc shape (`uis deploy cloudflare-tunnel` + `uis cloudflare verify/teardown` + manual setup-guide-driven dashboard work) to a first-class `uis network <verb> cloudflare` command family symmetric with `uis platform <verb> <provider>`. Lift `Networking` in the sidebar + docs. **Tailscale wholesale deferred** to a future plan. | 2026-05-12 |
 | [---](INVESTIGATE-networking-restructure-and-cloudflare-in-cluster.md) | — | 2026-05-12 |
 | [Investigate: migrate `hosts/*` to `platforms/*` (or formally retire)](INVESTIGATE-migrate-hosts-to-platforms.md) | — | 2026-05-12 |
