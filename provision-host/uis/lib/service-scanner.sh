@@ -128,6 +128,82 @@ check_service_deployed() {
     eval "$check_cmd" >/dev/null 2>&1
 }
 
+# Classify a kubectl deploy READY column value (e.g., "2/2", "1/2", "0/0")
+# into healthy / degraded / unknown.
+#
+# Usage: _classify_ready_count "2/2"; echo $?
+# Returns:
+#   0  - healthy   (numerator equals denominator and both >= 1)
+#   1  - degraded  (any other "N/M" shape, including "0/0", "0/2", "1/2")
+#   2  - unknown   (input doesn't match the "N/M" shape at all)
+#
+# Used by cmd_status and cmd_list to decide what icon to print for each
+# multi-instance deployment row.
+_classify_ready_count() {
+    local ready="${1:-}"
+    if [[ "$ready" =~ ^([1-9][0-9]*)/([1-9][0-9]*)$ ]]; then
+        # Both sides non-zero; numerator must equal denominator
+        [[ "${BASH_REMATCH[1]}" == "${BASH_REMATCH[2]}" ]] && return 0
+        return 1
+    fi
+    if [[ "$ready" =~ ^[0-9]+/[0-9]+$ ]]; then
+        return 1
+    fi
+    return 2
+}
+
+# List the Kubernetes Deployments backing a multi-instance service.
+#
+# Usage: get_multi_instance_deployments <service_id>
+# Output (stdout): one tab-separated line per matching deployment:
+#   <name>\t<ready>
+#   e.g.:
+#     atlas-postgrest    2/2
+#     railway-postgrest  2/2
+# Returns 0 even when the deployment list is empty (the caller decides
+# how to render zero rows). Returns non-zero only if the service script
+# itself can't be located or its metadata is incomplete.
+#
+# This is a display-side helper used only by cmd_status / cmd_list. The
+# SCRIPT_CHECK_COMMAND on the service script and check_service_deployed
+# (above) are unchanged — they still gate deploy/undeploy/dep-check paths
+# in lib/service-deployment.sh.
+get_multi_instance_deployments() {
+    local service_id="$1"
+    local script
+    script=$(find_service_script "$service_id")
+    [[ -z "$script" ]] && return 1
+
+    # Line-scan the service script for SCRIPT_NAMESPACE and SCRIPT_ID
+    # (avoid sourcing to skirt side-effects, same pattern as
+    # check_service_deployed above).
+    local namespace="" sid=""
+    while IFS= read -r line; do
+        case "$line" in
+            SCRIPT_NAMESPACE=*)
+                namespace="${line#SCRIPT_NAMESPACE=}"
+                namespace="${namespace//\"/}"
+                namespace="${namespace//\'/}"
+                ;;
+            SCRIPT_ID=*)
+                sid="${line#SCRIPT_ID=}"
+                sid="${sid//\"/}"
+                sid="${sid//\'/}"
+                ;;
+        esac
+    done < "$script"
+
+    [[ -z "$namespace" || -z "$sid" ]] && return 1
+
+    # Emit one tab-separated line per deployment matching the service-type
+    # label. kubectl errors (no cluster, RBAC) → stderr suppressed → empty
+    # stdout → caller treats as "zero rows."
+    kubectl get deploy -n "$namespace" \
+        -l "app.kubernetes.io/name=$sid" \
+        --no-headers 2>/dev/null \
+        | awk '{print $1 "\t" $2}'
+}
+
 # Get a specific metadata field from a service
 # Usage: get_service_value <service_id> <field_name>
 # Example: get_service_value "prometheus" "SCRIPT_PLAYBOOK"
