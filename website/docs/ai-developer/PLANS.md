@@ -176,7 +176,6 @@ INVESTIGATE-cli-deploy-auto-regen-secrets.md
 INVESTIGATE-cli-status-multi-instance.md
 INVESTIGATE-cli-top-level-doc.md
 INVESTIGATE-docs-services-in-cluster-port.md
-INVESTIGATE-docs-host-migration.md
 INVESTIGATE-secrets-template-defaults-clarity.md
 INVESTIGATE-templates-first-uis-template.md
 INVESTIGATE-system-version-pinning.md

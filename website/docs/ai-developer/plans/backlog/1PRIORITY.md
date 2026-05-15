@@ -29,7 +29,7 @@
 | 8 | [uis-connect-commands](INVESTIGATE-cli-connect-add.md) | M | User-facing convenience: `uis connect <service>` opens an interactive client without requiring host-side tooling. Independent of platform/deployment tiers; shippable as a self-contained slice. |
 | 9 | [docs-markdown-update-logic](INVESTIGATE-docs-markdown-update-logic.md) | M | Improves the docs-generation pipeline so metadata-driven sections update without overwriting manual prose. Quality-of-life for contributors maintaining service pages. |
 | 10 | [verification-playbooks-usage](INVESTIGATE-system-verification-playbooks-usage.md) | M | Hygiene work on the post-deploy verification playbooks: which services have them, which don't, what shape verifies what. Pays off the next time anything ships. |
-| 11 | [host-docs-migration](INVESTIGATE-docs-host-migration.md) | M | Stale host pages still describe the legacy bash-script flow rather than `./uis`. Banner already in place; investigation needed on what to keep vs delete. Independent; closes an external-developer gotcha. |
+| 11 | host-docs-migration | merged | Folded into [INVESTIGATE-system-migrate-hosts-to-platforms](INVESTIGATE-system-migrate-hosts-to-platforms.md) as its "Documentation migration" section — the code + docs sides belong together. |
 
 ## Tier 3 — defer until prereqs ship
 
@@ -42,8 +42,7 @@ These have known prerequisites that are still open. Don't open them yet — the 
 | 14 | [provision-host-tools-and-auth](INVESTIGATE-system-provision-host-tools-and-auth.md) | platform-provisioning-layer (Tier 0, in flight) | Decisions about which CLIs (Azure / AWS / GCP / Terraform) live inside `uis-provision-host` depend on the platforms model that the active feature branch is still settling. Designing tool-install + auth-state before platforms lock in = rework. |
 | 15 | [dct-argocd-deploy](INVESTIGATE-service-argocd-dct-deploy.md) | argocd as a stable UIS service | The "deploy from inside DCT with one command" flow needs argocd to be the deployment substrate. ArgoCD has a manifest in UIS but isn't an everyday service yet; investigate this once argocd is operationally normal. |
 | 16 | [first-uis-template](INVESTIGATE-templates-first-uis-template.md) | template-framework decision (cross-cutting) | Picking *which* stack template to ship first only matters once `uis template` has a stable shape. Holding until the framework lands prevents picking a target that the framework can't actually build. |
-| 17 | [enonic-app-deployment-pipeline](INVESTIGATE-service-enonic-app-deployment-pipeline.md) | enonic-as-stable-service | Pull-based JAR deployment design assumes Enonic XP is operationally stable in UIS. If Enonic is still in flux, the pipeline shape will too. |
-| 18 | [enonic-content-deployment](INVESTIGATE-service-enonic-content-deployment.md) | #17 | Content-movement design layers on top of app-deployment design. Resolve #17 first or do them as one combined investigation. |
+| 17 | [enonic-deployment](INVESTIGATE-service-enonic-deployment.md) | enonic-as-stable-service | Covers both apps (JAR pipeline — chosen-approach decided) and content (still open). Pull-based deployment design assumes Enonic XP is operationally stable in UIS. Merged from the two earlier app + content investigations on 2026-05-15. |
 | 19 | [email-smtp-service](INVESTIGATE-service-email-smtp.md) | product clarity (which services need email first?) | Cross-cutting platform service. Worth opening only when the first concrete consumer (Authentik password resets? a notification path?) is actually pulling on it. |
 
 ## Tier 4 — ideas, not investigations

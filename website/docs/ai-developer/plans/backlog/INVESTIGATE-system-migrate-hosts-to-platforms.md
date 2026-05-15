@@ -113,6 +113,39 @@ A child PLAN per platform that's worth migrating, plus one cleanup PR for the de
 
 ---
 
+## Documentation migration (folded in from INVESTIGATE-docs-host-migration, 2026-05-15)
+
+The legacy host documentation pages still describe the manual-script approach (`provision-kubernetes.sh`, `install-*.sh`, cloud-init templates) and have not been updated for the `./uis` CLI workflow. They carry caution banners today but the underlying content needs to follow whatever migration decision is made above.
+
+### Pages affected
+
+| Page | Path | Notes |
+|------|------|-------|
+| Azure AKS | `website/docs/hosts/azure-aks.md` | Full AKS deployment guide with az CLI — superseded by `platforms/azure-aks/` shipping. |
+| Azure MicroK8s | `website/docs/hosts/azure-microk8s.md` | Azure VM + MicroK8s via CAF — depends on the "keep & migrate" vs "retire" decision above. |
+| Multipass MicroK8s | `website/docs/hosts/multipass-microk8s.md` | Legacy, already marked "USE RANCHER DESKTOP INSTEAD" — formally retire alongside the code. |
+| Raspberry Pi | `website/docs/hosts/raspberry-microk8s.md` | Edge/IoT — depends on the design decision below. |
+| Cloud-Init | `website/docs/hosts/cloud-init/index.md` | Cloud-init templates — retain only if VM-based platforms are kept. |
+| Cloud-Init Secrets | `website/docs/hosts/cloud-init/secrets.md` | SSH key setup for cloud-init — same gate. |
+
+### Doc-side questions
+
+1. **Per-host pages or single page?** Each host type keeps its own page, or consolidate into one "deploying to remote VMs" page once the platform-side picture is settled?
+2. **What about cloud-init?** Still the approach for provisioning remote hosts, or has that changed with `platforms/*`?
+3. **Tied to [INVESTIGATE-system-remote-deployment-targets](INVESTIGATE-system-remote-deployment-targets.md)** — the docs should reflect what `./uis` actually targets. Until that investigation lands, the docs migration is blocked on knowing the supported set.
+
+### Doc migration sequencing
+
+The doc rewrite for each page lands as part of that page's parent decision in "Per-platform questions" above:
+
+- `hosts/azure-aks.md` — delete; the canonical AKS guide is `platforms/azure-aks.md`. ✓ already done (the legacy host page survives only as a redirect/caution banner).
+- `hosts/azure-microk8s.md` — depends on keep-or-retire decision.
+- `hosts/multipass-microk8s.md` — retire alongside the code.
+- `hosts/raspberry-microk8s.md` — depends on design decision.
+- `hosts/cloud-init/*` — retain only if at least one platform still uses cloud-init provisioning.
+
+---
+
 ## Out of scope for this investigation
 
 - **Adding new platforms** that don't currently exist (GCP/EKS/etc.) — that's a separate "second cloud" investigation. The shared playbook in `ansible/playbooks/003-setup-traefik.yml` plus the `platforms/azure-aks/` shape gives that work a clean starting point, but it's not the same scope as legacy migration.
@@ -122,7 +155,9 @@ A child PLAN per platform that's worth migrating, plus one cleanup PR for the de
 
 ## Related
 
+- [INVESTIGATE-system-platform-provisioning-layer](INVESTIGATE-system-platform-provisioning-layer.md) — the architectural umbrella above this execution work (what `platforms/*` should look like as a category).
 - [PLAN-platform-aks-destroy-kubeconfig-cleanup.md](./PLAN-platform-aks-destroy-kubeconfig-cleanup.md) — destroy-side kubeconfig cleanup; the `03-destroy.sh` shape that future platforms inherit.
 - [INVESTIGATE-active-cluster-visibility-ux.md](../completed/INVESTIGATE-active-cluster-visibility-ux.md) — once we have multiple platforms, "which cluster am I about to deploy to?" becomes more pressing. Visibility UX is a prerequisite for confidently using multiple `platforms/*` flows.
+- [INVESTIGATE-system-remote-deployment-targets](INVESTIGATE-system-remote-deployment-targets.md) — remote-cluster targeting; the docs migration above can't finish until the supported target set is decided.
 - PR #149 — landed `platforms/azure-aks/`, the template every other migrated platform should follow.
 - PR #150 — promoted "Hosts & Platforms" to top-level "Platforms" sidebar.

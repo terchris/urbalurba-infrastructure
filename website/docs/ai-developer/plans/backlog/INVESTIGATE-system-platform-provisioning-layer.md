@@ -293,6 +293,7 @@ referenced from all platform post-apply scripts.
 
 ## Related
 
+- [INVESTIGATE-system-migrate-hosts-to-platforms.md](INVESTIGATE-system-migrate-hosts-to-platforms.md) — the concrete execution work that runs under this architectural umbrella; per-platform keep-or-retire decisions live there.
 - [INVESTIGATE-system-remote-deployment-targets.md](INVESTIGATE-system-remote-deployment-targets.md) — target management UX (`./uis target` commands)
 - [INVESTIGATE-system-provision-host-tools-and-auth.md](INVESTIGATE-system-provision-host-tools-and-auth.md) — tool installation and cloud auth inside provision-host
 - `platforms/azure-aks/README.md` — AKS platform documentation

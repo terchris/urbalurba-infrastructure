@@ -5,6 +5,7 @@
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
 **Related**:
+- [INVESTIGATE-cli-top-level-doc.md](INVESTIGATE-cli-top-level-doc.md) — the broader CLI-doc-hygiene umbrella; the `./uis tools install` surface this investigation re-designs is one of the verbs that doc covers.
 - [INVESTIGATE-system-remote-deployment-targets.md](INVESTIGATE-system-remote-deployment-targets.md)
 - [Secrets Management System](../../../contributors/architecture/secrets.md)
 

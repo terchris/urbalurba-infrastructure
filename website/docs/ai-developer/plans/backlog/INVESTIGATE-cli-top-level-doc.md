@@ -3,10 +3,13 @@
 **Status:** Investigation needed
 **Created:** 2026-05-14
 **Surfaced by:** In-session question after the Tailscale CLI port (PRs #169–#181) — "do we have a command that lists all services and their status?" → realisation that the answer requires reading three separate doc sections, and the reference doc itself is stale.
-**Related to:** [INVESTIGATE-tailscale-architecture-cleanup](INVESTIGATE-tailscale-architecture-cleanup.md) (the work that surfaced the drift), [PLAN-003 Tailscale docs lift-up](../completed/PLAN-003-tailscale-docs-lift-up.md) (shipped), the Cloudflare port (PRs #169–#172).
+**Related to:** [INVESTIGATE-tailscale-architecture-cleanup](../completed/INVESTIGATE-tailscale-architecture-cleanup.md) (the work that surfaced the drift; now completed), [PLAN-003 Tailscale docs lift-up](../completed/PLAN-003-tailscale-docs-lift-up.md) (shipped), the Cloudflare port (PRs #169–#172).
 **Concrete slices already shipped:**
 - [PLAN-tools-docs](../completed/PLAN-tools-docs.md) — split tools docs into a user-facing inventory (`reference/tools.md`) + contributor architecture page; first instance of the "consolidation" strategy (B below).
-- [PLAN-tool-installer-error-handling](PLAN-tool-installer-error-handling.md) (active) — hardening the `install-*.sh` scripts whose output `reference/tools.md` describes. Belongs to the same tools surface this investigation will eventually generalise from.
+- [PLAN-tool-installer-error-handling](../completed/PLAN-tool-installer-error-handling.md) — hardening the `install-*.sh` scripts whose output `reference/tools.md` describes; shipped via PR #152 and closed 2026-05-15.
+
+**Related (open):**
+- [INVESTIGATE-system-provision-host-tools-and-auth](INVESTIGATE-system-provision-host-tools-and-auth.md) — the broader "what tools should the provision-host carry, how do they persist + auth" investigation. The user-facing `./uis tools` surface this CLI doc covers is the same surface that investigation re-designs from a system/persistence angle.
 
 ---
 

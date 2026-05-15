@@ -6,6 +6,7 @@
 
 **Created**: 2026-02-27
 **Status**: Backlog
+**Related**: [INVESTIGATE-system-service-version-metadata](INVESTIGATE-system-service-version-metadata.md) — different angle on versions (in-service display metadata rather than upstream chart/image pins). The two can be designed together: a pinned chart version and a service-script declared version are the same fact from two surfaces.
 
 ## Problem Statement
 
