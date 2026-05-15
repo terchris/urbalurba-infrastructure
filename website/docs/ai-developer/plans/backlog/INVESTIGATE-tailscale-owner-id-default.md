@@ -1,9 +1,24 @@
 # INVESTIGATE: `TAILSCALE_OWNER_ID` default needs to be developer-unique
 
-**Status:** Investigation needed
+**Status:** Partially mitigated by PLAN-002; remaining template-default + validation-guard work still needed
 **Created:** 2026-05-13
+**Updated:** 2026-05-15
 **Surfaced by:** talk52 Obs A (Tailscale architecture cleanup verification)
-**Related to:** [INVESTIGATE-tailscale-architecture-cleanup](INVESTIGATE-tailscale-architecture-cleanup.md), PLAN-002 (Tailscale network CLI port), PLAN-003 (Tailscale docs lift-up)
+**Related to:** [INVESTIGATE-tailscale-architecture-cleanup](../completed/INVESTIGATE-tailscale-architecture-cleanup.md) (now completed), [PLAN-002](../completed/PLAN-002-tailscale-network-port-cli.md) (now completed), [PLAN-003](../completed/PLAN-003-tailscale-docs-lift-up.md) (now completed)
+
+---
+
+## Partial mitigation landed via PLAN-002
+
+The `./uis network init tailscale` wizard now prompts for `TAILSCALE_OWNER_ID` and validates the value against the hostname-shape regex (`^[a-z0-9-]+$`, max 32 chars). Anyone going through the wizard is forced to pick a non-default OWNER_ID — verified end-to-end in talk52 / talk54 / talk55 against `dog-pence.ts.net` with `k8s-terchris-mbp` and `k8s-terchris-laptop`.
+
+**What remains open:**
+
+- `provision-host/uis/templates/secrets-templates/00-common-values.env.template:85` still defaults to `TAILSCALE_OWNER_ID=k8s`. A contributor who bypasses the wizard and runs `./uis secrets generate` directly still gets the broken default.
+- The proposed `k8s-${GITHUB_USERNAME}` derivation (Implementation Notes below) is not implemented.
+- The two validation guards in `./uis secrets validate` (the `GITHUB_USERNAME` placeholder check + the legal-hostname-segment check) are not implemented.
+
+The remaining work is safe to land independently of the wizard — it's a template default + two `if` blocks in `secrets validate`.
 
 ---
 
