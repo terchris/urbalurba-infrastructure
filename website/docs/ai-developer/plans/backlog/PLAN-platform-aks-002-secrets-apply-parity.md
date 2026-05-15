@@ -10,7 +10,7 @@
 
 **Last Updated**: 2026-05-07
 
-**Investigation**: [INVESTIGATE-platform-provisioning-layer.md](./INVESTIGATE-platform-provisioning-layer.md) — gap-analysis finding #1 (kubernetes-secrets.yml not applied).
+**Investigation**: [INVESTIGATE-system-platform-provisioning-layer.md](./INVESTIGATE-system-platform-provisioning-layer.md) — gap-analysis finding #1 (kubernetes-secrets.yml not applied).
 
 **Prerequisite (soft)**: [PLAN-001-aks-step1-verification.md](../completed/PLAN-001-aks-step1-verification.md) — natural order is verify Step 1 first, then extend with this parity fix. Not a hard dependency: the change here is a no-op when `kubernetes-secrets.yml` doesn't exist (warns + continues), and nginx in PLAN-001's verification doesn't need secrets.
 
@@ -87,7 +87,7 @@ A secret-using UIS service (postgresql or equivalent) deploys cleanly on a fresh
 
 ### Tasks
 
-- [ ] 3.1 Update `INVESTIGATE-platform-provisioning-layer.md` Step 1 — remove the "Currently *missing* from the tofu draft; the Step 1 PLAN must add it" caveat next to the `kubernetes-secrets.yml` line in Step 1 scope. Note in the gap-analysis findings list that this gap was closed by PLAN-002.
+- [ ] 3.1 Update `INVESTIGATE-system-platform-provisioning-layer.md` Step 1 — remove the "Currently *missing* from the tofu draft; the Step 1 PLAN must add it" caveat next to the `kubernetes-secrets.yml` line in Step 1 scope. Note in the gap-analysis findings list that this gap was closed by PLAN-002.
 
 - [ ] 3.2 Move this PLAN file to `completed/`.
 
@@ -102,7 +102,7 @@ Investigation no longer flags the secrets-apply gap as outstanding.
 - [ ] `platforms/azure-aks/scripts/02-post-apply.sh` applies `kubernetes-secrets.yml` between storage classes and Traefik install, mirroring `hosts/azure-aks/02-azure-aks-setup.sh:125-141`. Soft-fails when the file is absent.
 - [ ] `shellcheck` passes on the modified script.
 - [ ] A secret-using UIS service deploys on a fresh AKS cluster provisioned via `platforms/azure-aks/`.
-- [ ] `INVESTIGATE-platform-provisioning-layer.md` no longer flags this gap as outstanding.
+- [ ] `INVESTIGATE-system-platform-provisioning-layer.md` no longer flags this gap as outstanding.
 - [ ] This plan is in `completed/`.
 
 ---
@@ -110,8 +110,8 @@ Investigation no longer flags the secrets-apply gap as outstanding.
 ## Files to Modify
 
 - `platforms/azure-aks/scripts/02-post-apply.sh`
-- `website/docs/ai-developer/plans/backlog/INVESTIGATE-platform-provisioning-layer.md` (Phase 3)
-- `website/docs/ai-developer/plans/active/PLAN-002-aks-secrets-apply-parity.md` → `completed/` (Phase 3)
+- `website/docs/ai-developer/plans/backlog/INVESTIGATE-system-platform-provisioning-layer.md` (Phase 3)
+- `website/docs/ai-developer/plans/active/PLAN-platform-aks-002-secrets-apply-parity.md` → `completed/` (Phase 3)
 
 ---
 

@@ -50,7 +50,7 @@ The migration to UIS CLI is complete — all 30 services deploy through `./uis d
 
 ### Known breakage (accepted)
 
-- `hosts/install-azure-microk8s-v2.sh` calls `provision-kubernetes.sh`. This script is already non-functional without a configured Azure VM. Tracked in [INVESTIGATE: Remote Deployment Targets](../backlog/INVESTIGATE-remote-deployment-targets.md) which will rewrite it to use UIS CLI.
+- `hosts/install-azure-microk8s-v2.sh` calls `provision-kubernetes.sh`. This script is already non-functional without a configured Azure VM. Tracked in [INVESTIGATE: Remote Deployment Targets](../backlog/INVESTIGATE-system-remote-deployment-targets.md) which will rewrite it to use UIS CLI.
 
 ---
 

@@ -5,9 +5,27 @@ sidebar_label: PLAN — Cloudflare network port + docs lift-up
 
 # PLAN — Cloudflare network port + docs lift-up
 
-## Status: Backlog (awaiting "execute")
+## Status: Completed (work shipped piecemeal across PRs #169–#172)
 
-**Spec**: [INVESTIGATE-networking-restructure-and-cloudflare-in-cluster.md](INVESTIGATE-networking-restructure-and-cloudflare-in-cluster.md) — Q1-Q10 locked in.
+---
+
+## Close-out retrospective (2026-05-15)
+
+The plan was never executed as a single unified "execute" PR — the deliverables landed across PRs #169–#172 instead. State of each phase:
+
+| Phase | State | Evidence |
+|---|---|---|
+| 1 — `cmd_network_*` family | ✓ Done | `provision-host/uis/manage/uis-cli.sh` has `cmd_network` dispatcher with init/list/up/status/down/verify/expose/unexpose. |
+| 2 — Remove cloudflare-tunnel from services.json | ✓ Done | `website/src/data/services.json` no longer lists `cloudflare-tunnel`. |
+| 3 — Small Cloudflare bugs from survey | ✓ Done | Bugs surfaced during the port shipped alongside Phase 1. |
+| 4 — Verification on rancher-desktop / `*.skryter.no` | ✓ Done | Verified end-to-end against the `*.skryter.no` tunnel during the port-PR rounds. |
+| 5 — Docs lift-up | ✓ Done | `networking/cloudflare.md` + `cloudflare-setup.md` rewritten on `uis network` flow; legacy `uis deploy cloudflare-tunnel` / `uis cloudflare verify/teardown` refs swept in PR #185. |
+| 6 — Tester verification round | ✓ Done | Covered alongside the port-PRs; closed end-to-end on `*.skryter.no`. |
+| 7 — Tailscale follow-up plan stub | ✓ Done | Tailscale work shipped via PLAN-002 + PLAN-003 (both completed). |
+
+---
+
+**Spec**: [INVESTIGATE-network-cloudflare-in-cluster-restructure.md](INVESTIGATE-network-cloudflare-in-cluster-restructure.md) — Q1-Q10 locked in.
 
 **Goal**: Port Cloudflare networking from the current ad-hoc shape (`uis deploy cloudflare-tunnel` + `uis cloudflare verify/teardown` + manual setup-guide-driven dashboard work) to a first-class `uis network <verb> cloudflare` command family symmetric with `uis platform <verb> <provider>`. Lift `Networking` in the sidebar + docs. **Tailscale wholesale deferred** to a future plan.
 

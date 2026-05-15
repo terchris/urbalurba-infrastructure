@@ -3,9 +3,9 @@ status: backlog
 created: 2026-05-12
 updated: 2026-05-13
 related:
-  - INVESTIGATE-networking-restructure-and-cloudflare-in-cluster.md
-  - PLAN-cloudflare-network-port-and-docs-lift-up.md
-  - INVESTIGATE-tailscale-cross-cluster-backbone.md
+  - INVESTIGATE-network-cloudflare-in-cluster-restructure.md
+  - PLAN-network-cloudflare-port-and-docs-lift-up.md
+  - INVESTIGATE-network-tailscale-cross-cluster-backbone.md
   - completed/INVESTIGATE-tailscale-variable-rename.md
   - completed/PLAN-009-tailscale-service-fix.md
   - completed/PLAN-011-tailscale-cli-expose-commands.md
@@ -140,7 +140,7 @@ The Tailscale operator, when it sees an `Ingress` with `ingressClassName: tailsc
 
 `tailscale-tunnel` is a `services.json` entry (lines 512–531) with `playbook: 802-deploy-network-tailscale-tunnel.yml`, `removePlaybook: 801-remove-network-tailscale-tunnel.yml`, `requires: [nginx]`, `helmChart: tailscale/tailscale-operator`, `namespace: tailscale`. Discovered the standard way through `provision-host/uis/services/networking/service-tailscale-tunnel.sh` (36 lines).
 
-Notably, the internal-ingress (805) path has **no service-abstraction entry, no CLI verb, and no docs path**. It can only be triggered via raw `ansible-playbook`. Decision 15 deletes the internal-ingress path; the deleted-files reference lands in `INVESTIGATE-tailscale-cross-cluster-backbone.md` for future reference.
+Notably, the internal-ingress (805) path has **no service-abstraction entry, no CLI verb, and no docs path**. It can only be triggered via raw `ansible-playbook`. Decision 15 deletes the internal-ingress path; the deleted-files reference lands in `INVESTIGATE-network-tailscale-cross-cluster-backbone.md` for future reference.
 
 ### Secrets
 
@@ -267,7 +267,7 @@ There's only one `up` shape; the variants are flags.
 - `manifests/805-tailscale-internal-ingress.yaml.j2`
 - `website/docs/networking/tailscale-internal-ingress.md`
 
-Modern Tailscale operator patterns for tailnet-only access (`tailscale.com/expose: "true"` annotation, `Connector` CRD, `ProxyGroup`) look nothing like 805's `loadBalancerClass: tailscale on Traefik` approach, so re-implementing later would look fundamentally different anyway. **`INVESTIGATE-tailscale-cross-cluster-backbone.md` gets a pointer to the deleted files so the patterns can be recovered from git history** if a future round needs them.
+Modern Tailscale operator patterns for tailnet-only access (`tailscale.com/expose: "true"` annotation, `Connector` CRD, `ProxyGroup`) look nothing like 805's `loadBalancerClass: tailscale on Traefik` approach, so re-implementing later would look fundamentally different anyway. **`INVESTIGATE-network-tailscale-cross-cluster-backbone.md` gets a pointer to the deleted files so the patterns can be recovered from git history** if a future round needs them.
 
 Collapses the strawman: no `--mode=internal` flag, no Q8, no fix-806 work, two `up` shapes instead of three.
 

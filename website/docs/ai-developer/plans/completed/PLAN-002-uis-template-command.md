@@ -10,7 +10,7 @@
 
 **Last Updated**: 2026-04-05
 
-**Investigation**: [INVESTIGATE-first-uis-template.md](INVESTIGATE-first-uis-template.md) — decisions on template selection and format
+**Investigation**: [INVESTIGATE-templates-first-uis-template.md](INVESTIGATE-templates-first-uis-template.md) — decisions on template selection and format
 
 **Specs**: `helpers-no/dev-templates` → `INVESTIGATE-unified-template-system.md` — `template-info.yaml` format (especially `provides` with stack refs per 26MSG and per-service config per 28MSG)
 
@@ -256,5 +256,5 @@ Both are needed to validate each other — the command needs a template to run, 
 ## References
 
 - PLAN-001-uis-configure-expose — prerequisite commands
-- INVESTIGATE-first-uis-template — template selection rationale
+- INVESTIGATE-templates-first-uis-template — template selection rationale
 - TMP `INVESTIGATE-unified-template-system.md` — format spec (26MSG stack refs, 28MSG per-service config, 29MSG format finalized)

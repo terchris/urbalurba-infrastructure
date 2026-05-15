@@ -10,7 +10,7 @@
 
 **Last Updated**: 2026-05-08
 
-**Investigation**: [INVESTIGATE-platform-provisioning-layer.md](./INVESTIGATE-platform-provisioning-layer.md) — Step 1 scope and verification bar.
+**Investigation**: [INVESTIGATE-system-platform-provisioning-layer.md](./INVESTIGATE-system-platform-provisioning-layer.md) — Step 1 scope and verification bar.
 
 **Companion**: [PLAN-001-aks-step1-verification.md](../completed/PLAN-001-aks-step1-verification.md) — drives Phase 1 (OpenTofu installer, shipped) and Phase 2 (this manual run-through). When PLAN-001 Phase 2 is in flight, the operator follows this document.
 
@@ -514,7 +514,7 @@ Cluster's up but bare. This script does the post-provisioning setup.
 
 The current `02-post-apply.sh` skips applying `kubernetes-secrets.yml` (gap-analysis finding from 2026-05-07). For the nginx verification (Phase 8 below), this is fine — nginx doesn't need cluster secrets. For *any other* UIS service (postgresql, authentik, openwebui, postgrest), you'll either need to:
 
-1. Wait for [PLAN-002-aks-secrets-apply-parity.md](./PLAN-002-aks-secrets-apply-parity.md) to ship, or
+1. Wait for [PLAN-platform-aks-002-secrets-apply-parity.md](./PLAN-platform-aks-002-secrets-apply-parity.md) to ship, or
 2. Manually apply the secrets after this script: `kubectl apply -f .uis.secrets/generated/kubernetes/kubernetes-secrets.yml` (after running `./uis secrets generate` once).
 
 ---
@@ -707,7 +707,7 @@ Either:
 
 (This plan is reference documentation; no code changes from the plan itself. The accompanying code work happens via PLAN-001 and PLAN-002.)
 
-- `website/docs/ai-developer/plans/active/PLAN-001b-aks-manual-setup.md` (this file, created at first manual run-through; moves to `completed/` only when the runbook has been successfully exercised end-to-end and any corrections from real-world running have been folded in).
+- `website/docs/ai-developer/plans/active/PLAN-platform-aks-001b-manual-setup.md` (this file, created at first manual run-through; moves to `completed/` only when the runbook has been successfully exercised end-to-end and any corrections from real-world running have been folded in).
 
 ---
 

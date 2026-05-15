@@ -64,7 +64,7 @@ Only platforms in `running` state get selectable numbers — switching to a `not
 | [Multipass MicroK8s](./multipass-microk8s.md) | Local virtualised cluster. **Superseded by Rancher Desktop.** | Pre-UIS-CLI scripts under `hosts/multipass-microk8s/` | ⚠ Kept for historical reference |
 | [Raspberry Pi MicroK8s](./raspberry-microk8s.md) | Edge / ARM-based deployments | Pre-UIS-CLI scripts under `hosts/raspberry-microk8s/`, manual provisioning, Tailscale for remote access | ⚠ Not yet migrated |
 
-The "not yet migrated" platforms work — they use the older `hosts/` script flow — but they don't speak the `uis platform list / use / init / up / status / down` vocabulary yet. Migration is tracked at [INVESTIGATE-migrate-hosts-to-platforms.md](../ai-developer/plans/backlog/INVESTIGATE-migrate-hosts-to-platforms.md).
+The "not yet migrated" platforms work — they use the older `hosts/` script flow — but they don't speak the `uis platform list / use / init / up / status / down` vocabulary yet. Migration is tracked at [INVESTIGATE-system-migrate-hosts-to-platforms.md](../ai-developer/plans/backlog/INVESTIGATE-system-migrate-hosts-to-platforms.md).
 
 ## How it works — cluster targeting
 

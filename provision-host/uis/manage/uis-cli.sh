@@ -861,7 +861,7 @@ cmd_stacks() {
 # Platform Commands
 # ============================================================
 # `uis platform <subcmd> <provider>` — per-cloud lifecycle wrappers.
-# Q8 of INVESTIGATE-aks-novice-onboarding.md: thin dispatcher here delegates
+# Q8 of INVESTIGATE-platform-aks-novice-onboarding.md: thin dispatcher here delegates
 # to platforms/<provider>/scripts/<verb>.sh; the per-platform script in turn
 # sources shared helpers from provision-host/uis/lib/<cloud>-discovery.sh.
 # init is implemented (PLAN #2); up + down land in PLANs #3 + #4.

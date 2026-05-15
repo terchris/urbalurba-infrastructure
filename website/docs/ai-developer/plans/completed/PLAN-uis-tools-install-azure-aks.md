@@ -9,11 +9,11 @@
 **Shipped in**: PR #154.
 **Verified end-to-end**: talk44 + talk46 R3 (cold install path), 2026-05-11 in-container smoke (warm re-run 0.015s, partial-state re-run restored tofu without disturbing az, list inspection shows ✅ Installed for all three rows).
 
-**Goal**: Add a single `./uis tools install azure-aks` command that installs both AKS dependencies (`azure-cli` and `opentofu`) in one shot. Replaces today's two-command pattern (`./uis tools install azure-cli` + `./uis tools install opentofu` + *know* both are needed). This is **PLAN #1 of 4** spawned by [INVESTIGATE-aks-novice-onboarding.md](../backlog/INVESTIGATE-aks-novice-onboarding.md); it's the smallest and unblocks the rest.
+**Goal**: Add a single `./uis tools install azure-aks` command that installs both AKS dependencies (`azure-cli` and `opentofu`) in one shot. Replaces today's two-command pattern (`./uis tools install azure-cli` + `./uis tools install opentofu` + *know* both are needed). This is **PLAN #1 of 4** spawned by [INVESTIGATE-platform-aks-novice-onboarding.md](../backlog/INVESTIGATE-platform-aks-novice-onboarding.md); it's the smallest and unblocks the rest.
 
 **Last Updated**: 2026-05-11
 
-**Source**: [INVESTIGATE-aks-novice-onboarding.md](../backlog/INVESTIGATE-aks-novice-onboarding.md), all 15 design questions decided 2026-05-10. Q2 specifically: meta-tools are regular `install-*.sh` scripts that delegate inside `do_install`; no new "meta-tool" concept in the wrapper.
+**Source**: [INVESTIGATE-platform-aks-novice-onboarding.md](../backlog/INVESTIGATE-platform-aks-novice-onboarding.md), all 15 design questions decided 2026-05-10. Q2 specifically: meta-tools are regular `install-*.sh` scripts that delegate inside `do_install`; no new "meta-tool" concept in the wrapper.
 
 ---
 
@@ -198,7 +198,7 @@ Small doc touch-up so the new meta-tool is discoverable.
 
 ## Related
 
-- [INVESTIGATE-aks-novice-onboarding.md](../backlog/INVESTIGATE-aks-novice-onboarding.md) — parent investigation. Q1 (name), Q2 (delegating-script pattern), Q3 (stop on failure), Q10 (always-have-output) all directly inform this PLAN.
+- [INVESTIGATE-platform-aks-novice-onboarding.md](../backlog/INVESTIGATE-platform-aks-novice-onboarding.md) — parent investigation. Q1 (name), Q2 (delegating-script pattern), Q3 (stop on failure), Q10 (always-have-output) all directly inform this PLAN.
 - [PLAN-tool-installer-error-handling.md](../active/PLAN-tool-installer-error-handling.md) — prerequisite (PR #152, merged 2026-05-10). The contract block + `set -euo pipefail` pattern this PLAN follows comes from there.
 - `provision-host/uis/lib/tool-installation.sh:184` — `install_tool` wrapper. Recursion from inside `do_install` works because the subshell at line 213-221 inherits parent functions; no plumbing needed.
-- **Next**: [INVESTIGATE-aks-novice-onboarding.md → PLAN #2 — `./uis platform init azure-aks` wizard](../backlog/INVESTIGATE-aks-novice-onboarding.md). The big one. Builds on this PLAN's meta-installer as a preflight check.
+- **Next**: [INVESTIGATE-platform-aks-novice-onboarding.md → PLAN #2 — `./uis platform init azure-aks` wizard](../backlog/INVESTIGATE-platform-aks-novice-onboarding.md). The big one. Builds on this PLAN's meta-installer as a preflight check.

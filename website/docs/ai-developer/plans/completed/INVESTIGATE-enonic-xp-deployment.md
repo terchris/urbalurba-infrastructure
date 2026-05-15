@@ -202,13 +202,13 @@ Enonic has two separate things that need to be deployed: **apps** (code) and **c
 
 ### App deployment (code)
 
-App deployment is covered in a separate investigation: **[INVESTIGATE-enonic-app-deployment-pipeline.md](../backlog/INVESTIGATE-enonic-app-deployment-pipeline.md)**
+App deployment is covered in a separate investigation: **[INVESTIGATE-service-enonic-app-deployment-pipeline.md](../backlog/INVESTIGATE-service-enonic-app-deployment-pipeline.md)**
 
 Summary of the chosen approach: a sidecar container in the Enonic pod monitors GitHub Releases. When a developer merges to main, GitHub Actions builds the JAR and publishes it as a GitHub Release. The sidecar polls for new releases, downloads the JAR, and places it in `$XP_HOME/deploy`. Enonic hot-installs the app without restart. UIS CLI commands (`./uis enonic deploy-app`, `remove-app`, `list-apps`) manage which repos the sidecar monitors.
 
 ### Content deployment (data)
 
-Content deployment is covered in a separate investigation: **[INVESTIGATE-enonic-content-deployment.md](../backlog/INVESTIGATE-enonic-content-deployment.md)**
+Content deployment is covered in a separate investigation: **[INVESTIGATE-service-enonic-content-deployment.md](../backlog/INVESTIGATE-service-enonic-content-deployment.md)**
 
 Key finding: content depends on apps. The app (with its content type definitions) must be deployed **before** content can be imported. Content items store a type reference namespaced to the app (e.g. `com.example.myapp:article`), so without the app installed, content is non-functional.
 
@@ -225,8 +225,8 @@ Key finding: content depends on apps. The app (with its content type definitions
 | What | Format | Deploy method (production) | Deploy method (local UIS) |
 |---|---|---|---|
 | **XP platform** | Docker image `enonic/xp` | K8s deployment (Helm/manifests) | Same — Ansible playbook deploys to k3s |
-| **Apps (code)** | JAR file | CI/CD agent on same network → management API (port 4848) | Sidecar pull pipeline — see [INVESTIGATE-enonic-app-deployment-pipeline.md](../backlog/INVESTIGATE-enonic-app-deployment-pipeline.md) |
-| **Content (data)** | XP internal repository | Data Toolbox export/import or `enonic dump`/`enonic load` | See [INVESTIGATE-enonic-content-deployment.md](../backlog/INVESTIGATE-enonic-content-deployment.md) |
+| **Apps (code)** | JAR file | CI/CD agent on same network → management API (port 4848) | Sidecar pull pipeline — see [INVESTIGATE-service-enonic-app-deployment-pipeline.md](../backlog/INVESTIGATE-service-enonic-app-deployment-pipeline.md) |
+| **Content (data)** | XP internal repository | Data Toolbox export/import or `enonic dump`/`enonic load` | See [INVESTIGATE-service-enonic-content-deployment.md](../backlog/INVESTIGATE-service-enonic-content-deployment.md) |
 
 ---
 
@@ -246,7 +246,7 @@ Key finding: content depends on apps. The app (with its content type definitions
 - **Ingress**: `HostRegexp(`enonic\..+`)` — works across localhost, Tailscale, and Cloudflare domains like all other services
 - **Storage**: Standard PVC via cluster storage class
 - **Access**: `http://enonic.localhost` (port 8080) — Content Studio, admin console, headless APIs
-- **App deployment**: Sidecar pull pipeline — see [INVESTIGATE-enonic-app-deployment-pipeline.md](../backlog/INVESTIGATE-enonic-app-deployment-pipeline.md). Port 4848 not exposed.
+- **App deployment**: Sidecar pull pipeline — see [INVESTIGATE-service-enonic-app-deployment-pipeline.md](../backlog/INVESTIGATE-service-enonic-app-deployment-pipeline.md). Port 4848 not exposed.
 
 ### Proposed Files
 
@@ -260,7 +260,7 @@ Key finding: content depends on apps. The app (with its content type definitions
 | IngressRoute | `manifests/085-enonic-ingressroute.yaml` |
 | Documentation | `website/docs/services/integration/enonic.md` |
 
-App deployment CLI files are listed in [INVESTIGATE-enonic-app-deployment-pipeline.md](../backlog/INVESTIGATE-enonic-app-deployment-pipeline.md).
+App deployment CLI files are listed in [INVESTIGATE-service-enonic-app-deployment-pipeline.md](../backlog/INVESTIGATE-service-enonic-app-deployment-pipeline.md).
 
 ---
 
@@ -274,6 +274,6 @@ App deployment CLI files are listed in [INVESTIGATE-enonic-app-deployment-pipeli
 - [x] Figure out content and app deployment workflow → **See "Content and App Deployment Workflow" section**
 - [x] Understand CI/CD and management API security → **Port 4848 stays on private network, JWT auth, never exposed publicly**
 - [x] Investigate CI/CD reachability problem → **Same issue for enterprise Azure and local UIS — pipeline can't reach port 4848 without self-hosted agent or alternative approach**
-- [x] Design app deployment pipeline → **Moved to separate investigation: [INVESTIGATE-enonic-app-deployment-pipeline.md](../backlog/INVESTIGATE-enonic-app-deployment-pipeline.md)**
+- [x] Design app deployment pipeline → **Moved to separate investigation: [INVESTIGATE-service-enonic-app-deployment-pipeline.md](../backlog/INVESTIGATE-service-enonic-app-deployment-pipeline.md)**
 - [x] Create PLAN-enonic-xp-deployment.md with implementation phases (base platform only) → **Done. Deployed and verified (6 E2E tests pass, 6 rounds of testing).**
 

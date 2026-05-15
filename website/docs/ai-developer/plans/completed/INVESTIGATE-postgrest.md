@@ -192,7 +192,7 @@ The existing handler-dispatch model (`provision-host/uis/lib/configure.sh`) load
 
 ### Image pinning
 
-`postgrest/postgrest:v<X.Y.Z>` pinned to a specific version (UIS practice per `INVESTIGATE-version-pinning.md`). Latest stable at the time of writing should be confirmed during PLAN-001 and recorded in `service-postgrest.sh` as `SCRIPT_IMAGE`.
+`postgrest/postgrest:v<X.Y.Z>` pinned to a specific version (UIS practice per `INVESTIGATE-system-version-pinning.md`). Latest stable at the time of writing should be confirmed during PLAN-001 and recorded in `service-postgrest.sh` as `SCRIPT_IMAGE`.
 
 ### Ansible extra-var naming
 

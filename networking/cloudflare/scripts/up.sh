@@ -11,8 +11,8 @@
 #      static manifest and waits for cloudflared pods to register.
 #
 # Targets whichever cluster the kubeconf-all current-context points at. This
-# round is rancher-desktop-focused (see PLAN-cloudflare-network-port-and-docs-
-# lift-up.md). The playbooks themselves are cluster-agnostic.
+# round is rancher-desktop-focused (see PLAN-network-cloudflare-port-and-docs-lift-up.md).
+# The playbooks themselves are cluster-agnostic.
 
 set -euo pipefail
 

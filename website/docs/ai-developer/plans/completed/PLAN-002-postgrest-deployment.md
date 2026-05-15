@@ -357,7 +357,7 @@ User confirms every step in 6.1–6.10 passes. If 6.10 produces unexpected forma
 
 **Re-use over re-implement.** `configure-postgresql.sh` already has working patterns for kubeconfig discovery, pod lookup, namespace creation, and secret creation. Mirror them in `configure-postgrest.sh` rather than diverging. The PLANS.md "Library Reuse Rules" apply.
 
-**Image version pinning.** Decision #7 in the investigate punts the exact PostgREST version to "latest stable confirmed during implementation." Confirm via `https://github.com/PostgREST/postgrest/releases`, pin the patch version, and record the date in a comment in `service-postgrest.sh`. Per UIS practice (`INVESTIGATE-version-pinning.md`), do not use `:latest`.
+**Image version pinning.** Decision #7 in the investigate punts the exact PostgREST version to "latest stable confirmed during implementation." Confirm via `https://github.com/PostgREST/postgrest/releases`, pin the patch version, and record the date in a comment in `service-postgrest.sh`. Per UIS practice (`INVESTIGATE-system-version-pinning.md`), do not use `:latest`.
 
 **Idempotency vs `--rotate` is a foot-gun.** The default no-op behavior means an operator can re-run `configure` without consequence. `--rotate` is destructive (invalidates running PostgREST connections until rollout-restart). Make sure the `--rotate` code path emits a clear warning before proceeding, and document the rollout-restart requirement in the user-facing docs.
 

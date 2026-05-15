@@ -115,7 +115,7 @@ Investigation Decisions 1, 4, 15.
 - [x] 3.6 Delete `manifests/805-tailscale-internal-ingress.yaml.j2` (Decision 15)
 - [x] 3.7 Delete `website/docs/networking/tailscale-internal-ingress.md` (Decision 15)
 - [x] 3.8 Update `801-remove-network-tailscale-tunnel.yml` — dropped the "Based on logic from 804" comment + the `provision-host` device-name match in the tailnet device-deletion regex (was the host-side residue from when 801-setup created a `provision-host` device)
-- [ ] 3.9 Update `INVESTIGATE-tailscale-cross-cluster-backbone.md`: replace "Deleted in the cleanup — recoverable from git history" placeholder with the actual commit hash from this plan's PR after merge — deferred to post-merge follow-up
+- [ ] 3.9 Update `INVESTIGATE-network-tailscale-cross-cluster-backbone.md`: replace "Deleted in the cleanup — recoverable from git history" placeholder with the actual commit hash from this plan's PR after merge — deferred to post-merge follow-up
 
 **Also cleaned up stale cross-references (not in original task list but surfaced by the deletion):**
 - `networking/tailscale/802-tailscale-tunnel-deploy.sh` — dropped two references to `801-tailscale-tunnel-setup.sh` (header comment + the secrets-missing error message)
@@ -155,7 +155,7 @@ User confirms phase is complete.
 
 - [x] 4.1 `bash -n` syntax check on modified shell scripts — all pass (802-tunnel-deploy.sh, create-cloud-init.sh, secrets-management.sh, integration-testing.sh)
 - [x] 4.2 services.json parses cleanly
-- [x] 4.3 `cd website && npm run build` — `[SUCCESS]` after removing the `networking/tailscale-internal-ingress` entry from `sidebars.ts` (sidebar still referenced the doc page deleted in Phase 3). Only broken anchors flagged are pre-existing in unrelated files (INVESTIGATE-dagster, completed/PLAN-001-postgrest-documentation).
+- [x] 4.3 `cd website && npm run build` — `[SUCCESS]` after removing the `networking/tailscale-internal-ingress` entry from `sidebars.ts` (sidebar still referenced the doc page deleted in Phase 3). Only broken anchors flagged are pre-existing in unrelated files (INVESTIGATE-service-dagster, completed/PLAN-001-postgrest-documentation).
 - [ ] 4.4 `./uis build` — tester step per contributor/tester split (contributor never tests deploys)
 - [ ] 4.5 Smoke test legacy CLI surface (`./uis tailscale --help`, `./uis deploy tailscale-tunnel --dry-run`) — tester step
 
@@ -181,7 +181,7 @@ User confirms phase is complete.
 - [ ] `BASE_DOMAIN_TAILSCALE` references gone (rewired to `TAILSCALE_TAILNET` where needed, deleted otherwise)
 - [ ] Legacy `./uis deploy tailscale-tunnel` + `./uis tailscale expose/unexpose/verify` still work — this plan does **not** touch the CLI surface
 - [ ] Local `npm run build` succeeds
-- [ ] `INVESTIGATE-tailscale-cross-cluster-backbone.md` updated with the merge commit hash for the deleted internal-mode files
+- [ ] `INVESTIGATE-network-tailscale-cross-cluster-backbone.md` updated with the merge commit hash for the deleted internal-mode files
 
 ---
 
@@ -199,7 +199,7 @@ User confirms phase is complete.
 - `networking/tailscale/803-tailscale-tunnel-deletehost.sh`
 - `website/docs/networking/tailscale-setup.md`
 - `website/docs/networking/tailscale-network-isolation.md`
-- `website/docs/ai-developer/plans/backlog/INVESTIGATE-tailscale-cross-cluster-backbone.md` (commit hash update)
+- `website/docs/ai-developer/plans/backlog/INVESTIGATE-network-tailscale-cross-cluster-backbone.md` (commit hash update)
 
 **Delete:**
 - `ansible/playbooks/801-setup-network-tailscale-tunnel.yml`
@@ -217,5 +217,5 @@ User confirms phase is complete.
 
 - **Order matters within Phase 2.** If `TAILSCALE_DOMAIN` reads are replaced with `TAILSCALE_TAILNET` *before* the variable is removed from the templates, the deploy paths keep working; reversing the order leaves a window where deploys fail.
 - **`BASE_DOMAIN_TAILSCALE` audit may surface surprises.** It's a cross-cutting variable possibly used in Traefik IngressRoute YAMLs (not just Tailscale playbooks). Be prepared to find readers in unexpected places. If a reader is for a Cloudflare IngressRoute (matching `*.<owned-domain>`), leave it alone — the cleanup target is the Tailscale-side reads only.
-- **`INVESTIGATE-tailscale-cross-cluster-backbone.md` commit-hash update** can be done as a follow-up PR if the original PR merges without it; the cross-cluster doc is in backlog and not blocking.
+- **`INVESTIGATE-network-tailscale-cross-cluster-backbone.md` commit-hash update** can be done as a follow-up PR if the original PR merges without it; the cross-cluster doc is in backlog and not blocking.
 - This plan is **low risk** — pure deletions + a rename. No new code. Legacy CLI unchanged. Should be ~2 hours of mechanical work.

@@ -61,4 +61,4 @@ See [PLAN-007](PLAN-007-authentik-auto-secrets.md) for full details including al
 
 ## Related
 
-- [INVESTIGATE: Authentik User Config Migration](../backlog/INVESTIGATE-authentik-user-config.md) — Goal 2 from the original investigation (not started)
+- [INVESTIGATE: Authentik User Config Migration](../backlog/INVESTIGATE-service-authentik-user-config.md) — Goal 2 from the original investigation (not started)

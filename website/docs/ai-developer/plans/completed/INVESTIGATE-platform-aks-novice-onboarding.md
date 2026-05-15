@@ -4,7 +4,20 @@
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Backlog (Tier 2 — UX block on the AKS doc rewrite)
+## Status: Completed — proposed target flow shipped end-to-end; decisions Q1-Q3 implemented
+
+The target six-command novice flow is live and documented:
+
+```
+./uis pull                         # 1
+./uis tools install azure-aks      # 2  (meta-installer per Q1/Q2 — provision-host/uis/tools/install-azure-aks.sh)
+./uis platform init azure-aks      # 3  (wizard per Q4 — platforms/azure-aks/scripts/init.sh)
+./uis platform up azure-aks        # 4  (lifecycle wrapper)
+./uis deploy nginx                 # 5  (verification)
+./uis platform down azure-aks      # 6
+```
+
+The `aks/` → `azure-aks/` rename also landed. The AKS guide (`website/docs/platforms/azure-aks.md`) leads with this exact flow.
 
 **Last Updated**: 2026-05-10
 
@@ -46,7 +59,7 @@ The investigation is about whether that target is right, what each wrapper actua
 
 ## Out of Scope
 
-- **Provisioning a cluster on `gke`/`eks`/`microk8s-vm`/RPi.** This investigation is AKS-only. Other platforms are governed by [INVESTIGATE-platform-provisioning-layer.md](./INVESTIGATE-platform-provisioning-layer.md) and [INVESTIGATE-migrate-hosts-to-platforms.md](./INVESTIGATE-migrate-hosts-to-platforms.md). The wrapper-command shape decided here can extend to those later, but the *first* concrete deliverable is AKS-only.
+- **Provisioning a cluster on `gke`/`eks`/`microk8s-vm`/RPi.** This investigation is AKS-only. Other platforms are governed by [INVESTIGATE-system-platform-provisioning-layer.md](./INVESTIGATE-system-platform-provisioning-layer.md) and [INVESTIGATE-system-migrate-hosts-to-platforms.md](./INVESTIGATE-system-migrate-hosts-to-platforms.md). The wrapper-command shape decided here can extend to those later, but the *first* concrete deliverable is AKS-only.
 - **Changing the underlying scripts** (`platforms/aks/scripts/00..03`). They stay as the implementation detail. Wrappers call them; novices stop reading them directly.
 - **Authentik / SSO / domain wiring.** That's a post-cluster concern; the novice flow stops at "deploy nginx, see it work."
 - **Switching AKS to AAD-integrated RBAC.** Today's `platforms/aks/tofu/main.tf` provisions AKS with local-account auth (no `azure_active_directory_role_based_access_control` block). That's why `az aks get-credentials` writes a cert-based kubeconfig and `kubectl` works without `kubelogin`. If we ever switch to AAD-integrated AKS — for per-user identity in audit logs, AD-group-based RBAC, and no shared cert credential — `kubelogin` becomes a hard dependency for every operator and CI runner, and the meta-installer would need to gain it. That's a real architectural decision worth its own investigation; the novice-onboarding wrappers should not pre-judge it.
@@ -183,7 +196,7 @@ How this plays out per future target:
 - **microk8s-vm** (legacy `hosts/azure-microk8s/`): partial applicability. The "discover" steps simplify (no provider registration), but the manifest changes — "do you want to provision an Azure VM and install MicroK8s on it?" — so the per-platform `init.sh` has different wizard steps. Still fits the dispatcher + per-platform + shared-library shape.
 - **microk8s-rpi**: least applicable. Novice physically prepares an SD card; `init` becomes mostly a runbook + minimal config wizard rather than a full auto-pick flow. Probably exposes `up`/`down` against a Tailscale-reachable Pi; `init` is small and mostly informational.
 
-**Out of scope for this investigation**: actually building the GKE/EKS/microk8s-vm/microk8s-rpi wizards. Each lands as its own PLAN when a real consumer surfaces. AKS-first is established (per [INVESTIGATE-platform-provisioning-layer.md](./INVESTIGATE-platform-provisioning-layer.md)). This investigation only guarantees that the AKS wrapper's design doesn't paint future platforms into a corner.
+**Out of scope for this investigation**: actually building the GKE/EKS/microk8s-vm/microk8s-rpi wizards. Each lands as its own PLAN when a real consumer surfaces. AKS-first is established (per [INVESTIGATE-system-platform-provisioning-layer.md](./INVESTIGATE-system-platform-provisioning-layer.md)). This investigation only guarantees that the AKS wrapper's design doesn't paint future platforms into a corner.
 
 ### Q15 — Where does the doc-flow story land?
 
@@ -224,9 +237,9 @@ Doc rewrite (`azure-aks.md`) waits for #2 to land, per Q15.
 
 ## Related
 
-- [PLAN-001b-aks-manual-setup.md](./PLAN-001b-aks-manual-setup.md) — the current "how a human does it" reference. The wrappers automate this; the PLAN stays as the authoritative documentation of *what* gets automated.
-- [PLAN-002-aks-secrets-apply-parity.md](./PLAN-002-aks-secrets-apply-parity.md) — secrets-application parity for AKS. Related but orthogonal: that's about *running* on AKS, this is about *getting to* AKS.
-- [INVESTIGATE-platform-provisioning-layer.md](./INVESTIGATE-platform-provisioning-layer.md) — the broader `platforms/*` architecture. This investigation lives downstream of that one's "AKS-first focus" decision.
+- [PLAN-platform-aks-001b-manual-setup.md](./PLAN-platform-aks-001b-manual-setup.md) — the current "how a human does it" reference. The wrappers automate this; the PLAN stays as the authoritative documentation of *what* gets automated.
+- [PLAN-platform-aks-002-secrets-apply-parity.md](./PLAN-platform-aks-002-secrets-apply-parity.md) — secrets-application parity for AKS. Related but orthogonal: that's about *running* on AKS, this is about *getting to* AKS.
+- [INVESTIGATE-system-platform-provisioning-layer.md](./INVESTIGATE-system-platform-provisioning-layer.md) — the broader `platforms/*` architecture. This investigation lives downstream of that one's "AKS-first focus" decision.
 - [INVESTIGATE-active-cluster-visibility-ux.md](../completed/INVESTIGATE-active-cluster-visibility-ux.md) — once a novice has clusters across `rancher-desktop` + `azure-aks`, "which cluster am I about to touch?" becomes the next safety problem. Visibility UX dovetails with platform wrappers.
 - [PLAN-tool-installer-error-handling.md](../active/PLAN-tool-installer-error-handling.md) — prerequisite (shipped 2026-05-10 as PR #152). Makes per-tool installs fail loudly, which the meta-tool depends on.
 - `provision-host/uis/manage/uis-cli.sh:1018` — `cmd_init` (UIS-level setup wizard). Reference for the wizard pattern; `cmd_platform_init` would parallel it.

@@ -88,7 +88,7 @@ The verbatim acceptance check from the tester's reply:
 ## Files to Modify
 
 - `platforms/azure-aks/scripts/03-destroy.sh` (add the cleanup section)
-- `website/docs/ai-developer/plans/active/PLAN-aks-destroy-kubeconfig-cleanup.md` ← move from `backlog/` to `active/` when work starts
+- `website/docs/ai-developer/plans/active/PLAN-platform-aks-destroy-kubeconfig-cleanup.md` ← move from `backlog/` to `active/` when work starts
 
 ## Acceptance Criteria
 

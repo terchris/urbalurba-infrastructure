@@ -5,7 +5,8 @@
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
 **Related**:
-- [INVESTIGATE-remote-deployment-targets.md](INVESTIGATE-remote-deployment-targets.md)
+- [INVESTIGATE-cli-top-level-doc.md](INVESTIGATE-cli-top-level-doc.md) — the broader CLI-doc-hygiene umbrella; the `./uis tools install` surface this investigation re-designs is one of the verbs that doc covers.
+- [INVESTIGATE-system-remote-deployment-targets.md](INVESTIGATE-system-remote-deployment-targets.md)
 - [Secrets Management System](../../../contributors/architecture/secrets.md)
 
 **Created**: 2026-03-13
@@ -251,7 +252,7 @@ Recommended next steps:
 
 ## Dependency on Remote Targets
 
-`INVESTIGATE-remote-deployment-targets.md` should depend on the outcome of this investigation for:
+`INVESTIGATE-system-remote-deployment-targets.md` should depend on the outcome of this investigation for:
 
 - how missing provider tools are installed
 - where provider credentials live in `.uis.secrets/`

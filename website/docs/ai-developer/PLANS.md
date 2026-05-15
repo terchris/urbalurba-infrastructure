@@ -45,18 +45,20 @@ For work that is **ready to implement**. The scope is clear, the approach is kno
 
 | Format | Use Case | Example |
 |--------|----------|---------|
-| `PLAN-<short-name>.md` | Standalone plan, no specific order | `PLAN-postgres-backup-cronjob.md` |
-| `PLAN-<nnn>-<short-name>.md` | Ordered sequence, indicates execution order | `PLAN-001-monitoring-foundation.md` |
+| `PLAN-<area>-<topic>.md` | Standalone plan, no specific order | `PLAN-service-postgresql-backup-cronjob.md` |
+| `PLAN-<area>-<nnn>-<topic>.md` | Ordered sequence, indicates execution order | `PLAN-system-monitoring-001-foundation.md` |
+
+See [Topical Area Prefix](#topical-area-prefix) below for the full naming convention (areas, sub-areas, topic rules).
 
 #### Ordered Plans (PLAN-nnn-*)
 
 When an investigation produces multiple related plans that should be executed in a specific order, use **three-digit numbering** to indicate the sequence:
 
 ```
-PLAN-001-monitoring-foundation.md      # Must be done first (critical foundation)
-PLAN-002-prometheus-config.md          # Can start after 001
-PLAN-003-grafana-dashboards.md         # Depends on 002
-PLAN-004-alerting-rules.md             # Depends on 003
+PLAN-system-monitoring-001-foundation.md      # Must be done first (critical foundation)
+PLAN-system-monitoring-002-prometheus-config.md   # Can start after 001
+PLAN-system-monitoring-003-grafana-dashboards.md  # Depends on 002
+PLAN-system-monitoring-004-alerting-rules.md      # Depends on 003
 ```
 
 **Benefits of ordered numbering:**
@@ -88,11 +90,11 @@ When an investigation covers a large initiative (e.g., deploying a new platform 
 **Example: Deploying a new service with catalog generation**
 
 ```
-INVESTIGATE-backstage.md                    ← Research and decisions
+INVESTIGATE-service-backstage.md                    ← Research and decisions
   ↓ produces:
-PLAN-001-backstage-metadata-and-generator.md  ← No cluster needed, low risk
-PLAN-002-backstage-deployment.md              ← Cluster needed, medium risk
-PLAN-003-backstage-auth-and-plugins.md        ← Optional, after deployment works
+PLAN-service-backstage-001-metadata-and-generator.md  ← No cluster needed, low risk
+PLAN-service-backstage-002-deployment.md              ← Cluster needed, medium risk
+PLAN-service-backstage-003-auth-and-plugins.md        ← Optional, after deployment works
 ```
 
 - **PLAN-001** adds metadata fields and builds the generator — pure code, no cluster, can be tested locally
@@ -102,8 +104,8 @@ PLAN-003-backstage-auth-and-plugins.md        ← Optional, after deployment wor
 Each plan references the investigation and the previous plan in its header:
 
 ```markdown
-**Investigation**: [INVESTIGATE-backstage.md](./INVESTIGATE-backstage.md)
-**Prerequisites**: PLAN-001 must be complete first
+**Investigation**: [INVESTIGATE-service-backstage.md](./INVESTIGATE-service-backstage.md)
+**Prerequisites**: PLAN-service-backstage-001-metadata-and-generator.md must be complete first
 ```
 
 **Benefits:**
@@ -121,13 +123,76 @@ For work that **needs research first**. The problem exists but the solution is u
 - Bug with unknown root cause
 - Feature requiring architectural decisions
 
-**Naming:** `INVESTIGATE-<topic>.md`
-
-Examples:
-- `INVESTIGATE-monitoring-architecture.md`
-- `INVESTIGATE-multi-cluster-networking.md`
+**Naming:** see [Topical Area Prefix](#topical-area-prefix) below — same convention as `PLAN-*.md`.
 
 **After investigation:** Create one or more PLAN files with the chosen approach.
+
+---
+
+## Topical Area Prefix
+
+Both `INVESTIGATE-*.md` and `PLAN-*.md` follow the same naming shape:
+
+```
+<TYPE>-<AREA>[-<SUBAREA>]-<topic>.md
+```
+
+The **AREA** prefix is mandatory. It clusters related work together in alphabetical directory listings and makes it possible to see at a glance which surface a plan touches.
+
+### Areas
+
+| Area | What goes here | Sub-area shape |
+|---|---|---|
+| **service** | A specific named service (authentik, backstage, dagster, metabase, etc.) | `service-<name>` |
+| **platform** | A specific cloud platform (AKS, GKE, EKS, microk8s on a VM) | `platform-<cloud>` |
+| **network** | A specific networking provider (cloudflare, tailscale) | `network-<provider>` |
+| **cli** | The `./uis <verb>` surface — anything that changes a UIS CLI command or its semantics | `cli-<verb>` (e.g., `cli-deploy`, `cli-status`) |
+| **docs** | Documentation system, page hygiene, cross-doc consistency, doc generation | none |
+| **secrets** | Secret templating + lifecycle (`.uis.secrets/*`, `00-master-secrets.yml.template`, etc.) | none |
+| **templates** | UIS Template (stacks) — the user-facing application-template system | none |
+| **system** | Cross-cutting infra (version pinning, host→platform migration, provisioning layer, remote targets) | none |
+
+If a file genuinely touches multiple areas, **pick the area where the implementation work would land**. A docs-restructure of the AKS guide is `platform-aks`, not `docs`, because the file being edited lives under `platforms/`.
+
+### Topic ("what it is")
+
+After the area/sub-area prefix, describe the topic in kebab-case. Two soft rules:
+
+1. **Lead with the distinctive thing**, not a generic word. Prefer `auto-regen-secrets` over `secrets-auto-regen`; prefer `multi-instance` over `status-gap`.
+2. **End with a verb only when the action is non-obvious.** Useful suffixes: `-add`, `-fix`, `-audit`, `-restructure`, `-rename`. Don't add a verb just to add one.
+
+Total filename length stays under ~60 characters so listings remain readable.
+
+### Examples
+
+```
+INVESTIGATE-service-authentik-user-config.md
+INVESTIGATE-service-backstage-auth.md
+INVESTIGATE-service-dagster.md
+INVESTIGATE-platform-aks-novice-onboarding.md
+INVESTIGATE-network-tailscale-cross-cluster-backbone.md
+INVESTIGATE-network-cloudflare-in-cluster-restructure.md
+INVESTIGATE-cli-deploy-auto-regen-secrets.md
+INVESTIGATE-cli-status-multi-instance.md
+INVESTIGATE-cli-top-level-doc.md
+INVESTIGATE-docs-services-in-cluster-port.md
+INVESTIGATE-secrets-template-defaults-clarity.md
+INVESTIGATE-templates-first-uis-template.md
+INVESTIGATE-system-version-pinning.md
+INVESTIGATE-system-remote-deployment-targets.md
+PLAN-platform-aks-destroy-kubeconfig-cleanup.md
+PLAN-network-cloudflare-port-and-docs-lift-up.md
+```
+
+For **ordered plan series**, the number goes *after* the area so related plans cluster in alphabetical sort:
+
+```
+PLAN-platform-aks-001-bootstrap.md
+PLAN-platform-aks-002-secrets-apply-parity.md
+PLAN-platform-aks-003-post-apply.md
+```
+
+This supersedes the older `PLAN-001-<area>-<topic>.md` shape — the area-first form keeps a plan series clustered with the rest of its area's work in a directory listing.
 
 ---
 

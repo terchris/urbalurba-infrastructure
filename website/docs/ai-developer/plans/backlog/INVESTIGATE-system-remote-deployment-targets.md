@@ -4,7 +4,7 @@
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-**Related**: [INVESTIGATE-topsecret-cleanup](../completed/INVESTIGATE-topsecret-cleanup.md), [STATUS-service-migration](../completed/STATUS-service-migration.md), [INVESTIGATE-provision-host-tools-and-auth.md](INVESTIGATE-provision-host-tools-and-auth.md)
+**Related**: [INVESTIGATE-topsecret-cleanup](../completed/INVESTIGATE-topsecret-cleanup.md), [STATUS-service-migration](../completed/STATUS-service-migration.md), [INVESTIGATE-system-provision-host-tools-and-auth.md](INVESTIGATE-system-provision-host-tools-and-auth.md)
 **Created**: 2026-02-22 (merged with PLAN-006-target-host-management on 2026-02-26)
 **Updated**: 2026-03-12
 **Status**: INVESTIGATION COMPLETE
@@ -40,7 +40,7 @@ This investigation was extended on 2026-03-12 to cover:
 
 Tool installation and provider authentication inside `uis-provision-host` are now split into:
 
-- [INVESTIGATE-provision-host-tools-and-auth.md](INVESTIGATE-provision-host-tools-and-auth.md)
+- [INVESTIGATE-system-provision-host-tools-and-auth.md](INVESTIGATE-system-provision-host-tools-and-auth.md)
 
 ---
 
@@ -169,7 +169,7 @@ This avoids accidental switching and keeps failure modes easy to understand.
   - target config in `.uis.extend/`
   - credentials in `.uis.secrets/`
   - active target state in `.uis.extend/active-target`
-- Depends on [INVESTIGATE-provision-host-tools-and-auth.md](INVESTIGATE-provision-host-tools-and-auth.md) for provider-tool installation and authentication behavior
+- Depends on [INVESTIGATE-system-provision-host-tools-and-auth.md](INVESTIGATE-system-provision-host-tools-and-auth.md) for provider-tool installation and authentication behavior
 
 ---
 
@@ -494,7 +494,7 @@ The detailed investigation for:
 
 has been split into:
 
-- [INVESTIGATE-provision-host-tools-and-auth.md](INVESTIGATE-provision-host-tools-and-auth.md)
+- [INVESTIGATE-system-provision-host-tools-and-auth.md](INVESTIGATE-system-provision-host-tools-and-auth.md)
 
 For the target-management investigation, the main dependency is:
 
