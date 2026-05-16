@@ -4,7 +4,7 @@
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Active
+## Status: Completed (talk56 R1-R7 all PASS after R4 fix)
 
 **Goal**: Make multi-instance service deployments individually visible in `./uis status` and `./uis list`. After this PLAN ships, deploying `postgrest --app atlas` + `postgrest --app railway` produces two rows in the status table (`atlas-postgrest`, `railway-postgrest`) instead of a single binary `postgrest ✅ Healthy` row, so the user can identify each instance by its Kubernetes Service name — the same string they need for `./uis network expose tailscale <name>`.
 
@@ -34,9 +34,9 @@ Today there are two functionally identical helpers checking `multiInstance` on a
 
 ### Tasks
 
-- [ ] 1.1 Delete `_is_multi_instance` from `provision-host/uis/lib/configure.sh:42-52`.
-- [ ] 1.2 Update the call site at `provision-host/uis/lib/configure.sh:216` from `_is_multi_instance "$service_id"` to `_is_service_multi_instance "$service_id"`.
-- [ ] 1.3 Ensure `lib/configure.sh` sources `lib/service-deployment.sh` (or that both are loaded by the same caller). Check `provision-host/uis/manage/uis-cli.sh` to confirm load order; if `configure.sh` is loaded before `service-deployment.sh`, swap them so `_is_service_multi_instance` is defined when `configure.sh:216` runs.
+- [x] 1.1 Delete `_is_multi_instance` from `provision-host/uis/lib/configure.sh:42-52`.
+- [x] 1.2 Update the call site at `provision-host/uis/lib/configure.sh:216` from `_is_multi_instance "$service_id"` to `_is_service_multi_instance "$service_id"`.
+- [x] 1.3 Ensure `lib/configure.sh` sources `lib/service-deployment.sh` (or that both are loaded by the same caller). Check `provision-host/uis/manage/uis-cli.sh` to confirm load order; if `configure.sh` is loaded before `service-deployment.sh`, swap them so `_is_service_multi_instance` is defined when `configure.sh:216` runs.
 
 ### Validation
 
@@ -58,20 +58,20 @@ Add a new helper in `lib/service-scanner.sh` (next to `check_service_deployed`) 
 
 ### Tasks
 
-- [ ] 2.1 Add `get_multi_instance_deployments <service_id>` to `provision-host/uis/lib/service-scanner.sh`. Reads `SCRIPT_NAMESPACE` and `SCRIPT_ID` from the service script (same source-parse pattern as `check_service_deployed`). Runs:
+- [x] 2.1 Add `get_multi_instance_deployments <service_id>` to `provision-host/uis/lib/service-scanner.sh`. Reads `SCRIPT_NAMESPACE` and `SCRIPT_ID` from the service script (same source-parse pattern as `check_service_deployed`). Runs:
   ```bash
   kubectl get deploy -n "$SCRIPT_NAMESPACE" -l "app.kubernetes.io/name=$SCRIPT_ID" --no-headers 2>/dev/null
   ```
   Emits one tab-separated line per deployment: `<name>\t<ready>` (e.g., `atlas-postgrest\t2/2`). Returns 0 on success (including the zero-row case); returns non-zero only on internal failure (e.g., service script not found).
 
-- [ ] 2.2 Add a tiny health-classifier helper `_classify_ready_count <ready>` (also in `lib/service-scanner.sh`) that returns:
+- [x] 2.2 Add a tiny health-classifier helper `_classify_ready_count <ready>` (also in `lib/service-scanner.sh`) that returns:
   - `0` (healthy) iff input matches `^([1-9][0-9]*)/\1$`
   - `1` (degraded) iff input matches `^[0-9]+/[0-9]+$` but not the healthy regex
   - `2` (unknown — kubectl returned an unexpected shape) otherwise
 
   Used by both `cmd_status` and `cmd_list` to decide what icon to print.
 
-- [ ] 2.3 Document the helpers' contract in the file header comment of `service-scanner.sh` (which already documents `check_service_deployed` and `get_all_service_ids`).
+- [x] 2.3 Document the helpers' contract in the file header comment of `service-scanner.sh` (which already documents `check_service_deployed` and `get_all_service_ids`).
 
 ### Validation
 
@@ -97,7 +97,7 @@ Wire the new helper into `cmd_status` so multi-instance services emit per-instan
 
 ### Tasks
 
-- [ ] 3.1 In `provision-host/uis/manage/uis-cli.sh:262` (`cmd_status`), after the `source "$script"` line that loads service metadata, branch on `_is_service_multi_instance "$service_id"`:
+- [x] 3.1 In `provision-host/uis/manage/uis-cli.sh:262` (`cmd_status`), after the `source "$script"` line that loads service metadata, branch on `_is_service_multi_instance "$service_id"`:
   - **single-instance** (today's path, unchanged): run `check_service_deployed`, emit one row with `SCRIPT_ID`.
   - **multi-instance** (new path): call `get_multi_instance_deployments "$service_id"`, iterate the tab-separated output, classify each row's ready count, and emit one row per **healthy** deployment using the deployment name as the ID:
     ```
@@ -105,9 +105,9 @@ Wire the new helper into `cmd_status` so multi-instance services emit per-instan
     ```
   - Skip degraded deployments and the zero-row case — matches `cmd_status`'s today-behaviour of "only show healthy services."
 
-- [ ] 3.2 Bump the ID column width from `%-15s` to `%-18s` (in both the header line at line 275 and the row print at line 291). `atlas-postgrest` (15 chars) and `railway-postgrest` (17 chars) fit cleanly at 18; provides headroom for typical `<app>-<service>` names. Update the underline separator on line 276 to match the new width if it depends on the format.
+- [x] 3.2 Bump the ID column width from `%-15s` to `%-18s` (in both the header line at line 275 and the row print at line 291). `atlas-postgrest` (15 chars) and `railway-postgrest` (17 chars) fit cleanly at 18; provides headroom for typical `<app>-<service>` names. Update the underline separator on line 276 to match the new width if it depends on the format.
 
-- [ ] 3.3 Verify `has_deployed` flag still flips to `true` when any multi-instance row is emitted, so the "No deployed services found" fallback doesn't fire incorrectly.
+- [x] 3.3 Verify `has_deployed` flag still flips to `true` when any multi-instance row is emitted, so the "No deployed services found" fallback doesn't fire incorrectly.
 
 ### Validation
 
@@ -129,14 +129,14 @@ Same iteration helper, different presentation policy. `cmd_list` always emits a 
 
 ### Tasks
 
-- [ ] 4.1 In `provision-host/uis/manage/uis-cli.sh:195` (`cmd_list`), in the per-service block (currently around lines 234-244), branch on `_is_service_multi_instance "$service_id"`:
+- [x] 4.1 In `provision-host/uis/manage/uis-cli.sh:195` (`cmd_list`), in the per-service block (currently around lines 234-244), branch on `_is_service_multi_instance "$service_id"`:
   - **single-instance** (today's path, unchanged): existing `check_service_deployed` → emit `✅ Deployed` / `❌ Not deployed` / `○ No check`.
   - **multi-instance** (new path): call `get_multi_instance_deployments "$service_id"`, iterate the output:
     - For each row classified healthy (`2/2`): emit one row with deployment name as ID, status `✅ Deployed`.
     - For each row classified degraded (`1/2`): emit one row with deployment name as ID, status `⚠ Degraded (<ready>/<replicas>)`.
     - If the helper returned zero rows: emit one row with `$SCRIPT_ID` as ID, status `❌ Not deployed` (so the service-type stays visible in the registry).
 
-- [ ] 4.2 Reuse the same `%-18s` column width bump from 3.2.
+- [x] 4.2 Reuse the same `%-18s` column width bump from 3.2.
 
 ### Validation
 
@@ -155,7 +155,7 @@ Add a focused static test for the helper output parsing. Integration coverage is
 
 ### Tasks
 
-- [ ] 5.1 Add `provision-host/uis/tests/static/test-multi-instance-parsing.sh`. Tests:
+- [x] 5.1 Add `provision-host/uis/tests/static/test-multi-instance-parsing.sh`. Tests:
   - `_classify_ready_count "2/2"` → 0 (healthy)
   - `_classify_ready_count "1/2"` → 1 (degraded)
   - `_classify_ready_count "0/2"` → 1 (degraded — zero replicas ready is degraded, not unknown)
@@ -164,7 +164,7 @@ Add a focused static test for the helper output parsing. Integration coverage is
   - `_classify_ready_count "garbage"` → 2 (unknown)
   - A sample kubectl-output fixture (saved as a heredoc in the test) parses into the expected tab-separated rows.
 
-- [ ] 5.2 Wire the new test into `provision-host/uis/tests/run-tests.sh` if it doesn't auto-discover `static/test-*.sh` files (check current discovery behaviour first).
+- [x] 5.2 Wire the new test into `provision-host/uis/tests/run-tests.sh` if it doesn't auto-discover `static/test-*.sh` files (check current discovery behaviour first).
 
 ### Validation
 
@@ -179,11 +179,11 @@ User confirms tests pass.
 
 ## Phase 6: Local verification + build for tester fast-loop
 
-- [ ] 6.1 `bash -n` clean on all touched files: `service-scanner.sh`, `service-deployment.sh`, `configure.sh`, `uis-cli.sh`, the new test.
-- [ ] 6.2 `bash provision-host/uis/tests/run-tests.sh` — all test scripts pass.
-- [ ] 6.3 `cd website && npm run build` — `[SUCCESS]` (no docs touched in this PLAN, but build catches any accidental sidebar / markdown breakage).
-- [ ] 6.4 **Build the local image for tester consumption**: run `./uis build` from the repo root. Produces `uis-provision-host:local` on the local Docker daemon — the same daemon the tester's `./uis` invocations talk to. This is the fast-loop pattern: tester runs `UIS_IMAGE=uis-provision-host:local ./uis ...` and sees this PLAN's code immediately, no GHCR wait.
-- [ ] 6.5 Quick contributor-side smoke (optional, separate from the tester's round): with the running container swapped to `:local`, run `./uis status` + `./uis list` against the contributor's rancher-desktop cluster — quick sanity check that startup doesn't error.
+- [x] 6.1 `bash -n` clean on all touched files: `service-scanner.sh`, `service-deployment.sh`, `configure.sh`, `uis-cli.sh`, the new test.
+- [x] 6.2 `bash provision-host/uis/tests/run-tests.sh` — all test scripts pass.
+- [x] 6.3 `cd website && npm run build` — `[SUCCESS]` (no docs touched in this PLAN, but build catches any accidental sidebar / markdown breakage).
+- [x] 6.4 **Build the local image for tester consumption**: run `./uis build` from the repo root. Produces `uis-provision-host:local` on the local Docker daemon — the same daemon the tester's `./uis` invocations talk to. This is the fast-loop pattern: tester runs `UIS_IMAGE=uis-provision-host:local ./uis ...` and sees this PLAN's code immediately, no GHCR wait.
+- [x] 6.5 Quick contributor-side smoke (optional, separate from the tester's round): with the running container swapped to `:local`, run `./uis status` + `./uis list` against the contributor's rancher-desktop cluster — quick sanity check that startup doesn't error.
 
 ### Validation
 
@@ -197,8 +197,8 @@ A talk round against the tester's rancher-desktop cluster covering the deploy �
 
 ### Tasks
 
-- [ ] 7.1 Archive current `testing/uis1/talk/talk.md` → `talkNN.md` per the talk.md naming protocol.
-- [ ] 7.2 Write a fresh `talk.md` for this round. Brief covers:
+- [x] 7.1 Archive current `testing/uis1/talk/talk.md` → `talkNN.md` per the talk.md naming protocol.
+- [x] 7.2 Write a fresh `talk.md` for this round. Brief covers:
   - **Pre-flight (local-build fast-loop)**:
     ```bash
     # Confirm the contributor's locally-built image is on this Docker daemon:
@@ -222,7 +222,7 @@ A talk round against the tester's rancher-desktop cluster covering the deploy �
   - **R6 — Single-instance regression**: `./uis status` + `./uis list` still render single-instance services (nginx, traefik, postgresql) exactly as before this PLAN. No drift.
   - **R7 — Tailscale expose flow** (proves the team-share use case the INVESTIGATE motivated): deploy two postgrest instances; run `./uis status`; pick `railway-postgrest` from the output; run `./uis network expose tailscale railway-postgrest`. Verify it works end-to-end against the public Funnel URL.
 
-- [ ] 7.3 Iterate on findings as small follow-up commits on the same branch if R1–R7 surface anything. The contributor re-runs `./uis build` after each commit; tester's next round picks up the new `:local` image immediately (the wrapper re-creates the container on `start`).
+- [x] 7.3 Iterate on findings as small follow-up commits on the same branch if R1–R7 surface anything. The contributor re-runs `./uis build` after each commit; tester's next round picks up the new `:local` image immediately (the wrapper re-creates the container on `start`).
 
 ### Validation
 
@@ -232,15 +232,15 @@ Tester closes the round with all R1–R7 PASS. Any FAIL findings filed as F-find
 
 ## Acceptance Criteria
 
-- [ ] `./uis status` shows one row per healthy multi-instance deployment, with the deployment name (e.g., `atlas-postgrest`) as the row ID.
-- [ ] `./uis status` skips degraded multi-instance deployments (consistent with today's single-instance "check failed → no row" behaviour).
-- [ ] `./uis list` shows one row per multi-instance deployment, with explicit `✅ Deployed` / `⚠ Degraded` / `❌ Not deployed (service-type)` states per the C-2 table.
-- [ ] Single-instance services in both commands render exactly as they did before this PLAN — no drift.
-- [ ] `_is_service_multi_instance` is the single canonical helper; `_is_multi_instance` is deleted.
-- [ ] `SCRIPT_CHECK_COMMAND` on `service-postgrest.sh` is unchanged; `check_service_deployed` behaviour for deploy/undeploy/dep-check paths is unchanged.
-- [ ] Local `bash -n` + `bash provision-host/uis/tests/run-tests.sh` + `cd website && npm run build` all pass.
-- [ ] Tester round R1–R7 closes PASS.
-- [ ] This plan is in `completed/`.
+- [x] `./uis status` shows one row per healthy multi-instance deployment, with the deployment name (e.g., `atlas-postgrest`) as the row ID.
+- [x] `./uis status` skips degraded multi-instance deployments (consistent with today's single-instance "check failed → no row" behaviour).
+- [x] `./uis list` shows one row per multi-instance deployment, with explicit `✅ Deployed` / `⚠ Degraded` / `❌ Not deployed (service-type)` states per the C-2 table.
+- [x] Single-instance services in both commands render exactly as they did before this PLAN — no drift.
+- [x] `_is_service_multi_instance` is the single canonical helper; `_is_multi_instance` is deleted.
+- [x] `SCRIPT_CHECK_COMMAND` on `service-postgrest.sh` is unchanged; `check_service_deployed` behaviour for deploy/undeploy/dep-check paths is unchanged.
+- [x] Local `bash -n` + `bash provision-host/uis/tests/run-tests.sh` + `cd website && npm run build` all pass.
+- [x] Tester round R1–R7 closes PASS.
+- [x] This plan is in `completed/`.
 
 ---
 
