@@ -335,6 +335,17 @@ generate_kubernetes_secrets() {
     }
     set +a
 
+    # Derive TAILSCALE_OWNER_ID from GITHUB_USERNAME if blank.
+    # GNU envsubst doesn't evaluate ${VAR:-default} syntax — it only
+    # does plain ${VAR} substitution — so the fallback has to be
+    # resolved in shell before envsubst runs. Mirrors the resolved-
+    # value check in secrets-management.sh::validate_secrets.
+    if [[ -z "${TAILSCALE_OWNER_ID:-}" ]]; then
+        local _gh_lc
+        _gh_lc="$(printf '%s' "${GITHUB_USERNAME:-}" | tr '[:upper:]' '[:lower:]')"
+        export TAILSCALE_OWNER_ID="k8s-${_gh_lc}"
+    fi
+
     # Generate using envsubst
     if ! command -v envsubst &>/dev/null; then
         log_error "envsubst not found - cannot generate secrets"
