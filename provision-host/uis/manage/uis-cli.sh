@@ -209,7 +209,7 @@ cmd_list() {
     print_section "Available Services"
 
     # Print header
-    printf "%-15s %-20s %-12s %s\n" "ID" "NAME" "CATEGORY" "STATUS"
+    printf "%-18s %-20s %-12s %s\n" "ID" "NAME" "CATEGORY" "STATUS"
     echo "─────────────────────────────────────────────────────────────────────"
 
     # Get services grouped by category
@@ -230,7 +230,51 @@ cmd_list() {
             # shellcheck source=/dev/null
             source "$script" 2>/dev/null
 
-            # Check deployment status
+            # Multi-instance services: emit one row per actual deployment,
+            # with explicit Deployed / Degraded / Not deployed states.
+            #
+            # Note: this whole branch runs under `set -e` (uis-cli.sh:9).
+            # _classify_ready_count returns 1 for degraded and 2 for unknown;
+            # both calls must sit inside `if` conditions so a non-zero return
+            # doesn't trip errexit and abort the surrounding loop.
+            if _is_service_multi_instance "$service_id" 2>/dev/null; then
+                local _mi_lines _dep_name _dep_ready
+                _mi_lines=$(get_multi_instance_deployments "$service_id" 2>/dev/null)
+                if [[ -z "$_mi_lines" ]]; then
+                    # Zero deployments — keep the service-type visible in the
+                    # registry so the user knows it exists and is deployable.
+                    printf "%-18s %-20s %-12s %s %s\n" \
+                        "$SCRIPT_ID" \
+                        "${SCRIPT_NAME:0:20}" \
+                        "${SCRIPT_CATEGORY:0:12}" \
+                        "❌" \
+                        "Not deployed"
+                else
+                    while IFS=$'\t' read -r _dep_name _dep_ready; do
+                        [[ -z "$_dep_name" ]] && continue
+                        if _classify_ready_count "$_dep_ready"; then
+                            printf "%-18s %-20s %-12s %s %s\n" \
+                                "$_dep_name" \
+                                "${SCRIPT_NAME:0:20}" \
+                                "${SCRIPT_CATEGORY:0:12}" \
+                                "✅" \
+                                "Deployed"
+                        else
+                            # Degraded or unknown — surface the ready count
+                            # so the user can debug.
+                            printf "%-18s %-20s %-12s %s %s\n" \
+                                "$_dep_name" \
+                                "${SCRIPT_NAME:0:20}" \
+                                "${SCRIPT_CATEGORY:0:12}" \
+                                "⚠" \
+                                "Degraded ($_dep_ready)"
+                        fi
+                    done <<< "$_mi_lines"
+                fi
+                continue
+            fi
+
+            # Single-instance: existing path, unchanged behaviour.
             local status_icon status_text
             if [[ -z "$SCRIPT_CHECK_COMMAND" ]]; then
                 status_icon="○"
@@ -244,7 +288,7 @@ cmd_list() {
             fi
 
             # Print row
-            printf "%-15s %-20s %-12s %s %s\n" \
+            printf "%-18s %-20s %-12s %s %s\n" \
                 "$SCRIPT_ID" \
                 "${SCRIPT_NAME:0:20}" \
                 "${SCRIPT_CATEGORY:0:12}" \
@@ -272,7 +316,7 @@ cmd_status() {
     local has_deployed=false
     local service_id script
 
-    printf "%-15s %-20s %-12s %s\n" "ID" "NAME" "CATEGORY" "HEALTH"
+    printf "%-18s %-20s %-12s %s\n" "ID" "NAME" "CATEGORY" "HEALTH"
     echo "─────────────────────────────────────────────────────────────────────"
 
     for service_id in $(get_all_service_ids); do
@@ -284,11 +328,31 @@ cmd_status() {
         # shellcheck source=/dev/null
         source "$script" 2>/dev/null
 
-        # Only show if has check command and is deployed
+        # Multi-instance services: enumerate each deployment as its own row,
+        # using the Kubernetes deployment name (<app>-<service>) as the row
+        # ID. Only healthy instances are printed — matches single-instance
+        # behaviour of "check failed → skip row."
+        if _is_service_multi_instance "$service_id" 2>/dev/null; then
+            local dep_line dep_name dep_ready
+            while IFS=$'\t' read -r dep_name dep_ready; do
+                [[ -z "$dep_name" ]] && continue
+                if _classify_ready_count "$dep_ready"; then
+                    has_deployed=true
+                    printf "%-18s %-20s %-12s %s\n" \
+                        "$dep_name" \
+                        "${SCRIPT_NAME:0:20}" \
+                        "${SCRIPT_CATEGORY:0:12}" \
+                        "✅ Healthy"
+                fi
+            done < <(get_multi_instance_deployments "$service_id" 2>/dev/null)
+            continue
+        fi
+
+        # Single-instance: only show if has check command and is deployed
         if [[ -n "$SCRIPT_CHECK_COMMAND" ]]; then
             if check_service_deployed "$service_id" 2>/dev/null; then
                 has_deployed=true
-                printf "%-15s %-20s %-12s %s\n" \
+                printf "%-18s %-20s %-12s %s\n" \
                     "$SCRIPT_ID" \
                     "${SCRIPT_NAME:0:20}" \
                     "${SCRIPT_CATEGORY:0:12}" \
