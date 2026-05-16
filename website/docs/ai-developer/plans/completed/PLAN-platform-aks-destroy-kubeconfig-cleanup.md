@@ -4,7 +4,16 @@
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Backlog
+## Status: Completed (2026-05-16)
+
+Implementation landed in `platforms/azure-aks/scripts/03-destroy.sh` via the shared `pf_remove_context` + `pf_lockstep_flip` helpers in `provision-host/uis/lib/platform-switching.sh`. All four acceptance-criteria items satisfied:
+
+- `pf_remove_context "$AZURE_AKS_CLUSTER_NAME"` deletes context + cluster + user refs from `kubeconf-all` and syncs to the legacy bind-mount path (delete-cluster/-context/-user + cp, lines 211-241 of `platform-switching.sh`).
+- `pf_lockstep_flip "rancher-desktop"` re-points `current-context` and writes `cluster-config.sh` in one shared writer (line 209 of `03-destroy.sh`).
+- The host-kubeconfig defensive cleanup (`kubectl config delete-context`) runs first at line 181.
+- Per-cluster `$KUBECONFIG_FILE` removal at line 194.
+
+The verbatim code in this PLAN was not used — the equivalent work landed as higher-level helpers shared with `02-post-apply.sh` and `cmd_platform_use`, which converges on the lockstep-flip / context-removal pattern. Net outcome identical.
 
 **Goal**: When `platforms/azure-aks/scripts/03-destroy.sh` tears down an AKS cluster, also remove that cluster's stale `clusters:` / `contexts:` / `users:` entries from the merged `kubeconf-all`, and re-point `current-context` to `rancher-desktop`. Symmetric counterpart to `02-post-apply.sh`'s flip-on-apply.
 
