@@ -4,7 +4,30 @@
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Backlog
+## Status: Superseded (2026-05-16)
+
+The auto-apply-inside-post-apply approach was not taken. Instead, secrets management is now a separate top-level CLI surface:
+
+- `./uis secrets generate` — renders `kubernetes-secrets.yml` from templates
+- `./uis secrets apply` — runs `kubectl apply -f kubernetes-secrets.yml` against the current context (implementation: `provision-host/uis/lib/secrets-management.sh:204`)
+
+The user-facing flow after `./uis platform up azure-aks`:
+
+```bash
+./uis platform up azure-aks       # provisions + Traefik
+./uis secrets apply                # apply once after cluster is up
+./uis deploy <service>             # works
+```
+
+The edit-and-reapply path is documented in `website/docs/contributors/architecture/secrets.md` ("Normal commands" block, lines 125-136):
+
+```bash
+nano .uis.secrets/secrets-config/00-common-values.env.template
+./uis secrets generate
+./uis secrets apply
+```
+
+This PLAN is preserved in `completed/` as a record of the design path; no further work is planned against `02-post-apply.sh`'s secrets step.
 
 **Goal**: Add a `kubernetes-secrets.yml` apply step to `platforms/azure-aks/scripts/02-post-apply.sh` so that an AKS cluster provisioned via `platforms/azure-aks/` is ready to receive the full UIS service catalogue (postgresql, authentik, openwebui, postgrest, etc.) — not just nginx. Brings the OpenTofu post-apply script into parity with the working bash precedent at `hosts/azure-aks/02-azure-aks-setup.sh:125-141`.
 
