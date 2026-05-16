@@ -4,13 +4,17 @@
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Active
+## Status: Completed (2026-05-16)
+
+PR #193 — talk57 R1-R7 + R8 retry all PASS. PLAN and its companion `INVESTIGATE-network-tailscale-owner-id-default.md` move to `completed/` together.
+
+**Implementation note — envsubst gotcha (caught in tester R1/R2, fixed in commit `914816d`):** the original Phase 1.2 design used envsubst's `${VAR:-default}` syntax in the master template. GNU envsubst does *not* evaluate that form — it only does plain `${VAR}` substitution — so the outer fallback was preserved as literal shell text in the rendered Secret. The shipped implementation pre-computes the derivation in shell inside `generate_kubernetes_secrets()` (`provision-host/uis/lib/first-run.sh`) before envsubst runs; the master template went back to plain `${TAILSCALE_OWNER_ID}`. Lesson for next time: keep `${VAR:-default}` defaults out of envsubst templates.
 
 **Goal**: Close the contributor-bypass gap left after PLAN-002 — a fresh install that skips the wizard and runs `./uis secrets generate` directly should still produce a non-colliding `TAILSCALE_OWNER_ID`. Soft-warn (matching the existing `DEFAULT_*` placeholder pattern) when the resolved value is missing or malformed.
 
 **Last Updated**: 2026-05-16
 
-**Investigation**: [INVESTIGATE-network-tailscale-owner-id-default.md](../backlog/INVESTIGATE-network-tailscale-owner-id-default.md) — Decision: soft-warn (2026-05-16). Hard-fail in `./uis deploy tailscale-tunnel` deferred until soft-warn proves insufficient.
+**Investigation**: [INVESTIGATE-network-tailscale-owner-id-default.md](./INVESTIGATE-network-tailscale-owner-id-default.md) — Decision: soft-warn (2026-05-16). Hard-fail in `./uis deploy tailscale-tunnel` deferred until soft-warn proves insufficient.
 
 **Depends on**: nothing. Two template edits + two `if` blocks in `validate_secrets`. No wizard, no docs, no deploy-path change.
 
@@ -32,11 +36,20 @@ Per the investigation's decision summary (2026-05-16): the cost of bad state (on
 
 ### Tasks
 
-- [ ] 1.1 Edit `provision-host/uis/templates/secrets-templates/00-common-values.env.template`:
-  - Line 85: change `TAILSCALE_OWNER_ID=k8s` → `TAILSCALE_OWNER_ID=` (empty). Update the surrounding comment block (lines 75-84) to point at `GITHUB_USERNAME` as the source the default is derived from.
+- [x] 1.1 Edit `provision-host/uis/templates/secrets-templates/00-common-values.env.template`:
+  - Line 85: changed `TAILSCALE_OWNER_ID=k8s` → `TAILSCALE_OWNER_ID=` (empty). Comment block updated to point at `GITHUB_USERNAME` as the derivation source.
 
-- [ ] 1.2 Edit `provision-host/uis/templates/secrets-templates/00-master-secrets.yml.template`:
-  - Line 144: change `TAILSCALE_OWNER_ID: "${TAILSCALE_OWNER_ID}"` → `TAILSCALE_OWNER_ID: "${TAILSCALE_OWNER_ID:-k8s-${GITHUB_USERNAME}}"`. envsubst supports the `${VAR:-default}` syntax.
+- [x] 1.2 Pre-compute derivation in shell (revised from the original "use envsubst `${VAR:-default}`" approach after R1/R2 revealed envsubst doesn't evaluate that form). In `provision-host/uis/lib/first-run.sh::generate_kubernetes_secrets()`, between `source` of common-values and the envsubst call, insert:
+
+  ```bash
+  if [[ -z "${TAILSCALE_OWNER_ID:-}" ]]; then
+      local _gh_lc
+      _gh_lc="$(printf '%s' "${GITHUB_USERNAME:-}" | tr '[:upper:]' '[:lower:]')"
+      export TAILSCALE_OWNER_ID="k8s-${_gh_lc}"
+  fi
+  ```
+
+  Master template stays as plain `TAILSCALE_OWNER_ID: "${TAILSCALE_OWNER_ID}"`.
 
 ### Behaviour after this phase
 
@@ -59,7 +72,7 @@ Per the investigation's decision summary (2026-05-16): the cost of bad state (on
 
 ### Tasks
 
-- [ ] 2.1 In `provision-host/uis/lib/secrets-management.sh::validate_secrets` (line 249), add a Tailscale-section block after the weak-password loop (~line 302):
+- [x] 2.1 In `provision-host/uis/lib/secrets-management.sh::validate_secrets` (line 249), added the Tailscale-section block after the weak-password loop (~line 302):
 
   ```bash
   # ─── Tailscale OWNER_ID derivation guards ────────────────────────
@@ -96,7 +109,7 @@ Per the investigation's decision summary (2026-05-16): the cost of bad state (on
   fi
   ```
 
-- [ ] 2.2 Verify the three guard cases interactively in the dev container against a freshly-init'd `.uis.secrets/`:
+- [x] 2.2 Verify the three guard cases interactively in the dev container against a freshly-init'd `.uis.secrets/`:
   - Set `GITHUB_USERNAME=your-github-username` → Guard A fires.
   - Set `GITHUB_USERNAME=Has-CAPS` (uppercase) → Guard B fires (after lowercasing, the regex still passes for `has-caps`, so this *shouldn't* fire — verify behaviour matches expectation).
   - Set `GITHUB_USERNAME=` empty, `TAILSCALE_OWNER_ID=` empty → resolves to `k8s-` (trailing hyphen) → Guard B fires.
@@ -114,14 +127,14 @@ Per the investigation's decision summary (2026-05-16): the cost of bad state (on
 
 ### Tasks
 
-- [ ] 3.1 In the dev container, run `./uis secrets generate` for the four scenarios above and grep the rendered `generated/kubernetes/kubernetes-secrets.yml` for `TAILSCALE_OWNER_ID:`:
+- [x] 3.1 In the dev container, run `./uis secrets generate` for the four scenarios above and grep the rendered `generated/kubernetes/kubernetes-secrets.yml` for `TAILSCALE_OWNER_ID:`:
   - Fresh + `GITHUB_USERNAME=terchris`, OWNER_ID blank → `TAILSCALE_OWNER_ID: "k8s-terchris"`
   - Explicit `TAILSCALE_OWNER_ID=k8s-terchris-mbp` → `TAILSCALE_OWNER_ID: "k8s-terchris-mbp"` (explicit wins)
   - Both blank → `TAILSCALE_OWNER_ID: "k8s-"` (visible to operator, then the deploy path produces a collidable device — caught by future hard-fail PLAN, not this one)
   - `TAILSCALE_OWNER_ID=k8s` (legacy) → `TAILSCALE_OWNER_ID: "k8s"` (explicit wins, unchanged)
 
-- [ ] 3.2 Confirm no other consumer of `TAILSCALE_OWNER_ID` breaks on the new shape:
-  - `grep -rn "TAILSCALE_OWNER_ID" provision-host/ ansible/ manifests/` — review each hit; the change is value-only, no name change.
+- [x] 3.2 Confirm no other consumer of `TAILSCALE_OWNER_ID` breaks on the new shape:
+  - `grep -rn "TAILSCALE_OWNER_ID" provision-host/ ansible/ manifests/` — reviewed. Playbooks 800/802 have `default_owner_id: "k8s"` ansible-level fallback; manifests just consume the value. No name change, no collateral.
 
 ---
 
@@ -140,8 +153,8 @@ Per the investigation's decision summary (2026-05-16): the cost of bad state (on
 
 ## Acceptance Criteria
 
-- [ ] Fresh `./uis secrets init` + `./uis secrets generate` (no wizard) produces a `TAILSCALE_OWNER_ID` of `k8s-<lowercased-github-username>` when `GITHUB_USERNAME` is set.
-- [ ] `./uis secrets validate` against a placeholder `GITHUB_USERNAME=your-github-username` prints Guard A's warning + exits 0.
-- [ ] `./uis secrets validate` against `TAILSCALE_OWNER_ID=k8s` prints Guard C's warning + exits 0.
-- [ ] `./uis secrets validate` against a clean wizard-initialised config prints no Tailscale warnings.
-- [ ] `grep TAILSCALE_OWNER_ID` across `provision-host/`, `ansible/`, `manifests/` shows no name-change collateral.
+- [x] Fresh `./uis secrets init` + `./uis secrets generate` (no wizard) produces a `TAILSCALE_OWNER_ID` of `k8s-<lowercased-github-username>` when `GITHUB_USERNAME` is set. — R8.1 confirmed `k8s-terchris` rendered.
+- [x] `./uis secrets validate` against a placeholder `GITHUB_USERNAME=your-github-username` prints Guard A's warning + exits 0. — R3 PASS.
+- [x] `./uis secrets validate` against `TAILSCALE_OWNER_ID=k8s` prints Guard C's warning + exits 0. — R5 + R8.3 PASS.
+- [x] `./uis secrets validate` against a clean wizard-initialised config prints no Tailscale warnings. — R6 PASS.
+- [x] `grep TAILSCALE_OWNER_ID` across `provision-host/`, `ansible/`, `manifests/` shows no name-change collateral. — Phase 3.2 confirmed.
