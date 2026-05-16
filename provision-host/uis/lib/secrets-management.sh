@@ -301,6 +301,30 @@ validate_secrets() {
         fi
     done
 
+    # Tailscale OWNER_ID derivation guards (soft-warn, matching the
+    # weak-password pattern above). Hard-fail in the deploy path is
+    # deferred. See PLAN-network-tailscale-owner-id-default.md.
+    if [[ "${GITHUB_USERNAME:-}" == "your-github-username" ]]; then
+        log_warn "GITHUB_USERNAME is still the template placeholder"
+        log_warn "  TAILSCALE_OWNER_ID derives from this — set it in 00-common-values.env.template"
+    fi
+
+    local _gh_lc
+    _gh_lc="$(printf '%s' "${GITHUB_USERNAME:-}" | tr '[:upper:]' '[:lower:]')"
+    local _resolved_owner_id="${TAILSCALE_OWNER_ID:-k8s-${_gh_lc}}"
+    if [[ ! "$_resolved_owner_id" =~ ^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$ ]]; then
+        log_warn "TAILSCALE_OWNER_ID resolves to '$_resolved_owner_id'"
+        log_warn "  Not a legal Tailscale device-name segment (1-63 chars of [a-z0-9-],"
+        log_warn "  no leading/trailing hyphen). Tailscale will auto-suffix on collision."
+    fi
+
+    if [[ "${TAILSCALE_OWNER_ID:-}" == "k8s" ]]; then
+        log_warn "TAILSCALE_OWNER_ID is still the legacy default 'k8s'"
+        log_warn "  Two clusters with this default collide on the same tailnet."
+        log_warn "  Recommended: leave it blank to auto-derive from GITHUB_USERNAME,"
+        log_warn "  or set it explicitly (e.g. k8s-terje-mbp)."
+    fi
+
     if [[ "$has_issues" == "true" ]]; then
         return 1
     fi

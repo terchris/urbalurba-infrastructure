@@ -1,10 +1,10 @@
 # INVESTIGATE: `TAILSCALE_OWNER_ID` default needs to be developer-unique
 
-**Status:** Partially mitigated by PLAN-002; remaining template-default + validation-guard work still needed
+**Status:** Completed (2026-05-16) — template default + 3 soft-warn validation guards shipped via PR #193. See [PLAN-network-tailscale-owner-id-default](./PLAN-network-tailscale-owner-id-default.md) for the closed plan.
 **Created:** 2026-05-13
-**Updated:** 2026-05-15
+**Updated:** 2026-05-16
 **Surfaced by:** talk52 Obs A (Tailscale architecture cleanup verification)
-**Related to:** [INVESTIGATE-tailscale-architecture-cleanup](../completed/INVESTIGATE-tailscale-architecture-cleanup.md) (now completed), [PLAN-002](../completed/PLAN-002-tailscale-network-port-cli.md) (now completed), [PLAN-003](../completed/PLAN-003-tailscale-docs-lift-up.md) (now completed)
+**Related to:** [INVESTIGATE-tailscale-architecture-cleanup](./INVESTIGATE-tailscale-architecture-cleanup.md) (completed), [PLAN-002](./PLAN-002-tailscale-network-port-cli.md) (completed), [PLAN-003](./PLAN-003-tailscale-docs-lift-up.md) (completed)
 
 ---
 
